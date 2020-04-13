@@ -1,0 +1,15 @@
+# binaries created by $ go build
+static/main.wasm
+nate-mlb
+
+# environment variables
+.env
+
+# Visual Studio Code files
+.vscode
+__debug_bin
+
+# SonarQube static analysis
+.scannerwork
+# go test ./... -coverprofile=.coverage.out
+.coverage.out

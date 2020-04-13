@@ -1,0 +1,19 @@
+CREATE OR REPLACE FUNCTION user_delete
+	( IN username VARCHAR
+	, OUT password CHAR
+	) RETURNS BOOLEAN
+AS
+$$
+	WITH deleted AS
+		(
+		DELETE
+		FROM users
+		AS u
+		WHERE u.username = user_delete.username
+			AND u.password = user_delete.password
+		RETURNING p.id
+		)
+	SELECT COUNT(*) > 0
+	FROM deleted
+$$
+LANGUAGE SQL;

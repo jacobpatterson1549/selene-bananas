@@ -1,0 +1,22 @@
+CREATE OR REPLACE FUNCTION user_create
+	( username VARCHAR
+	, password CHAR
+	) RETURNS BOOLEAN
+AS
+$$
+	WITH inserted AS
+		(
+		INSERT
+		INTO users
+			( username
+			, password
+			)
+		SELECT
+			user_create.username
+			, user_create.password
+		ON CONFLICT (username) DO NOTHING
+		RETURNING username
+		)
+	SELECT COUNT(*) > 0 FROM inserted
+$$
+LANGUAGE SQL;

@@ -1,0 +1,12 @@
+CREATE OR REPLACE FUNCTION user_read
+	( INOUT username VARCHAR
+	, OUT password CHAR
+	) RETURNS SETOF INT
+AS
+$$
+	SELECT u.points
+	FROM users
+	AS u
+	WHERE u.username = user_read.username
+$$
+LANGUAGE SQL;

@@ -1,0 +1,18 @@
+CREATE OR REPLACE FUNCTION user_update_points
+	( IN username VARCHAR
+	, IN points INT
+	) RETURNS BOOLEAN
+AS
+$$
+	WITH updated AS
+		(
+		UPDATE users
+		AS u
+		SET points = user_update_points.points
+		WHERE u.username = user_update_points.username
+		RETURNING u.username
+		)
+	SELECT COUNT(*) > 0
+	FROM updated
+$$
+LANGUAGE SQL;
