@@ -1,17 +1,11 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 )
 
 type (
-	// User contains information for each player
-	User struct {
-		Username string
-		Password string
-		Points   int
-	}
-
 	// UserDao contains CRUD operations for user-related information
 	UserDao interface {
 		// Create adds a user
@@ -37,6 +31,12 @@ func NewUserDao(db Database) UserDao {
 }
 
 func (ud userDao) Create(u User) error {
+	if !u.Username.isValid() {
+		return errors.New(u.Username.helpText())
+	}
+	if !u.Password.isValid() {
+		return errors.New(u.Password.helpText())
+	}
 	result, err := ud.db.exec("SELECT user_create($1, $2)", u.Username, u.Password)
 	if err != nil {
 		return fmt.Errorf("creating user: %w", err)
@@ -55,6 +55,9 @@ func (ud userDao) Read(u User) (User, error) {
 }
 
 func (ud userDao) UpdatePassword(u User, newPassword string) error {
+	if !u.Password.isValid() {
+		return errors.New(u.Password.helpText())
+	}
 	result, err := ud.db.exec("SELECT user_update_password($1, $2, $3)", u.Username, u.Password, newPassword)
 	if err == nil {
 		return fmt.Errorf("updating user password: %w", err)

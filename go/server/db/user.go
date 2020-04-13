@@ -5,13 +5,16 @@ import (
 )
 
 type (
-	username string
-	password string
-
-	validator interface {
-		isValid() bool
-		helpText() string
+	// User contains information for each player
+	User struct {
+		Username username
+		Password password
+		Points   int
 	}
+
+	username string
+
+	password string
 )
 
 func (u username) isValid() bool {
