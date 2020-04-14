@@ -5,6 +5,9 @@ main
 # environment variables
 .env
 
+# docker database
+.pgdata
+
 # Visual Studio Code files
 .vscode
 __debug_bin
