@@ -4,16 +4,11 @@ CREATE OR REPLACE FUNCTION user_delete
 	) RETURNS SETOF VARCHAR
 AS
 $$
-	WITH deleted AS
-		(
-		DELETE
-		FROM users
-		AS u
-		WHERE u.username = user_delete.username
-			AND u.password = user_delete.password
-		RETURNING u.username
-		)
-	SELECT username
-	FROM deleted
+	DELETE
+	FROM users
+	AS u
+	WHERE u.username = user_delete.username
+		AND u.password = user_delete.password
+	RETURNING u.username
 $$
 LANGUAGE SQL;

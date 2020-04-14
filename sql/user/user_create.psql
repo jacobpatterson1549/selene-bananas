@@ -4,20 +4,15 @@ CREATE OR REPLACE FUNCTION user_create
 	) RETURNS SETOF VARCHAR
 AS
 $$
-	WITH inserted AS
-		(
-		INSERT
-		INTO users
-			( username
-			, password
-			)
-		SELECT
-			user_create.username
-			, user_create.password
-		ON CONFLICT (username) DO NOTHING
-		RETURNING username
+	INSERT
+	INTO users
+		( username
+		, password
 		)
-	SELECT username
-	FROM inserted
+	SELECT
+		user_create.username
+		, user_create.password
+	ON CONFLICT (username) DO NOTHING
+	RETURNING username
 $$
 LANGUAGE SQL;

@@ -4,15 +4,10 @@ CREATE OR REPLACE FUNCTION user_update_points
 	) RETURNS SETOF VARCHAR
 AS
 $$
-	WITH updated AS
-		(
-		UPDATE users
-		AS u
-		SET points = user_update_points.points
-		WHERE u.username = user_update_points.username
-		RETURNING u.username
-		)
-	SELECT username
-	FROM updated
+	UPDATE users
+	AS u
+	SET points = user_update_points.points
+	WHERE u.username = user_update_points.username
+	RETURNING u.username
 $$
 LANGUAGE SQL;
