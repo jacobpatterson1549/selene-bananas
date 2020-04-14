@@ -1,6 +1,6 @@
 # binaries created by $ go build
 static/main.wasm
-nate-mlb
+main
 
 # environment variables
 .env
