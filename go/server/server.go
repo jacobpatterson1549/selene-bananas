@@ -112,24 +112,19 @@ func (cfg Config) handlePost(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (cfg Config) handleTemplate(w http.ResponseWriter, r *http.Request) error {
-	t := template.New("main")
-	_, err := t.Parse("html/main.html")
-	if err != nil {
-		return err
-	}
 	var fileName string
 	switch r.URL.Path {
 	case "/":
 		fileName = "html/game/content.html"
-	case "/user_add":
-		fileName = "html/user_add/content.html"
-	case "about":
+	case "/user_create":
+		fileName = "html/user_create/content.html"
+	case "/about":
 		fileName = "html/about/content.html"
 	default:
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return nil
 	}
-	_, err = t.ParseFiles(fileName)
+	t, err := template.ParseFiles("html/main.html", fileName)
 	if err != nil {
 		return err
 	}
