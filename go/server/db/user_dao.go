@@ -42,7 +42,7 @@ func (ud userDao) Setup() error {
 	if err != nil {
 		return err
 	}
-	err = execTransaction(ud.db, sqlQueries, false)
+	err = execTransaction(ud.db, sqlQueries)
 	if err != nil {
 		return fmt.Errorf("running setup query: %w", err)
 	}
@@ -61,7 +61,7 @@ func (ud userDao) Create(u User) error {
 	if err != nil {
 		return fmt.Errorf("creating user: %w", err)
 	}
-	return expectSingleRowAffected(result)
+	return sqlFunction.expectSingleRowAffected(result)
 }
 
 func (ud userDao) Read(u User) (User, error) {
@@ -84,7 +84,7 @@ func (ud userDao) UpdatePassword(u User, newPassword string) error {
 	if err == nil {
 		return fmt.Errorf("updating user password: %w", err)
 	}
-	return expectSingleRowAffected(result)
+	return sqlFunction.expectSingleRowAffected(result)
 }
 
 func (ud userDao) UpdatePoints(users []User, points int) error {
@@ -92,7 +92,7 @@ func (ud userDao) UpdatePoints(users []User, points int) error {
 	for i, u := range users {
 		queries[i] = newExecSQLFunction("user_update_points", u.Username, u.Points)
 	}
-	return execTransaction(ud.db, queries, true)
+	return execTransaction(ud.db, queries)
 }
 
 func (ud userDao) DeleteUser(u User) error {
@@ -101,7 +101,7 @@ func (ud userDao) DeleteUser(u User) error {
 	if err != nil {
 		return fmt.Errorf("deleting user: %w", err)
 	}
-	return expectSingleRowAffected(result)
+	return sqlFunction.expectSingleRowAffected(result)
 }
 
 func (ud userDao) getSetupSQLQueries() ([]sqlQuery, error) {

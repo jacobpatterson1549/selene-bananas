@@ -70,26 +70,26 @@ func (s sqlDatabase) begin() (transaction, error) {
 	return s.db.Begin()
 }
 
-func expectSingleRowAffected(r sql.Result) error {
+func (f execSQLFunction) expectSingleRowAffected(r sql.Result) error {
 	rows, err := r.RowsAffected()
 	if err != nil {
 		return err
 	}
 	if rows != 1 {
-		return fmt.Errorf("expected to update 1 row, but updated %d", rows)
+		return fmt.Errorf("expected to update 1 row, but updated %d when calling %s", rows, f.name)
 	}
 	return nil
 }
 
-func execTransaction(d Database, queries []sqlQuery, checkResult bool) error {
+func execTransaction(d Database, queries []sqlQuery) error {
 	tx, err := d.begin()
 	if err != nil {
 		return fmt.Errorf("beginning transaction: %w", err)
 	}
 	for i, q := range queries {
 		result, err := tx.Exec(q.sql(), q.args()...)
-		if checkResult && err == nil {
-			err = expectSingleRowAffected(result)
+		if e, ok := q.(execSQLFunction); ok {
+			err = e.expectSingleRowAffected(result)
 		}
 		if err != nil {
 			err = fmt.Errorf("executing query %v: %w", i, err)
