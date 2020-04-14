@@ -1,7 +1,5 @@
 FROM golang:1.13-alpine AS build
 
-ENV application_name selene_bananas
-
 WORKDIR /app
 
 # fetch dependencies first so they will not have to be refetched when other source code changes
@@ -14,10 +12,10 @@ COPY . /app/
 RUN cp /usr/local/go/misc/wasm/wasm_exec.js /app/static/wasm_exec.js
 
 # build web assembly
-RUN GOOS=js GOARCH=wasm go build -o /app/static/main.wasm go/cmd/wasm/main.go
+RUN GOOS=js GOARCH=wasm go build -o /app/static/main.wasm go/cmd/ui/main.go
 
 # build server without links to C libraries
-RUN CGO_ENABLED=0 go build -o /app/${application_name} go/cmd/server/main.go
+RUN CGO_ENABLED=0 go build -o /app/selene_bananas go/cmd/server/main.go
 
 FROM scratch
 
@@ -29,4 +27,4 @@ COPY --from=build /etc/ssl/cert.pem /etc/ssl/cert.pem
 COPY --from=build /app /app
 
 # use exec form to not run from shell, which scratch image does not have
-CMD ["/app/${application_name}"]
+CMD ["/app/selene_bananas"]
