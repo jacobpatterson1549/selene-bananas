@@ -1,6 +1,6 @@
 CREATE OR REPLACE FUNCTION user_delete
 	( IN username VARCHAR
-	, OUT password CHAR
+	, IN password CHAR
 	) RETURNS BOOLEAN
 AS
 $$

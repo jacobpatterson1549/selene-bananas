@@ -1,6 +1,6 @@
 CREATE OR REPLACE FUNCTION user_create
-	( username VARCHAR
-	, password CHAR
+	( IN username VARCHAR
+	, IN password CHAR
 	) RETURNS BOOLEAN
 AS
 $$

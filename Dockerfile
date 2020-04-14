@@ -1,6 +1,6 @@
 FROM golang:1.13-alpine AS build
 
-ENV app_name selene_bananas
+ENV application_name selene_bananas
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ RUN cp /usr/local/go/misc/wasm/wasm_exec.js /app/static/wasm_exec.js
 RUN GOOS=js GOARCH=wasm go build -o /app/static/main.wasm go/cmd/wasm/main.go
 
 # build server without links to C libraries
-RUN CGO_ENABLED=0 go build -o /app/${app_name} go/cmd/server/main.go
+RUN CGO_ENABLED=0 go build -o /app/${application_name} go/cmd/server/main.go
 
 FROM scratch
 
@@ -29,4 +29,4 @@ COPY --from=build /etc/ssl/cert.pem /etc/ssl/cert.pem
 COPY --from=build /app /app
 
 # use exec form to not run from shell, which scratch image does not have
-CMD ["/app/${app_name}"]
+CMD ["/app/${application_name}"]

@@ -2,7 +2,7 @@ version: "2"
 services:
   db:
     image: postgres:11.5-alpine
-    container_name: "${APP_NAME}-db"
+    container_name: "${APPLICATION_NAME}-db"
     env_file: ./.env
     ports:
       - "${POSTGRES_PORT}:5432" # port 5432 on container maps to POSTGRES_PORT on the docker host
@@ -10,10 +10,10 @@ services:
       - ./.pgdata:/var/lib/postgresql/data # save data to local .pgdata directory
   web:
     build: .
-    container_name: "${APP_NAME}-web"
+    container_name: "${APPLICATION_NAME}-web"
     env_file: ./.env
     ports:
-      - "${PORT}:8000" # port 8000 on container maps to PORT on docker host
+      - "${SERVER_PORT}:8000" # port 8000 on container maps to SERVER_PORT on docker host
     environment:
       - PORT=8000
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB}?sslmode=disable

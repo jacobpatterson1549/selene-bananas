@@ -3,6 +3,7 @@ package db
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 )
 
 type (
@@ -21,13 +22,26 @@ type (
 	}
 
 	userDao struct {
-		db Database
+		db           Database
+		readFileFunc func(filename string) ([]byte, error)
 	}
 )
 
 // NewUserDao creates a UserDao on the specified database
 func NewUserDao(db Database) UserDao {
-	return userDao{db}
+	return userDao{
+		db:           db,
+		readFileFunc: ioutil.ReadFile,
+	}
+}
+
+// Setup initializes the tables and adds the functions
+func (ud userDao) Setup() error {
+	sqlQueries, err := ud.getSetupSQLQueries()
+	if err != nil {
+		return err
+	}
+	return execTransaction(ud.db, sqlQueries)
 }
 
 func (ud userDao) Create(u User) error {
@@ -37,7 +51,8 @@ func (ud userDao) Create(u User) error {
 	if !u.Password.isValid() {
 		return errors.New(u.Password.helpText())
 	}
-	result, err := ud.db.exec("SELECT user_create($1, $2)", u.Username, u.Password)
+	sqlFunction := newExecSQLFunction("user_create", u.Username, u.Password)
+	result, err := ud.db.exec(sqlFunction.sql(), sqlFunction.args)
 	if err != nil {
 		return fmt.Errorf("creating user: %w", err)
 	}
@@ -45,7 +60,8 @@ func (ud userDao) Create(u User) error {
 }
 
 func (ud userDao) Read(u User) (User, error) {
-	row := ud.db.queryRow("SELECT username, points FROM user_read($1, $2)", u.Username, u.Password)
+	sqlFunction := newQuerySQLFunction("user_read", []string{"username", "points"}, u.Username, u.Password)
+	row := ud.db.queryRow(sqlFunction.sql(), sqlFunction.args)
 	var u2 User
 	err := row.Scan(&u2.Username, &u2.Password)
 	if err != nil {
@@ -58,7 +74,8 @@ func (ud userDao) UpdatePassword(u User, newPassword string) error {
 	if !u.Password.isValid() {
 		return errors.New(u.Password.helpText())
 	}
-	result, err := ud.db.exec("SELECT user_update_password($1, $2, $3)", u.Username, u.Password, newPassword)
+	sqlFunction := newExecSQLFunction("user_update_password", u.Username, u.Password, newPassword)
+	result, err := ud.db.exec(sqlFunction.sql(), sqlFunction.args)
 	if err == nil {
 		return fmt.Errorf("updating user password: %w", err)
 	}
@@ -66,36 +83,32 @@ func (ud userDao) UpdatePassword(u User, newPassword string) error {
 }
 
 func (ud userDao) UpdatePoints(users []User, points int) error {
-	tx, err := ud.db.begin()
-	if err != nil {
-		return fmt.Errorf("beginning transaction to update points: %w", err)
+	queries := make([]sqlQuery, len(users))
+	for i, u := range users {
+		queries[i] = newExecSQLFunction("user_update_points", u.Username, u.Points)
 	}
-	for _, user := range users {
-		result, err := tx.Exec("SELECT user_update_points($1, $2)", user.Username, user.Points)
-		if err != nil {
-			err = fmt.Errorf("updating user points: %w", err)
-		} else {
-			err = expectSingleRowAffected(result)
-		}
-		if err != nil {
-			err2 := tx.Rollback()
-			if err2 != nil {
-				return fmt.Errorf("error while rolling back due to %v: %w", err, err2)
-			}
-			return err
-		}
-	}
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("committing transaction: %w", err)
-	}
-	return nil
+	return execTransaction(ud.db, queries)
 }
 
 func (ud userDao) DeleteUser(u User) error {
-	result, err := ud.db.exec("SELECT user_delete($1)", u.Username)
+	sqlFunction := newExecSQLFunction("user_delete", u.Username, u.Password)
+	result, err := ud.db.exec(sqlFunction.sql(), sqlFunction.args)
 	if err != nil {
 		return fmt.Errorf("deleting user: %w", err)
 	}
 	return expectSingleRowAffected(result)
+}
+
+func (ud userDao) getSetupSQLQueries() ([]sqlQuery, error) {
+	filenames := []string{"s", "_create", "_read", "_update_password", "_update_points", "_delete"}
+	queries := make([]sqlQuery, len(filenames))
+	for i, n := range filenames {
+		f := fmt.Sprintf("sql/user/user%s.psql", n)
+		b, err := ud.readFileFunc(f)
+		if err != nil {
+			return nil, fmt.Errorf("reading setup file %v: %w", f, err)
+		}
+		queries[i] = execSQLRaw{string(b)}
+	}
+	return queries, nil
 }
