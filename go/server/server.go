@@ -42,7 +42,7 @@ func Run(cfg Config) error {
 	http.HandleFunc("/", cfg.handleMethod)
 
 	addr := fmt.Sprintf(":%s", cfg.port)
-	log.Println("starting server - locally running at http://127.0.0.1" + addr)
+	cfg.log.Println("starting server - locally running at http://127.0.0.1" + addr)
 	err = http.ListenAndServe(addr, nil) // BLOCKS
 	if err != http.ErrServerClosed {
 		return fmt.Errorf("server stopped unexpectedly: %w", err)
