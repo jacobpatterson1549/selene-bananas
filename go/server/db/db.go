@@ -81,19 +81,18 @@ func expectSingleRowAffected(r sql.Result) error {
 	return nil
 }
 
-func execTransaction(d Database, queries []sqlQuery) error {
+func execTransaction(d Database, queries []sqlQuery, checkResult bool) error {
 	tx, err := d.begin()
 	if err != nil {
 		return fmt.Errorf("beginning transaction: %w", err)
 	}
 	for i, q := range queries {
-		result, err := tx.Exec(q.sql(), q.args)
-		if err != nil {
-			err = fmt.Errorf("executing query %v: %w", i, err)
-		} else {
+		result, err := tx.Exec(q.sql(), q.args()...)
+		if checkResult && err == nil {
 			err = expectSingleRowAffected(result)
 		}
 		if err != nil {
+			err = fmt.Errorf("executing query %v: %w", i, err)
 			err2 := tx.Rollback()
 			if err2 != nil {
 				return fmt.Errorf("rolling back transaction due to %v: %w", err, err2)

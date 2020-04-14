@@ -31,7 +31,7 @@ func main() {
 	flag.Parse()
 
 	var buf bytes.Buffer
-	log := log.New(&buf, mainFlags.applicationName, log.LstdFlags)
+	log := log.New(&buf, mainFlags.applicationName+" ", log.LstdFlags)
 	log.SetOutput(os.Stdout)
 
 	database, err := db.NewPostgresDatabase(mainFlags.databaseURL)

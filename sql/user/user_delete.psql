@@ -1,7 +1,7 @@
 CREATE OR REPLACE FUNCTION user_delete
-	( IN username VARCHAR
+	( INOUT username VARCHAR
 	, IN password CHAR
-	) RETURNS BOOLEAN
+	) RETURNS SETOF VARCHAR
 AS
 $$
 	WITH deleted AS
@@ -11,9 +11,9 @@ $$
 		AS u
 		WHERE u.username = user_delete.username
 			AND u.password = user_delete.password
-		RETURNING p.id
+		RETURNING u.username
 		)
-	SELECT COUNT(*) > 0
+	SELECT username
 	FROM deleted
 $$
 LANGUAGE SQL;

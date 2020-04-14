@@ -1,7 +1,7 @@
 CREATE OR REPLACE FUNCTION user_create
-	( IN username VARCHAR
+	( INOUT username VARCHAR
 	, IN password CHAR
-	) RETURNS BOOLEAN
+	) RETURNS SETOF VARCHAR
 AS
 $$
 	WITH inserted AS
@@ -17,6 +17,7 @@ $$
 		ON CONFLICT (username) DO NOTHING
 		RETURNING username
 		)
-	SELECT COUNT(*) > 0 FROM inserted
+	SELECT username
+	FROM inserted
 $$
 LANGUAGE SQL;

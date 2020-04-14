@@ -42,7 +42,11 @@ func (ud userDao) Setup() error {
 	if err != nil {
 		return err
 	}
-	return execTransaction(ud.db, sqlQueries)
+	err = execTransaction(ud.db, sqlQueries, false)
+	if err != nil {
+		return fmt.Errorf("running setup query: %w", err)
+	}
+	return nil
 }
 
 func (ud userDao) Create(u User) error {
@@ -88,7 +92,7 @@ func (ud userDao) UpdatePoints(users []User, points int) error {
 	for i, u := range users {
 		queries[i] = newExecSQLFunction("user_update_points", u.Username, u.Points)
 	}
-	return execTransaction(ud.db, queries)
+	return execTransaction(ud.db, queries, true)
 }
 
 func (ud userDao) DeleteUser(u User) error {

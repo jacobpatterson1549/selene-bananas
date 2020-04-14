@@ -1,7 +1,7 @@
 CREATE OR REPLACE FUNCTION user_read
 	( INOUT username VARCHAR
 	, OUT points INT
-	) RETURNS SETOF users
+	) RETURNS SETOF RECORD
 AS
 $$
 	SELECT u.username, u.points

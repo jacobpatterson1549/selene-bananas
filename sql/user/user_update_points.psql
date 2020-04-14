@@ -1,7 +1,7 @@
 CREATE OR REPLACE FUNCTION user_update_points
-	( IN username VARCHAR
+	( INOUT username VARCHAR
 	, IN points INT
-	) RETURNS BOOLEAN
+	) RETURNS SETOF VARCHAR
 AS
 $$
 	WITH updated AS
@@ -12,7 +12,7 @@ $$
 		WHERE u.username = user_update_points.username
 		RETURNING u.username
 		)
-	SELECT COUNT(*) > 0
+	SELECT username
 	FROM updated
 $$
 LANGUAGE SQL;
