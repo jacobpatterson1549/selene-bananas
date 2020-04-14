@@ -10,6 +10,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/go/server"
 	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
+	_ "github.com/lib/pq"
 )
 
 const (
@@ -38,13 +39,16 @@ func main() {
 		log.Fatal(err)
 	}
 	userDao := db.NewUserDao(database)
-
-	cfg = server.NewConfig(mainFlags.applicationName, mainFlags.serverPort, userDao, log)
-	err := server.Run(cfg)
+	err = userDao.Setup()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	cfg := server.NewConfig(mainFlags.applicationName, mainFlags.serverPort, userDao, log)
+	err = server.Run(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func flagUsage(fs *flag.FlagSet) {

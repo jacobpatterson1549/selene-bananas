@@ -9,6 +9,8 @@ import (
 type (
 	// UserDao contains CRUD operations for user-related information
 	UserDao interface {
+		// Setup initializes the tables and adds the functions
+		Setup() error
 		// Create adds a user
 		Create(u User) error
 		// Read gets information such as points
@@ -35,7 +37,6 @@ func NewUserDao(db Database) UserDao {
 	}
 }
 
-// Setup initializes the tables and adds the functions
 func (ud userDao) Setup() error {
 	sqlQueries, err := ud.getSetupSQLQueries()
 	if err != nil {
