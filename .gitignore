@@ -1,4 +1,5 @@
 # binaries created by $ go build
+static/wasm_exec.js
 static/main.wasm
 main
 

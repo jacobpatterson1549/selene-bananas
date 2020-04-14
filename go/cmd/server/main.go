@@ -15,7 +15,7 @@ import (
 
 const (
 	environmentVariableApplicationName = "APPLICATION_NAME"
-	environmentVariableServerPort      = "SERVER_PORT"
+	environmentVariableServerPort      = "PORT"
 	environmentVariableDatabaseURL     = "DATABASE_URL"
 )
 
