@@ -1,6 +1,5 @@
-<form>
-    <input type="text" id="username" placeholder="username" required autocomplete="username">
-    <input type="password" id="password1" placeholder="Password" required autocomplete="new-password">
-    <input type="password" id="password2" placeholder="ConfirmPassword" required autocomplete="password">
+<form id="user-login" target="/" method="POST">
+    {{ template "username.html" . }}
+    {{ template "password_confirm.html" . }}
     <input type="submit">
 </form>

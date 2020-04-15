@@ -24,12 +24,14 @@ type Config struct {
 
 // NewConfig creates a new configuration object for the server
 func NewConfig(applicationName, port string, userDao db.UserDao, log *log.Logger) Config {
+	upgrader := new(websocket.Upgrader)
+	upgrader.Error = handleWebSocketError(log)
 	return Config{
 		ApplicationName: applicationName,
 		port:            port,
 		userDao:         userDao,
 		log:             log,
-		upgrader:        new(websocket.Upgrader),
+		upgrader:        upgrader,
 	}
 }
 
@@ -100,11 +102,14 @@ func (cfg Config) handleGet(w http.ResponseWriter, r *http.Request) error {
 
 func (cfg Config) handlePost(w http.ResponseWriter, r *http.Request) error {
 	switch r.URL.Path {
-	case "user_create":
+	case "/user_create":
 		err := r.ParseForm()
 		if err != nil {
 			return fmt.Errorf("parsing form: %w", err)
 		}
+		username := r.FormValue("username")
+		password := r.FormValue("password_confirm")
+		return cfg.userDao.Create(db.NewUser(username, password))
 	default:
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	}
@@ -112,19 +117,30 @@ func (cfg Config) handlePost(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (cfg Config) handleTemplate(w http.ResponseWriter, r *http.Request) error {
-	var fileName string
+	filenames := make([]string, 2)
+	filenames[0] = "html/main.html"
 	switch r.URL.Path {
 	case "/":
-		fileName = "html/game/content.html"
+		filenames[1] = "html/game/content.html"
+		filenames = append(filenames,
+			"html/game/user_update_password.html",
+			"html/game/user_login.html",
+			"html/game/user_delete.html",
+			"html/user_input/username.html",
+			"html/user_input/password.html",
+			"html/user_input/password_confirm.html")
 	case "/user_create":
-		fileName = "html/user_create/content.html"
+		filenames[1] = "html/user_create/content.html"
+		filenames = append(filenames,
+			"html/user_input/username.html",
+			"html/user_input/password_confirm.html")
 	case "/about":
-		fileName = "html/about/content.html"
+		filenames[1] = "html/about/content.html"
 	default:
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return nil
 	}
-	t, err := template.ParseFiles("html/main.html", fileName)
+	t, err := template.ParseFiles(filenames...)
 	if err != nil {
 		return err
 	}
@@ -150,5 +166,11 @@ func (cfg Config) handleWebSocket(w http.ResponseWriter, r *http.Request) error 
 		if err != nil {
 			return fmt.Errorf("handling action: %w", err)
 		}
+	}
+}
+
+func handleWebSocketError(log *log.Logger) func(w http.ResponseWriter, r *http.Request, status int, reason error) {
+	return func(w http.ResponseWriter, r *http.Request, status int, reason error) {
+		log.Println(reason)
 	}
 }

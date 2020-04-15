@@ -20,11 +20,12 @@ type (
 		// UpdatePassword sets the points for multiple users
 		UpdatePoints(users []User, points int) error
 		// DeleteUser removes a user
-		DeleteUser(u User) error
+		Delete(u User) error
 	}
 
 	userDao struct {
 		db           Database
+		ph           passwordHandler
 		readFileFunc func(filename string) ([]byte, error)
 	}
 )
@@ -33,6 +34,7 @@ type (
 func NewUserDao(db Database) UserDao {
 	return userDao{
 		db:           db,
+		ph:           bcryptPasswordHandler{},
 		readFileFunc: ioutil.ReadFile,
 	}
 }
@@ -53,34 +55,52 @@ func (ud userDao) Create(u User) error {
 	if !u.Username.isValid() {
 		return errors.New(u.Username.helpText())
 	}
-	if !u.Password.isValid() {
-		return errors.New(u.Password.helpText())
+	if !u.password.isValid() {
+		return errors.New(u.password.helpText())
 	}
-	sqlFunction := newExecSQLFunction("user_create", u.Username, u.Password)
-	result, err := ud.db.exec(sqlFunction.sql(), sqlFunction.args)
+	hashedPassword, err := ud.ph.hashPassword(u.password)
+	if err != nil {
+		return err
+	}
+	sqlFunction := newExecSQLFunction("user_create", u.Username, hashedPassword)
+	result, err := ud.db.exec(sqlFunction.sql(), sqlFunction.args()...)
 	if err != nil {
 		return fmt.Errorf("creating user: %w", err)
 	}
-	return sqlFunction.expectSingleRowAffected(result)
+	err = sqlFunction.expectSingleRowAffected(result)
+	if err != nil {
+		return fmt.Errorf("user exists: %w", err)
+	}
+	return nil
 }
 
 func (ud userDao) Read(u User) (User, error) {
-	sqlFunction := newQuerySQLFunction("user_read", []string{"username", "points"}, u.Username, u.Password)
-	row := ud.db.queryRow(sqlFunction.sql(), sqlFunction.args)
-	var u2 User
-	err := row.Scan(&u2.Username, &u2.Password)
+	sqlFunction := newQuerySQLFunction("user_read", []string{"username", "password", "points"}, u.Username)
+	row := ud.db.queryRow(sqlFunction.sql(), sqlFunction.args()...)
+	var u2, u3 User
+	err := row.Scan(&u2.Username, &u2.password, &u2.Points)
 	if err != nil {
 		return u2, fmt.Errorf("reading user: %w", err)
+	}
+	isCorrect, err := ud.ph.isCorrect(u2.password, u.password)
+	switch {
+	case err != nil:
+		return u3, err
+	case !isCorrect:
+		return u3, fmt.Errorf("incorrect password")
 	}
 	return u2, nil
 }
 
 func (ud userDao) UpdatePassword(u User, newPassword string) error {
-	if !u.Password.isValid() {
-		return errors.New(u.Password.helpText())
+	if p := password(newPassword); !p.isValid() {
+		return errors.New(p.helpText())
 	}
-	sqlFunction := newExecSQLFunction("user_update_password", u.Username, u.Password, newPassword)
-	result, err := ud.db.exec(sqlFunction.sql(), sqlFunction.args)
+	if _, err := ud.Read(u); err != nil { // check password
+		return err
+	}
+	sqlFunction := newExecSQLFunction("user_update_password", u.Username, newPassword)
+	result, err := ud.db.exec(sqlFunction.sql(), sqlFunction.args()...)
 	if err == nil {
 		return fmt.Errorf("updating user password: %w", err)
 	}
@@ -95,9 +115,12 @@ func (ud userDao) UpdatePoints(users []User, points int) error {
 	return execTransaction(ud.db, queries)
 }
 
-func (ud userDao) DeleteUser(u User) error {
-	sqlFunction := newExecSQLFunction("user_delete", u.Username, u.Password)
-	result, err := ud.db.exec(sqlFunction.sql(), sqlFunction.args)
+func (ud userDao) Delete(u User) error {
+	if _, err := ud.Read(u); err != nil { // check password
+		return err
+	}
+	sqlFunction := newExecSQLFunction("user_delete", u.Username)
+	result, err := ud.db.exec(sqlFunction.sql(), sqlFunction.args()...)
 	if err != nil {
 		return fmt.Errorf("deleting user: %w", err)
 	}

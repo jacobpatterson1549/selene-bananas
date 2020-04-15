@@ -1,6 +1,5 @@
 CREATE OR REPLACE FUNCTION user_delete
 	( INOUT username VARCHAR
-	, IN password CHAR
 	) RETURNS SETOF VARCHAR
 AS
 $$
@@ -8,7 +7,6 @@ $$
 	FROM users
 	AS u
 	WHERE u.username = user_delete.username
-		AND u.password = user_delete.password
 	RETURNING u.username
 $$
 LANGUAGE SQL;

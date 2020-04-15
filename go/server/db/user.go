@@ -8,7 +8,7 @@ type (
 	// User contains information for each player
 	User struct {
 		Username username
-		Password password
+		password password
 		Points   int
 	}
 
@@ -16,6 +16,14 @@ type (
 
 	password string
 )
+
+// NewUser creates a new user with the specified name and password.
+func NewUser(u, p string) User {
+	return User{
+		Username: username(u),
+		password: password(p),
+	}
+}
 
 func (u username) isValid() bool {
 	switch {

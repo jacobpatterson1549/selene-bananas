@@ -59,11 +59,11 @@ func NewPostgresDatabase(databaseURL string) (Database, error) {
 }
 
 func (s sqlDatabase) queryRow(query string, args ...interface{}) row {
-	return s.db.QueryRow(query, args)
+	return s.db.QueryRow(query, args...)
 }
 
 func (s sqlDatabase) exec(query string, args ...interface{}) (sql.Result, error) {
-	return s.db.Exec(query, args)
+	return s.db.Exec(query, args...)
 }
 
 func (s sqlDatabase) begin() (transaction, error) {

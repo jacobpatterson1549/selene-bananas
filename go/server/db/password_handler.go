@@ -8,15 +8,11 @@ import (
 
 type (
 	passwordHandler interface {
-		hashPassword(password string) (string, error)
-		isCorrect(password, hashedPassword string) (bool, error)
-		isValid(password string) bool
+		hashPassword(p password) (string, error)
+		isCorrect(hashedPassword, p password) (bool, error)
 	}
 
-	bcryptPasswordHandler struct {
-		minLength int
-		maxLength int
-	}
+	bcryptPasswordHandler struct{}
 )
 
 func (bcryptPasswordHandler) hashPassword(p password) (string, error) {
@@ -27,7 +23,7 @@ func (bcryptPasswordHandler) hashPassword(p password) (string, error) {
 	return string(hashedPassword), nil
 }
 
-func (bcryptPasswordHandler) isCorrect(hashedPassword string, p password) (bool, error) {
+func (bcryptPasswordHandler) isCorrect(hashedPassword, p password) (bool, error) {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(p))
 	switch {
 	case err == bcrypt.ErrMismatchedHashAndPassword:

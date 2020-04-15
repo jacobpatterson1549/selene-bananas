@@ -1,4 +1,4 @@
-# binaries created by $ go build
+# binaries created by make
 static/wasm_exec.js
 static/main.wasm
 main
