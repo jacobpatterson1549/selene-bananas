@@ -1,9 +1,11 @@
-<script defer src="/js/user_form.js"></script>
-<script defer src="/js/user_create.js"></script>
+<script defer src="/js/user.js"></script>
 {{ template "error_message.html" . }}
-<p>Username must contain only lowercase letters, password must be 8 characters long.</p>
 <form onsubmit="userCreate.submit(event)">
-    {{ template "username.html" . }}
-    {{ template "password_confirm.html" . }}
-    <input type="submit">
+    <fieldset>
+        <legend>Create User</legend>
+        <p>Username must contain only lowercase letters, password must be 8 characters long.</p>
+        {{ template "username.html" . }}
+        {{ template "password_confirm.html" . }}
+        <input type="submit">
+    </fieldset>
 </form>
