@@ -4,7 +4,6 @@ package server
 import (
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -37,36 +36,17 @@ func NewConfig(applicationName, port string, userDao db.UserDao, log *log.Logger
 
 // Run starts the server
 func Run(cfg Config) error {
-	err := handleStaticFolder()
-	if err != nil {
-		return err
-	}
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(""))))
+	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
 	http.HandleFunc("/", cfg.handleMethod)
 
 	addr := fmt.Sprintf(":%s", cfg.port)
 	cfg.log.Println("starting server - locally running at http://127.0.0.1" + addr)
-	err = http.ListenAndServe(addr, nil) // BLOCKS
+	err := http.ListenAndServe(addr, nil) // BLOCKS
 	if err != http.ErrServerClosed {
 		return fmt.Errorf("server stopped unexpectedly: %w", err)
 	}
 	return nil
-}
-
-func handleStaticFolder() error {
-	fileInfo, err := ioutil.ReadDir("static")
-	if err != nil {
-		return fmt.Errorf("reading static dir: %w", err)
-	}
-	for _, file := range fileInfo {
-		path := "/" + file.Name()
-		http.HandleFunc(path, handleStatic)
-	}
-	return nil
-}
-
-func handleStatic(w http.ResponseWriter, r *http.Request) {
-	path := "static" + r.URL.Path
-	http.ServeFile(w, r, path)
 }
 
 func (cfg Config) handleMethod(w http.ResponseWriter, r *http.Request) {
