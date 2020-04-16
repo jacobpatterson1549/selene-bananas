@@ -1,4 +1,5 @@
-<form id="user-login" target="/" method="POST">
+<p>Username must contain only lowercase letters, password must be 8 characters long.</p>
+<form id="user-login" method="POST">
     {{ template "username.html" . }}
     {{ template "password_confirm.html" . }}
     <input type="submit">

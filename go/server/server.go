@@ -109,7 +109,12 @@ func (cfg Config) handlePost(w http.ResponseWriter, r *http.Request) error {
 		}
 		username := r.FormValue("username")
 		password := r.FormValue("password_confirm")
-		return cfg.userDao.Create(db.NewUser(username, password))
+		err = cfg.userDao.Create(db.NewUser(username, password))
+		if err != nil {
+			return err
+		}
+		w.Header().Set("Location", "/")
+		w.WriteHeader(http.StatusSeeOther)
 	default:
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	}
