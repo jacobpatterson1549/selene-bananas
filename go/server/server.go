@@ -12,51 +12,87 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// Config contains fields which describe the server
-type Config struct {
-	ApplicationName string
-	staticHandler   http.Handler
-	port            string
-	userDao         db.UserDao
-	log             *log.Logger
-	upgrader        *websocket.Upgrader
-}
+type (
+	// Config contains fields which describe the server
+	Config struct {
+		appName string
+		port    string
+		db      db.Database
+		log     *log.Logger
+	}
 
-// NewConfig creates a new configuration object for the server
-func NewConfig(applicationName, port string, userDao db.UserDao, log *log.Logger) Config {
+	// Server can be run to serve the site
+	Server interface {
+		// Run starts the server
+		Run() error
+	}
+
+	server struct {
+		appName           string
+		addr              string
+		log               *log.Logger
+		handler           http.Handler
+		staticFileHandler http.Handler
+		userDao           db.UserDao
+		upgrader          *websocket.Upgrader
+	}
+)
+
+// NewConfig creates a new configuration object for a Server
+func NewConfig(appName, port string, db db.Database, log *log.Logger) Config {
 	upgrader := new(websocket.Upgrader)
-	upgrader.Error = handleWebSocketError(log)
+	upgrader.Error = httpWebSocketHandlerError(log)
 	return Config{
-		ApplicationName: applicationName,
-		staticHandler:   http.FileServer(http.Dir("./static")),
-		port:            port,
-		userDao:         userDao,
-		log:             log,
-		upgrader:        upgrader,
+		appName: appName,
+		port:    port,
+		db:      db,
+		log:     log,
 	}
 }
 
-// Run starts the server
-func Run(cfg Config) error {
-	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
-	http.HandleFunc("/", cfg.handleMethod)
-
+// NewServer creates a Server from the Config
+func (cfg Config) NewServer() (Server, error) {
 	addr := fmt.Sprintf(":%s", cfg.port)
-	cfg.log.Println("starting server - locally running at http://127.0.0.1" + addr)
-	err := http.ListenAndServe(addr, nil) // BLOCKS
+	userDao := db.NewUserDao(cfg.db)
+	err := userDao.Setup()
+	if err != nil {
+		log.Fatal(err)
+	}
+	serveMux := new(http.ServeMux)
+	staticFileHandler := http.FileServer(http.Dir("./static"))
+	s := server{
+		appName:           cfg.appName,
+		addr:              addr,
+		log:               cfg.log,
+		handler:           serveMux,
+		staticFileHandler: staticFileHandler,
+		userDao:           userDao,
+	}
+	serveMux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
+	serveMux.HandleFunc("/", s.httpMethodHandler)
+	return s, nil
+}
+
+func (s server) Run() error {
+	httpServer := &http.Server{
+		Addr:    s.addr,
+		Handler: s.handler,
+	}
+	s.log.Println("starting server - locally running at http://127.0.0.1" + httpServer.Addr)
+	err := httpServer.ListenAndServe() // BLOCKS
 	if err != http.ErrServerClosed {
 		return fmt.Errorf("server stopped unexpectedly: %w", err)
 	}
 	return nil
 }
 
-func (cfg Config) handleMethod(w http.ResponseWriter, r *http.Request) {
+func (s server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	switch r.Method {
 	case "GET":
-		err = cfg.handleGet(w, r)
+		err = s.httpGetHandler(w, r)
 	case "POST":
-		err = cfg.handlePost(w, r)
+		err = s.httpPostHandler(w, r)
 	default:
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
 	}
@@ -65,15 +101,15 @@ func (cfg Config) handleMethod(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (cfg Config) handleGet(w http.ResponseWriter, r *http.Request) error {
+func (s server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	switch r.URL.Path {
 	case "/user_login":
-		err := cfg.handleWebSocket(w, r)
+		err := s.httpWebSocketHandler(w, r)
 		if err != nil {
 			return fmt.Errorf("websocket error: %w", err)
 		}
 	default:
-		err := cfg.handleTemplate(w, r)
+		err := s.handleTemplate(w, r)
 		if err != nil {
 			return fmt.Errorf("rendering template: %w", err)
 		}
@@ -81,10 +117,10 @@ func (cfg Config) handleGet(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (cfg Config) handlePost(w http.ResponseWriter, r *http.Request) error {
+func (s server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 	switch r.URL.Path {
 	case "/user_create":
-		err := cfg.handleUserCreate(r)
+		err := s.handleUserCreate(r)
 		if err != nil {
 			return err
 		}
@@ -96,7 +132,7 @@ func (cfg Config) handlePost(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (cfg Config) handleTemplate(w http.ResponseWriter, r *http.Request) error {
+func (s server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 	filenames := make([]string, 2)
 	filenames[0] = "html/main.html"
 	switch r.URL.Path {
@@ -119,19 +155,23 @@ func (cfg Config) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 	case "/about":
 		filenames[1] = "html/about/content.html"
 	default:
-		cfg.staticHandler.ServeHTTP(w, r)
+		s.staticFileHandler.ServeHTTP(w, r)
 		return nil
 	}
 	t, err := template.ParseFiles(filenames...)
 	if err != nil {
 		return err
 	}
-	// TODO: limit what is available on cfg
-	return t.Execute(w, cfg)
+	data := struct {
+		ApplicationName string
+	}{
+		ApplicationName: s.appName,
+	}
+	return t.Execute(w, data)
 }
 
-func (cfg Config) handleWebSocket(w http.ResponseWriter, r *http.Request) error {
-	conn, err := cfg.upgrader.Upgrade(w, r, nil)
+func (s server) httpWebSocketHandler(w http.ResponseWriter, r *http.Request) error {
+	conn, err := s.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return fmt.Errorf("upgrading to websocket connection: %w", err)
 	}
@@ -151,7 +191,7 @@ func (cfg Config) handleWebSocket(w http.ResponseWriter, r *http.Request) error 
 	}
 }
 
-func handleWebSocketError(log *log.Logger) func(w http.ResponseWriter, r *http.Request, status int, reason error) {
+func httpWebSocketHandlerError(log *log.Logger) func(w http.ResponseWriter, r *http.Request, status int, reason error) {
 	return func(w http.ResponseWriter, r *http.Request, status int, reason error) {
 		log.Println(reason)
 	}

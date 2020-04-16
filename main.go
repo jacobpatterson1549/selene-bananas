@@ -34,18 +34,18 @@ func main() {
 	log := log.New(&buf, mainFlags.applicationName+" ", log.LstdFlags)
 	log.SetOutput(os.Stdout)
 
-	database, err := db.NewPostgresDatabase(mainFlags.databaseURL)
-	if err != nil {
-		log.Fatal(err)
-	}
-	userDao := db.NewUserDao(database)
-	err = userDao.Setup()
+	db, err := db.NewPostgresDatabase(mainFlags.databaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	cfg := server.NewConfig(mainFlags.applicationName, mainFlags.serverPort, userDao, log)
-	err = server.Run(cfg)
+	cfg := server.NewConfig(mainFlags.applicationName, mainFlags.serverPort, db, log)
+	server, err := cfg.NewServer()
+	if err != nil {
+		log.Fatal("creating server:", err)
+	}
+	
+	err = server.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
