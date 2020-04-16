@@ -1,6 +1,8 @@
 <script defer src="/js/user_form.js"></script>
+<script defer src="/js/user_create.js"></script>
+{{ template "error_message.html" . }}
 <p>Username must contain only lowercase letters, password must be 8 characters long.</p>
-<form id="user-login" method="POST">
+<form onsubmit="userCreate.submit(event)">
     {{ template "username.html" . }}
     {{ template "password_confirm.html" . }}
     <input type="submit">

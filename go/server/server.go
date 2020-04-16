@@ -15,6 +15,7 @@ import (
 // Config contains fields which describe the server
 type Config struct {
 	ApplicationName string
+	staticHandler   http.Handler
 	port            string
 	userDao         db.UserDao
 	log             *log.Logger
@@ -27,6 +28,7 @@ func NewConfig(applicationName, port string, userDao db.UserDao, log *log.Logger
 	upgrader.Error = handleWebSocketError(log)
 	return Config{
 		ApplicationName: applicationName,
+		staticHandler:   http.FileServer(http.Dir("./static")),
 		port:            port,
 		userDao:         userDao,
 		log:             log,
@@ -36,7 +38,6 @@ func NewConfig(applicationName, port string, userDao db.UserDao, log *log.Logger
 
 // Run starts the server
 func Run(cfg Config) error {
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(""))))
 	http.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
 	http.HandleFunc("/", cfg.handleMethod)
 
@@ -83,13 +84,7 @@ func (cfg Config) handleGet(w http.ResponseWriter, r *http.Request) error {
 func (cfg Config) handlePost(w http.ResponseWriter, r *http.Request) error {
 	switch r.URL.Path {
 	case "/user_create":
-		err := r.ParseForm()
-		if err != nil {
-			return fmt.Errorf("parsing form: %w", err)
-		}
-		username := r.FormValue("username")
-		password := r.FormValue("password_confirm")
-		err = cfg.userDao.Create(db.NewUser(username, password))
+		err := cfg.handleUserCreate(r)
 		if err != nil {
 			return err
 		}
@@ -108,6 +103,7 @@ func (cfg Config) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 	case "/":
 		filenames[1] = "html/game/content.html"
 		filenames = append(filenames,
+			"html/error_message.html",
 			"html/game/user_update_password.html",
 			"html/game/user_login.html",
 			"html/game/user_delete.html",
@@ -117,12 +113,13 @@ func (cfg Config) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 	case "/user_create":
 		filenames[1] = "html/user_create/content.html"
 		filenames = append(filenames,
+			"html/error_message.html",
 			"html/user_input/username.html",
 			"html/user_input/password_confirm.html")
 	case "/about":
 		filenames[1] = "html/about/content.html"
 	default:
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		cfg.staticHandler.ServeHTTP(w, r)
 		return nil
 	}
 	t, err := template.ParseFiles(filenames...)

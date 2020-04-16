@@ -1,5 +1,5 @@
 var userForm = {
-    validatePassword : function(event) {
+    validatePassword: function (event) {
         var confirmPasswordElement = event.target;
         var confirmPasswordLabelElement = confirmPasswordElement.parentElement;
         var parentFormElement = confirmPasswordLabelElement.parentElement;
@@ -11,7 +11,7 @@ var userForm = {
         }
     },
 
-    init: function() {
+    init: function () {
         var confirmPasswordElements = document.querySelectorAll("form > label > input.password2");
         for (var i = 0; i < confirmPasswordElements.length; i++) {
             confirmPasswordElements[i].onchange = this.validatePassword;
