@@ -7,6 +7,10 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
 )
 
+type (
+	userChangeFn func(r *http.Request) error
+)
+
 func (s server) handleUserCreate(r *http.Request) error {
 	err := r.ParseForm()
 	if err != nil {
@@ -59,4 +63,10 @@ func (s server) handleUserDelete(r *http.Request) error {
 	password := r.FormValue("password")
 	u := db.NewUser(username, password)
 	return s.userDao.Delete(u)
+}
+
+func handleUserLogout(w http.ResponseWriter) {
+	// TODO: close websocket
+	w.Header().Set("Location", "/")
+	w.WriteHeader(http.StatusSeeOther)
 }

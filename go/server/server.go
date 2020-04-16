@@ -92,7 +92,11 @@ func (s server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		err = s.httpGetHandler(w, r)
 	case "POST":
-		err = s.httpPostHandler(w, r)
+		err = httpUserChangeHandler(w, r, "/user_create", s.handleUserCreate)
+	case "PUT":
+		err = httpUserChangeHandler(w, r, "/user_update_password", s.handleUserUpdatePassword)
+	case "DELETE":
+		err = httpUserChangeHandler(w, r, "/user_delete", s.handleUserDelete)
 	default:
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
 	}
@@ -117,15 +121,14 @@ func (s server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (s server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
+func httpUserChangeHandler(w http.ResponseWriter, r *http.Request, path string, fn userChangeFn) error {
 	switch r.URL.Path {
-	case "/user_create":
-		err := s.handleUserCreate(r)
+	case path:
+		err := fn(r)
 		if err != nil {
 			return err
 		}
-		w.Header().Set("Location", "/")
-		w.WriteHeader(http.StatusSeeOther)
+		handleUserLogout(w)
 	default:
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	}
