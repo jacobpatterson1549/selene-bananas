@@ -28,13 +28,17 @@ type (
 	}
 
 	server struct {
-		appName           string
+		data              templateData
 		addr              string
 		log               *log.Logger
 		handler           http.Handler
 		staticFileHandler http.Handler
 		userDao           db.UserDao
 		upgrader          *websocket.Upgrader
+	}
+
+	templateData struct {
+		ApplicationName string
 	}
 )
 
@@ -52,6 +56,9 @@ func NewConfig(appName, port string, db db.Database, log *log.Logger) Config {
 
 // NewServer creates a Server from the Config
 func (cfg Config) NewServer() (Server, error) {
+	data := templateData{
+		ApplicationName: cfg.appName,
+	}
 	addr := fmt.Sprintf(":%s", cfg.port)
 	userDao := db.NewUserDao(cfg.db)
 	err := userDao.Setup()
@@ -61,7 +68,7 @@ func (cfg Config) NewServer() (Server, error) {
 	serveMux := new(http.ServeMux)
 	staticFileHandler := http.FileServer(http.Dir("./static"))
 	s := server{
-		appName:           cfg.appName,
+		data:              data,
 		addr:              addr,
 		log:               cfg.log,
 		handler:           serveMux,
@@ -107,16 +114,18 @@ func (s server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	switch r.URL.Path {
+	case "/":
+		err := s.handleTemplate(w, r)
+		if err != nil {
+			return fmt.Errorf("rendering template: %w", err)
+		}
 	case "/user_login":
 		err := s.httpWebSocketHandler(w, r)
 		if err != nil {
 			return fmt.Errorf("websocket error: %w", err)
 		}
 	default:
-		err := s.handleTemplate(w, r)
-		if err != nil {
-			return fmt.Errorf("rendering template: %w", err)
-		}
+		s.staticFileHandler.ServeHTTP(w, r)
 	}
 	return nil
 }
@@ -136,41 +145,18 @@ func httpUserChangeHandler(w http.ResponseWriter, r *http.Request, path string, 
 }
 
 func (s server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
-	filenames := make([]string, 2)
-	filenames[0] = "html/main.html"
-	switch r.URL.Path {
-	case "/":
-		filenames[1] = "html/game/content.html"
-		filenames = append(filenames,
-			"html/error_message.html",
-			"html/game/user_update_password.html",
-			"html/game/user_login.html",
-			"html/game/user_delete.html",
-			"html/user_input/username.html",
-			"html/user_input/password.html",
-			"html/user_input/password_confirm.html")
-	case "/user_create":
-		filenames[1] = "html/user_create/content.html"
-		filenames = append(filenames,
-			"html/error_message.html",
-			"html/user_input/username.html",
-			"html/user_input/password_confirm.html")
-	case "/about":
-		filenames[1] = "html/about/content.html"
-	default:
-		s.staticFileHandler.ServeHTTP(w, r)
-		return nil
+	t := template.New("main.html")
+	templateFileGlobs := []string{
+		"html/*.html",
+		"html/**/*.html",
 	}
-	t, err := template.ParseFiles(filenames...)
-	if err != nil {
-		return err
+	for _, g := range templateFileGlobs {
+		_, err := t.ParseGlob(g)
+		if err != nil {
+			return err
+		}
 	}
-	data := struct {
-		ApplicationName string
-	}{
-		ApplicationName: s.appName,
-	}
-	return t.Execute(w, data)
+	return t.Execute(w, s.data)
 }
 
 func (s server) httpWebSocketHandler(w http.ResponseWriter, r *http.Request) error {

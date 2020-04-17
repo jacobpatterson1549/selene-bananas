@@ -1,6 +1,4 @@
-<script defer src="/js/user.js"></script>
-{{ template "error_message.html" . }}
-<form onsubmit="userCreate.submit(event)">
+<form onsubmit="user.create(event)">
     <fieldset>
         <legend>Create User</legend>
         <p>Username must contain only lowercase letters, password must be 8 characters long.</p>

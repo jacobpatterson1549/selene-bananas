@@ -1,0 +1,8 @@
+<form onsubmit="user.delete(event)">
+    <fieldset>
+        <legend>Delete User</legend>
+        {{ template "username.html" . }}
+        {{ template "password.html" . }}
+        <input type="submit">
+    </fieldset>
+</form>

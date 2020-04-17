@@ -1,0 +1,8 @@
+<form onsubmit="user.login(event)">
+    <fieldset>
+        <legend>Sign In User</legend>
+        {{ template "username.html" . }}
+        {{ template "password.html" . }}
+        <input type="submit">
+    </fieldset>
+</form>

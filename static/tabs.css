@@ -1,7 +1,12 @@
 .tabs {
-    display: flex;
-    flex-wrap: wrap;
-    margin: 1em 0;
+    position: relative;
+    margin: 2em 0;
+    clear: both;
+    min-height: 200px;
+}
+
+.tabs>div {
+    float: left;
 }
 
 .tabs>div>label {
@@ -19,9 +24,7 @@
     background: #ccc;
 }
 
-
 .tabs>div>input {
-    position: absolute;
     display: none;
 }
 
@@ -30,6 +33,7 @@
 }
 
 .tabs>div>div {
+    position: absolute;
     display: none;
     background: #fff;
     margin: 1em;
