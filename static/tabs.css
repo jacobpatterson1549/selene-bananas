@@ -16,11 +16,11 @@
     background: #eee;
 }
 
-.tabs>div>label:hover>div {
+.tabs>div>label:hover {
     background: #ddd;
 }
 
-.tabs>div>label:active>div {
+.tabs>div>label:active {
     background: #ccc;
 }
 
