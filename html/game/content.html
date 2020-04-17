@@ -2,19 +2,19 @@
 <script defer src="/js/game.js"></script>
 <link rel="stylesheet" href="/tabs.css">
 <div class=tabs>
-    <div class="tab">
-        <input type="radio" class="tab-input" name="tab-group" id="tab-1">
-        <label class="tab-label" for="tab-1">
+    <div>
+        <input id="tab-1" type="radio" name="tab-group">
+        <label for="tab-1">Create User</label>
+        <div>
             <a href="/user_create">Create User</a>
-            <!-- TODO: style like Sign out button, but should redirect when part of tab that is not actual link is clicked-->
-        </label>
+        </div>
         <!-- TODO: hide when signed in -->
     </div>
-    <div class="tab">
-        <input type="radio" class="tab-input" name="tab-group" id="tab-2" checked>
-        <label class="tab-label" for="tab-2">Sign In</label>
+    <div>
+        <input id="tab-2" type="radio" name="tab-group" checked>
+        <label for="tab-2">Sign In</label>
         <!-- TODO: hide when signed in -->
-        <div class="tab-content">
+        <div>
             <form onsubmit="user.login(event)">
                 <fieldset>
                     <legend>Enter credentials</legend>
@@ -26,20 +26,20 @@
             </form>
         </div>
     </div>
-    <div class="tab">
-        <input type="radio" class="tab-input" name="tab-group" id="tab-3">
-        <label class="tab-label" for="tab-3">Lobby</label>
+    <div>
+        <input id="tab-3" type="radio" name="tab-group">
+        <label for="tab-3">Lobby</label>
         <!-- TODO: only show if signed in and websocket is empty-->
-        <div class="tab-content">
+        <div>
             <!-- TODO: Lobby content -->
             <button type="button" id="game-snag" onclick="game.create()">Create Game</button>
         </div>
     </div>
-    <div class="tab">
-        <input type="radio" class="tab-input" name="tab-group" id="tab-4">
-        <label class="tab-label" for="tab-4">Game</label>
+    <div>
+        <input id="tab-4" type="radio" name="tab-group">
+        <label for="tab-4">Game</label>
         <!-- TODO: only show if signed in and websocket is not empty-->
-        <div class="tab-content">
+        <div>
             <!-- TODO: Game tab content -->
             <button type="button" onclick="game.start()" title="Starts the game for everyone.">Start</button>
             <button type="button" onclick="game.snag()"
@@ -50,11 +50,11 @@
                 title="Requests words to be checked.  To win, all tiles must be connected to form one group of actual words when the tile pile is empty.">Finish</button>
         </div>
     </div>
-    <div class="tab">
-        <input type="radio" class="tab-input" name="tab-group" id="tab-5">
-        <label class="tab-label" for="tab-5">Change Password</label>
+    <div>
+        <input id="tab-5" type="radio" name="tab-group">
+        <label for="tab-5">Change Password</label>
         <!-- TODO: only show if signed in -->
-        <div class="tab-content">
+        <div>
             <form onsubmit="user.update_password(event)">
                 <fieldset>
                     <legend>Enter credentials</legend>
@@ -69,11 +69,11 @@
             </form>
         </div>
     </div>
-    <div class="tab">
-        <input type="radio" class="tab-input" name="tab-group" id="tab-6">
-        <label class="tab-label" for="tab-6">Delete User</label>
+    <div>
+        <input id="tab-6" type="radio" name="tab-group">
+        <label for="tab-6">Delete User</label>
         <!-- TODO: only show if signed in -->
-        <div class="tab-content">
+        <div>
             <form onsubmit="user.update_password(event)">
                 <fieldset>
                     <legend>Enter credentials</legend>
@@ -85,9 +85,12 @@
             </form>
         </div>
     </div>
-    <div class="tab">
-        <input type="radio" class="tab-input" name="tab-group" id="tab-7">
-        <label class="tab-label" for="tab-7" onclick="user.logout()">Sign Out</label>
+    <div>
+        <input id="tab-7" type="radio" name="tab-group">
+        <label for="tab-7" onclick="user.logout()">Sign Out</label>
         <!-- TODO: only show if signed in -->
+        <div>
+            <button type="button" onclick="user.logout()">Sign Out</button>
+        </div>
     </div>
 </div>

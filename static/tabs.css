@@ -4,36 +4,37 @@
     margin: 1em 0;
 }
 
-.tabs .tab-input {
-    position: absolute;
-    opacity: 0;
-}
-
-.tabs .tab-label {
+.tabs>div>label {
     margin: 1em .2em;
     padding: .3em;
     border: 1px solid black;
     background: #eee;
 }
 
-.tabs .tab-label:hover {
+.tabs>div>label:hover>div {
     background: #ddd;
 }
 
-.tabs .tab-label:active {
+.tabs>div>label:active>div {
     background: #ccc;
 }
 
-.tabs .tab-input:checked+.tab-label {
+
+.tabs>div>input {
+    position: absolute;
+    display: none;
+}
+
+.tabs>div>input:checked+label {
     background: #bbb;
 }
 
-.tabs .tab-content {
+.tabs>div>div {
     display: none;
     background: #fff;
     margin: 1em;
 }
 
-.tabs .tab-input:checked+.tab-label+.tab-content {
+.tabs>div>input:checked+label+div {
     display: block;
 }
