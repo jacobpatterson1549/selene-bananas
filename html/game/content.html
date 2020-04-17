@@ -1,87 +1,93 @@
 <script defer src="/js/user.js"></script>
 <script defer src="/js/game.js"></script>
 <link rel="stylesheet" href="/tabs.css">
-<a href="/user_create">Create User</a>
-<a href="/user_login">Login...</a>
 <div class=tabs>
     <div class="tab">
-        <label>
-            <div>Login</div>
-            <!-- TODO: hide when logged in -->
-            <input type="radio" checked>
+        <input type="radio" class="tab-input" name="tab-group" id="tab-1">
+        <label class="tab-label" for="tab-1">
+            <a href="/user_create">Create User</a>
+            <!-- TODO: style like Sign out button, but should redirect when part of tab that is not actual link is clicked-->
         </label>
-        <form onsubmit="user.login(event)">
-            <fieldset>
-                <legend>Enter credentials</legend>
-                {{ template "username.html" . }}
-                {{ template "password.html" . }}
-                <input type="submit" value="Login">
-            </fieldset>
-        </form>
+        <!-- TODO: hide when signed in -->
     </div>
     <div class="tab">
-        <label>
-            <div>Lobby</div>
-            <!-- TODO: only show if logged in and websocket is empty-->
-            <input type="radio">
-        </label>
-        <p>TODO: Lobby content</p>
-        <button type="button" id="game-split" onclick="game.create()">Create Game</button>
-    </div>
-    <div class="tab">
-        <label>
-            <div>Game</div>
-            <!-- TODO: only show if logged in and websocket is not empty-->
-            <input type="radio">
-        </label>
-        <p>TODO: Game tab content</p>
-        <button type="button" id="game-split" onclick="game.split()">Split</button>
-        <button type="button" id="game-split" onclick="game.peel()" disabled>Split</button>
-        <button type="button" id="game-split" onclick="game.dump()" disabled>Split</button>
-        <button type="button" id="game-split" onclick="game.bananas()" disabled>Bananas</button>
-    </div>
-    <div class="tab">
-        <label>
-            <div>Change Password</div>
-            <!-- TODO: only show if logged in -->
-            <input type="radio">
-        </label>
-        <form onsubmit="user.update_password(event)">
-            <fieldset>
-                <legend>Enter credentials</legend>
-                {{ template "username.html" . }}
-                {{ template "password.html" . }}
+        <input type="radio" class="tab-input" name="tab-group" id="tab-2" checked>
+        <label class="tab-label" for="tab-2">Sign In</label>
+        <!-- TODO: hide when signed in -->
+        <div class="tab-content">
+            <form onsubmit="user.login(event)">
                 <fieldset>
-                    <legend>New Password:</legend>
-                    {{ template "password_confirm.html" . }}
+                    <legend>Enter credentials</legend>
+                    {{ template "username.html" . }}
+                    {{ template "password.html" . }}
+                    <input type="submit" value="Login">
                 </fieldset>
-                <input type="submit" value="Change">
-            </fieldset>
-        </form>
+                <input type="submit">
+            </form>
+        </div>
     </div>
     <div class="tab">
-        <label>
-            <div>Delete User</div>
-            <!-- TODO: only show if logged in -->
-            <input type="radio">
-        </label>
-        <form onsubmit="user.update_password(event)">
-            <fieldset>
-                <legend>Enter credentials</legend>
-                {{ template "username.html" . }}
-                <!-- TODO: autofill user input, make disabled-->
-                {{ template "password.html" . }}
-                <input type="submit" value="Change">
-            </fieldset>
-        </form>
+        <input type="radio" class="tab-input" name="tab-group" id="tab-3">
+        <label class="tab-label" for="tab-3">Lobby</label>
+        <!-- TODO: only show if signed in and websocket is empty-->
+        <div class="tab-content">
+            <!-- TODO: Lobby content -->
+            <button type="button" id="game-snag" onclick="game.create()">Create Game</button>
+        </div>
     </div>
     <div class="tab">
-        <label>
-            <div>Log out</div>
-            <!-- TODO: only show if logged in -->
-            <input type="radio">
-        </label>
-        <button type="button" id="game-split" onclick="game.logout()">Log out</button>
-        <!-- TODO: make link in label, have no content -->
+        <input type="radio" class="tab-input" name="tab-group" id="tab-4">
+        <label class="tab-label" for="tab-4">Game</label>
+        <!-- TODO: only show if signed in and websocket is not empty-->
+        <div class="tab-content">
+            <!-- TODO: Game tab content -->
+            <button type="button" onclick="game.start()" title="Starts the game for everyone.">Start</button>
+            <button type="button" onclick="game.snag()"
+                title="Get a new tile when you have run out of tiles.  All other players also get a tile.">Snag</button>
+            <button type="button" onclick="game.swap()" disabled
+                title="Swap 1 tile for three new ones in the pile.">Swap</button>
+            <button type="button" onclick="game.finish()" disabled
+                title="Requests words to be checked.  To win, all tiles must be connected to form one group of actual words when the tile pile is empty.">Finish</button>
+        </div>
+    </div>
+    <div class="tab">
+        <input type="radio" class="tab-input" name="tab-group" id="tab-5">
+        <label class="tab-label" for="tab-5">Change Password</label>
+        <!-- TODO: only show if signed in -->
+        <div class="tab-content">
+            <form onsubmit="user.update_password(event)">
+                <fieldset>
+                    <legend>Enter credentials</legend>
+                    {{ template "username.html" . }}
+                    {{ template "password.html" . }}
+                    <fieldset>
+                        <legend>New Password:</legend>
+                        {{ template "password_confirm.html" . }}
+                    </fieldset>
+                    <input type="submit" value="Change">
+                </fieldset>
+            </form>
+        </div>
+    </div>
+    <div class="tab">
+        <input type="radio" class="tab-input" name="tab-group" id="tab-6">
+        <label class="tab-label" for="tab-6">Delete User</label>
+        <!-- TODO: only show if signed in -->
+        <div class="tab-content">
+            <form onsubmit="user.update_password(event)">
+                <fieldset>
+                    <legend>Enter credentials</legend>
+                    {{ template "username.html" . }}
+                    <!-- TODO: autofill user input, make disabled-->
+                    {{ template "password.html" . }}
+                    <input type="submit" value="Change">
+                </fieldset>
+            </form>
+        </div>
+    </div>
+    <div class="tab">
+        <input type="radio" class="tab-input" name="tab-group" id="tab-7">
+        <label class="tab-label" for="tab-7" onclick="user.logout()">Sign Out</label>
+        <!-- TODO: only show if signed in -->
     </div>
 </div>

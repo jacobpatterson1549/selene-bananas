@@ -7,4 +7,4 @@ serve:
 	export $(shell grep -v '^#' .env | xargs) && ./main
 
 clean:
-	rm -f static/wasm_exec.js static/main.wasm main
+	rm -f main __debug_bin

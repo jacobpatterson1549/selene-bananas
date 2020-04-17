@@ -7,19 +7,19 @@ var game = {
         console.log("TODO: join game");
     },
 
-    split: function (event) {
+    start: function (event) {
         console.log("TODO: send start game request");
     },
 
-    peel: function (event) {
-        console.log("TODO: peel request");
+    snag: function (event) {
+        console.log("TODO: grab request");
     },
 
-    dump: function (event) {
-        console.log("TODO: dump tile request"); // how to specify which tile?
+    swap: function (event) {
+        console.log("TODO: swap tile request"); // how to specify which tile?
     },
 
-    bananas: function (event) {
+    finish: function (event) {
         console.log("TODO: submit game finished request");
     },
 };

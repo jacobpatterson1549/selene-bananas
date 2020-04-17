@@ -1,0 +1,39 @@
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 1em 0;
+}
+
+.tabs .tab .tab-input {
+    position: absolute;
+    opacity: 0;
+}
+
+.tabs .tab-label {
+    margin: 1em .2em;
+    padding: .3em;
+    border: 1px solid black;
+    background: #eee;
+}
+
+.tabs .tab-label:hover {
+    background: #ddd;
+}
+
+.tabs .tab-label:active {
+    background: #ccc;
+}
+
+.tabs .tab-input:checked+.tab-label {
+    background: #bbb;
+}
+
+.tabs .tab-content {
+    display: none;
+    background: #fff;
+    margin: 1em;
+}
+
+.tabs .tab-input:checked+.tab-label+.tab-content {
+    display: block;
+}

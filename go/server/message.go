@@ -37,10 +37,10 @@ const (
 	userDelete
 	userClose
 	gameCreate
-	gameJoin
-	gamePeel
-	gameDump
-	gameBanannas
+	gameStart
+	gameSnag
+	gameSwap
+	gameFinish
 	gameClose
 )
 
@@ -53,10 +53,10 @@ func (m Message) handle() error {
 	// userDelete
 	// userClose
 	// gameCreate
-	// gameJoin
-	// gamePeel
-	// gameDump
-	// gameBanannas
+	// gameStart
+	// gameSnag
+	// gameSwap
+	// gameFinish
 	// gameClose
 	default:
 		return fmt.Errorf("unknown message type: %v", m.Type)
