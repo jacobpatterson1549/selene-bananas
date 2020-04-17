@@ -4,7 +4,7 @@
     margin: 1em 0;
 }
 
-.tabs .tab .tab-input {
+.tabs .tab-input {
     position: absolute;
     opacity: 0;
 }
