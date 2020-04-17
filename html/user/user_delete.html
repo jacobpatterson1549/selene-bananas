@@ -1,4 +1,4 @@
-<form onsubmit="user.delete(event)">
+<form method="DELETE" action="/user_delete" onsubmit="user.request(event)">
     <fieldset>
         <legend>Delete User</legend>
         {{ template "username.html" . }}

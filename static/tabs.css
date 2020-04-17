@@ -39,6 +39,10 @@
     margin: 1em;
 }
 
+#login:not(:checked)+.tabs>div.login {
+    display: none;
+}
+
 .tabs>div>input:checked+label+div {
     display: block;
 }

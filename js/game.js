@@ -22,4 +22,10 @@ var game = {
     finish: function (event) {
         console.log("TODO: submit game finished request");
     },
+
+    leave: function() {
+        if (webSocket) {
+            webSocket.close();
+        }
+    }
 };

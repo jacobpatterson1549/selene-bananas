@@ -1,4 +1,4 @@
-<form onsubmit="user.create(event)">
+<form method="POST" action="/user_create" onsubmit="user.request(event)">
     <fieldset>
         <legend>Create User</legend>
         <p>Username must contain only lowercase letters, password must be 8 characters long.</p>
