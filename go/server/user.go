@@ -25,11 +25,10 @@ func (s server) handleUserCreate(r *http.Request) error {
 	return nil
 }
 
-func (s server) handleUserLogin(r *http.Request) (db.User, error) {
-	var u3 db.User
+func (s server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	err := r.ParseForm()
 	if err != nil {
-		return u3, fmt.Errorf("parsing form: %w", err)
+		return fmt.Errorf("parsing form: %w", err)
 	}
 	username := r.FormValue("username")
 	password := r.FormValue("password")
@@ -37,9 +36,14 @@ func (s server) handleUserLogin(r *http.Request) (db.User, error) {
 	u2, err := s.userDao.Read(u)
 	s.userDao.Read(db.NewUser(username, password))
 	if err != nil {
-		return u3, err
+		return err
 	}
-	return u2, nil
+
+	err = s.lobby.AddUser(u2, w, r)
+	if err != nil {
+		return fmt.Errorf("websocket error: %w", err)
+	}
+	return nil
 }
 
 func (s server) handleUserUpdatePassword(r *http.Request) error {
@@ -62,11 +66,12 @@ func (s server) handleUserDelete(r *http.Request) error {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	u := db.NewUser(username, password)
-	return s.userDao.Delete(u)
+	err = s.userDao.Delete(u)
+	s.lobby.RemoveUser(u) // ignore result
+	return err
 }
 
 func handleUserLogout(w http.ResponseWriter) {
-	// TODO: close websocket
 	w.Header().Set("Location", "/")
 	w.WriteHeader(http.StatusSeeOther)
 }

@@ -39,7 +39,7 @@
     margin: 1em;
 }
 
-#login:not(:checked)+.tabs>div.login {
+#login:not(:checked)+.tabs>div.login-required {
     display: none;
 }
 

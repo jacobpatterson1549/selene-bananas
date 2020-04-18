@@ -9,58 +9,52 @@
 
 <input type="checkbox" id="login" hidden>
 <div class=tabs>
+    <!-- TODO store label, template name, login_required::bool in array, loop over it to create tabs -->
     <div>
-        <input id="tab-1" type="radio" name="tab-group">
-        <label for="tab-1">Create User</label>
-        <div>
-            {{ template "user_create.html" . }}
-        </div>
-        <!-- TODO: hide when signed in -->
-    </div>
-    <div>
-        <input id="tab-2" type="radio" name="tab-group" checked>
-        <label for="tab-2">Sign In</label>
-        <!-- TODO: hide when signed in -->
+        <input id="tab-1" type="radio" name="tab-group" checked>
+        <label for="tab-1">Sign In</label>
         <div>
             {{ template "user_login.html" . }}
         </div>
     </div>
-    <div class="login">
+    <div>
+        <input id="tab-2" type="radio" name="tab-group">
+        <label for="tab-2">Create User</label>
+        <div>
+            {{ template "user_create.html" . }}
+        </div>
+    </div>
+    <div class="login-required">
         <input id="tab-3" type="radio" name="tab-group">
         <label for="tab-3">Lobby</label>
-        <!-- TODO: only show if signed in and websocket is empty-->
         <div>
             {{ template "lobby.html" . }}
         </div>
     </div>
-    <div class="login">
+    <div class="login-required">
         <input id="tab-4" type="radio" name="tab-group">
         <label for="tab-4">Game</label>
-        <!-- TODO: only show if signed in and websocket is not empty-->
         <div>
             {{ template "game.html" . }}
         </div>
     </div>
-    <div class="login">
+    <div class="login-required">
         <input id="tab-5" type="radio" name="tab-group">
         <label for="tab-5">Change Password</label>
-        <!-- TODO: only show if signed in -->
         <div>
             {{ template "user_update_password.html" . }}
         </div>
     </div>
-    <div class="login">
+    <div class="login-required">
         <input id="tab-6" type="radio" name="tab-group">
         <label for="tab-6">Delete User</label>
-        <!-- TODO: only show if signed in -->
         <div>
             {{ template "user_delete.html" . }}
         </div>
     </div>
-    <div class="login">
+    <div class="login-required">
         <input id="tab-7" type="radio" name="tab-group">
         <label for="tab-7">Sign Out</label>
-        <!-- TODO: only show if signed in -->
         <div>
             {{ template "user_logout.html" . }}
         </div>

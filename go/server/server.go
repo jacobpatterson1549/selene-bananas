@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/jacobpatterson1549/selene-bananas/go/server/game"
+
 	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
 
 	"github.com/gorilla/websocket"
@@ -33,8 +35,9 @@ type (
 		log               *log.Logger
 		handler           http.Handler
 		staticFileHandler http.Handler
-		userDao           db.UserDao
 		upgrader          *websocket.Upgrader
+		userDao           db.UserDao
+		lobby             game.Lobby
 	}
 
 	templateData struct {
@@ -44,8 +47,6 @@ type (
 
 // NewConfig creates a new configuration object for a Server
 func NewConfig(appName, port string, db db.Database, log *log.Logger) Config {
-	upgrader := new(websocket.Upgrader)
-	upgrader.Error = httpWebSocketHandlerError(log)
 	return Config{
 		appName: appName,
 		port:    port,
@@ -60,19 +61,21 @@ func (cfg Config) NewServer() (Server, error) {
 		ApplicationName: cfg.appName,
 	}
 	addr := fmt.Sprintf(":%s", cfg.port)
+	serveMux := new(http.ServeMux)
+	staticFileHandler := http.FileServer(http.Dir("./static"))
+	lobby := game.NewLobby(cfg.log)
 	userDao := db.NewUserDao(cfg.db)
 	err := userDao.Setup()
 	if err != nil {
 		log.Fatal(err)
 	}
-	serveMux := new(http.ServeMux)
-	staticFileHandler := http.FileServer(http.Dir("./static"))
 	s := server{
 		data:              data,
 		addr:              addr,
 		log:               cfg.log,
 		handler:           serveMux,
 		staticFileHandler: staticFileHandler,
+		lobby:             lobby,
 		userDao:           userDao,
 	}
 	serveMux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
@@ -120,9 +123,9 @@ func (s server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 			return fmt.Errorf("rendering template: %w", err)
 		}
 	case "/user_login":
-		err := s.httpWebSocketHandler(w, r)
+		err := s.handleUserLogin(w, r)
 		if err != nil {
-			return fmt.Errorf("websocket error: %w", err)
+			return fmt.Errorf("login: %w", err)
 		}
 	default:
 		s.staticFileHandler.ServeHTTP(w, r)
@@ -157,31 +160,4 @@ func (s server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	return t.Execute(w, s.data)
-}
-
-func (s server) httpWebSocketHandler(w http.ResponseWriter, r *http.Request) error {
-	conn, err := s.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return fmt.Errorf("upgrading to websocket connection: %w", err)
-	}
-	defer conn.Close()
-	for {
-		// messageType, messageBytes, err := conn.ReadMessage()
-		var m Message
-		err := conn.ReadJSON(&m)
-		if err != nil {
-			// TODO: handle close message and expected messages
-			return fmt.Errorf("reading message: %w", err)
-		}
-		err = m.handle()
-		if err != nil {
-			return fmt.Errorf("handling action: %w", err)
-		}
-	}
-}
-
-func httpWebSocketHandlerError(log *log.Logger) func(w http.ResponseWriter, r *http.Request, status int, reason error) {
-	return func(w http.ResponseWriter, r *http.Request, status int, reason error) {
-		log.Println(reason)
-	}
 }
