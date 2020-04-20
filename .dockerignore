@@ -1,0 +1,13 @@
+
+# Ignore everything
+*
+
+# Necessary files whitelist
+!go.mod
+!go.sum
+!*.go
+!go
+!html
+!js
+!sql
+!static

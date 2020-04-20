@@ -1,5 +1,7 @@
 FROM golang:1.13-buster AS build
 
+RUN apt-get update && apt-get install -y wamerican
+
 WORKDIR /app
 
 # fetch dependencies first so they will not have to be refetched when other source code changes
@@ -16,10 +18,9 @@ FROM scratch
 
 WORKDIR /app
 
-# TODO: Reorganize Dockerfile to do these first two copies in stagest before building
-COPY --from=build /etc/ssl/certs/ca-certificates.crt .
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-COPY --from=build /usr/share/dict/american-english .
+COPY --from=build /usr/share/dict/american-english /usr/share/dict/american-english
 
 COPY --from=build /app /app
 
