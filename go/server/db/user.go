@@ -7,12 +7,13 @@ import (
 type (
 	// User contains information for each player
 	User struct {
-		Username username
+		Username Username
 		password password
 		Points   int
 	}
 
-	username string
+	// Username uniquely identifies a user
+	Username string
 
 	password string
 )
@@ -20,12 +21,12 @@ type (
 // NewUser creates a new user with the specified name and password.
 func NewUser(u, p string) User {
 	return User{
-		Username: username(u),
+		Username: Username(u),
 		password: password(p),
 	}
 }
 
-func (u username) isValid() bool {
+func (u Username) isValid() bool {
 	switch {
 	case len(u) < 1:
 		return false
@@ -42,7 +43,7 @@ func (u username) isValid() bool {
 	return true
 }
 
-func (username) helpText() string {
+func (Username) helpText() string {
 	return "username must be made of only lowercase letters and be less than 32 characters long"
 }
 
