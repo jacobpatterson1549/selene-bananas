@@ -49,7 +49,7 @@ func (j jwtTokenizer) Create(u db.User) (string, error) {
 		u.Username,
 		u.Points,
 		jwt.StandardClaims{
-			ExpiresAt: 0, // TODO: add token expiry
+			//ExpiresAt: 0, // TODO: add token expiry, issuer, 
 		},
 	}
 	token := jwt.NewWithClaims(j.method, claims)
