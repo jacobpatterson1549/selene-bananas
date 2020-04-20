@@ -13,7 +13,7 @@ services:
     container_name: "selene-bananas-web"
     env_file: ./.env
     ports:
-      - "${SERVER_PORT}:8000" # port 8000 on container maps to SERVER_PORT on docker host
+      - "${PORT}:8000" # port 8000 on container maps to PORT on docker host
     environment:
       - PORT=8000
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB}?sslmode=disable
