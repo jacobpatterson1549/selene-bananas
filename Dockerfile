@@ -1,4 +1,4 @@
-FROM golang:1.13-alpine AS build
+FROM golang:1.13-buster AS build
 
 WORKDIR /app
 
@@ -10,14 +10,16 @@ RUN go mod download
 COPY . /app/
 
 # build server without links to C libraries
-RUN CGO_ENABLED=0 go build -o /app/selene_bananas go/cmd/server/main.go
+RUN CGO_ENABLED=0 go build -o /app/selene_bananas main.go
 
 FROM scratch
 
 WORKDIR /app
 
-# copy the x509 certificate file for Alpine Linux to allow server to make https requests
-COPY --from=build /etc/ssl/cert.pem /etc/ssl/cert.pem
+# TODO: Reorganize Dockerfile to do these first two copies in stagest before building
+COPY --from=build /etc/ssl/certs/ca-certificates.crt .
+
+COPY --from=build /usr/share/dict/american-english .
 
 COPY --from=build /app /app
 
