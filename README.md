@@ -12,8 +12,9 @@ Uses WebSockets to allow multiple users to play a word game over a network.
 ## Dependencies
 New dependencies are automatically added to [go.mod](go.mod) when the project is built.
 * [pq](https://github.com/lib/pq) (PostgreSQL Driver)
-* [bcrypt](https://github.com/golang/crypto) (password encryption)
 * [Gorilla WebSocket](https://github.com/gorilla/websocket) (game websocket)
+* [jwt-go](https://github.com/dgrijalva/jwt-go) (jwt web "sessions")
+* [bcrypt](https://github.com/golang/crypto) (password encryption)
 * [Font-Awesome](https://github.com/FortAwesome/Font-Awesome) (icons on about page)
 
 ## Build/Run

@@ -1,10 +1,6 @@
 package server
 
 import (
-	"errors"
-	"fmt"
-	"io"
-	"reflect"
 	"testing"
 
 	"github.com/dgrijalva/jwt-go"
@@ -12,81 +8,67 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
 )
 
-func TestNewJwtTokenizer(t *testing.T) {
-	tokenizer, err := newJwtTokenizer(jwt.SigningMethodRS512, mockReader{})
-	if err != nil {
-		t.Fatal(err)
+func TestCreate(t *testing.T) {
+	tokenizer := jwtTokenizer{
+		method: jwt.SigningMethodHS256,
+		key:    []byte("secret"),
 	}
 	u := db.User{
 		Username: "selene",
-		Points:   54,
+		Points:   18,
 	}
-
-	if j, ok := tokenizer.(jwtRSATokenizer); ok {
-		fmt.Printf("privateKey: %v\n", j.key.N)
-		fmt.Printf("publicKey:  %v\n", j.key.PublicKey.N)
-	} else {
-		t.Errorf("tokenizer is not jwtRSATokenizer, it is %T", j)
-	}
-
-	token, err := tokenizer.Create(u)
+	want := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InNlbGVuZSIsInBvaW50cyI6MTh9.68MAfIB-QQDvY6b7uoOoxsuhd8oi78YZLDBW8kpEi_E"
+	got, err := tokenizer.Create(u)
 	switch {
 	case err != nil:
 		t.Errorf("unexpected error: %v", err)
-	case len(token) == 0:
-		t.Error("expected non-empty token")
-	default:
-		fmt.Printf("token is: %v\n", token)
+	case want != got:
+		t.Errorf("could not create using simple key\nwanted %v\ngot    %v", want, got)
 	}
 }
 
-// {"username":"selene","points":54}
 func TestRead(t *testing.T) {
 	readTests := []struct {
-		tokenString string
-		keyReader   io.Reader
-		wantUser    db.User
-		wantErr     bool
+		tokenString   string
+		signingMethod jwt.SigningMethod
+		want          db.Username
+		wantErr       bool
 	}{
 		{
-			keyReader: mockReader{
-				readErr: errors.New("read error"),
-			},
-			wantErr: true,
+			tokenString:   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6InNlbGVuZSIsInBvaW50cyI6MTh9.68MAfIB-QQDvY6b7uoOoxsuhd8oi78YZLDBW8kpEi_E",
+			signingMethod: jwt.SigningMethodHS256,
+			want:          "selene",
 		},
-		// {
-		// 	tokenString
-		// }
+		{
+			tokenString:   "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImphY29iIiwicG9pbnRzIjo3fQ.X9ky2F644YutBnsJlokLz2p4tgEO6dxpk3nuLDbGohOMMPk8ix2DgI3E-iXTowKhQJL-cLyRdXIaZVWQXYMFUg",
+			signingMethod: jwt.SigningMethodHS512,
+			want:          "jacob",
+		},
+		{
+			tokenString:   "eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImphY29iIiwicG9pbnRzIjo3fQ.X9ky2F644YutBnsJlokLz2p4tgEO6dxpk3nuLDbGohOMMPk8ix2DgI3E-iXTowKhQJL-cLyRdXIaZVWQXYMFUg",
+			signingMethod: jwt.SigningMethodHS256,
+			wantErr:       true, // should be SigningMethodES512
+		},
+		{
+			tokenString:   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoic2VsZW5lIn0.0hzVY3vo48b6Kjl2-iXfEvSAzlYhg8WotQTD_l1426s",
+			signingMethod: jwt.SigningMethodHS256,
+			wantErr:       true, // payload is {"user":"selene"}, not a jwtUsernameClaims ("username" is empty)
+		},
 	}
-
 	for i, test := range readTests {
-		tokenizer, err := newJwtTokenizer(jwt.SigningMethodRS512, test.keyReader)
-		if err != nil {
-			t.Errorf("Test %v: unexpected error: %v", i, err)
+		var tokenizer Tokenizer
+		tokenizer = jwtTokenizer{
+			method: test.signingMethod,
+			key:    []byte("secret"),
 		}
-
-		gotUser, gotErr := tokenizer.Read(test.tokenString)
+		got, err := tokenizer.Read(test.tokenString)
 		switch {
-		case gotErr != nil:
+		case err != nil:
 			if !test.wantErr {
-				t.Errorf("Test %v: unexpected error: %v", i, gotErr)
+				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
-		case !reflect.DeepEqual(test.wantUser, gotUser):
-			t.Errorf("Test %v: wanted %v, got %v", i, test.wantUser, gotUser)
+		case test.want != got:
+			t.Errorf("Test %v: wanted %v, got %v", i, test.want, got)
 		}
 	}
-}
-
-type mockReader struct {
-	readErr error
-}
-
-func (r mockReader) Read(p []byte) (n int, err error) {
-	if r.readErr != nil {
-		return 0, r.readErr
-	}
-	for i := 0; i < len(p); i++ {
-		p[i] = 'x'
-	}
-	return len(p), nil
 }

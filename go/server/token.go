@@ -2,9 +2,7 @@ package server
 
 import (
 	"crypto/rand"
-	"crypto/rsa"
 	"fmt"
-	"io"
 
 	"github.com/dgrijalva/jwt-go"
 
@@ -18,9 +16,9 @@ type (
 		Read(tokenString string) (db.Username, error)
 	}
 
-	jwtRSATokenizer struct {
-		signingMethod *jwt.SigningMethodRSA
-		key           *rsa.PrivateKey
+	jwtTokenizer struct {
+		method jwt.SigningMethod
+		key    interface{}
 	}
 
 	jwtUsernameClaims struct {
@@ -32,58 +30,49 @@ type (
 
 const usernameClaimKey = "user"
 
-// NewTokenizer creates a new jwt rsa tokenizer
+// NewTokenizer creates a new jwt tokenizer
 func NewTokenizer() (Tokenizer, error) {
-	return newJwtTokenizer(jwt.SigningMethodRS512, rand.Reader)
-}
-
-func newJwtTokenizer(method *jwt.SigningMethodRSA, keyReader io.Reader) (Tokenizer, error) {
-	privateKey, err := rsa.GenerateKey(keyReader, 128)
+	key := make([]byte, 64)
+	_, err := rand.Read(key)
 	if err != nil {
-		return nil, fmt.Errorf("generating key for Tokenizer: %w", err)
+		return nil, fmt.Errorf("generating Tokenizer key: %w", err)
 	}
-	j := jwtRSATokenizer{
-		signingMethod: method,
-		key:           privateKey,
+	t := jwtTokenizer{
+		method: jwt.SigningMethodHS256,
+		key:    key,
 	}
-	return j, nil
+	return t, nil
 }
 
-func (j jwtRSATokenizer) Create(u db.User) (string, error) {
+func (j jwtTokenizer) Create(u db.User) (string, error) {
 	claims := &jwtUsernameClaims{
 		u.Username,
 		u.Points,
 		jwt.StandardClaims{
-			ExpiresAt: 15000,
-			Issuer:    "test",
+			ExpiresAt: 0, // TODO: add token expiry
 		},
 	}
-	token := jwt.NewWithClaims(j.signingMethod, claims)
+	token := jwt.NewWithClaims(j.method, claims)
 	return token.SignedString(j.key)
 }
 
-func (j jwtRSATokenizer) Read(tokenString string) (db.Username, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &jwtUsernameClaims{}, jwtRSATokenKeyFunc)
+func (j jwtTokenizer) Read(tokenString string) (db.Username, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &jwtUsernameClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if t.Method != j.method {
+			return nil, fmt.Errorf("incorrect authorization signing method")
+		}
+		return j.key, nil
+	})
 	if err != nil {
 		return "", err
 	}
-	jwtUsernameClaims, ok := token.Claims.(jwtUsernameClaims)
+	jwtUsernameClaims, ok := token.Claims.(*jwtUsernameClaims)
 	if !ok {
-		return "", fmt.Errorf("wanted jwtUsernameClaims, but got %T", token.Claims)
+		return "", fmt.Errorf("wanted *jwtUsernameClaims, but got %T", token.Claims)
 	}
 	err = jwtUsernameClaims.Valid()
 	if err != nil {
 		return "", fmt.Errorf("invalid claims: %w", err)
 	}
 	return jwtUsernameClaims.Username, nil
-}
-
-func jwtRSATokenKeyFunc(t *jwt.Token) (interface{}, error) {
-	rsaSigningMethod, ok := t.Method.(*jwt.SigningMethodRSA)
-	if !ok {
-		return nil, fmt.Errorf("wanted gwt.SigningMethodRSA, but got %T", t.Method)
-	}
-	print(rsaSigningMethod)
-
-	return nil, nil
 }
