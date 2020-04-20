@@ -24,7 +24,7 @@ type (
 	}
 
 	// UserPointsIncrementFunc is used to determine how much to increment the points for a username
-	UserPointsIncrementFunc func(u username) int
+	UserPointsIncrementFunc func(u Username) int
 
 	userDao struct {
 		db           Database
