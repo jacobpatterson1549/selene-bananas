@@ -132,7 +132,7 @@ func (ud userDao) Delete(u User) error {
 }
 
 func (ud userDao) getSetupSQLQueries() ([]sqlQuery, error) {
-	filenames := []string{"s", "_create", "_read", "_update_password", "_update_points", "_delete"}
+	filenames := []string{"s", "_create", "_read", "_update_password", "_update_points_increment", "_delete"}
 	queries := make([]sqlQuery, len(filenames))
 	for i, n := range filenames {
 		f := fmt.Sprintf("sql/user/user%s.psql", n)
