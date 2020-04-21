@@ -30,8 +30,7 @@ type (
 
 const usernameClaimKey = "user"
 
-// NewTokenizer creates a new jwt tokenizer
-func NewTokenizer() (Tokenizer, error) {
+func newTokenizer() (Tokenizer, error) {
 	key := make([]byte, 64)
 	_, err := rand.Read(key)
 	if err != nil {

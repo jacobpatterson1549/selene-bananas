@@ -11,7 +11,7 @@ type (
 	userChangeFn func(r *http.Request) error
 )
 
-func (s server) handleUserCreate(r *http.Request) error {
+func (s server) handleUserCreate(w http.ResponseWriter, r *http.Request) error {
 	err := r.ParseForm()
 	if err != nil {
 		return fmt.Errorf("parsing form: %w", err)
@@ -22,6 +22,7 @@ func (s server) handleUserCreate(r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	handleUserLogout(w)
 	return nil
 }
 
@@ -39,9 +40,19 @@ func (s server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	err = s.lobby.AddUser(u2, w, r)
+	// TODO: open lobby connection
+	// err = s.lobby.AddUser(u2, w, r)
+	// if err != nil {
+	// 	return fmt.Errorf("websocket error: %w", err)
+	// }
+
+	token, err := s.tokenizer.Create(u2)
 	if err != nil {
-		return fmt.Errorf("websocket error: %w", err)
+		return err
+	}
+	_, err = w.Write([]byte(token))
+	if err != nil {
+		return fmt.Errorf("writing token: %w", err)
 	}
 	return nil
 }
@@ -72,6 +83,6 @@ func (s server) handleUserDelete(r *http.Request) error {
 }
 
 func handleUserLogout(w http.ResponseWriter) {
-	w.Header().Set("Location", "/")
 	w.WriteHeader(http.StatusSeeOther)
+	w.Header().Set("Location", "/")
 }

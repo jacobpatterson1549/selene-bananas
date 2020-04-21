@@ -7,17 +7,17 @@
 
 <div id="error-message"></div>
 
+<input type="text" id="jwt" hidden>
 <input type="checkbox" id="login" hidden>
 <div class=tabs>
-    <!-- TODO store label, template name, login_required::bool in array, loop over it to create tabs -->
-    <div>
+    <div class="logout-required">
         <input id="tab-1" type="radio" name="tab-group" checked>
         <label for="tab-1">Sign In</label>
         <div>
             {{ template "user_login.html" . }}
         </div>
     </div>
-    <div>
+    <div class="logout-required">
         <input id="tab-2" type="radio" name="tab-group">
         <label for="tab-2">Create User</label>
         <div>
@@ -26,42 +26,28 @@
     </div>
     <div class="login-required">
         <input id="tab-3" type="radio" name="tab-group">
-        <label for="tab-3">Lobby</label>
+        <label for="tab-3">User Actions</label>
+        <div>
+            {{ template "user_modify.html" . }}
+        </div>
+    </div>
+    <div class="login-required">
+        <input id="tab-4" type="radio" name="tab-group">
+        <label for="tab-4">Lobby</label>
         <div>
             {{ template "lobby.html" . }}
         </div>
     </div>
     <div class="login-required">
-        <input id="tab-4" type="radio" name="tab-group">
-        <label for="tab-4">Game</label>
+        <input id="tab-5" type="radio" name="tab-group">
+        <label for="tab-5">Game</label>
         <div>
             {{ template "game.html" . }}
         </div>
     </div>
-    <div class="login-required">
-        <input id="tab-5" type="radio" name="tab-group">
-        <label for="tab-5">Change Password</label>
-        <div>
-            {{ template "user_update_password.html" . }}
-        </div>
-    </div>
-    <div class="login-required">
-        <input id="tab-6" type="radio" name="tab-group">
-        <label for="tab-6">Delete User</label>
-        <div>
-            {{ template "user_delete.html" . }}
-        </div>
-    </div>
-    <div class="login-required">
-        <input id="tab-7" type="radio" name="tab-group">
-        <label for="tab-7">Sign Out</label>
-        <div>
-            {{ template "user_logout.html" . }}
-        </div>
-    </div>
     <div>
-        <input id="tab-8" type="radio" name="tab-group">
-        <label for="tab-8">About</label>
+        <input id="tab-6" type="radio" name="tab-group">
+        <label for="tab-6">About</label>
         <div>
             {{ template "about.html" . }}
         </div>

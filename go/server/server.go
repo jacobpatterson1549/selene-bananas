@@ -7,11 +7,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/jacobpatterson1549/selene-bananas/go/server/game"
+	"github.com/gorilla/websocket"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
-
-	"github.com/gorilla/websocket"
+	"github.com/jacobpatterson1549/selene-bananas/go/server/game"
 )
 
 type (
@@ -36,8 +35,9 @@ type (
 		handler           http.Handler
 		staticFileHandler http.Handler
 		upgrader          *websocket.Upgrader
-		userDao           db.UserDao
 		lobby             game.Lobby
+		userDao           db.UserDao
+		tokenizer         Tokenizer
 	}
 
 	templateData struct {
@@ -63,11 +63,15 @@ func (cfg Config) NewServer() (Server, error) {
 	addr := fmt.Sprintf(":%s", cfg.port)
 	serveMux := new(http.ServeMux)
 	staticFileHandler := http.FileServer(http.Dir("./static"))
+	tokenizer, err := newTokenizer()
+	if err != nil {
+		cfg.log.Fatal(err)
+	}
 	lobby := game.NewLobby(cfg.log)
 	userDao := db.NewUserDao(cfg.db)
-	err := userDao.Setup()
+	err = userDao.Setup()
 	if err != nil {
-		log.Fatal(err)
+		cfg.log.Fatal(err)
 	}
 	s := server{
 		data:              data,
@@ -77,6 +81,7 @@ func (cfg Config) NewServer() (Server, error) {
 		staticFileHandler: staticFileHandler,
 		lobby:             lobby,
 		userDao:           userDao,
+		tokenizer:         tokenizer,
 	}
 	serveMux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
 	serveMux.HandleFunc("/", s.httpMethodHandler)
@@ -102,7 +107,7 @@ func (s server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 	case "GET":
 		err = s.httpGetHandler(w, r)
 	case "POST":
-		err = httpUserChangeHandler(w, r, "/user_create", s.handleUserCreate)
+		err = s.httpPostHandler(w, r)
 	case "PUT":
 		err = httpUserChangeHandler(w, r, "/user_update_password", s.handleUserUpdatePassword)
 	case "DELETE":
@@ -122,15 +127,26 @@ func (s server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return fmt.Errorf("rendering template: %w", err)
 		}
-	case "/user_login":
-		err := s.handleUserLogin(w, r)
-		if err != nil {
-			return fmt.Errorf("login: %w", err)
-		}
+	case "/user_logout":
+		handleUserLogout(w)
 	default:
 		s.staticFileHandler.ServeHTTP(w, r)
 	}
 	return nil
+}
+
+func (s server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
+	var err error
+	// TODO: shroud these user calls in httpUserChangeHandler()
+	switch r.URL.Path {
+	case "/user_create":
+		err = s.handleUserCreate(w, r)
+	case "/user_login":
+		err = s.handleUserLogin(w, r)
+	default:
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	}
+	return err
 }
 
 func httpUserChangeHandler(w http.ResponseWriter, r *http.Request, path string, fn userChangeFn) error {
@@ -138,7 +154,7 @@ func httpUserChangeHandler(w http.ResponseWriter, r *http.Request, path string, 
 	case path:
 		err := fn(r)
 		if err != nil {
-			return err
+			return err // TODO: the user should also be logged out here.  add tests for this. but set status to 4xx or 5xx
 		}
 		handleUserLogout(w)
 	default:

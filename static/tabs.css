@@ -39,6 +39,10 @@
     margin: 1em;
 }
 
+#login:checked+.tabs>div.logout-required {
+    display: none;
+}
+
 #login:not(:checked)+.tabs>div.login-required {
     display: none;
 }
