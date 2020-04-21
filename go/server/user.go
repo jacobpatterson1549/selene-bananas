@@ -52,15 +52,7 @@ func (s server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	// 	return fmt.Errorf("websocket error: %w", err)
 	// }
 
-	token, err := s.tokenizer.Create(u2)
-	if err != nil {
-		return err
-	}
-	_, err = w.Write([]byte(token))
-	if err != nil {
-		return fmt.Errorf("writing token: %w", err)
-	}
-	return nil
+	return s.addAuthorization(w, u2)
 }
 
 func (s server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request) error {

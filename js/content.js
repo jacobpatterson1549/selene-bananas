@@ -15,4 +15,14 @@ var content = {
         var errorMessageDiv = document.getElementById("error-message");
         errorMessageDiv.innerHTML = text;
     },
+
+    getJWT: function () {
+        var jwtInput = document.getElementById("jwt");
+        return jwtInput.value;
+    },
+
+    setJWT: function (jwt) {
+        var jwtInput = document.getElementById("jwt");
+        jwtInput.value = jwt;
+    }
 };

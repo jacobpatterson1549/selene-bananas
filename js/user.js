@@ -3,8 +3,7 @@ var user = {
     _login: function (response) {
         response.text()
             .then(jwt => {
-                var jwtInput = document.getElementById("jwt");
-                jwtInput.value = jwt;
+                var jwtInput = content.setJWT(jwt)
                 var parts = jwt.split(".");
                 var claims = parts[1];
                 var jwtUsernameClaims = atob(claims);
@@ -101,6 +100,12 @@ var user = {
         if (method === "post") {
             var formData = new FormData(form);
             data.body = new URLSearchParams(formData);
+        }
+        var jwt = content.getJWT();
+        if (jwt) {
+            data.headers = {
+                Authorization: "Bearer " + jwt,
+            };
         }
         // TODO: add authorization here
         fetch(url, data)

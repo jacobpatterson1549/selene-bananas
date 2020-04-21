@@ -110,10 +110,10 @@ func (s server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 		err = s.httpPostHandler(w, r)
 	case "PUT":
 	default:
-		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
+		httpError(w, http.StatusMethodNotAllowed)
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httpError(w, http.StatusInternalServerError)
 	}
 }
 
@@ -125,6 +125,11 @@ func (s server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 			return fmt.Errorf("rendering template: %w", err)
 		}
 	case "/user_logout":
+		err := s.checkAuthorization(r)
+		if err != nil {
+			httpError(w, http.StatusUnauthorized)
+			return nil
+		}
 		handleUserLogout(w)
 	default:
 		s.staticFileHandler.ServeHTTP(w, r)
@@ -136,6 +141,15 @@ func (s server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 	var err error
 	// TODO: shroud these user calls in httpUserChangeHandler()
 	switch r.URL.Path {
+	case "/user_create", "/user_login":
+	default:
+		err = s.checkAuthorization(r)
+		if err != nil {
+			httpError(w, http.StatusUnauthorized)
+			return nil
+		}
+	}
+	switch r.URL.Path {
 	case "/user_create":
 		err = s.handleUserCreate(w, r)
 	case "/user_login":
@@ -145,7 +159,7 @@ func (s server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 	case "/user_delete":
 		err = s.handleUserDelete(w, r)
 	default:
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		httpError(w, http.StatusNotFound)
 	}
 	return err
 }
@@ -159,7 +173,7 @@ func httpUserChangeHandler(w http.ResponseWriter, r *http.Request, path string, 
 		}
 		handleUserLogout(w)
 	default:
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		httpError(w, http.StatusNotFound)
 	}
 	return nil
 }
@@ -177,4 +191,31 @@ func (s server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	return t.Execute(w, s.data)
+}
+
+func httpError(w http.ResponseWriter, statusCode int) {
+	http.Error(w, http.StatusText(statusCode), statusCode)
+}
+
+func (s server) addAuthorization(w http.ResponseWriter, u db.User) error {
+	token, err := s.tokenizer.Create(u)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte(token))
+	if err != nil {
+		return fmt.Errorf("writing authorization token: %w", err)
+	}
+	return nil
+}
+
+func (s server) checkAuthorization(r *http.Request) error {
+	authorization := r.Header.Get("Authorization")
+	if len(authorization) < 7 || authorization[:7] != "Bearer " {
+		return fmt.Errorf("invalid authorization header: %v", authorization)
+	}
+	tokenString := authorization[7:]
+	// TODO: send back user, mack sure user modifications are only done for this user
+	_, err := s.tokenizer.Read(tokenString)
+	return err
 }
