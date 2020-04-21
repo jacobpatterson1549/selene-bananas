@@ -47,7 +47,7 @@ var user = {
         var hostIndex = url.indexOf(host);
         var urlSuffixIndex = host.length + hostIndex;
         var urlSuffix = url.substring(urlSuffixIndex);
-        var successFn;
+        var successFn; // TODO: use promises, chaining
         switch (urlSuffix) {
             case "/user_create":
                 if (content.isLoggedIn()) {
@@ -60,7 +60,7 @@ var user = {
                         var c = new PasswordCredential(form);
                         navigator.credentials.store(c);
                     }
-                }
+                };
                 break;
             case "/user_delete":
                 if (!content.isLoggedIn()) {
@@ -89,6 +89,7 @@ var user = {
                     return;
                 }
                 successFn = this._logout;
+                // TODO: store new password
                 break;
             default:
                 content.setErrorMessage("Unknown action: " + url);
