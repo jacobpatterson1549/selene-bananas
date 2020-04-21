@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"strings"
 )
 
@@ -19,11 +20,21 @@ type (
 )
 
 // NewUser creates a new user with the specified name and password.
-func NewUser(u, p string) User {
-	return User{
-		Username: Username(u),
-		password: password(p),
+func NewUser(u, p string) (User, error) {
+	var user User
+	username := Username(u)
+	password := password(p)
+	if !username.isValid() {
+		return user, errors.New(username.helpText())
 	}
+	if !password.isValid() {
+		return user, errors.New(password.helpText())
+	}
+	user = User{
+		Username: username,
+		password: password,
+	}
+	return user, nil
 }
 
 func (u Username) isValid() bool {

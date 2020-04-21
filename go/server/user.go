@@ -18,7 +18,11 @@ func (s server) handleUserCreate(w http.ResponseWriter, r *http.Request) error {
 	}
 	username := r.FormValue("username")
 	password := r.FormValue("password_confirm")
-	err = s.userDao.Create(db.NewUser(username, password))
+	u, err := db.NewUser(username, password)
+	if err != nil {
+		return err
+	}
+	err = s.userDao.Create(u)
 	if err != nil {
 		return err
 	}
@@ -33,9 +37,11 @@ func (s server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	}
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	u := db.NewUser(username, password)
+	u, err := db.NewUser(username, password)
+	if err != nil {
+		return err
+	}
 	u2, err := s.userDao.Read(u)
-	s.userDao.Read(db.NewUser(username, password))
 	if err != nil {
 		return err
 	}
@@ -57,7 +63,7 @@ func (s server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (s server) handleUserUpdatePassword(r *http.Request) error {
+func (s server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request) error {
 	err := r.ParseForm()
 	if err != nil {
 		return fmt.Errorf("parsing form: %w", err)
@@ -65,18 +71,24 @@ func (s server) handleUserUpdatePassword(r *http.Request) error {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	newPassword := r.FormValue("password_confirm")
-	u := db.NewUser(username, password)
+	u, err := db.NewUser(username, password)
+	if err != nil {
+		return err
+	}
 	return s.userDao.UpdatePassword(u, newPassword)
 }
 
-func (s server) handleUserDelete(r *http.Request) error {
+func (s server) handleUserDelete(w http.ResponseWriter, r *http.Request) error {
 	err := r.ParseForm()
 	if err != nil {
 		return fmt.Errorf("parsing form: %w", err)
 	}
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	u := db.NewUser(username, password)
+	u, err := db.NewUser(username, password)
+	if err != nil {
+		return err
+	}
 	err = s.userDao.Delete(u)
 	s.lobby.RemoveUser(u) // ignore result
 	return err

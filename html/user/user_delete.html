@@ -1,6 +1,6 @@
-<form method="post" action="/user_login" onsubmit="user.request(event)">
+<form method="post" action="/user_delete" onsubmit="user.request(event)">
     <fieldset>
-        <legend>Sign In User</legend>
+        <legend>Delete User</legend>
         {{ template "username.html" . }}
         {{ template "password.html" . }}
         <input type="submit">

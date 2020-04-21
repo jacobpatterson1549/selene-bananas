@@ -109,9 +109,6 @@ func (s server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 	case "POST":
 		err = s.httpPostHandler(w, r)
 	case "PUT":
-		err = httpUserChangeHandler(w, r, "/user_update_password", s.handleUserUpdatePassword)
-	case "DELETE":
-		err = httpUserChangeHandler(w, r, "/user_delete", s.handleUserDelete)
 	default:
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
 	}
@@ -143,6 +140,10 @@ func (s server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 		err = s.handleUserCreate(w, r)
 	case "/user_login":
 		err = s.handleUserLogin(w, r)
+	case "/user_update_password":
+		err = s.handleUserUpdatePassword(w, r)
+	case "/user_delete":
+		err = s.handleUserDelete(w, r)
 	default:
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	}

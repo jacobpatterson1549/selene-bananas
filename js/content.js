@@ -8,7 +8,7 @@ var content = {
 
     isLoggedIn: function () {
         var loginElement = document.getElementById("login");
-        return !!loginElement.checked;
+        return loginElement.checked;
     },
 
     setErrorMessage: function (text) {

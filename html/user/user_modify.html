@@ -1,46 +1,8 @@
-<!-- TODO: display username and points from login request (from jwt) -->
-<form action="/user_update_password" onsubmit="user.request(event)" id="user-modify">
-    <fieldset>
-        <legend>User</legend>
-        <label>
-            <div>Username:</div>
-            <input autocomplete="username" disabled id="user-modify-username">
-        </label>
-        <label>
-            <div>Points:</div>
-            <input disabled id="user-modify-points">
-        </label>
-        <fieldset>
-            <legend>Modify</legend>
-            <fieldset>
-                <legend>Action</legend>
-                <label>
-                    <div>Update Password:</div>
-                    <input type="radio" name="user-action" onclick="user.setModifyAction(event)"
-                        value="/user_update_password" id="user-modify-update-password-radio" checked>
-                </label>
-                <label>
-                    <div>Delete:</div>
-                    <!-- TODO: a confirmation alert would be nice when submit is clicked -->
-                    <input type="radio" name="user-action" onclick="user.setModifyAction(event)" value="/user_delete"
-                        id="user-modify-delete-radio">
-                </label>
-                <label>
-                    <div>Logout:</div>
-                    <input type="radio" name="user-action" onclick="user.setModifyAction(event)" value="/user_logout"
-                        class="user-modify-logout-radio">
-                </label>
-            </fieldset>
-            <div id="user-modify-password">
-                {{ template "password.html" . }}
-            </div>
-            <div class="user-modify-confirm-password">
-                <fieldset>
-                    <legend>New Password</legend>
-                    {{ template "password_confirm.html" . }}
-                </fieldset>
-            </div>
-            <input type="submit">
-        </fieldset>
-    </fieldset>
-</form>
+<fieldset>
+    <legend>User</legend>
+    {{ template "username.html" . }}
+    {{ template "points.html" . }}
+</fieldset>
+{{ template "user_logout.html" . }}
+{{ template "user_update_password.html" . }}
+{{ template "user_delete.html" . }}

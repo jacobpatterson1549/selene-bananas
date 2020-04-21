@@ -55,12 +55,6 @@ func (ud userDao) Setup() error {
 }
 
 func (ud userDao) Create(u User) error {
-	if !u.Username.isValid() {
-		return errors.New(u.Username.helpText())
-	}
-	if !u.password.isValid() {
-		return errors.New(u.password.helpText())
-	}
 	hashedPassword, err := ud.ph.hashPassword(u.password)
 	if err != nil {
 		return err
@@ -96,15 +90,20 @@ func (ud userDao) Read(u User) (User, error) {
 }
 
 func (ud userDao) UpdatePassword(u User, newPassword string) error {
-	if p := password(newPassword); !p.isValid() {
+	p := password(newPassword)
+	if !p.isValid() { // TODO: this is odd place to do validation.  Maybe other places are incorrect
 		return errors.New(p.helpText())
+	}
+	hashedPassword, err := ud.ph.hashPassword(p)
+	if err != nil {
+		return err
 	}
 	if _, err := ud.Read(u); err != nil { // check password
 		return err
 	}
-	sqlFunction := newExecSQLFunction("user_update_password", u.Username, newPassword)
+	sqlFunction := newExecSQLFunction("user_update_password", u.Username, hashedPassword)
 	result, err := ud.db.exec(sqlFunction.sql(), sqlFunction.args()...)
-	if err == nil {
+	if err != nil {
 		return fmt.Errorf("updating user password: %w", err)
 	}
 	return sqlFunction.expectSingleRowAffected(result)

@@ -9,21 +9,27 @@ var user = {
                 var claims = parts[1];
                 var jwtUsernameClaims = atob(claims);
                 var user = JSON.parse(jwtUsernameClaims);
-                document.getElementById("user-modify-username").value = user.username;
-                document.getElementById("user-modify-points").value = user.points;
+                var usernameElements = document.querySelectorAll("input.username");
+                for (i = 0; i < usernameElements.length; i++) {
+                    usernameElements[i].value = user.username;
+                    // usernameElements[i].readonly = true;
+                    usernameElements[i].setAttribute("readonly", true);
+                }
+                document.querySelector("input.points").value = user.points;
                 var userModifyTab = document.getElementById("tab-3");
                 userModifyTab.checked = true;
                 content.setLoggedIn(true);
+                // TODO: create websocket
             });
     },
 
-    _logout: function (response) {
+    _logout: function () {
         content.setLoggedIn(false);
         game.leave();
-        if (response) {
-            var loginTab = document.getElementById("tab-1");
-            loginTab.checked = true;
-        }
+        var firstUsernameElement = document.querySelector("input.username");
+        firstUsernameElement.setAttribute("readonly", false);
+        var loginTab = document.getElementById("tab-1");
+        loginTab.checked = true;
     },
 
     setModifyAction: function (event) {
@@ -41,63 +47,60 @@ var user = {
         var hostIndex = url.indexOf(host);
         var urlSuffixIndex = host.length + hostIndex;
         var urlSuffix = url.substring(urlSuffixIndex);
-        var method;
         var successFn;
         switch (urlSuffix) {
             case "/user_create":
+                if (content.isLoggedIn()) {
+                    content.setErrorMessage("already logged in");
+                    return;
+                }
                 this._logout();
-                method = "POST";
-                var self = this;
                 successFn = function (response) {
                     if (window.PasswordCredential) {
-                        var c = new PasswordCredential(event.target);
+                        var c = new PasswordCredential(form);
                         navigator.credentials.store(c);
                     }
-                    self._logout(response);
                 }
                 break;
             case "/user_delete":
-                if (content.isLoggedIn()) {
-                    _setErrorMessage("not logged in");
+                if (!content.isLoggedIn()) {
+                    content.setErrorMessage("not logged in");
                     return;
                 }
-                method = "DELETE";
                 successFn = this._logout;
                 break;
             case "/user_login":
                 if (content.isLoggedIn()) {
-                    _setErrorMessage("already logged in");
+                    content.setErrorMessage("already logged in");
                     return;
                 }
-                method = "POST";
                 successFn = this._login;
-                // TODO: create websocket
                 break;
             case "/user_logout":
-                if (content.isLoggedIn()) {
-                    _setErrorMessage("not logged in");
+                if (!content.isLoggedIn()) {
+                    content.setErrorMessage("not logged in");
                     return;
                 }
-                method = "GET";
-                this._logout();
-                return;
+                successFn = this._logout;
+                break;
             case "/user_update_password":
-                if (content.isLoggedIn()) {
-                    _setErrorMessage("not logged in");
+                if (!content.isLoggedIn()) {
+                    content.setErrorMessage("not logged in");
                     return;
                 }
-                method = "PUT";
                 successFn = this._logout;
                 break;
             default:
-                this._setErrorMessage("Unknown action: " + url);
+                content.setErrorMessage("Unknown action: " + url);
                 return;
         }
-        var formData = new FormData(form);
         var data = {
-            body: new URLSearchParams(formData),
             method: method,
         };
+        if (method === "post") {
+            var formData = new FormData(form);
+            data.body = new URLSearchParams(formData);
+        }
         // TODO: add authorization here
         fetch(url, data)
             .then(async response => {
