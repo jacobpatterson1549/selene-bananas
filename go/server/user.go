@@ -82,7 +82,7 @@ func (s server) handleUserDelete(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	err = s.userDao.Delete(u)
-	s.lobby.RemoveUser(u) // ignore result
+	s.lobby.RemoveUser(u.Username) // ignore result
 	return err
 }
 

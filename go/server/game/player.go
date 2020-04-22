@@ -7,8 +7,10 @@ import (
 
 type (
 	player struct {
-		user db.User
-		conn *websocket.Conn
+		username db.Username
+		conn     *websocket.Conn
+		game     *Game
+		tiles    map[rune]bool
 	}
 )
 
@@ -20,5 +22,9 @@ func (p player) readMessages() {
 }
 
 func (p player) writeMessages() {
+	// TODO
+}
+
+func (p player) addTiles(tiles ...rune) {
 	// TODO
 }
