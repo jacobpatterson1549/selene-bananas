@@ -209,13 +209,12 @@ func (s server) addAuthorization(w http.ResponseWriter, u db.User) error {
 	return nil
 }
 
-func (s server) checkAuthorization(r *http.Request) error {
+func (s server) checkAuthorization(r *http.Request) (db.Username, error) {
 	authorization := r.Header.Get("Authorization")
 	if len(authorization) < 7 || authorization[:7] != "Bearer " {
 		return fmt.Errorf("invalid authorization header: %v", authorization)
 	}
 	tokenString := authorization[7:]
-	// TODO: send back user, mack sure user modifications are only done for this user
-	_, err := s.tokenizer.Read(tokenString)
-	return err
+	// TODO: make sure user modifications (update/delete/logout) are only done for this user
+	return s.tokenizer.Read(tokenString)
 }

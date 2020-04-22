@@ -15,9 +15,8 @@ type (
 		username   db.Username
 		conn       *websocket.Conn
 		game       *game
-		lobby      gameLobby
-		outMessage chan Message
-		// tiles    map[rune]bool
+		lobby      lobby
+		outMessage chan message
 	}
 )
 
@@ -42,7 +41,7 @@ func (p player) readMessages() {
 		return p.refreshReadDeadline()
 	})
 	for {
-		var m Message
+		var m message
 		err := p.conn.ReadJSON(&m)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
@@ -52,7 +51,7 @@ func (p player) readMessages() {
 			break
 		}
 		p.log.Printf("handling messages received from %v: %v", p.username, m)
-		handleInMessage(m)
+		handle(m)
 	}
 }
 
@@ -85,7 +84,7 @@ func (p player) writeMessages() {
 }
 
 func (p player) close() {
-	p.lobby.RemoveUser(p.username)
+	p.lobby.remove(p.username)
 	if p.game != nil {
 		p.game.Remove(p.username)
 	}
@@ -111,7 +110,7 @@ func (p player) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, per
 	return nil
 }
 
-func handleInMessage(m Message) {
+func handle(m message) {
 	// TODO: notify game/lobby
 }
 

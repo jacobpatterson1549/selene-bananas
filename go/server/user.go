@@ -26,7 +26,6 @@ func (s server) handleUserCreate(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	handleUserLogout(w)
 	return nil
 }
 
@@ -55,7 +54,7 @@ func (s server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	return s.addAuthorization(w, u2)
 }
 
-func (s server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request) error {
+func (s server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request, tokenUsername db.Username) error {
 	err := r.ParseForm()
 	if err != nil {
 		return fmt.Errorf("parsing form: %w", err)
@@ -63,11 +62,19 @@ func (s server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request)
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	newPassword := r.FormValue("password_confirm")
+	if tokenUsername != username {
+		return fmt.Errorf("cannot modify other user") // TODO: return 403 forbidden
+	}
 	u, err := db.NewUser(username, password)
 	if err != nil {
 		return err
 	}
-	return s.userDao.UpdatePassword(u, newPassword)
+	err :=  s.userDao.UpdatePassword(u, newPassword)
+	if err != nil {
+		return err
+	}
+	s.lobby.RemoveUser(u)
+	return nil
 }
 
 func (s server) handleUserDelete(w http.ResponseWriter, r *http.Request) error {
@@ -77,16 +84,17 @@ func (s server) handleUserDelete(w http.ResponseWriter, r *http.Request) error {
 	}
 	username := r.FormValue("username")
 	password := r.FormValue("password")
+	if tokenUsername != username {
+		return fmt.Errorf("cannot modify other user") // TODO: return 403 forbidden
+	}
 	u, err := db.NewUser(username, password)
 	if err != nil {
 		return err
 	}
 	err = s.userDao.Delete(u)
-	s.lobby.RemoveUser(u.Username) // ignore result
+	if err != nil {
+		return err
+	}
+	s.lobby.RemoveUser(u.Username)
 	return err
-}
-
-func handleUserLogout(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusSeeOther)
-	w.Header().Set("Location", "/")
 }

@@ -7,10 +7,10 @@ import (
 
 type (
 	// MessageType represents what the purpose of a message is
-	MessageType int
+	messageType int
 	// Message contains information to or from a player for a game/lobby
-	Message struct {
-		Type    MessageType `json:"type"`
+	message struct {
+		Type    messageType `json:"type"`
 		Message string      `json:"message,omitempty"`
 		Tiles   []tile      `json:"-"`
 	}
@@ -20,25 +20,27 @@ type (
 		StringTiles []string `json:"tiles,omitempty"`
 	}
 	// messageAlias is used to prevent infinite loops in jsonMessage
-	messageAlias Message
+	messageAlias message
 )
 
 const (
 	// not using iota because emssageTypes are switched on on in javascript
-	gameCreate       = 1
-	gameJoin         = 2
-	gameRemove       = 3
-	gameStart        = 4
-	gameSnag         = 5
-	gameSwap         = 6
-	gameFinish       = 7
-	gameClose        = 8
-	userTilesChanged = 9
-	userMessage      = 10
+	gameCreate       messageType = 1
+	gameJoin         messageType = 2
+	gameRemove       messageType = 3
+	gameStart        messageType = 4
+	gameSnag         messageType = 5
+	gameSwap         messageType = 6
+	gameFinish       messageType = 7
+	gameClose        messageType = 8
+	userTilesChanged messageType = 9
+	userMessage      messageType = 10
+	userRemove       messageType = 11
+	gameInfos        messageType = 12
 )
 
 // MarshalJSON has special handling to marshal the tiles to strings
-func (m Message) MarshalJSON() ([]byte, error) {
+func (m message) MarshalJSON() ([]byte, error) {
 	stringTiles := make([]string, len(m.Tiles))
 	for i, t := range m.Tiles {
 		stringTiles[i] = string(rune(t))
@@ -51,7 +53,7 @@ func (m Message) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON has special handling to unmarshalling tiles from strings
-func (m *Message) UnmarshalJSON(b []byte) error {
+func (m *message) UnmarshalJSON(b []byte) error {
 	jm := &jsonMessage{messageAlias: (*messageAlias)(m)}
 	err := json.Unmarshal(b, &jm)
 	if err != nil {

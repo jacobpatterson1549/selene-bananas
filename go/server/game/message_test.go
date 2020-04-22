@@ -9,27 +9,27 @@ import (
 
 func TestMessageJSON(t *testing.T) {
 	messageJSONTests := []struct {
-		m Message
+		m message
 		j string
 	}{
 		{
-			m: Message{Type: 1},
+			m: message{Type: 1},
 			j: `{"type":1}`,
 		},
 		{
-			m: Message{Type: 2, Message: "Selene started the game."},
+			m: message{Type: 2, Message: "Selene started the game."},
 			j: `{"type":2,"message":"Selene started the game."}`,
 		},
 		{
-			m: Message{Type: 9, Message: "Selene snagged a tile.  You got a 'X'.", Tiles: []tile{'X'}},
+			m: message{Type: 9, Message: "Selene snagged a tile.  You got a 'X'.", Tiles: []tile{'X'}},
 			j: `{"type":9,"message":"Selene snagged a tile.  You got a 'X'.","tiles":["X"]}`,
 		},
 		{
-			m: Message{Type: 9, Tiles: []tile{'Q'}},
+			m: message{Type: 9, Tiles: []tile{'Q'}},
 			j: `{"type":9,"tiles":["Q"]}`,
 		},
 		{
-			m: Message{Type: 9, Message: "Selene swapped a 'Q' for ['A','B','C'].", Tiles: []tile{'A', 'B', 'C'}},
+			m: message{Type: 9, Message: "Selene swapped a 'Q' for ['A','B','C'].", Tiles: []tile{'A', 'B', 'C'}},
 			j: `{"type":9,"message":"Selene swapped a 'Q' for ['A','B','C'].","tiles":["A","B","C"]}`,
 		},
 	}
@@ -41,7 +41,7 @@ func TestMessageJSON(t *testing.T) {
 		case test.j != string(j2):
 			t.Errorf("Test %v (Marshal): expected json to be:\n%v\nbut was:\n%v", i, test.j, string(j2))
 		}
-		var m2 Message
+		var m2 message
 		err = json.Unmarshal([]byte(test.j), &m2)
 		switch {
 		case err != nil:
@@ -54,7 +54,7 @@ func TestMessageJSON(t *testing.T) {
 
 func TestMessage_unmarshalBadTile(t *testing.T) {
 	j := `{"type":9,"tiles":["XYZ"]}`
-	var m Message
+	var m message
 	err := json.Unmarshal([]byte(j), &m)
 	switch {
 	case err == nil:
@@ -66,7 +66,7 @@ func TestMessage_unmarshalBadTile(t *testing.T) {
 
 func TestMessage_unmarshalBadJson(t *testing.T) {
 	j := `9`
-	var m Message
+	var m message
 	err := json.Unmarshal([]byte(j), &m)
 	if err == nil {
 		t.Errorf("expected unmarshal of %v to fail because the tile is invalid, but produced %v", j, m)

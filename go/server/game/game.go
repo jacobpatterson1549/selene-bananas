@@ -8,18 +8,6 @@ import (
 )
 
 type (
-	// Game represents each game that multiple Players can participate in
-	Game interface {
-		Join(p player) error
-		Remove(u db.Username)
-		Has(u db.Username) bool
-		IsEmpty() bool
-		IsStarted() bool
-		Start() error
-		Snag(p player)
-		Swap(p player, t tile)
-		Finish(p player)
-	}
 	// TODO: track tile movements
 
 	tile rune
@@ -29,14 +17,23 @@ type (
 		players map[db.Username]player
 		started bool
 		tiles   []tile
+		lobby   lobby
+		message
 		// the shuffle functions shuffles the slices my mutating them
 		shuffleTilesFunc   func(tiles []tile)
 		shufflePlayersFunc func(players []player)
 	}
 )
 
-// NewGame creates a new game with randomly shuffled tiles and players
-func NewGame(words map[string]bool, p player) Game {
+// Run starts the lobby
+func Run() {
+	// for {
+	// 	select m, ok :=
+	// }
+}
+
+// newGame creates a new game with randomly shuffled tiles and players
+func newGame (words map[string]bool, p player) game {
 	players := make(map[db.Username]player, 2)
 	g := game{
 		words:   words,
