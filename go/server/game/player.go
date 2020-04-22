@@ -10,7 +10,7 @@ type (
 		username db.Username
 		conn     *websocket.Conn
 		game     *Game
-		tiles    map[rune]bool
+		// tiles    map[rune]bool
 	}
 )
 
@@ -25,6 +25,6 @@ func (p player) writeMessages() {
 	// TODO
 }
 
-func (p player) addTiles(tiles ...rune) {
+func (p player) addTiles(tiles ...tile) {
 	// TODO
 }

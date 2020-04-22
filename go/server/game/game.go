@@ -15,39 +15,55 @@ type (
 		Has(u db.Username) bool
 		IsEmpty() bool
 		IsStarted() bool
-		Start()
+		Start() error
 		Snag(p player)
-		Swap(p player, r rune)
+		Swap(p player, t tile)
 		Finish(p player)
 	}
 	// TODO: track tile movements
+
+	tile rune
 
 	game struct {
 		words   map[string]bool
 		players map[db.Username]player
 		started bool
-		tiles   []rune
+		tiles   []tile
+		// the shuffle functions shuffles the slices my mutating them
+		shuffleTilesFunc   func(tiles []tile)
+		shufflePlayersFunc func(players []player)
 	}
 )
 
-// func NewGame(words map[string]bool, p player) Game {
-// 	players := make(map[db.Username]player, 2)
-// 	return game {
-// 		words: words,
-// 		players: players,
-// 		started: false,
-// 		tiles: createTiles(),
-// 	}
+// NewGame creates a new game with randomly shuffled tiles and players
+func NewGame(words map[string]bool, p player) Game {
+	players := make(map[db.Username]player, 2)
+	g := game{
+		words:   words,
+		players: players,
+		started: false,
+		shuffleTilesFunc: func(tiles []tile) {
+			rand.Shuffle(len(tiles), func(i, j int) {
+				tiles[i], tiles[j] = tiles[j], tiles[i]
+			})
+		},
+		shufflePlayersFunc: func(players []player) {
+			rand.Shuffle(len(players), func(i, j int) {
+				players[i], players[j] = players[j], players[i]
+			})
+		},
+	}
+	g.tiles = g.createTiles()
+	return g
+}
 
-// }
-
-func createTiles() []rune {
-	var tiles []rune
+func (g game) createTiles() []tile {
+	var tiles []tile
 	add := func(s string, n int) {
 		for i := 0; i < len(s); i++ {
 			r := s[i]
 			for j := 0; j < n; j++ {
-				tiles = append(tiles, rune(r))
+				tiles = append(tiles, tile(r))
 			}
 		}
 	}
@@ -62,9 +78,7 @@ func createTiles() []rune {
 	add("I", 12)
 	add("A", 13)
 	add("E", 18)
-	rand.Shuffle(len(tiles), func(i, j int) {
-		tiles[i], tiles[j] = tiles[j], tiles[i]
-	})
+	g.shuffleTilesFunc(tiles)
 	return tiles
 }
 
@@ -102,16 +116,62 @@ func (g game) Start() error {
 		return fmt.Errorf("game already started")
 	}
 	g.started = true
+	newTiles := make(map[db.Username][]tile, len(g.players))
+	for t := 0; t < 21; t++ {
+		for u := range g.players {
+			if len(g.tiles) == 0 {
+				return fmt.Errorf("could not start game because there ar not enough tiles")
+			}
+			t := g.tiles[0]
+			g.tiles = g.tiles[1:]
+			pt, ok := newTiles[u]
+			if ok {
+				newTiles[u] = append(pt, t)
+			} else {
+				// TODO debug if this condition ever occurs
+				newTiles[u] = []tile{t}
+			}
+		}
+	}
+	for u, p := range g.players {
+		p.addTiles(newTiles[u]...)
+	}
 	return nil
 }
 
 func (g game) Snag(p player) {
 	// TODO: use channel
 	// TODO: test to ensure specified player gets a tile.
+	if len(g.tiles) == 0 {
+		return
+	}
+	p.addTiles(g.tiles[0])
+	g.tiles = g.tiles[1:]
+	otherPlayers := make([]player, len(g.players)-1)
+	i := 0
+	for u2, p2 := range g.players {
+		if p.username != u2 {
+			otherPlayers[i] = p2
+			i++
+		}
+	}
+	g.shufflePlayersFunc(otherPlayers)
+	for i := 0; i < len(otherPlayers) && len(g.tiles) > 0; i++ {
+		otherPlayers[i].addTiles(g.tiles[0])
+		g.tiles = g.tiles[1:]
+	}
 }
 
-func (g game) Swap(p player, r rune) {
-
+func (g game) Swap(p player, t tile) {
+	// TODO: ensure player had the specified tile
+	g.tiles = append(g.tiles, t)
+	g.shuffleTilesFunc(g.tiles)
+	newTiles := make([]tile, 1)
+	for i := 0; i < 3 && len(g.tiles) > 0; i++ {
+		newTiles = append(newTiles, g.tiles[0])
+		g.tiles = g.tiles[1:]
+	}
+	p.addTiles(newTiles...)
 }
 
 func (g game) Finish(p player) {
