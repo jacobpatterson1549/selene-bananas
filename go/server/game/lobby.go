@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 
 	"github.com/gorilla/websocket"
 
@@ -80,18 +81,6 @@ func (l lobbyImpl) getGameInfos(u db.Username) {
 	l.gameInfos <- u
 }
 
-func (l lobbyImpl) sendGameInfos(u db.Username) {
-	p, ok := l.players[u]
-	if !ok {
-		l.log.Printf("Could not send game info to nonexistant player: %v", u)
-	}
-	gameInfos := make([]gameInfo, len(l.gameInfos))
-	for i, g := range l.games {
-		gameInfos[i] = g.info(u) // TODO: use channels
-	}
-	p.sendMessage(gameInfosMessage(gameInfos))
-}
-
 func (l lobbyImpl) run() {
 	for {
 		select {
@@ -107,11 +96,11 @@ func (l lobbyImpl) run() {
 				l.log.Println("lobby closing because user removal queue closed")
 			}
 			l.remove(u)
-		case u, ok := <-l.gameInfos:
+		case r, ok := <-l.gameInfos:
 			if !ok {
 				l.log.Println("lobby closing because game info queue closed")
 			}
-			l.sendGameInfos(u)
+			l.sendGameInfos(r)
 		}
 	}
 }
@@ -136,4 +125,34 @@ func (l lobbyImpl) remove(u db.Username) {
 	}
 	delete(l.players, u)
 	p.sendMessage(infoMessage{Type: userRemove, Username: p.username()})
+}
+
+func (l lobbyImpl) sendGameInfos(u db.Username) {
+	p, ok := l.players[u]
+	if !ok {
+		l.log.Printf("Could not send game info to nonexistant player: %v", u)
+	}
+	n := len(l.gameInfos)
+	c := make(chan gameInfo, n)
+	for _, g := range l.games {
+		g.infoRequest(gameInfoRequest{u: u, c: c})
+	}
+	gameInfos := make([]gameInfo, n)
+	i := 0
+	for {
+		gameInfo, ok := <-c
+		if !ok {
+			l.log.Printf("game info stream closed unexpectedly")
+			return
+		}
+		gameInfos[i] = gameInfo
+		i++
+		if i == n {
+			sort.Slice(gameInfos, func(i, j int) bool {
+				return gameInfos[i].CreatedAt < gameInfos[j].CreatedAt
+			})
+			p.sendMessage(gameInfosMessage(gameInfos))
+			return
+		}
+	}
 }

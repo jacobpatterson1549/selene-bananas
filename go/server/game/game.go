@@ -13,8 +13,8 @@ type (
 	// TODO: track tile movements
 
 	game interface {
-		handle(m message)
-		info(u db.Username) gameInfo
+		handleRequest(m message)
+		infoRequest(r gameInfoRequest)
 	}
 
 	gameImpl struct {
@@ -26,9 +26,15 @@ type (
 		maxPlayers int
 		tiles      []tile
 		messages   chan message
+		gameInfos  chan gameInfoRequest
 		// the shuffle functions shuffles the slices my mutating them
 		shuffleTilesFunc   func(tiles []tile)
 		shufflePlayersFunc func(players []player)
+	}
+
+	gameInfoRequest struct {
+		u db.Username
+		c chan gameInfo
 	}
 )
 
@@ -59,11 +65,18 @@ func newGame(log *log.Logger, words map[string]bool, p player) game {
 	return g
 }
 
-func (g gameImpl) handle(m message) {
+func (g gameImpl) handleRequest(m message) {
 	g.messages <- m
 }
 
-func (g gameImpl) info(u db.Username) gameInfo {
+func (g gameImpl) handleProcess(m message) {
+	// TODO: switch on messageType, call correct function
+}
+
+func (g gameImpl) infoRequest(r gameInfoRequest) {
+	g.gameInfos <- r
+}
+func (g gameImpl) infoProcess(u db.Username) gameInfo {
 	players := make([]db.Username, len(g.players))
 	i := 0
 	_, canJoin := g.players[u]
@@ -114,7 +127,13 @@ func (g gameImpl) run() {
 			if !ok {
 				g.close()
 			}
-			g.handle(m)
+			g.handleProcess(m)
+		case r, ok := <-g.gameInfos:
+			if !ok {
+				g.close()
+			}
+			gameInfo := g.infoProcess(r.u)
+			r.c <- gameInfo
 		}
 	}
 }
@@ -127,6 +146,7 @@ func (g gameImpl) close() {
 		})
 	}
 	close(g.messages)
+	close(g.gameInfos)
 }
 
 func (g gameImpl) add(p player) {

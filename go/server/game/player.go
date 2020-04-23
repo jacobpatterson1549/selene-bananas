@@ -111,7 +111,7 @@ func (p playerImpl) close() {
 		if err != nil {
 			p.log.Printf("unexpected error trying to send message to remove player from game: %v", err)
 		}
-		p.game.handle(m)
+		p.game.handleRequest(m)
 	}
 	close(p.send)
 	p.conn.Close()
@@ -137,6 +137,12 @@ func (p playerImpl) refreshDeadline(refreshDeadlineFunc func(t time.Time) error,
 
 func (p playerImpl) handle(m message) {
 	// TODO: notify game/lobby
+	switch m.Type {
+	case gameInfos:
+		p.sendGameInfos()
+	default:
+		p.sendError(fmt.Sprintf("unknown messageType: %v", m.Type))
+	}
 }
 
 func (p playerImpl) sendMessage(m messager) {
@@ -146,4 +152,12 @@ func (p playerImpl) sendMessage(m messager) {
 		return
 	}
 	p.send <- message
+}
+
+func (p playerImpl) sendError(m string) {
+	p.sendMessage(infoMessage{Info: m})
+}
+
+func (p playerImpl) sendGameInfos() {
+	p.lobby.getGameInfos(p.u)
 }
