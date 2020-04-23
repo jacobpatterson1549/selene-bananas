@@ -138,6 +138,8 @@ func (p playerImpl) refreshDeadline(refreshDeadlineFunc func(t time.Time) error,
 func (p playerImpl) handle(m message) {
 	// TODO: notify game/lobby
 	switch m.Type {
+	case gameCreate:
+		p.lobby.addGame(p.u)
 	case gameInfos:
 		p.sendGameInfos()
 	default:

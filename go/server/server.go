@@ -16,10 +16,11 @@ import (
 type (
 	// Config contains fields which describe the server
 	Config struct {
-		appName string
-		port    string
-		db      db.Database
-		log     *log.Logger
+		AppName       string
+		Port          string
+		Database      db.Database
+		Log           *log.Logger
+		WordsFileName string
 	}
 
 	// Server can be run to serve the site
@@ -45,38 +46,31 @@ type (
 	}
 )
 
-// NewConfig creates a new configuration object for a Server
-func NewConfig(appName, port string, db db.Database, log *log.Logger) Config {
-	return Config{
-		appName: appName,
-		port:    port,
-		db:      db,
-		log:     log,
-	}
-}
-
 // NewServer creates a Server from the Config
 func (cfg Config) NewServer() (Server, error) {
 	data := templateData{
-		ApplicationName: cfg.appName,
+		ApplicationName: cfg.AppName,
 	}
-	addr := fmt.Sprintf(":%s", cfg.port)
+	addr := fmt.Sprintf(":%s", cfg.Port)
 	serveMux := new(http.ServeMux)
 	staticFileHandler := http.FileServer(http.Dir("./static"))
 	tokenizer, err := newTokenizer()
 	if err != nil {
-		cfg.log.Fatal(err)
+		cfg.Log.Fatal(err)
 	}
-	lobby := game.NewLobby(cfg.log)
-	userDao := db.NewUserDao(cfg.db)
+	lobby, err := game.NewLobby(cfg.Log, game.FileSystemWordsSupplier(cfg.WordsFileName))
+	if err != nil {
+		cfg.Log.Fatal(err)
+	}
+	userDao := db.NewUserDao(cfg.Database)
 	err = userDao.Setup()
 	if err != nil {
-		cfg.log.Fatal(err)
+		cfg.Log.Fatal(err)
 	}
 	s := server{
 		data:              data,
 		addr:              addr,
-		log:               cfg.log,
+		log:               cfg.Log,
 		handler:           serveMux,
 		staticFileHandler: staticFileHandler,
 		lobby:             lobby,

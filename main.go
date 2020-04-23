@@ -38,13 +38,20 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	wordsFileName := "/usr/share/dict/american-english" // TODO: add env variable
 
-	cfg := server.NewConfig(mainFlags.applicationName, mainFlags.serverPort, db, log)
+	cfg := server.Config{
+		AppName:       mainFlags.applicationName,
+		Port:          mainFlags.serverPort,
+		Database:      db,
+		Log:           log,
+		WordsFileName: wordsFileName,
+	}
 	server, err := cfg.NewServer()
 	if err != nil {
 		log.Fatal("creating server:", err)
 	}
-	
+
 	err = server.Run()
 	if err != nil {
 		log.Fatal(err)

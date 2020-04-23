@@ -12,14 +12,16 @@ type (
 		Words() (map[string]bool, error)
 	}
 
-	fileSystemWordsSupplier string
+	// FileSystemWordsSupplier gets distinct words from a file
+	FileSystemWordsSupplier string
 )
 
 const (
 	validWordCharacters string = "abcdefghijklmnopqrstuvwxyz"
 )
 
-func (f fileSystemWordsSupplier) Words() (map[string]bool, error) {
+// Words gets distinct, lowercase, words
+func (f FileSystemWordsSupplier) Words() (map[string]bool, error) {
 	wordsFileContents, err := ioutil.ReadFile(string(f))
 	if err != nil {
 		return nil, fmt.Errorf("reading words from file '%v': %w", f, err)
