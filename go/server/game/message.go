@@ -6,13 +6,13 @@ import (
 )
 
 type (
-	// MessageType represents what the purpose of a message is
+	// messageType represents what the purpose of a message is
 	messageType int
-	// Message contains information to or from a player for a game/lobby
+	// message contains information to or from a player for a game/lobby
 	message struct {
-		Type    messageType `json:"type"`
-		Message string      `json:"message,omitempty"`
-		Tiles   []tile      `json:"-"`
+		Type  messageType `json:"type"`
+		Info  string      `json:"message,omitempty"`
+		Tiles []tile      `json:"-"`
 	}
 	// jsonMessage is used to marshal and unmarshal messages
 	jsonMessage struct {
@@ -24,7 +24,7 @@ type (
 )
 
 const (
-	// not using iota because emssageTypes are switched on on in javascript
+	// not using iota because messageTypes are switched on on in javascript
 	gameCreate       messageType = 1
 	gameJoin         messageType = 2
 	gameRemove       messageType = 3

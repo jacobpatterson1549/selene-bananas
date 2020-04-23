@@ -17,11 +17,11 @@ func TestMessageJSON(t *testing.T) {
 			j: `{"type":1}`,
 		},
 		{
-			m: message{Type: 2, Message: "Selene started the game."},
+			m: message{Type: 2, Info: "Selene started the game."},
 			j: `{"type":2,"message":"Selene started the game."}`,
 		},
 		{
-			m: message{Type: 9, Message: "Selene snagged a tile.  You got a 'X'.", Tiles: []tile{'X'}},
+			m: message{Type: 9, Info: "Selene snagged a tile.  You got a 'X'.", Tiles: []tile{'X'}},
 			j: `{"type":9,"message":"Selene snagged a tile.  You got a 'X'.","tiles":["X"]}`,
 		},
 		{
@@ -29,7 +29,7 @@ func TestMessageJSON(t *testing.T) {
 			j: `{"type":9,"tiles":["Q"]}`,
 		},
 		{
-			m: message{Type: 9, Message: "Selene swapped a 'Q' for ['A','B','C'].", Tiles: []tile{'A', 'B', 'C'}},
+			m: message{Type: 9, Info: "Selene swapped a 'Q' for ['A','B','C'].", Tiles: []tile{'A', 'B', 'C'}},
 			j: `{"type":9,"message":"Selene swapped a 'Q' for ['A','B','C'].","tiles":["A","B","C"]}`,
 		},
 	}

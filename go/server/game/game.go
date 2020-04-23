@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
@@ -10,35 +11,34 @@ import (
 type (
 	// TODO: track tile movements
 
-	tile rune
+	game interface {
+		handle(m message)
+	}
 
-	game struct {
-		words   map[string]bool
-		players map[db.Username]player
-		started bool
-		tiles   []tile
-		lobby   lobby
-		message
+	gameImpl struct {
+		log        *log.Logger
+		words      map[string]bool
+		players    map[db.Username]player
+		started    bool
+		maxPlayers int
+		tiles      []tile
+		messages   chan message
 		// the shuffle functions shuffles the slices my mutating them
 		shuffleTilesFunc   func(tiles []tile)
 		shufflePlayersFunc func(players []player)
 	}
 )
 
-// Run starts the lobby
-func Run() {
-	// for {
-	// 	select m, ok :=
-	// }
-}
-
 // newGame creates a new game with randomly shuffled tiles and players
-func newGame (words map[string]bool, p player) game {
+func newGame(log *log.Logger, words map[string]bool, p player) game {
 	players := make(map[db.Username]player, 2)
-	g := game{
-		words:   words,
-		players: players,
-		started: false,
+	g := gameImpl{
+		log:        log,
+		words:      words,
+		players:    players,
+		started:    false,
+		maxPlayers: 8,
+		messages:   make(chan message, 64),
 		shuffleTilesFunc: func(tiles []tile) {
 			rand.Shuffle(len(tiles), func(i, j int) {
 				tiles[i], tiles[j] = tiles[j], tiles[i]
@@ -51,10 +51,15 @@ func newGame (words map[string]bool, p player) game {
 		},
 	}
 	g.tiles = g.createTiles()
+	go g.run()
 	return g
 }
 
-func (g game) createTiles() []tile {
+func (g gameImpl) handle(m message) {
+	g.messages <- m
+}
+
+func (g gameImpl) createTiles() []tile {
 	var tiles []tile
 	add := func(s string, n int) {
 		for i := 0; i < len(s); i++ {
@@ -79,35 +84,55 @@ func (g game) createTiles() []tile {
 	return tiles
 }
 
-func (g game) Join(p player) error {
-	if !g.started {
-		return fmt.Errorf("game is not started")
+func (g gameImpl) run() {
+	for {
+		select {
+		case m, ok := <-g.messages:
+			if !ok {
+				g.close()
+			}
+			g.handle(m)
+		}
 	}
-	if g.Has(p.username) {
-		return fmt.Errorf("user already in current game: %v", p.username)
-	}
-	g.players[p.username] = p
-	return nil
 }
 
-func (g game) Remove(u db.Username) {
+func (g gameImpl) close() {
+	for _, p := range g.players {
+		p.sendMessage(message{
+			Type: gameClose,
+			Info: "game closing",
+		})
+	}
+	close(g.messages)
+}
+
+func (g gameImpl) add(p player) {
+	if !g.started {
+		return
+	}
+	if _, ok := g.players[p.username()]; ok {
+		return
+	}
+	if len(g.players) >= g.maxPlayers {
+		return
+	}
+	g.players[p.username()] = p
+}
+
+func (g gameImpl) remove(u db.Username) {
 	delete(g.players, u)
 }
 
-func (g game) Has(u db.Username) bool {
-	_, ok := g.players[u]
-	return ok
-}
-
-func (g game) IsEmpty() bool {
+func (g gameImpl) isEmpty() bool {
 	return len(g.players) == 0
 }
 
-func (g game) IsStarted() bool {
+// TODO: where is this used?  is it needed?
+func (g gameImpl) isStarted() bool {
 	return g.started
 }
 
-func (g game) Start() error {
+func (g gameImpl) start() error {
 	// TODO: use chanel to start to prevent race conditions.
 	if g.started {
 		return fmt.Errorf("game already started")
@@ -131,35 +156,36 @@ func (g game) Start() error {
 		}
 	}
 	for u, p := range g.players {
-		p.addTiles(newTiles[u]...)
+		g.addTiles(fmt.Sprintf("startingGame with tiles: %v", newTiles[u]), p, newTiles[u]...)
 	}
 	return nil
 }
 
-func (g game) Snag(p player) {
-	// TODO: use channel
+func (g gameImpl) snag(p player) {
 	// TODO: test to ensure specified player gets a tile.
 	if len(g.tiles) == 0 {
 		return
 	}
-	p.addTiles(g.tiles[0])
+	message := fmt.Sprintf("%v snagged a tile, adding %v", p.username(), g.tiles[0])
+	g.addTiles(message, p, g.tiles[0])
 	g.tiles = g.tiles[1:]
 	otherPlayers := make([]player, len(g.players)-1)
 	i := 0
 	for u2, p2 := range g.players {
-		if p.username != u2 {
+		if p.username() != u2 {
 			otherPlayers[i] = p2
 			i++
 		}
 	}
 	g.shufflePlayersFunc(otherPlayers)
 	for i := 0; i < len(otherPlayers) && len(g.tiles) > 0; i++ {
-		otherPlayers[i].addTiles(g.tiles[0])
+		message := fmt.Sprintf("%s snagged a tile, adding %v to your tiles", p.username(), g.tiles[0])
+		g.addTiles(message, otherPlayers[i], g.tiles[0])
 		g.tiles = g.tiles[1:]
 	}
 }
 
-func (g game) Swap(p player, t tile) {
+func (g gameImpl) swap(p player, t tile) {
 	// TODO: ensure player had the specified tile
 	g.tiles = append(g.tiles, t)
 	g.shuffleTilesFunc(g.tiles)
@@ -168,13 +194,21 @@ func (g game) Swap(p player, t tile) {
 		newTiles = append(newTiles, g.tiles[0])
 		g.tiles = g.tiles[1:]
 	}
-	p.addTiles(newTiles...)
+	g.addTiles(fmt.Sprintf("swapping %v tile for %v", t, newTiles), p, newTiles...)
 }
 
-func (g game) Finish(p player) {
+func (g gameImpl) finish(p player) {
 	if len(g.tiles) != 0 {
 		// TODO: lower points for player
 		return
 	}
 	// TODO
+}
+
+func (gameImpl) addTiles(info string, p player, tiles ...tile) {
+	p.sendMessage(message{
+		Type:  userTilesChanged,
+		Info:  info,
+		Tiles: tiles,
+	})
 }

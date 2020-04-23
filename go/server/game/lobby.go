@@ -18,7 +18,7 @@ type (
 		RemoveUser(u db.Username)
 	}
 
-	lobby struct {
+	lobbyImpl struct {
 		log           *log.Logger
 		upgrader      *websocket.Upgrader
 		players       map[db.Username]player
@@ -37,13 +37,13 @@ type (
 	}
 )
 
-// NewLobby creates a new Lobby for games
+// NewLobby creates a new game lobby
 func NewLobby(log *log.Logger) Lobby {
 	u := new(websocket.Upgrader)
 	u.Error = func(w http.ResponseWriter, r *http.Request, status int, reason error) {
 		log.Println(reason)
 	}
-	l := lobby{
+	l := lobbyImpl{
 		log:           log,
 		upgrader:      u,
 		games:         make([]game, 1),
@@ -57,7 +57,7 @@ func NewLobby(log *log.Logger) Lobby {
 }
 
 // AddUser adds a user to the lobby, it opens a new websocket (player) for the username
-func (l lobby) AddUser(u db.Username, w http.ResponseWriter, r *http.Request) error {
+func (l lobbyImpl) AddUser(u db.Username, w http.ResponseWriter, r *http.Request) error {
 	done := make(chan error, 1)
 	ua := userAddition{
 		u:    u,
@@ -69,10 +69,11 @@ func (l lobby) AddUser(u db.Username, w http.ResponseWriter, r *http.Request) er
 	return <-done
 }
 
-func (l lobby) RemoveUser(u db.Username) {
+func (l lobbyImpl) RemoveUser(u db.Username) {
 	l.userRemovals <- u
 }
 
+// TODO: lobby: get games
 // func (l lobby) GetGames(u db.Username) map[game]bool {
 // 	// TODO: make GameInfo struct with game id, started date, players, and other info, return an array of that
 // 	m := make(map[game]bool, len(l.games))
@@ -82,7 +83,7 @@ func (l lobby) RemoveUser(u db.Username) {
 // 	return m
 // }
 
-func (l lobby) run() {
+func (l lobbyImpl) run() {
 	for {
 		select {
 		case ua, ok := <-l.userAdditions:
@@ -107,7 +108,7 @@ func (l lobby) run() {
 	}
 }
 
-func (l lobby) add(ua userAddition) error {
+func (l lobbyImpl) add(ua userAddition) error {
 	if _, ok := l.players[ua.u]; ok {
 		return errors.New("user already in the game lobby")
 	}
@@ -115,29 +116,23 @@ func (l lobby) add(ua userAddition) error {
 	if err != nil {
 		return fmt.Errorf("upgrading to websocket connection: %w", err)
 	}
-	p := player{
-		log:        l.log,
-		username:   ua.u,
-		conn:       conn,
-		lobby:      l,
-		outMessage: make(chan message, 16),
-	}
-	go p.readMessages()
-	go p.writeMessages()
+	p := newPlayer(l.log, l, ua.u, conn)
 	l.players[ua.u] = p
 	return nil
 }
 
-func (l lobby) remove(u db.Username) {
+func (l lobbyImpl) remove(u db.Username) {
 	p, ok := l.players[u]
 	if !ok {
 		return
 	}
 	delete(l.players, u)
-	p.close() // be careful of circular call  TODO: TEST
+	p.sendMessage(message{
+		Type: userRemove,
+	})
 }
 
-func (l lobby) handle(m message) {
+func (l lobbyImpl) handle(m message) {
 	switch m.Type {
 	case userRemove:
 		// l.remove(m.)

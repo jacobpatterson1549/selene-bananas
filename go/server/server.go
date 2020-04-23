@@ -125,12 +125,11 @@ func (s server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 			return fmt.Errorf("rendering template: %w", err)
 		}
 	case "/user_logout":
-		err := s.checkAuthorization(r)
+		_, err := s.checkAuthorization(r)
 		if err != nil {
 			httpError(w, http.StatusUnauthorized)
 			return nil
 		}
-		handleUserLogout(w)
 	default:
 		s.staticFileHandler.ServeHTTP(w, r)
 	}
@@ -138,12 +137,12 @@ func (s server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
+	var tokenUsername db.Username
 	var err error
-	// TODO: shroud these user calls in httpUserChangeHandler()
 	switch r.URL.Path {
 	case "/user_create", "/user_login":
 	default:
-		err = s.checkAuthorization(r)
+		tokenUsername, err = s.checkAuthorization(r)
 		if err != nil {
 			httpError(w, http.StatusUnauthorized)
 			return nil
@@ -155,27 +154,13 @@ func (s server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 	case "/user_login":
 		err = s.handleUserLogin(w, r)
 	case "/user_update_password":
-		err = s.handleUserUpdatePassword(w, r)
+		err = s.handleUserUpdatePassword(w, r, tokenUsername)
 	case "/user_delete":
-		err = s.handleUserDelete(w, r)
+		err = s.handleUserDelete(w, r, tokenUsername)
 	default:
 		httpError(w, http.StatusNotFound)
 	}
 	return err
-}
-
-func httpUserChangeHandler(w http.ResponseWriter, r *http.Request, path string, fn userChangeFn) error {
-	switch r.URL.Path {
-	case path:
-		err := fn(r)
-		if err != nil {
-			return err // TODO: the user should also be logged out here.  add tests for this. but set status to 4xx or 5xx
-		}
-		handleUserLogout(w)
-	default:
-		httpError(w, http.StatusNotFound)
-	}
-	return nil
 }
 
 func (s server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
@@ -212,7 +197,7 @@ func (s server) addAuthorization(w http.ResponseWriter, u db.User) error {
 func (s server) checkAuthorization(r *http.Request) (db.Username, error) {
 	authorization := r.Header.Get("Authorization")
 	if len(authorization) < 7 || authorization[:7] != "Bearer " {
-		return fmt.Errorf("invalid authorization header: %v", authorization)
+		return "", fmt.Errorf("invalid authorization header: %v", authorization)
 	}
 	tokenString := authorization[7:]
 	// TODO: make sure user modifications (update/delete/logout) are only done for this user
