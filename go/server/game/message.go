@@ -12,24 +12,28 @@ type (
 
 	// message contains information to or from a player for a game/lobby
 	message struct {
-		Type    messageType     `json:"type"`
-		Content json.RawMessage `json:"body,omitempty"`
+		Type     messageType     `json:"type"`
+		Username db.Username     `json:"-"`
+		Content  json.RawMessage `json:"body,omitempty"`
 	}
 
+	// messager is used to know what should handle inbound and outbound messages between the lobby, game, players (websockets)
 	messager interface {
 		message() (message, error)
 	}
 
 	infoMessage struct {
-		Type messageType `json:"-"`
-		Info string      `json:"info,omitempty"`
+		Type     messageType `json:"-"`
+		Username db.Username `json:"-"`
+		Info     string      `json:"info,omitempty"`
 	}
 
+	// gameSnag/gameSwap messageType
 	tilesMessage struct {
-		// gameSnag/gameSwap messageType
-		Type  messageType `json:"-"`
-		Info  string      `json:"info,omitempty"`
-		Tiles []tile      `json:"tiles"`
+		Type     messageType `json:"-"`
+		Username db.Username `json:"-"`
+		Info     string      `json:"info,omitempty"`
+		Tiles    []tile      `json:"tiles"`
 	}
 
 	tilePosition struct {
@@ -39,9 +43,13 @@ type (
 	}
 
 	// gameTilePositions messageType
-	tilePositionsMessage []tilePosition
+	tilePositionsMessage struct {
+		Username      db.Username    `json:"-"`
+		TilePositions []tilePosition `json:"tilePositions"`
+	}
 
 	gameInfo struct {
+		Username  db.Username   `json:"-"`
 		Players   []db.Username `json:"players"`
 		CanJoin   bool          `json:"canJoin"`
 		CreatedAt string        `json:"createdAt"`
@@ -49,9 +57,6 @@ type (
 
 	// gameInfos messageType
 	gameInfosMessage []gameInfo
-
-	// userRemoveMessageType
-	userRemoveMessage db.Username
 )
 
 const (
@@ -69,31 +74,30 @@ const (
 	userRemove        messageType = 11 // userMessage
 )
 
-func (mt messageType) message() (message, error) {
-	return message{Type: mt}, nil
-}
-
 func (im infoMessage) message() (message, error) {
 	content, err := json.Marshal(im.Info)
 	return message{
-		Type:    im.Type,
-		Content: content,
+		Type:     im.Type,
+		Username: im.Username,
+		Content:  content,
 	}, err
 }
 
 func (tm tilesMessage) message() (message, error) {
 	content, err := json.Marshal(tm)
 	return message{
-		Type:    tm.Type,
-		Content: content,
+		Type:     tm.Type,
+		Username: tm.Username,
+		Content:  content,
 	}, err
 }
 
 func (tpm tilePositionsMessage) message() (message, error) {
 	content, err := json.Marshal(tpm)
 	return message{
-		Type:    gameTilePositions,
-		Content: content,
+		Type:     gameTilePositions,
+		Username: tpm.Username,
+		Content:  content,
 	}, err
 }
 
@@ -101,14 +105,6 @@ func (gim gameInfosMessage) message() (message, error) {
 	content, err := json.Marshal(gim)
 	return message{
 		Type:    gameInfos,
-		Content: content,
-	}, err
-}
-
-func (urm userRemoveMessage) message() (message, error) {
-	content, err := json.Marshal(urm)
-	return message{
-		Type:    userRemove,
 		Content: content,
 	}, err
 }

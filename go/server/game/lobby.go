@@ -16,6 +16,7 @@ type (
 	Lobby interface {
 		AddUser(u db.Username, w http.ResponseWriter, r *http.Request) error
 		RemoveUser(u db.Username)
+		getGameInfos(u db.Username)
 	}
 
 	lobbyImpl struct {
@@ -26,6 +27,7 @@ type (
 		maxGames      int
 		userAdditions chan userAddition
 		userRemovals  chan db.Username
+		gameInfos     chan db.Username
 	}
 
 	userAddition struct {
@@ -50,6 +52,7 @@ func NewLobby(log *log.Logger) Lobby {
 		maxGames:      5,
 		userAdditions: make(chan userAddition, 16),
 		userRemovals:  make(chan db.Username, 16),
+		gameInfos:     make(chan db.Username, 16),
 	}
 	go l.run()
 	return l
@@ -68,19 +71,26 @@ func (l lobbyImpl) AddUser(u db.Username, w http.ResponseWriter, r *http.Request
 	return <-done
 }
 
+// RemoveUser removes the user from the lobby an a game, if any
 func (l lobbyImpl) RemoveUser(u db.Username) {
 	l.userRemovals <- u
 }
 
-// TODO: lobby: get games
-// func (l lobby) GetGames(u db.Username) map[game]bool {
-// 	// TODO: make GameInfo struct with game id, started date, players, and other info, return an array of that
-// 	m := make(map[game]bool, len(l.games))
-// 	for _, g := range gl.games {
-// 		m[g] = g.Has(u)
-// 	}
-// 	return m
-// }
+func (l lobbyImpl) getGameInfos(u db.Username) {
+	l.gameInfos <- u
+}
+
+func (l lobbyImpl) sendGameInfos(u db.Username) {
+	p, ok := l.players[u]
+	if !ok {
+		l.log.Printf("Could not send game info to nonexistant player: %v", u)
+	}
+	gameInfos := make([]gameInfo, len(l.gameInfos))
+	for i, g := range l.games {
+		gameInfos[i] = g.info(u) // TODO: use channels
+	}
+	p.sendMessage(gameInfosMessage(gameInfos))
+}
 
 func (l lobbyImpl) run() {
 	for {
@@ -97,6 +107,11 @@ func (l lobbyImpl) run() {
 				l.log.Println("lobby closing because user removal queue closed")
 			}
 			l.remove(u)
+		case u, ok := <-l.gameInfos:
+			if !ok {
+				l.log.Println("lobby closing because game info queue closed")
+			}
+			l.sendGameInfos(u)
 		}
 	}
 }
@@ -120,5 +135,5 @@ func (l lobbyImpl) remove(u db.Username) {
 		return
 	}
 	delete(l.players, u)
-	p.sendMessage(userRemoveMessage(u))
+	p.sendMessage(infoMessage{Type: userRemove, Username: p.username()})
 }
