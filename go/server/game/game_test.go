@@ -13,7 +13,7 @@ func TestCreateTiles_correctAmount(t *testing.T) {
 	want := 144
 	got := 0
 	for _, t := range tiles {
-		if t != 0 {
+		if t.Ch != 0 {
 			got++
 		}
 	}
@@ -27,23 +27,24 @@ func TestCreateTiles_allLetters(t *testing.T) {
 		shuffleTilesFunc: func(tiles []tile) {},
 	}
 	tiles := g.createTiles()
-	m := make(map[tile]bool, 26)
+	m := make(map[letter]bool, 26)
 	for _, v := range tiles {
-		if v < 'A' || v > 'Z' {
+		ch := v.Ch
+		if ch < 'A' || ch > 'Z' {
 			t.Errorf("invalid tile: %v", v)
 		}
-		m[v] = true
+		m[ch] = true
 	}
 	want := 26
 	got := len(m)
 	if want != got {
-		t.Errorf("wanted %v different tiles, but got %v", want, got)
+		t.Errorf("wanted %v different letters, but got %v", want, got)
 	}
 }
 
 func TestCreateTiles_shuffled(t *testing.T) {
 	createTilesShuffledTests := []struct {
-		want      tile
+		want      letter
 		inReverse string
 	}{
 		{'A', ""},
@@ -53,7 +54,7 @@ func TestCreateTiles_shuffled(t *testing.T) {
 		g1 := gameImpl{
 			shuffleTilesFunc: func(tiles []tile) {
 				sort.Slice(tiles, func(i, j int) bool {
-					lessThan := tiles[i] < tiles[j]
+					lessThan := tiles[i].Ch < tiles[j].Ch
 					if len(test.inReverse) > 0 {
 						return !lessThan
 					}
@@ -62,9 +63,23 @@ func TestCreateTiles_shuffled(t *testing.T) {
 			},
 		}
 		g1Tiles := g1.createTiles()
-		got := g1Tiles[0]
+		got := g1Tiles[0].Ch
 		if test.want != got {
 			t.Errorf("expected first tile to be %q when sorted%v (a fake shuffle), but was %q", test.want, test.inReverse, got)
 		}
+	}
+}
+
+func TestCreateTiles_uniqueIds(t *testing.T) {
+	g := gameImpl{
+		shuffleTilesFunc: func(tiles []tile) {},
+	}
+	tiles := g.createTiles()
+	tileIds := make(map[int]bool, len(tiles))
+	for _, tile := range tiles {
+		if _, ok := tileIds[tile.ID]; ok {
+			t.Errorf("tile id %v repeated", tile.ID)
+		}
+		tileIds[tile.ID] = true
 	}
 }

@@ -11,7 +11,7 @@ import (
 
 type (
 	player interface {
-		sendMessage(m message)
+		sendMessage(m messager)
 		username() db.Username
 	}
 	playerImpl struct {
@@ -106,12 +106,11 @@ func (p playerImpl) writeMessages() {
 
 func (p playerImpl) close() {
 	p.lobby.RemoveUser(p.username())
+	m, _ := userRemoveMessage(p.username()).message()
 	if p.game != nil {
-		p.game.handle(message{
-			Type: userRemove,
-			// TODO: be able to specify the username
-		})
+		p.game.handle(m)
 	}
+	close(p.send)
 	p.conn.Close()
 }
 
@@ -137,6 +136,11 @@ func (p playerImpl) handle(m message) {
 	// TODO: notify game/lobby
 }
 
-func (p playerImpl) sendMessage(m message) {
-	p.send <- m
+func (p playerImpl) sendMessage(m messager) {
+	message, err := m.message()
+	if err != nil {
+		p.log.Printf("player message error: %v", err)
+		return
+	}
+	p.send <- message
 }

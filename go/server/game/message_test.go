@@ -2,39 +2,56 @@ package game
 
 import (
 	"encoding/json"
-	"reflect"
-	"strings"
 	"testing"
+
+	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
 )
 
 func TestMessageJSON(t *testing.T) {
 	messageJSONTests := []struct {
-		m message
+		m messager
 		j string
 	}{
 		{
-			m: message{Type: 1},
+			m: messageType(1),
 			j: `{"type":1}`,
 		},
 		{
-			m: message{Type: 2, Info: "Selene started the game."},
-			j: `{"type":2,"message":"Selene started the game."}`,
+			m: infoMessage{Type: 4, Info: "Selene started the game."},
+			j: `{"type":4,"body":"Selene started the game."}`,
 		},
 		{
-			m: message{Type: 9, Info: "Selene snagged a tile.  You got a 'X'.", Tiles: []tile{'X'}},
-			j: `{"type":9,"message":"Selene snagged a tile.  You got a 'X'.","tiles":["X"]}`,
+			m: tilesMessage{Type: 5, Info: "Selene snagged a tile.  You got a 'X'.", Tiles: []tile{{ID: 7, Ch: 'X'}}},
+			j: `{"type":5,"body":{"info":"Selene snagged a tile.  You got a 'X'.","tiles":[{"id":7,"ch":"X"}]}}`,
 		},
 		{
-			m: message{Type: 9, Tiles: []tile{'Q'}},
-			j: `{"type":9,"tiles":["Q"]}`,
+			m: tilesMessage{Type: 6, Tiles: []tile{{ID: 9, Ch: 'Q'}}},
+			j: `{"type":6,"body":{"tiles":[{"id":9,"ch":"Q"}]}}`,
 		},
 		{
-			m: message{Type: 9, Info: "Selene swapped a 'Q' for ['A','B','C'].", Tiles: []tile{'A', 'B', 'C'}},
-			j: `{"type":9,"message":"Selene swapped a 'Q' for ['A','B','C'].","tiles":["A","B","C"]}`,
+			m: tilesMessage{Type: 6, Info: "Selene swapped a 'Q' for ['A','B','C'].", Tiles: []tile{{ID: 3, Ch: 'A'}, {ID: 1, Ch: 'B'}, {ID: 7, Ch: 'C'}}},
+			j: `{"type":6,"body":{"info":"Selene swapped a 'Q' for ['A','B','C'].","tiles":[{"id":3,"ch":"A"},{"id":1,"ch":"B"},{"id":7,"ch":"C"}]}}`,
+		},
+		{
+			m: tilePositionsMessage([]tilePosition{{Tile: tile{ID: 8, Ch: 'R'}, X: 3, Y: 47}}),
+			j: `{"type":9,"body":[{"tile":{"id":8,"ch":"R"},"x":3,"y":47}]}`,
+		},
+		{
+			m: gameInfosMessage([]gameInfo{{Players: []db.Username{"fred", "barney"}, CanJoin: true, CreatedAt: "long_ago"}}),
+			j: `{"type":10,"body":[{"players":["fred","barney"],"canJoin":true,"createdAt":"long_ago"}]}`,
+		},
+		{
+			m: userRemoveMessage("selene"),
+			j: `{"type":11,"body":"selene"}`,
 		},
 	}
 	for i, test := range messageJSONTests {
-		j2, err := json.Marshal(test.m)
+		m1, err := test.m.message()
+		if err != nil {
+			t.Errorf("Test %v: could not create message: %v", i, err)
+			continue
+		}
+		j2, err := json.Marshal(m1)
 		switch {
 		case err != nil:
 			t.Errorf("Test %v (Marshal): unexpected error while marshalling message '%v': %v", i, test.m, err)
@@ -46,29 +63,10 @@ func TestMessageJSON(t *testing.T) {
 		switch {
 		case err != nil:
 			t.Errorf("Test %v (Unmarshal): unexpected error while unmarshalling json '%v': %v", i, test.j, err)
-		case !reflect.DeepEqual(test.m, m2):
-			t.Errorf("Test %v (Unmarshal): expected message to be:\n%v\nbut was:\n%v", i, test.m, m2)
+		case m1.Type != m2.Type:
+			t.Errorf("Test %v (Unmarshal): expected messageType to be:\n%v\nbut was:\n%v", i, m1.Type, m2.Type)
+		case string(m1.Content) != string(m2.Content):
+			t.Errorf("Test %v (Unmarshal): expected message to be:\n%v\nbut was:\n%v", i, string(m1.Content), string(m2.Content))
 		}
-	}
-}
-
-func TestMessage_unmarshalBadTile(t *testing.T) {
-	j := `{"type":9,"tiles":["XYZ"]}`
-	var m message
-	err := json.Unmarshal([]byte(j), &m)
-	switch {
-	case err == nil:
-		t.Errorf("expected unmarshal of %v to fail because the tile is invalid, but produced %v", j, m)
-	case !strings.Contains(err.Error(), "invalid tile"):
-		t.Errorf("expected unmarshal error to be about an invalid tile, but got: %v", err)
-	}
-}
-
-func TestMessage_unmarshalBadJson(t *testing.T) {
-	j := `9`
-	var m message
-	err := json.Unmarshal([]byte(j), &m)
-	if err == nil {
-		t.Errorf("expected unmarshal of %v to fail because the tile is invalid, but produced %v", j, m)
 	}
 }

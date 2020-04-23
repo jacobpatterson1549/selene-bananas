@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
 )
@@ -13,10 +14,12 @@ type (
 
 	game interface {
 		handle(m message)
+		info(u db.Username) gameInfo
 	}
 
 	gameImpl struct {
 		log        *log.Logger
+		createdAt  string
 		words      map[string]bool
 		players    map[db.Username]player
 		started    bool
@@ -34,6 +37,7 @@ func newGame(log *log.Logger, words map[string]bool, p player) game {
 	players := make(map[db.Username]player, 2)
 	g := gameImpl{
 		log:        log,
+		createdAt:  time.Now().String(),
 		words:      words,
 		players:    players,
 		started:    false,
@@ -59,13 +63,28 @@ func (g gameImpl) handle(m message) {
 	g.messages <- m
 }
 
+func (g gameImpl) info(u db.Username) gameInfo {
+	players := make([]db.Username, len(g.players))
+	i := 0
+	_, canJoin := g.players[u]
+	for u := range g.players {
+		players[i] = u
+		i++
+	}
+	return gameInfo{
+		Players:   players,
+		CanJoin:   canJoin,
+		CreatedAt: g.createdAt,
+	}
+}
+
 func (g gameImpl) createTiles() []tile {
 	var tiles []tile
 	add := func(s string, n int) {
 		for i := 0; i < len(s); i++ {
-			r := s[i]
+			ch := s[i]
 			for j := 0; j < n; j++ {
-				tiles = append(tiles, tile(r))
+				tiles = append(tiles, tile{Ch: letter(ch)})
 			}
 		}
 	}
@@ -81,6 +100,10 @@ func (g gameImpl) createTiles() []tile {
 	add("A", 13)
 	add("E", 18)
 	g.shuffleTilesFunc(tiles)
+	for i := range tiles {
+		// t.ID = i + 1
+		tiles[i].ID = i + 1
+	}
 	return tiles
 }
 
@@ -98,7 +121,7 @@ func (g gameImpl) run() {
 
 func (g gameImpl) close() {
 	for _, p := range g.players {
-		p.sendMessage(message{
+		p.sendMessage(infoMessage{
 			Type: gameClose,
 			Info: "game closing",
 		})
@@ -206,8 +229,7 @@ func (g gameImpl) finish(p player) {
 }
 
 func (gameImpl) addTiles(info string, p player, tiles ...tile) {
-	p.sendMessage(message{
-		Type:  userTilesChanged,
+	p.sendMessage(tilesMessage{
 		Info:  info,
 		Tiles: tiles,
 	})

@@ -24,7 +24,6 @@ type (
 		players       map[db.Username]player
 		games         []game
 		maxGames      int
-		messages      chan message
 		userAdditions chan userAddition
 		userRemovals  chan db.Username
 	}
@@ -49,8 +48,8 @@ func NewLobby(log *log.Logger) Lobby {
 		games:         make([]game, 1),
 		players:       make(map[db.Username]player),
 		maxGames:      5,
-		messages:      make(chan message, 16),
 		userAdditions: make(chan userAddition, 16),
+		userRemovals:  make(chan db.Username, 16),
 	}
 	go l.run()
 	return l
@@ -98,12 +97,6 @@ func (l lobbyImpl) run() {
 				l.log.Println("lobby closing because user removal queue closed")
 			}
 			l.remove(u)
-		case m, ok := <-l.messages:
-			if !ok {
-				l.log.Println("lobby closing because message queue closed")
-				return
-			}
-			l.handle(m)
 		}
 	}
 }
@@ -127,16 +120,5 @@ func (l lobbyImpl) remove(u db.Username) {
 		return
 	}
 	delete(l.players, u)
-	p.sendMessage(message{
-		Type: userRemove,
-	})
-}
-
-func (l lobbyImpl) handle(m message) {
-	switch m.Type {
-	case userRemove:
-		// l.remove(m.)
-	default:
-		// TODO: UNKNOWN message
-	}
+	p.sendMessage(userRemoveMessage(u))
 }

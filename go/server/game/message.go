@@ -2,72 +2,113 @@ package game
 
 import (
 	"encoding/json"
-	"fmt"
+
+	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
 )
 
 type (
 	// messageType represents what the purpose of a message is
 	messageType int
+
 	// message contains information to or from a player for a game/lobby
 	message struct {
-		Type  messageType `json:"type"`
-		Info  string      `json:"message,omitempty"`
-		Tiles []tile      `json:"-"`
+		Type    messageType     `json:"type"`
+		Content json.RawMessage `json:"body,omitempty"`
 	}
-	// jsonMessage is used to marshal and unmarshal messages
-	jsonMessage struct {
-		*messageAlias
-		StringTiles []string `json:"tiles,omitempty"`
+
+	messager interface {
+		message() (message, error)
 	}
-	// messageAlias is used to prevent infinite loops in jsonMessage
-	messageAlias message
+
+	infoMessage struct {
+		Type messageType `json:"-"`
+		Info string      `json:"info,omitempty"`
+	}
+
+	tilesMessage struct {
+		// gameSnag/gameSwap messageType
+		Type  messageType `json:"-"`
+		Info  string      `json:"info,omitempty"`
+		Tiles []tile      `json:"tiles"`
+	}
+
+	tilePosition struct {
+		Tile tile `json:"tile"`
+		X    int  `json:"x"`
+		Y    int  `json:"y"`
+	}
+
+	// gameTilePositions messageType
+	tilePositionsMessage []tilePosition
+
+	gameInfo struct {
+		Players   []db.Username `json:"players"`
+		CanJoin   bool          `json:"canJoin"`
+		CreatedAt string        `json:"createdAt"`
+	}
+
+	// gameInfos messageType
+	gameInfosMessage []gameInfo
+
+	// userRemoveMessageType
+	userRemoveMessage db.Username
 )
 
 const (
 	// not using iota because messageTypes are switched on on in javascript
-	gameCreate       messageType = 1
-	gameJoin         messageType = 2
-	gameRemove       messageType = 3
-	gameStart        messageType = 4
-	gameSnag         messageType = 5
-	gameSwap         messageType = 6
-	gameFinish       messageType = 7
-	gameClose        messageType = 8
-	userTilesChanged messageType = 9
-	userMessage      messageType = 10
-	userRemove       messageType = 11
-	gameInfos        messageType = 12
+	gameCreate        messageType = 1
+	gameJoin          messageType = 2
+	gameRemove        messageType = 3
+	gameStart         messageType = 4
+	gameSnag          messageType = 5 // tilesMessage
+	gameSwap          messageType = 6 // tilesMessage
+	gameFinish        messageType = 7
+	gameClose         messageType = 8
+	gameTilePositions messageType = 9  // tilePositionsMessage
+	gameInfos         messageType = 10 // gameInfoMessage
+	userRemove        messageType = 11 // userMessage
 )
 
-// MarshalJSON has special handling to marshal the tiles to strings
-func (m message) MarshalJSON() ([]byte, error) {
-	stringTiles := make([]string, len(m.Tiles))
-	for i, t := range m.Tiles {
-		stringTiles[i] = string(rune(t))
-	}
-	jm := jsonMessage{
-		(*messageAlias)(&m),
-		stringTiles,
-	}
-	return json.Marshal(jm)
+func (mt messageType) message() (message, error) {
+	return message{Type: mt}, nil
 }
 
-// UnmarshalJSON has special handling to unmarshalling tiles from strings
-func (m *message) UnmarshalJSON(b []byte) error {
-	jm := &jsonMessage{messageAlias: (*messageAlias)(m)}
-	err := json.Unmarshal(b, &jm)
-	if err != nil {
-		return err
-	}
-	if len(jm.StringTiles) > 0 {
-		tiles := make([]tile, len(jm.StringTiles))
-		for i, s := range jm.StringTiles {
-			if len(s) != 1 {
-				return fmt.Errorf("invalid tile: %v", s)
-			}
-			tiles[i] = tile(s[0])
-		}
-		m.Tiles = tiles
-	}
-	return nil
+func (im infoMessage) message() (message, error) {
+	content, err := json.Marshal(im.Info)
+	return message{
+		Type:    im.Type,
+		Content: content,
+	}, err
+}
+
+func (tm tilesMessage) message() (message, error) {
+	content, err := json.Marshal(tm)
+	return message{
+		Type:    tm.Type,
+		Content: content,
+	}, err
+}
+
+func (tpm tilePositionsMessage) message() (message, error) {
+	content, err := json.Marshal(tpm)
+	return message{
+		Type:    gameTilePositions,
+		Content: content,
+	}, err
+}
+
+func (gim gameInfosMessage) message() (message, error) {
+	content, err := json.Marshal(gim)
+	return message{
+		Type:    gameInfos,
+		Content: content,
+	}, err
+}
+
+func (urm userRemoveMessage) message() (message, error) {
+	content, err := json.Marshal(urm)
+	return message{
+		Type:    userRemove,
+		Content: content,
+	}, err
 }
