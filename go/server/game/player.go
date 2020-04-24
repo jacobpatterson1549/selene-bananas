@@ -107,7 +107,7 @@ func (p playerImpl) writeMessages() {
 func (p playerImpl) close() {
 	p.lobby.RemoveUser(p.username())
 	if p.game != nil {
-		m, err := infoMessage{Type: userRemove, Username: p.username()}.message()
+		m, err := infoMessage{Type: userClose, Username: p.username()}.message()
 		if err != nil {
 			p.log.Printf("unexpected error trying to send message to remove player from game: %v", err)
 		}

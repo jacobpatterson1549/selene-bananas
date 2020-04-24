@@ -63,15 +63,14 @@ const (
 	// not using iota because messageTypes are switched on on in javascript
 	gameCreate        messageType = 1
 	gameJoin          messageType = 2
-	gameRemove        messageType = 3
+	gameClose         messageType = 3
 	gameStart         messageType = 4
 	gameSnag          messageType = 5 // tilesMessage
 	gameSwap          messageType = 6 // tilesMessage
 	gameFinish        messageType = 7
-	gameClose         messageType = 8
-	gameTilePositions messageType = 9  // tilePositionsMessage
-	gameInfos         messageType = 10 // gameInfoMessage
-	userRemove        messageType = 11 // userMessage
+	gameTilePositions messageType = 8  // tilePositionsMessage
+	gameInfos         messageType = 9  // gameInfoMessage
+	userClose         messageType = 10 // userMessage
 )
 
 func (im infoMessage) message() (message, error) {

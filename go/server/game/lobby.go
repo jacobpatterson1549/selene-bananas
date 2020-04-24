@@ -145,7 +145,7 @@ func (l lobbyImpl) remove(u db.Username) {
 		return
 	}
 	delete(l.players, u)
-	p.sendMessage(infoMessage{Type: userRemove, Username: p.username()})
+	p.sendMessage(infoMessage{Type: userClose, Username: p.username()})
 }
 
 func (l lobbyImpl) sendGameInfos(u db.Username) {

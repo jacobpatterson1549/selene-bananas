@@ -39,27 +39,23 @@ func TestMessageJSON(t *testing.T) {
 		{
 			// TODO: the plan is to use this for tile moved messages, but a new messageType should be created for that
 			m: tilePositionsMessage{TilePositions: []tilePosition{{Tile: tile{ID: 8, Ch: 'R'}, X: 3, Y: 47}}},
-			j: `{"type":9,"body":{"tilePositions":[{"tile":{"id":8,"ch":"R"},"x":3,"y":47}]}}`,
+			j: `{"type":8,"body":{"tilePositions":[{"tile":{"id":8,"ch":"R"},"x":3,"y":47}]}}`,
 		},
 		{
 			m: tilePositionsMessage{},
-			j: `{"type":9,"body":{"tilePositions":null}}`, // TODO: it would be nice to not have a body
+			j: `{"type":8,"body":{"tilePositions":null}}`, // TODO: it would be nice to not have a body
 		},
 		{
 			m: gameInfosMessage([]gameInfo{{Players: []db.Username{"fred", "barney"}, CanJoin: true, CreatedAt: "long_ago"}}),
-			j: `{"type":10,"body":[{"players":["fred","barney"],"canJoin":true,"createdAt":"long_ago"}]}`,
+			j: `{"type":9,"body":[{"players":["fred","barney"],"canJoin":true,"createdAt":"long_ago"}]}`,
 		},
 		{
 			m: gameInfosMessage{},
-			j: `{"type":10,"body":[]}`, // TODO: it would be nice to not have a body
+			j: `{"type":9,"body":[]}`, // TODO: it would be nice to not have a body
 		},
 		{
-			m: infoMessage{Type: gameInfos, Username: "selene"},
+			m: infoMessage{Type: userClose, Username: "selene"},
 			j: `{"type":10,"body":""}`, // TODO: it would be nice to not have a body
-		},
-		{
-			m: infoMessage{Type: userRemove, Username: "selene"},
-			j: `{"type":11,"body":""}`,// TODO: it would be nice to not have a body
 		},
 	}
 	for i, test := range messageJSONTests {
