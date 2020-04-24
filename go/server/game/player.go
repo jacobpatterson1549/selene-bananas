@@ -19,6 +19,7 @@ type (
 )
 
 func (p player) run() {
+	// TODO: start ticker to periodically get gameTilePositions
 	for m := range p.messages {
 		switch m.Type {
 		case gameJoin:

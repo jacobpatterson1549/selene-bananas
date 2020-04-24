@@ -7,6 +7,7 @@ import (
 
 type (
 	// Tile is a piece in the game
+	// TODO: make int a tileID type
 	tile struct {
 		ID int    `json:"id"`
 		Ch letter `json:"ch"`

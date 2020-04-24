@@ -131,7 +131,7 @@ func (l lobby) newGame(p *player) game {
 		log:        l.log,
 		createdAt:  time.Now().String(),
 		words:      l.words,
-		players:    make(map[db.Username]*player, 2),
+		players:    make(map[db.Username]gamePlayerState, 2),
 		started:    false,
 		maxPlayers: 8,
 		messages:   make(chan message, 64),
@@ -146,7 +146,7 @@ func (l lobby) newGame(p *player) game {
 			})
 		},
 	}
-	g.tiles = g.createTiles()
+	g.unusedTiles = g.createTiles()
 	go g.run()
 	return g
 }
