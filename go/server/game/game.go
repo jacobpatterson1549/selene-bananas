@@ -66,15 +66,6 @@ func (g game) createTiles() []tile {
 	return tiles
 }
 
-// func (g game) close() {
-// 	for _, p := range g.players {
-// 		p.sendMessage(message{
-// 			Type: gameDelete,
-// 			Info: "game closing",
-// 		})
-// 	}
-// }
-
 func (g game) run() {
 	messageHandlers := map[messageType]func(message){
 		gameJoin:          g.handleGameJoin,
@@ -83,6 +74,7 @@ func (g game) run() {
 		gameStart:         g.handleGameStart,
 		gameSnag:          g.handleGameSnag,
 		gameFinish:        g.handleGameFinish,
+		gameTileMoved:     g.handleGameTileMoved,
 		gameTilePositions: g.handleGameTilePositions,
 		gameInfos:         g.handleGameInfos,
 		playerDelete:      g.handlePlayerDelete,
@@ -115,11 +107,19 @@ func (g game) handleGameJoin(m message) {
 }
 
 func (g game) handleGameLeave(m message) {
-	// TODO
+	g.messages <- message{
+		Type:   playerDelete,
+		Player: m.Player,
+	}
 }
 
 func (g game) handleGameDelete(m message) {
-	// TODO
+	for _, p := range g.players {
+		g.messages <- message{
+			Type:   playerDelete,
+			Player: p,
+		}
+	}
 }
 
 func (g game) handleGameStart(m message) {
@@ -127,13 +127,19 @@ func (g game) handleGameStart(m message) {
 		m.Player.socket.messages <- message{Type: socketError, Info: "game already started"}
 		return
 	}
-	// TODO: what if no players exist?
+	if len(g.players) == 0 {
+		m.Player.socket.messages <- message{
+			Type: socketError,
+			Info: "cannot start game with no players",
+		}
+		return
+	}
 	g.started = true
 	newTiles := make(map[db.Username][]tile, len(g.players))
 	for t := 0; t < 21; t++ {
 		for u := range g.players {
 			if len(g.tiles) == 0 {
-				g.lobby.messages <- message{
+				m.Player.messages <- message{
 					Type: gameDelete,
 					Info: "deleting game because it can not start because there are not enough tiles",
 				}
@@ -189,8 +195,6 @@ func (g game) handleGameSnag(m message) {
 	}
 }
 
-// TODO: add tile moved action (inbound) differintate from forced player tile refresh
-
 func (g game) handleGameSwap(m message) {
 	if len(m.Tiles) != 1 {
 		m.Player.socket.messages <- message{Type: socketInfo, Info: "no tile specified for swap"}
@@ -232,12 +236,28 @@ func (g game) handleGameFinish(m message) {
 	// TODO
 }
 
+func (g game) handleGameTileMoved(m message) {
+	// TODO
+}
+
 func (g game) handleGameTilePositions(m message) {
 	// TODO
 }
 
 func (g game) handleGameInfos(m message) {
-	// TODO
+	usernames := make([]db.Username, len(g.players))
+	i := 0
+	for u := range g.players {
+		usernames[i] = u
+		i++
+	}
+	_, canJoin := g.players[m.Player.username]
+	gi := gameInfo{
+		Players:   usernames,
+		CanJoin:   canJoin,
+		CreatedAt: g.createdAt,
+	}
+	m.GameInfoChan <- gi
 }
 
 func (g game) handlePlayerDelete(m message) {
@@ -248,6 +268,6 @@ func (g game) handlePlayerDelete(m message) {
 	}
 	delete(g.players, m.Player.username)
 	if len(g.players) == 0 {
-		g.lobby.messages <- message{Type: gameDelete, Info: "automatically deleting game because it has no players"}
+		g.lobby.messages <- message{Type: gameDelete, Info: "deleting game because it has no players"}
 	}
 }

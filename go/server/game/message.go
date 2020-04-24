@@ -15,7 +15,7 @@ type (
 		// pointers for inter-goroutine communication:
 		Player       *player         `json:"-"`
 		Game         *game           `json:"-"`
-		GameInfoChan <-chan gameInfo `json:"-"`
+		GameInfoChan chan<- gameInfo `json:"-"`
 	}
 )
 
@@ -26,13 +26,14 @@ const (
 	gameLeave         messageType = 3
 	gameDelete        messageType = 4
 	gameStart         messageType = 5
-	gameSnag          messageType = 6
-	gameSwap          messageType = 7
-	gameFinish        messageType = 8
-	gameTilePositions messageType = 9
-	gameInfos         messageType = 10
-	playerCreate      messageType = 11
-	playerDelete      messageType = 12
-	socketInfo        messageType = 13
-	socketError       messageType = 14
+	gameFinish        messageType = 6
+	gameSnag          messageType = 7
+	gameSwap          messageType = 8
+	gameTileMoved     messageType = 9
+	gameTilePositions messageType = 10
+	gameInfos         messageType = 11
+	playerCreate      messageType = 12
+	playerDelete      messageType = 13
+	socketInfo        messageType = 14
+	socketError       messageType = 15
 )

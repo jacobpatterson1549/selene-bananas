@@ -24,10 +24,10 @@ func (p player) run() {
 		case gameJoin:
 			p.game = m.Game
 			p.game.messages <- message{Type: gameTilePositions}
-		case gameLeave, gameDelete:
+		case gameLeave, gameDelete: // [postbacks]
 			p.game = nil
 			p.socket.messages <- m
-		case gameStart, gameSnag, gameSwap, gameFinish, gameTilePositions:
+		case gameStart, gameFinish, gameSnag, gameSwap, gameTileMoved:
 			if p.game == nil {
 				err := fmt.Errorf("no game to handle messageType %v", m.Type)
 				p.socket.messages <- message{Type: socketError, Info: err.Error()}

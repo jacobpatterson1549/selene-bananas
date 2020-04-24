@@ -52,7 +52,7 @@ func (s socket) readMessages() {
 		switch m.Type {
 		case gameCreate, gameJoin, gameLeave, gameDelete, gameInfos, playerDelete:
 			s.player.lobby.messages <- m
-		case gameStart, gameSnag, gameSwap, gameFinish, gameTilePositions:
+		case gameStart, gameFinish, gameSnag, gameSwap, gameTileMoved:
 			s.player.messages <- m
 		default:
 			s.log.Printf("player does not know how to handle a messageType of %v", m.Type)

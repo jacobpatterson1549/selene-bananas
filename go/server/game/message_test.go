@@ -23,27 +23,31 @@ func TestMessageJSON(t *testing.T) {
 		},
 		{
 			m: message{Type: gameSnag, Info: "Selene snagged a tile.  You got a 'X'.", Tiles: []tile{{ID: 7, Ch: 'X'}}},
-			j: `{"type":6,"info":"Selene snagged a tile.  You got a 'X'.","tiles":[{"id":7,"ch":"X"}]}`,
+			j: `{"type":7,"info":"Selene snagged a tile.  You got a 'X'.","tiles":[{"id":7,"ch":"X"}]}`,
 		},
 		{
 			m: message{Type: gameSnag, Tiles: []tile{{ID: 9, Ch: 'Q'}}},
-			j: `{"type":6,"tiles":[{"id":9,"ch":"Q"}]}`,
+			j: `{"type":7,"tiles":[{"id":9,"ch":"Q"}]}`,
 		},
 		{
 			m: message{Type: gameSwap, Info: "Selene swapped a 'Q' for ['A','B','C'].", Tiles: []tile{{ID: 3, Ch: 'A'}, {ID: 1, Ch: 'B'}, {ID: 7, Ch: 'C'}}},
-			j: `{"type":7,"info":"Selene swapped a 'Q' for ['A','B','C'].","tiles":[{"id":3,"ch":"A"},{"id":1,"ch":"B"},{"id":7,"ch":"C"}]}`,
+			j: `{"type":8,"info":"Selene swapped a 'Q' for ['A','B','C'].","tiles":[{"id":3,"ch":"A"},{"id":1,"ch":"B"},{"id":7,"ch":"C"}]}`,
+		},
+		{
+			m: message{Type: gameTileMoved, TilePositions: []tilePosition{{Tile: tile{ID: 8, Ch: 'R'}, X: 3, Y: 47}, {Tile: tile{ID: 8, Ch: 'R'}, X: 4, Y: 46}}},
+			j: `{"type":9,"tilePositions":[{"tile":{"id":8,"ch":"R"},"x":3,"y":47},{"tile":{"id":8,"ch":"R"},"x":4,"y":46}]}`,
 		},
 		{
 			m: message{Type: gameTilePositions, TilePositions: []tilePosition{{Tile: tile{ID: 8, Ch: 'R'}, X: 3, Y: 47}}},
-			j: `{"type":9,"tilePositions":[{"tile":{"id":8,"ch":"R"},"x":3,"y":47}]}`,
+			j: `{"type":10,"tilePositions":[{"tile":{"id":8,"ch":"R"},"x":3,"y":47}]}`,
 		},
 		{
 			m: message{Type: gameInfos, GameInfos: []gameInfo{{Players: []db.Username{"fred", "barney"}, CanJoin: true, CreatedAt: "long_ago"}}},
-			j: `{"type":10,"gameInfos":[{"players":["fred","barney"],"canJoin":true,"createdAt":"long_ago"}]}`,
+			j: `{"type":11,"gameInfos":[{"players":["fred","barney"],"canJoin":true,"createdAt":"long_ago"}]}`,
 		},
 		{
 			m: message{Type: gameInfos},
-			j: `{"type":10}`,
+			j: `{"type":11}`,
 		},
 	}
 	for i, test := range messageJSONTests {
