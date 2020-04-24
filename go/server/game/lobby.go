@@ -1,11 +1,12 @@
 package game
 
 import (
-	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"sort"
+	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -17,28 +18,16 @@ type (
 	Lobby interface {
 		AddUser(u db.Username, w http.ResponseWriter, r *http.Request) error
 		RemoveUser(u db.Username)
-		addGame(u db.Username)
-		getGameInfos(u db.Username)
 	}
 
-	lobbyImpl struct {
-		log           *log.Logger
-		upgrader      *websocket.Upgrader
-		words         map[string]bool
-		players       map[db.Username]player
-		games         []game
-		maxGames      int
-		userAdditions chan userAddition
-		userRemovals  chan db.Username
-		gameCreates   chan db.Username
-		gameInfos     chan db.Username
-	}
-
-	userAddition struct {
-		u    db.Username
-		w    http.ResponseWriter
-		r    *http.Request
-		done chan<- error
+	lobby struct {
+		log      *log.Logger
+		upgrader *websocket.Upgrader
+		words    map[string]bool
+		players  map[db.Username]*player
+		games    map[int]game
+		maxGames int
+		messages chan message
 	}
 )
 
@@ -52,142 +41,170 @@ func NewLobby(log *log.Logger, ws WordsSupplier) (Lobby, error) {
 	if err != nil {
 		return nil, err
 	}
-	l := lobbyImpl{
-		log:           log,
-		upgrader:      u,
-		words:         words,
-		games:         make([]game, 1),
-		players:       make(map[db.Username]player),
-		maxGames:      5,
-		userAdditions: make(chan userAddition, 16),
-		userRemovals:  make(chan db.Username, 16),
-		gameCreates:   make(chan db.Username, 4),
-		gameInfos:     make(chan db.Username, 16),
+	l := lobby{
+		log:      log,
+		upgrader: u,
+		words:    words,
+		games:    make(map[int]game),
+		players:  make(map[db.Username]*player),
+		maxGames: 5,
+		messages: make(chan message, 16),
 	}
 	go l.run()
 	return l, nil
 }
 
 // AddUser adds a user to the lobby, it opens a new websocket (player) for the username
-func (l lobbyImpl) AddUser(u db.Username, w http.ResponseWriter, r *http.Request) error {
-	done := make(chan error, 1)
-	ua := userAddition{
-		u:    u,
-		w:    w,
-		r:    r,
-		done: done,
-	}
-	l.userAdditions <- ua
-	return <-done
-}
-
-// RemoveUser removes the user from the lobby an a game, if any
-func (l lobbyImpl) RemoveUser(u db.Username) {
-	l.userRemovals <- u
-}
-
-func (l lobbyImpl) addGame(u db.Username) {
-	l.gameCreates <- u
-}
-
-func (l lobbyImpl) getGameInfos(u db.Username) {
-	l.gameInfos <- u
-}
-
-func (l lobbyImpl) run() {
-	for {
-		select {
-		case ua, ok := <-l.userAdditions:
-			if !ok {
-				l.log.Println("lobby closing because user registration queue closed")
-				return
-			}
-			err := l.add(ua)
-			ua.done <- err
-		case u, ok := <-l.userRemovals:
-			if !ok {
-				l.log.Println("lobby closing because user removal queue closed")
-				return
-			}
-			l.remove(u)
-		case r, ok := <-l.gameInfos:
-			if !ok {
-				l.log.Println("lobby closing because game info queue closed")
-				return
-			}
-			l.sendGameInfos(r)
-		case u, ok := <-l.gameCreates:
-			if !ok {
-				l.log.Println("lobby closing because game creation queue closed")
-				return
-			}
-			l.sendNewGame(u)
-		}
-	}
-}
-
-func (l lobbyImpl) add(ua userAddition) error {
-	if _, ok := l.players[ua.u]; ok {
-		return errors.New("user already in the game lobby")
-	}
-	conn, err := l.upgrader.Upgrade(ua.w, ua.r, nil)
+func (l lobby) AddUser(u db.Username, w http.ResponseWriter, r *http.Request) error {
+	conn, err := l.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return fmt.Errorf("upgrading to websocket connection: %w", err)
 	}
-	p := newPlayer(l.log, l, ua.u, conn)
-	l.players[ua.u] = p
+	p := l.newPlayer(u, conn)
+	l.messages <- message{Type: playerCreate, Player: &p}
 	return nil
 }
 
-func (l lobbyImpl) remove(u db.Username) {
-	p, ok := l.players[u]
-	if !ok {
-		return
+func (l lobby) newPlayer(u db.Username, conn *websocket.Conn) player {
+	s := socket{
+		log:      l.log,
+		conn:     conn,
+		messages: make(chan message, 16),
 	}
-	delete(l.players, u)
-	p.sendMessage(infoMessage{Type: userClose, Username: p.username()})
+	p := player{
+		log:      l.log,
+		username: u,
+		lobby:    &l,
+		socket:   &s,
+		messages: make(chan message, 16),
+	}
+	s.player = &p
+	go s.readMessages()
+	go s.writeMessages()
+	go p.run()
+	return p
 }
 
-func (l lobbyImpl) sendGameInfos(u db.Username) {
-	p, ok := l.players[u]
+// RemoveUser removes the user from the lobby an a game, if any
+func (l lobby) RemoveUser(u db.Username) {
+	l.messages <- message{Type: playerDelete, Player: &player{username: u}}
+}
+
+func (l lobby) run() {
+	messageHandlers := map[messageType]func(message){
+		gameCreate:   l.handleGameCreate,
+		gameJoin:     l.handleGameJoin,
+		gameDelete:   l.handleGameDelete,
+		gameInfos:    l.handleGameInfos,
+		playerCreate: l.handlePlayerCreate,
+		playerDelete: l.handlePlayerDelete,
+	}
+	for m := range l.messages {
+		mh, ok := messageHandlers[m.Type]
+		if !ok {
+			l.log.Printf("lobby does not know how to handle messageType %v", m.Type)
+			continue
+		}
+		mh(m)
+	}
+}
+
+func (l lobby) handleGameCreate(m message) {
+	if len(l.games) >= l.maxGames {
+		m.Player.socket.messages <- message{Type: socketError, Info: "the maximum number of games have already been created"}
+		return
+	}
+	id := 1
+	for existingID := range l.games {
+		if existingID != id {
+			break
+		}
+		id++
+	}
+	g := l.newGame(m.Player)
+	l.games[id] = g
+	m.Player.messages <- message{Type: gameJoin, Game: &g}
+}
+
+func (l lobby) newGame(p *player) game {
+	g := game{
+		log:        l.log,
+		createdAt:  time.Now().String(),
+		words:      l.words,
+		players:    make(map[db.Username]*player, 2),
+		started:    false,
+		maxPlayers: 8,
+		messages:   make(chan message, 64),
+		shuffleTilesFunc: func(tiles []tile) {
+			rand.Shuffle(len(tiles), func(i, j int) {
+				tiles[i], tiles[j] = tiles[j], tiles[i]
+			})
+		},
+		shufflePlayersFunc: func(players []*player) {
+			rand.Shuffle(len(players), func(i, j int) {
+				players[i], players[j] = players[j], players[i]
+			})
+		},
+	}
+	g.tiles = g.createTiles()
+	go g.run()
+	return g
+}
+
+func (l lobby) handleGameJoin(m message) {
+	g, ok := l.games[m.GameID]
 	if !ok {
-		l.log.Printf("Could not send game info to nonexistant player: %v", u)
+		m.Player.socket.messages <- message{Type: socketError, Info: fmt.Sprintf("no game with id %v, please refresh games", m.GameID)}
+		return
 	}
-	n := len(l.gameInfos)
-	c := make(chan gameInfo, n)
+	g.messages <- m
+	m.Player.messages <- message{Type: gameJoin, Game: &g}
+}
+
+func (l lobby) handleGameDelete(m message) {
+	g, ok := l.games[m.GameID]
+	if !ok {
+		m.Player.socket.messages <- message{Type: socketError, Info: fmt.Sprintf("no game with id %v, please refresh games", m.GameID)}
+	}
+	delete(l.games, m.GameID)
+	g.messages <- message{Type: gameDelete}
+}
+
+func (l lobby) handleGameInfos(m message) {
+	c := make(chan gameInfo, len(l.games))
 	for _, g := range l.games {
-		g.infoRequest(gameInfoRequest{u: u, c: c})
+		g.messages <- message{Type: gameInfos, GameInfoChan: c} // TODO: investigate if there is a better way to do this
 	}
-	gameInfos := make([]gameInfo, n)
+	n := len(l.games)
+	s := make([]gameInfo, n)
 	i := 0
 	for {
-		gameInfo, ok := <-c
-		if !ok {
-			l.log.Printf("game info stream closed unexpectedly")
-			return
-		}
-		gameInfos[i] = gameInfo
+		s[i] = <-c
 		i++
 		if i == n {
-			sort.Slice(gameInfos, func(i, j int) bool {
-				return gameInfos[i].CreatedAt < gameInfos[j].CreatedAt
+			sort.Slice(s, func(i, j int) bool {
+				return s[i].CreatedAt < s[j].CreatedAt
 			})
-			p.sendMessage(gameInfosMessage(gameInfos))
+			m.Player.socket.messages <- message{Type: gameInfos, GameInfos: s}
 			return
 		}
 	}
 }
 
-func (l lobbyImpl) sendNewGame(u db.Username) {
-	p, ok := l.players[u]
-	if !ok {
-		l.log.Printf("cannot create new game for nonexistant user: %v", u)
+func (l lobby) handlePlayerCreate(m message) {
+	_, ok := l.players[m.Player.username]
+	if ok {
+		m.Player.socket.messages <- message{Type: socketError, Info: "player already in lobby, replacing connection"}
 	}
-	g := newGame(l.log, l.words, p)
-	if len(l.games) >= l.maxGames {
-		p.sendMessage(infoMessage{Info: "the maximum number of games have already been created"})
+	l.players[m.Player.username] = m.Player
+}
+
+func (l lobby) handlePlayerDelete(m message) {
+	_, ok := l.players[m.Player.username]
+	if !ok {
+		l.log.Printf("player %v not in lobby, cannot remove", m.Player.username)
 		return
 	}
-	l.games = append(l.games, g)
-	l.getGameInfos(u)
+	delete(l.players, m.Player.username)
+	m.Player.messages <- message{Type: playerDelete}
 }

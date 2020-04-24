@@ -147,6 +147,8 @@ func (s server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 		err = s.handleUserCreate(w, r)
 	case "/user_login":
 		err = s.handleUserLogin(w, r)
+	case "/user_join_lobby":
+		err = s.handleUserJoinLobby(w, r, tokenUsername)
 	case "/user_update_password":
 		err = s.handleUserUpdatePassword(w, r, tokenUsername)
 	case "/user_delete":

@@ -12,6 +12,12 @@ type (
 		Ch letter `json:"ch"`
 	}
 
+	tilePosition struct {
+		Tile tile `json:"tile"`
+		X    int  `json:"x"`
+		Y    int  `json:"y"`
+	}
+
 	// Letter is the value of a tile
 	letter rune
 )

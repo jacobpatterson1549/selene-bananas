@@ -44,13 +44,15 @@ func (s server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	return s.addAuthorization(w, u2)
+}
 
-	err = s.lobby.AddUser(u2.Username, w, r)
+func (s server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, tokenUsername db.Username) error {
+	err := s.lobby.AddUser(tokenUsername, w, r)
 	if err != nil {
 		return fmt.Errorf("websocket error: %w", err)
 	}
-
-	return s.addAuthorization(w, u2)
+	return nil
 }
 
 func (s server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request, tokenUsername db.Username) error {

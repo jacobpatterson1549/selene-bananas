@@ -6,7 +6,7 @@ import (
 )
 
 func TestCreateTiles_correctAmount(t *testing.T) {
-	g := gameImpl{
+	g := game{
 		shuffleTilesFunc: func(tiles []tile) {},
 	}
 	tiles := g.createTiles()
@@ -23,7 +23,7 @@ func TestCreateTiles_correctAmount(t *testing.T) {
 }
 
 func TestCreateTiles_allLetters(t *testing.T) {
-	g := gameImpl{
+	g := game{
 		shuffleTilesFunc: func(tiles []tile) {},
 	}
 	tiles := g.createTiles()
@@ -51,7 +51,7 @@ func TestCreateTiles_shuffled(t *testing.T) {
 		{'Z', " IN REVERSE"},
 	}
 	for _, test := range createTilesShuffledTests {
-		g1 := gameImpl{
+		g1 := game{
 			shuffleTilesFunc: func(tiles []tile) {
 				sort.Slice(tiles, func(i, j int) bool {
 					lessThan := tiles[i].Ch < tiles[j].Ch
@@ -71,7 +71,7 @@ func TestCreateTiles_shuffled(t *testing.T) {
 }
 
 func TestCreateTiles_uniqueIds(t *testing.T) {
-	g := gameImpl{
+	g := game{
 		shuffleTilesFunc: func(tiles []tile) {},
 	}
 	tiles := g.createTiles()

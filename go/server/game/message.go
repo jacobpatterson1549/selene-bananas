@@ -1,109 +1,38 @@
 package game
 
-import (
-	"encoding/json"
-
-	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
-)
-
 type (
 	// messageType represents what the purpose of a message is
 	messageType int
 
 	// message contains information to or from a player for a game/lobby
 	message struct {
-		Type     messageType     `json:"type"`
-		Username db.Username     `json:"-"`
-		Content  json.RawMessage `json:"body,omitempty"`
+		Type          messageType    `json:"type"`
+		Info          string         `json:"info,omitempty"`
+		Tiles         []tile         `json:"tiles,omitempty"`
+		TilePositions []tilePosition `json:"tilePositions,omitempty"`
+		GameInfos     []gameInfo     `json:"gameInfos,omitempty"`
+		GameID        int            `json:"gameID,omitempty"`
+		// pointers for inter-goroutine communication:
+		Player       *player         `json:"-"`
+		Game         *game           `json:"-"`
+		GameInfoChan <-chan gameInfo `json:"-"`
 	}
-
-	// messager is used to know what should handle inbound and outbound messages between the lobby, game, players (websockets)
-	messager interface {
-		message() (message, error)
-	}
-
-	infoMessage struct {
-		Type     messageType `json:"-"`
-		Username db.Username `json:"-"`
-		Info     string      `json:"info,omitempty"`
-	}
-
-	// gameSnag/gameSwap messageType
-	tilesMessage struct {
-		Type     messageType `json:"-"`
-		Username db.Username `json:"-"`
-		Info     string      `json:"info,omitempty"`
-		Tiles    []tile      `json:"tiles"`
-	}
-
-	tilePosition struct {
-		Tile tile `json:"tile"`
-		X    int  `json:"x"`
-		Y    int  `json:"y"`
-	}
-
-	// gameTilePositions messageType
-	tilePositionsMessage struct {
-		Username      db.Username    `json:"-"`
-		TilePositions []tilePosition `json:"tilePositions"`
-	}
-
-	gameInfo struct {
-		Username  db.Username   `json:"-"`
-		Players   []db.Username `json:"players"`
-		CanJoin   bool          `json:"canJoin"`
-		CreatedAt string        `json:"createdAt"`
-	}
-
-	// gameInfos messageType
-	gameInfosMessage []gameInfo
 )
 
 const (
 	// not using iota because messageTypes are switched on on in javascript
 	gameCreate        messageType = 1
 	gameJoin          messageType = 2
-	gameClose         messageType = 3
-	gameStart         messageType = 4
-	gameSnag          messageType = 5 // tilesMessage
-	gameSwap          messageType = 6 // tilesMessage
-	gameFinish        messageType = 7
-	gameTilePositions messageType = 8  // tilePositionsMessage
-	gameInfos         messageType = 9  // gameInfoMessage
-	userClose         messageType = 10 // userMessage
+	gameLeave         messageType = 3
+	gameDelete        messageType = 4
+	gameStart         messageType = 5
+	gameSnag          messageType = 6
+	gameSwap          messageType = 7
+	gameFinish        messageType = 8
+	gameTilePositions messageType = 9
+	gameInfos         messageType = 10
+	playerCreate      messageType = 11
+	playerDelete      messageType = 12
+	socketInfo        messageType = 13
+	socketError       messageType = 14
 )
-
-func (im infoMessage) message() (message, error) {
-	content, err := json.Marshal(im.Info)
-	return message{
-		Type:     im.Type,
-		Username: im.Username,
-		Content:  content,
-	}, err
-}
-
-func (tm tilesMessage) message() (message, error) {
-	content, err := json.Marshal(tm)
-	return message{
-		Type:     tm.Type,
-		Username: tm.Username,
-		Content:  content,
-	}, err
-}
-
-func (tpm tilePositionsMessage) message() (message, error) {
-	content, err := json.Marshal(tpm)
-	return message{
-		Type:     gameTilePositions,
-		Username: tpm.Username,
-		Content:  content,
-	}, err
-}
-
-func (gim gameInfosMessage) message() (message, error) {
-	content, err := json.Marshal(gim)
-	return message{
-		Type:    gameInfos,
-		Content: content,
-	}, err
-}
