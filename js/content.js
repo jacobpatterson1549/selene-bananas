@@ -2,12 +2,12 @@ var webSocket;
 
 var content = {
     setLoggedIn: function (state) {
-        var loginElement = document.getElementById("login");
+        var loginElement = document.getElementById("has-login");
         loginElement.checked = state;
     },
 
     isLoggedIn: function () {
-        var loginElement = document.getElementById("login");
+        var loginElement = document.getElementById("has-login");
         return loginElement.checked;
     },
 

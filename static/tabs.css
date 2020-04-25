@@ -39,14 +39,22 @@
     margin: 1em;
 }
 
-#login:checked+.tabs>div.logout-required {
+#has-login:checked+.tabs>div.logout-required {
     display: none;
 }
 
-#login:not(:checked)+.tabs>div.login-required {
+#has-login:not(:checked)+.tabs>div.login-required {
     display: none;
 }
 
 .tabs>div>input:checked+label+div {
     display: block;
+}
+
+#has-game-infos:not(:checked)+div {
+    display:none;
+}
+
+#has-game:not(:checked)+div {
+    display: none;
 }
