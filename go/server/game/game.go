@@ -14,6 +14,7 @@ import (
 type (
 	game struct {
 		log         *log.Logger
+		lobby       *lobby
 		createdAt   string
 		words       map[string]bool
 		players     map[db.Username]gamePlayerState
@@ -94,6 +95,7 @@ func (g game) run() {
 		// TODO: validate Player, Tiles, TilePositions, ensure certain fields not set, ...
 		mh(m)
 	}
+	g.log.Printf("game closed")
 }
 
 func (g game) handleGameJoin(m message) {
@@ -131,6 +133,7 @@ func (g game) handleGameDelete(m message) {
 		g.messages <- message{
 			Type:   playerDelete,
 			Player: gps.player,
+			Info:   m.Info,
 		}
 	}
 }
@@ -373,7 +376,7 @@ func (g game) handlePlayerDelete(m message) {
 	// Note that this makes the player's tiles disappear
 	delete(g.players, m.Player.username)
 	if len(g.players) == 0 {
-		m.Player.lobby.messages <- message{Type: gameDelete, Info: "deleting game because it has no players"}
+		g.lobby.messages <- message{Type: gameDelete, Info: "deleting game because it has no players"}
 	}
 }
 

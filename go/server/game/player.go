@@ -29,26 +29,29 @@ func (p player) run() {
 			p.game = nil
 			p.socket.messages <- m
 		case socketInfo, socketError, gameInfos:
-			p.game = nil
 			p.socket.messages <- m
 		case gameStart, gameFinish, gameSnag, gameSwap, gameTileMoved:
 			if p.game == nil {
-				err := fmt.Errorf("no game to handle messageType %v", m.Type)
-				p.socket.messages <- message{Type: socketError, Info: err.Error()}
-				return
+				p.socket.messages <- message{
+					Type: socketError,
+					Info: fmt.Sprintf("no game to handle messageType %v", m.Type),
+				}
+				continue
 			}
 			p.game.messages <- m
 		case playerDelete:
-			if p.game != nil {
-				p.game.messages <- message{Type: playerDelete, Player: &p}
-				p.game = nil
-			}
-			if p.socket != nil {
-				close(p.socket.messages)
-				p.socket = nil
-			}
+			break
 		default:
-			p.log.Printf("player does not know how to handle messageType %v", m.Type)
+			p.log.Printf("player %v does not know how to handle messageType %v", p.username, m.Type)
 		}
 	}
+	if p.game != nil {
+		p.game.messages <- message{Type: playerDelete, Player: &p}
+		p.game = nil
+	}
+	if p.socket != nil {
+		close(p.socket.messages)
+		p.socket = nil
+	}
+	p.log.Printf("player %v closed", p.username)
 }

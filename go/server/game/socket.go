@@ -50,7 +50,9 @@ func (s socket) readMessages() {
 		s.log.Printf("receiving messages from %v: %v", s.player.username, m)
 		m.Player = s.player
 		switch m.Type {
-		case gameCreate, gameJoin, gameLeave, gameDelete, gameInfos, playerDelete:
+		case gameDelete:
+			s.player.lobby.messages <- message{Type: gameDelete, Info: fmt.Sprintf("%v deleted the game", s.player.username)}
+		case gameCreate, gameJoin, gameLeave, gameInfos, playerDelete:
 			s.player.lobby.messages <- m
 		case gameStart, gameFinish, gameSnag, gameSwap, gameTileMoved:
 			s.player.messages <- m

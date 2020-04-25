@@ -109,6 +109,13 @@ func (l lobby) run() {
 		}
 		mh(m)
 	}
+	for _, p := range l.players {
+		p.messages <- message{Type: playerDelete, Info: "lobby closing"}
+	}
+	for _, g := range l.games {
+		g.messages <- message{Type: gameDelete, Info: "lobby closing"}
+	}
+	l.log.Printf("lobby closed")
 }
 
 func (l lobby) handleGameCreate(m message) {
@@ -170,7 +177,7 @@ func (l lobby) handleGameDelete(m message) {
 		m.Player.messages <- message{Type: socketError, Info: fmt.Sprintf("no game with id %v, please refresh games", m.GameID)}
 	}
 	delete(l.games, m.GameID)
-	g.messages <- message{Type: gameDelete}
+	g.messages <- message{Type: gameDelete, Info: m.Info}
 }
 
 func (l lobby) handleGameInfos(m message) {
@@ -203,11 +210,11 @@ func (l lobby) handlePlayerCreate(m message) {
 }
 
 func (l lobby) handlePlayerDelete(m message) {
-	_, ok := l.players[m.Player.username]
+	p, ok := l.players[m.Player.username]
 	if !ok {
 		l.log.Printf("player %v not in lobby, cannot remove", m.Player.username)
 		return
 	}
-	delete(l.players, m.Player.username)
-	m.Player.messages <- message{Type: playerDelete}
+	delete(l.players, p.username)
+	p.messages <- message{Type: playerDelete}
 }
