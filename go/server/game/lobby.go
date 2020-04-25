@@ -113,7 +113,7 @@ func (l lobby) run() {
 
 func (l lobby) handleGameCreate(m message) {
 	if len(l.games) >= l.maxGames {
-		m.Player.socket.messages <- message{Type: socketError, Info: "the maximum number of games have already been created"}
+		m.Player.messages <- message{Type: socketError, Info: "the maximum number of games have already been created"}
 		return
 	}
 	id := 1
@@ -157,7 +157,7 @@ func (l lobby) newGame(p *player) game {
 func (l lobby) handleGameJoin(m message) {
 	g, ok := l.games[m.GameID]
 	if !ok {
-		m.Player.socket.messages <- message{Type: socketError, Info: fmt.Sprintf("no game with id %v, please refresh games", m.GameID)}
+		m.Player.messages <- message{Type: socketError, Info: fmt.Sprintf("no game with id %v, please refresh games", m.GameID)}
 		return
 	}
 	g.messages <- m
@@ -167,7 +167,7 @@ func (l lobby) handleGameJoin(m message) {
 func (l lobby) handleGameDelete(m message) {
 	g, ok := l.games[m.GameID]
 	if !ok {
-		m.Player.socket.messages <- message{Type: socketError, Info: fmt.Sprintf("no game with id %v, please refresh games", m.GameID)}
+		m.Player.messages <- message{Type: socketError, Info: fmt.Sprintf("no game with id %v, please refresh games", m.GameID)}
 	}
 	delete(l.games, m.GameID)
 	g.messages <- message{Type: gameDelete}
@@ -188,7 +188,7 @@ func (l lobby) handleGameInfos(m message) {
 			sort.Slice(s, func(i, j int) bool {
 				return s[i].CreatedAt < s[j].CreatedAt
 			})
-			m.Player.socket.messages <- message{Type: gameInfos, GameInfos: s}
+			m.Player.messages <- message{Type: gameInfos, GameInfos: s}
 			return
 		}
 	}
@@ -197,7 +197,7 @@ func (l lobby) handleGameInfos(m message) {
 func (l lobby) handlePlayerCreate(m message) {
 	_, ok := l.players[m.Player.username]
 	if ok {
-		m.Player.socket.messages <- message{Type: socketError, Info: "player already in lobby, replacing connection"}
+		m.Player.messages <- message{Type: socketError, Info: "player already in lobby, replacing connection"}
 	}
 	l.players[m.Player.username] = m.Player
 }

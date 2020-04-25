@@ -15,8 +15,8 @@ var user = {
                     usernameElements[i].setAttribute("readonly", true);
                 }
                 document.querySelector("input.points").value = user.points;
-                var userModifyTab = document.getElementById("tab-3");
-                userModifyTab.checked = true;
+                var lobbyTab = document.getElementById("tab-4");
+                lobbyTab.checked = true;
                 content.setLoggedIn(true);
                 // TODO: create websocket
             });
@@ -40,7 +40,7 @@ var user = {
     request: function (event) {
         event.preventDefault();
         var form = event.target;
-        var method = form.method
+        var method = form.method;
         var url = form.action;
         var host = window.location.host;
         var hostIndex = url.indexOf(host);

@@ -118,6 +118,18 @@ func (s server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return fmt.Errorf("rendering template: %w", err)
 		}
+	case "/user_join_lobby":
+		err := r.ParseForm()
+		if err != nil {
+			return fmt.Errorf("parsing form: %w", err)
+		}
+		tokenString := r.FormValue("access_token")
+		tokenUsername, err := s.tokenizer.Read(tokenString)
+		if err != nil {
+			httpError(w, http.StatusUnauthorized)
+			return nil
+		}
+		err = s.handleUserJoinLobby(w, r, tokenUsername)
 	case "/user_logout":
 		_, err := s.checkAuthorization(r)
 		if err != nil {
@@ -147,8 +159,6 @@ func (s server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 		err = s.handleUserCreate(w, r)
 	case "/user_login":
 		err = s.handleUserLogin(w, r)
-	case "/user_join_lobby":
-		err = s.handleUserJoinLobby(w, r, tokenUsername)
 	case "/user_update_password":
 		err = s.handleUserUpdatePassword(w, r, tokenUsername)
 	case "/user_delete":

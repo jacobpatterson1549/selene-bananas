@@ -1,4 +1,9 @@
-<button type="button" onclick="game.infos()">Refresh games</button>
+<form method="get" action="/user_join_lobby" onsubmit="game.infos(event)">
+    <fieldset>
+        <legend>Refresh Games</legend>
+        <input type="submit">
+    </fieldset>
+</form>
 <input type="checkbox" id="has-game-infos" hidden>
 <div class=".game-infos">
     <!-- TODO: game selection grid -->

@@ -28,6 +28,9 @@ func (p player) run() {
 		case gameLeave, gameDelete: // [postbacks]
 			p.game = nil
 			p.socket.messages <- m
+		case socketInfo, socketError, gameInfos:
+			p.game = nil
+			p.socket.messages <- m
 		case gameStart, gameFinish, gameSnag, gameSwap, gameTileMoved:
 			if p.game == nil {
 				err := fmt.Errorf("no game to handle messageType %v", m.Type)
@@ -36,8 +39,14 @@ func (p player) run() {
 			}
 			p.game.messages <- m
 		case playerDelete:
-			p.game = nil
-			close(p.socket.messages)
+			if p.game != nil {
+				p.game.messages <- message{Type: playerDelete, Player: &p}
+				p.game = nil
+			}
+			if p.socket != nil {
+				close(p.socket.messages)
+				p.socket = nil
+			}
 		default:
 			p.log.Printf("player does not know how to handle messageType %v", m.Type)
 		}

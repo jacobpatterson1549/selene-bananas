@@ -1,6 +1,11 @@
 var game = {
     infos: function (event) {
-        console.log("TODO: get game infos");
+        event.preventDefault();
+        websocket.connect(event).then(connected => {
+            if (connected) {
+                console.log("TODO: get game infos");
+            }
+        });
     },
 
     create: function (event) {

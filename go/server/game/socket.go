@@ -94,7 +94,8 @@ func (s socket) writeMessages() {
 }
 
 func (s socket) close() {
-	close(s.player.messages)
+	s.log.Printf("closing socket connection for %v", s.player.username)
+	s.player.messages <- message{Type: playerDelete}
 	s.conn.Close()
 }
 
