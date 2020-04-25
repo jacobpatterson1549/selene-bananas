@@ -29,6 +29,7 @@ type (
 	}
 
 	gameInfo struct {
+		ID        int           `json:"id"`
 		Players   []db.Username `json:"players"`
 		CanJoin   bool          `json:"canJoin"`
 		CreatedAt string        `json:"createdAt"`
@@ -119,6 +120,7 @@ func (g game) handleGameJoin(m message) {
 		usedTileLocs: make(map[int]map[int]tile),
 		winPoints:    10,
 	}
+	m.Player.messages <- message{Type: socketInfo, Info: "Game joined"} // tODO: pass player's tiles, tile positions...
 }
 
 func (g game) handleGameLeave(m message) {
@@ -361,8 +363,12 @@ func (g game) handleGameInfos(m message) {
 		usernames[i] = u
 		i++
 	}
+	// TODO: allow players to join games they previously left.
+	//Also, do not delete games if players leave -> their connections may have died.
+	//add cleanup timer to game when num players == 0, reset when players join...
 	_, canJoin := g.players[m.Player.username]
 	gi := gameInfo{
+		ID:        m.GameID,
 		Players:   usernames,
 		CanJoin:   canJoin,
 		CreatedAt: g.createdAt,

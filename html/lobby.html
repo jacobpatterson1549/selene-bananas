@@ -1,13 +1,37 @@
-<form method="get" action="/user_join_lobby" onsubmit="lobby.gameInfos(event)">
+<form method="get" action="/user_join_lobby" onsubmit="lobby.getGameInfos(event)">
     <fieldset>
         <legend>Refresh Games</legend>
         <input type="submit">
     </fieldset>
 </form>
-<input type="checkbox" id="has-game-infos" hidden>
-<div class=".game-infos">
-    <!-- TODO: game selection grid -->
-    <button type="button" id="game-create" onclick="game.create()">Create Game</button>
-</div>
 <input type="checkbox" id="has-websocket" hidden>
-<button type="button" id="leave-lobby" onclick="lobby.leave()">Leave Lobby</button>
+<div>
+    <table id="game-infos">
+        <thead>
+            <tr>
+                <th>Created</th>
+                <th>Players</th>
+                <th>State</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <template id="no-game-info-row">
+        <tr>
+            <td colspan="3">No games exist.  Create one.</td>
+        </tr>
+    </template>
+    <template id="game-info-row">
+        <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+    </template>
+    <template id="join-game-button">
+        <input type="number" class="game-id" hidden>
+        <button type="button" id="game-join" onclick="game.join(event)">Join</button>    
+    </template>
+    <button type="button" id="game-create" onclick="game.create(event)">Create Game</button>
+    <button type="button" id="leave-lobby" onclick="lobby.leave(event)">Leave Lobby</button>
+</div>

@@ -20,11 +20,12 @@ type (
 
 func (p player) run() {
 	// TODO: start ticker to periodically get gameTilePositions
+	// TODO: add inactivity timeout (10 min)
 	for m := range p.messages {
 		switch m.Type {
 		case gameJoin:
 			p.game = m.Game
-			p.game.messages <- message{Type: gameTilePositions}
+			p.game.messages <- message{Type: gameJoin, Player: &p}
 		case gameLeave, gameDelete: // [postbacks]
 			p.game = nil
 			p.socket.messages <- m
@@ -38,6 +39,7 @@ func (p player) run() {
 				}
 				continue
 			}
+			m.Player = &p
 			p.game.messages <- m
 		case playerDelete:
 			break

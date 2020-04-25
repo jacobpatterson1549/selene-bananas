@@ -1,11 +1,14 @@
 var game = {
 
     create: function (event) {
-        console.log("TODO: create game");
+        websocket.send({ type: 1 }); // gameCreate
     },
 
     join: function (event) {
-        console.log("TODO: join game");
+        var joinGameButton = event.srcElement;
+        var gameIdInput = joinGameButton.previousElementSibling;
+        var gameId = parseInt(gameIdInput.value);
+        websocket.send({ type: 2, gameID: gameId }); // gameJoin
     },
 
     leave: function (event) {

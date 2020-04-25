@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -41,7 +42,11 @@ func (s socket) readMessages() {
 		var m message
 		err := s.conn.ReadJSON(&m)
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			if _, ok := err.(*json.UnmarshalTypeError); ok {
+				s.messages <- message{Type: socketError, Info: err.Error()}
+				continue
+			}
+			if _, ok := err.(*websocket.CloseError); !ok || websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
 				s.log.Print("unexpected websocket closure", err)
 			}
 			s.close()

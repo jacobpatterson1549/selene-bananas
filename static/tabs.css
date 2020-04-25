@@ -59,6 +59,6 @@
     display: none;
 }
 
-#has-websocket:not(:checked)+button {
+#has-websocket:not(:checked)+div {
     display: none;
 }

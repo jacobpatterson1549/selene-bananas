@@ -138,7 +138,7 @@ func (l lobby) handleGameCreate(m message) {
 func (l lobby) newGame(p *player) game {
 	g := game{
 		log:        l.log,
-		createdAt:  time.Now().String(),
+		createdAt:  time.Now().Format(time.UnixDate),
 		words:      l.words,
 		players:    make(map[db.Username]gamePlayerState, 2),
 		userDao:    l.userDao,
@@ -182,23 +182,25 @@ func (l lobby) handleGameDelete(m message) {
 
 func (l lobby) handleGameInfos(m message) {
 	c := make(chan gameInfo, len(l.games))
-	for _, g := range l.games {
-		g.messages <- message{Type: gameInfos, GameInfoChan: c} // TODO: investigate if there is a better way to do this
+	for id, g := range l.games {
+		g.messages <- message{Type: gameInfos, Player: m.Player, GameInfoChan: c, GameID: id} // TODO: investigate if there is a better way to do this
 	}
 	n := len(l.games)
 	s := make([]gameInfo, n)
-	i := 0
-	for {
-		s[i] = <-c
-		i++
-		if i == n {
-			sort.Slice(s, func(i, j int) bool {
-				return s[i].CreatedAt < s[j].CreatedAt
-			})
-			m.Player.messages <- message{Type: gameInfos, GameInfos: s}
-			return
+	if n > 0 {
+		i := 0
+		for {
+			s[i] = <-c
+			i++
+			if i == n {
+				break
+			}
 		}
 	}
+	sort.Slice(s, func(i, j int) bool {
+		return s[i].CreatedAt < s[j].CreatedAt
+	})
+	m.Player.messages <- message{Type: gameInfos, GameInfos: s}
 }
 
 func (l lobby) handlePlayerCreate(m message) {
