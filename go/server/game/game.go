@@ -1,6 +1,7 @@
 package game
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"sort"
@@ -74,8 +75,9 @@ func (g game) run() {
 		gameLeave:         g.handleGameLeave,
 		gameDelete:        g.handleGameDelete,
 		gameStart:         g.handleGameStart,
-		gameSnag:          g.handleGameSnag,
 		gameFinish:        g.handleGameFinish,
+		gameSnag:          g.handleGameSnag,
+		gameSwap:          g.handleGameSwap,
 		gameTileMoved:     g.handleGameTileMoved,
 		gameTilePositions: g.handleGameTilePositions,
 		gameInfos:         g.handleGameInfos,
@@ -169,6 +171,38 @@ func (g game) handleGameStart(m message) {
 	}
 }
 
+func (g game) handleGameFinish(m message) {
+	if len(g.unusedTiles) != 0 {
+		m.Player.socket.messages <- message{Type: socketError, Info: "peel first"}
+		return
+	}
+	gps := g.players[m.Player.username]
+	if len(gps.unusedTiles) != 0 {
+		// TODO: lower points for player
+		m.Player.socket.messages <- message{Type: socketError, Info: "not all letters used"}
+		return
+	}
+	usedWords := gps.usedWords()
+	invalidWords := make([]string, 8)
+	for _, w := range usedWords {
+		if _, ok := g.words[w]; !ok {
+			invalidWords = append(invalidWords, w)
+		}
+	}
+	if len(invalidWords) > 0 {
+		m.Player.socket.messages <- message{
+			Type: socketError,
+			Info: fmt.Sprintf("invalid words: %v", invalidWords),
+		}
+		return
+	}
+	info := fmt.Sprintf("%v won, creating %v words", m.Player.username, len(usedWords))
+	for _, gps := range g.players {
+		gps.player.socket.messages <- message{Type: socketInfo, Info: info}
+	}
+	g.messages <- message{Type: gameDelete}
+}
+
 func (g game) handleGameSnag(m message) {
 	if len(g.unusedTiles) == 0 {
 		m.Player.socket.messages <- message{Type: socketInfo, Info: "no tiles left to snag, use what you have to finish"}
@@ -240,14 +274,6 @@ func (g game) handleGameSwap(m message) {
 			}
 		}
 	}
-}
-
-func (g game) handleGameFinish(m message) {
-	if len(g.unusedTiles) != 0 || len(g.players[m.Player.username].unusedTiles) != 0 {
-		// TODO: lower points for player
-		return
-	}
-	// TODO
 }
 
 func (g game) handleGameTileMoved(m message) {
@@ -339,4 +365,72 @@ func (g game) handlePlayerDelete(m message) {
 	if len(g.players) == 0 {
 		m.Player.lobby.messages <- message{Type: gameDelete, Info: "deleting game because it has no players"}
 	}
+}
+
+func (gps gamePlayerState) usedWords() []string {
+	return append(gps.usedWordsY(), gps.usedWordsX()...)
+}
+
+func (gps gamePlayerState) usedWordsY() []string {
+	usedWords := make([]string, 32)
+	for _, yTiles := range gps.usedTileLocs {
+		tilePositions := make([]tilePosition, len(yTiles))
+		i := 0
+		for _, t := range yTiles {
+			tilePositions[i] = gps.usedTiles[t.ID]
+			i++
+		}
+		sort.Slice(tilePositions, func(i, j int) bool {
+			return tilePositions[i].X < tilePositions[j].X
+		})
+		buffer := new(bytes.Buffer)
+		for i, tp := range tilePositions {
+			if i > 1 && tilePositions[i-1].X < tp.X-1 && buffer.Len() > 0 {
+				usedWords = append(usedWords, buffer.String())
+				buffer = new(bytes.Buffer)
+			}
+			buffer.WriteString(tp.Tile.Ch.String())
+			if i+1 == len(tilePositions) {
+				usedWords = append(usedWords, buffer.String())
+			}
+		}
+	}
+	return usedWords
+}
+
+func (gps gamePlayerState) usedWordsX() []string {
+	usedTilesYx := make(map[int]map[int]tile)
+	for x, yTiles := range gps.usedTileLocs {
+		for y, t := range yTiles {
+			if _, ok := usedTilesYx[y]; !ok {
+				usedTilesYx[y] = make(map[int]tile)
+			}
+			usedTilesYx[y][x] = t
+		}
+	}
+	// similar to usedWordsX, but on different map, uses Y instead of x
+	usedWords := make([]string, 32)
+	for _, xTiles := range usedTilesYx {
+		tilePositions := make([]tilePosition, len(xTiles))
+		i := 0
+		for _, t := range xTiles {
+			tilePositions[i] = gps.usedTiles[t.ID]
+			i++
+		}
+		sort.Slice(tilePositions, func(i, j int) bool {
+			return tilePositions[i].Y < tilePositions[j].Y
+		})
+		buffer := new(bytes.Buffer)
+		for i, tp := range tilePositions {
+			if i > 1 && tilePositions[i-1].Y < tp.Y-1 && buffer.Len() > 0 {
+				usedWords = append(usedWords, buffer.String())
+				buffer = new(bytes.Buffer)
+			}
+			buffer.WriteString(tp.Tile.Ch.String())
+			if i+1 == len(tilePositions) {
+				usedWords = append(usedWords, buffer.String())
+			}
+		}
+	}
+	return usedWords
 }
