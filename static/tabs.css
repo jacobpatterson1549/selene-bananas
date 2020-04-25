@@ -58,3 +58,7 @@
 #has-game:not(:checked)+div {
     display: none;
 }
+
+#has-websocket:not(:checked)+button {
+    display: none;
+}

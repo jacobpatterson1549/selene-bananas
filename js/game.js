@@ -1,12 +1,4 @@
 var game = {
-    infos: function (event) {
-        event.preventDefault();
-        websocket.connect(event).then(connected => {
-            if (connected) {
-                console.log("TODO: get game infos");
-            }
-        });
-    },
 
     create: function (event) {
         console.log("TODO: create game");
@@ -44,7 +36,7 @@ var game = {
         console.log("TODO: move tile");
     },
 
-    setTilePositions: function(unusedTiles, usedTilePositions) {
+    setTilePositions: function (unusedTiles, usedTilePositions) {
         console.log("TODO: set tile positions")
     },
 };

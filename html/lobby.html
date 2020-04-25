@@ -1,4 +1,4 @@
-<form method="get" action="/user_join_lobby" onsubmit="game.infos(event)">
+<form method="get" action="/user_join_lobby" onsubmit="lobby.gameInfos(event)">
     <fieldset>
         <legend>Refresh Games</legend>
         <input type="submit">
@@ -9,3 +9,5 @@
     <!-- TODO: game selection grid -->
     <button type="button" id="game-create" onclick="game.create()">Create Game</button>
 </div>
+<input type="checkbox" id="has-websocket" hidden>
+<button type="button" id="leave-lobby" onclick="lobby.leave()">Leave Lobby</button>

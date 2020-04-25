@@ -1,6 +1,5 @@
-var webSocket;
-
 var content = {
+
     setLoggedIn: function (state) {
         var loginElement = document.getElementById("has-login");
         loginElement.checked = state;

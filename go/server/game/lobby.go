@@ -207,6 +207,7 @@ func (l lobby) handlePlayerCreate(m message) {
 		m.Player.messages <- message{Type: socketError, Info: "player already in lobby, replacing connection"}
 	}
 	l.players[m.Player.username] = m.Player
+	l.log.Printf("%v joined the lobby", m.Player.username)
 }
 
 func (l lobby) handlePlayerDelete(m message) {
@@ -217,4 +218,5 @@ func (l lobby) handlePlayerDelete(m message) {
 	}
 	delete(l.players, p.username)
 	p.messages <- message{Type: playerDelete}
+	l.log.Printf("%v left the lobby", m.Player.username)
 }

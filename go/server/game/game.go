@@ -126,6 +126,7 @@ func (g game) handleGameLeave(m message) {
 		Type:   playerDelete,
 		Player: m.Player,
 	}
+	g.log.Printf("%v left a game", m.Player.username)
 }
 
 func (g game) handleGameDelete(m message) {
@@ -136,6 +137,7 @@ func (g game) handleGameDelete(m message) {
 			Info:   m.Info,
 		}
 	}
+	g.log.Print("game deleted")
 }
 
 func (g game) handleGameStart(m message) {
@@ -175,6 +177,7 @@ func (g game) handleGameStart(m message) {
 			gps.unusedTiles[t.ID] = t
 		}
 	}
+	g.log.Print("game started")
 }
 
 func (g game) handleGameFinish(m message) {
