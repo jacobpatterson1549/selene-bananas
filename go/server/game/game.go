@@ -196,6 +196,7 @@ func (g game) handleGameFinish(m message) {
 		}
 		return
 	}
+	// TODO: update points for winners and other participants
 	info := fmt.Sprintf("%v won, creating %v words", m.Player.username, len(usedWords))
 	for _, gps := range g.players {
 		gps.player.socket.messages <- message{Type: socketInfo, Info: info}
@@ -372,30 +373,7 @@ func (gps gamePlayerState) usedWords() []string {
 }
 
 func (gps gamePlayerState) usedWordsY() []string {
-	usedWords := make([]string, 32)
-	for _, yTiles := range gps.usedTileLocs {
-		tilePositions := make([]tilePosition, len(yTiles))
-		i := 0
-		for _, t := range yTiles {
-			tilePositions[i] = gps.usedTiles[t.ID]
-			i++
-		}
-		sort.Slice(tilePositions, func(i, j int) bool {
-			return tilePositions[i].X < tilePositions[j].X
-		})
-		buffer := new(bytes.Buffer)
-		for i, tp := range tilePositions {
-			if i > 1 && tilePositions[i-1].X < tp.X-1 && buffer.Len() > 0 {
-				usedWords = append(usedWords, buffer.String())
-				buffer = new(bytes.Buffer)
-			}
-			buffer.WriteString(tp.Tile.Ch.String())
-			if i+1 == len(tilePositions) {
-				usedWords = append(usedWords, buffer.String())
-			}
-		}
-	}
-	return usedWords
+	return gps.usedWordsZ(gps.usedTileLocs, func(tp tilePosition) int { return tp.X })
 }
 
 func (gps gamePlayerState) usedWordsX() []string {
@@ -408,9 +386,12 @@ func (gps gamePlayerState) usedWordsX() []string {
 			usedTilesYx[y][x] = t
 		}
 	}
-	// similar to usedWordsX, but on different map, uses Y instead of x
+	return gps.usedWordsZ(usedTilesYx, func(tp tilePosition) int { return tp.Y })
+}
+
+func (gps gamePlayerState) usedWordsZ(tiles map[int]map[int]tile, ord func(tp tilePosition) int) []string {
 	usedWords := make([]string, 32)
-	for _, xTiles := range usedTilesYx {
+	for _, xTiles := range tiles {
 		tilePositions := make([]tilePosition, len(xTiles))
 		i := 0
 		for _, t := range xTiles {
@@ -418,11 +399,11 @@ func (gps gamePlayerState) usedWordsX() []string {
 			i++
 		}
 		sort.Slice(tilePositions, func(i, j int) bool {
-			return tilePositions[i].Y < tilePositions[j].Y
+			return ord(tilePositions[i]) < ord(tilePositions[j])
 		})
 		buffer := new(bytes.Buffer)
 		for i, tp := range tilePositions {
-			if i > 1 && tilePositions[i-1].Y < tp.Y-1 && buffer.Len() > 0 {
+			if i > 1 && ord(tilePositions[i-1]) < ord(tp)-1 && buffer.Len() > 0 {
 				usedWords = append(usedWords, buffer.String())
 				buffer = new(bytes.Buffer)
 			}
