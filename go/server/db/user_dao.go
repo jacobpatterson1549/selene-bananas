@@ -18,7 +18,7 @@ type (
 		// UpdatePassword sets the password of a user
 		UpdatePassword(u User, newPassword string) error
 		// UpdatePassword increments the points for multiple users
-		UpdatePointsIncrement(users []User, f UserPointsIncrementFunc) error
+		UpdatePointsIncrement(usernames []Username, f UserPointsIncrementFunc) error
 		// DeleteUser removes a user
 		Delete(u User) error
 	}
@@ -109,11 +109,11 @@ func (ud userDao) UpdatePassword(u User, newPassword string) error {
 	return sqlFunction.expectSingleRowAffected(result)
 }
 
-func (ud userDao) UpdatePointsIncrement(users []User, f UserPointsIncrementFunc) error {
-	queries := make([]sqlQuery, len(users))
-	for i, u := range users {
-		pointsDelta := f(u.Username)
-		queries[i] = newExecSQLFunction("user_update_points", u.Username, pointsDelta)
+func (ud userDao) UpdatePointsIncrement(usernames []Username, f UserPointsIncrementFunc) error {
+	queries := make([]sqlQuery, len(usernames))
+	for i, u := range usernames {
+		pointsDelta := f(u)
+		queries[i] = newExecSQLFunction("user_update_points", u, pointsDelta)
 	}
 	return execTransaction(ud.db, queries)
 }

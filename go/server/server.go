@@ -58,12 +58,12 @@ func (cfg Config) NewServer() (Server, error) {
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}
-	lobby, err := game.NewLobby(cfg.Log, game.FileSystemWordsSupplier(cfg.WordsFileName))
+	userDao := db.NewUserDao(cfg.Database)
+	err = userDao.Setup()
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}
-	userDao := db.NewUserDao(cfg.Database)
-	err = userDao.Setup()
+	lobby, err := game.NewLobby(cfg.Log, game.FileSystemWordsSupplier(cfg.WordsFileName), userDao)
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}

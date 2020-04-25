@@ -24,6 +24,7 @@ type (
 		log      *log.Logger
 		upgrader *websocket.Upgrader
 		words    map[string]bool
+		userDao  db.UserDao
 		players  map[db.Username]*player
 		games    map[int]game
 		maxGames int
@@ -32,7 +33,7 @@ type (
 )
 
 // NewLobby creates a new game lobby
-func NewLobby(log *log.Logger, ws WordsSupplier) (Lobby, error) {
+func NewLobby(log *log.Logger, ws WordsSupplier, userDao db.UserDao) (Lobby, error) {
 	u := new(websocket.Upgrader)
 	u.Error = func(w http.ResponseWriter, r *http.Request, status int, reason error) {
 		log.Println(reason)
@@ -45,6 +46,7 @@ func NewLobby(log *log.Logger, ws WordsSupplier) (Lobby, error) {
 		log:      log,
 		upgrader: u,
 		words:    words,
+		userDao:  userDao,
 		games:    make(map[int]game),
 		players:  make(map[db.Username]*player),
 		maxGames: 5,
@@ -132,6 +134,7 @@ func (l lobby) newGame(p *player) game {
 		createdAt:  time.Now().String(),
 		words:      l.words,
 		players:    make(map[db.Username]gamePlayerState, 2),
+		userDao:    l.userDao,
 		started:    false,
 		maxPlayers: 8,
 		messages:   make(chan message, 64),

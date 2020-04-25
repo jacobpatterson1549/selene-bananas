@@ -17,6 +17,7 @@ type (
 		createdAt   string
 		words       map[string]bool
 		players     map[db.Username]gamePlayerState
+		userDao     db.UserDao
 		unusedTiles []tile
 		started     bool
 		maxPlayers  int
@@ -37,6 +38,7 @@ type (
 		unusedTiles  map[int]tile
 		usedTiles    map[int]tilePosition
 		usedTileLocs map[int]map[int]tile // X -> Y -> tile
+		winPoints    int
 	}
 )
 
@@ -113,6 +115,7 @@ func (g game) handleGameJoin(m message) {
 		unusedTiles:  make(map[int]tile),
 		usedTiles:    make(map[int]tilePosition),
 		usedTileLocs: make(map[int]map[int]tile),
+		winPoints:    10,
 	}
 }
 
@@ -178,7 +181,9 @@ func (g game) handleGameFinish(m message) {
 	}
 	gps := g.players[m.Player.username]
 	if len(gps.unusedTiles) != 0 {
-		// TODO: lower points for player
+		if gps.winPoints > 2 {
+			gps.winPoints--
+		}
 		m.Player.socket.messages <- message{Type: socketError, Info: "not all letters used"}
 		return
 	}
@@ -190,6 +195,9 @@ func (g game) handleGameFinish(m message) {
 		}
 	}
 	if len(invalidWords) > 0 {
+		if gps.winPoints > 2 {
+			gps.winPoints--
+		}
 		m.Player.socket.messages <- message{
 			Type: socketError,
 			Info: fmt.Sprintf("invalid words: %v", invalidWords),
@@ -197,7 +205,8 @@ func (g game) handleGameFinish(m message) {
 		return
 	}
 	// TODO: update points for winners and other participants
-	info := fmt.Sprintf("%v won, creating %v words", m.Player.username, len(usedWords))
+	info := fmt.Sprintf("WINNER! - %v won, creating %v words, getting %v points.  Other players each get 1 point", m.Player.username, len(usedWords), gps.winPoints)
+	g.updateUserPoints(m.Player.username)
 	for _, gps := range g.players {
 		gps.player.socket.messages <- message{Type: socketInfo, Info: info}
 	}
@@ -365,6 +374,28 @@ func (g game) handlePlayerDelete(m message) {
 	delete(g.players, m.Player.username)
 	if len(g.players) == 0 {
 		m.Player.lobby.messages <- message{Type: gameDelete, Info: "deleting game because it has no players"}
+	}
+}
+
+func (g game) updateUserPoints(winningUsername db.Username) {
+	users := make([]db.Username, len(g.players))
+	i := 0
+	for u := range g.players {
+		users[i] = u
+		i++
+	}
+	gps := g.players[winningUsername]
+	err := g.userDao.UpdatePointsIncrement(users, func(u db.Username) int {
+		if u == winningUsername {
+			return gps.winPoints
+		}
+		return 1
+	})
+	if err != nil {
+		gps.player.socket.messages <- message{
+			Type: socketError,
+			Info: fmt.Sprintf("updating user points: %v", err),
+		}
 	}
 }
 
