@@ -85,6 +85,7 @@ var game = {
             tileStrings[i] = t.ch;
             this.unusedTiles[t.id] = t;
         }
+        tileStrings.sort();
         this.log("info", "adding " + tileStrings + " unused tiles");
         this._drawCanvas();
     },
