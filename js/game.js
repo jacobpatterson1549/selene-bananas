@@ -1,5 +1,9 @@
 var game = {
 
+    unusedTiles: {},
+    usedTiles: {},
+    usedTileLocs: {},
+
     create: function (event) {
         websocket.send({ type: 1 }); // gameCreate
     },
@@ -12,11 +16,23 @@ var game = {
     },
 
     leave: function (event) {
-        console.log("TODO: join game");
+        websocket.send({ type: 3 }); // gameLeave
+        var hasGameElement = document.getElementById("has-game");
+        hasGameElement.checked = false;
+        var lobbyTab = document.getElementById("tab-4");
+        lobbyTab.checked = true;
     },
 
     delete: function (event) {
+        var result = window.confirm("Are you sure? Deleting the game will kick everyone out.");
+        if (!result) {
+            return;
+        }
         websocket.send({ type: 4 }); // gameDelete
+        var hasGameElement = document.getElementById("has-game");
+        hasGameElement.checked = false;
+        var lobbyTab = document.getElementById("tab-4");
+        lobbyTab.checked = true;
     },
 
     start: function (event) {
@@ -46,14 +62,31 @@ var game = {
         gameTab.checked = true;
     },
 
-    replaceGameTiles: function (unusedTiles, usedTilePositions) {
+    replaceGameTiles: function (unusedTiles, usedTileLocs) {
         this._setTabActive();
-        console.log("TODO: set tiles");
+        this.unusedTiles = {}
+        this.addUnusedTiles(unusedTiles);
+        this.unusedTiles = {}
+        this.usedTileLocs = {}
+        for (var i = 0; i < usedTileLocs.length; i++) {
+            tp = usedTileLocs[i]
+            this.usedTiles[t.ID] = tp;
+            this.usedTileLocs[tp.x][tp.y] = tp.tile;
+        }
+        this._drawCanvas();
     },
 
     addUnusedTiles: function (unusedTiles) {
         this._setTabActive();
-        console.log("TODO: add unused");
+        var tileStrings = []
+        tileStrings.length = unusedTiles.length;
+        for (var i = 0; i < unusedTiles.length; i++) {
+            var t = unusedTiles[i];
+            tileStrings[i] = t.ch;
+            this.unusedTiles[t.id] = t;
+        }
+        this.log("info", "adding " + tileStrings + " unused tiles");
+        this._drawCanvas();
     },
 
     log: function (cls, text) {
@@ -72,4 +105,8 @@ var game = {
             gameLogElement.scrollTop = gameLogElement.scrollHeight - gameLogElement.clientHeight;
         }
     },
+
+    _drawCanvas: function() {
+        console.log("TODO: draw canvas");
+    }
 };

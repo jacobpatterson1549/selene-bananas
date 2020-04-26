@@ -18,17 +18,15 @@ type (
 	}
 )
 
-func (p player) run() {
+func (p *player) run() {
 	// TODO: start ticker to periodically get gameTilePositions
 	// TODO: add inactivity timeout (10 min)
 	for m := range p.messages {
 		switch m.Type {
 		case gameJoin:
 			p.game = m.Game
-			p.game.messages <- message{Type: gameJoin, Player: &p}
-		case gameLeave, gameDelete: // [postbacks]
+		case gameLeave, gameDelete:
 			p.game = nil
-			p.socket.messages <- m
 		case socketInfo, socketError, gameInfos:
 			p.socket.messages <- m
 		case gameStateChange, gameSnag, gameSwap, gameTileMoved, gameTilePositions:
@@ -39,7 +37,7 @@ func (p player) run() {
 				}
 				continue
 			}
-			m.Player = &p
+			m.Player = p
 			p.game.messages <- m
 		case playerDelete:
 			break
@@ -48,7 +46,7 @@ func (p player) run() {
 		}
 	}
 	if p.game != nil {
-		p.game.messages <- message{Type: playerDelete, Player: &p}
+		p.game.messages <- message{Type: playerDelete, Player: p}
 		p.game = nil
 	}
 	if p.socket != nil {

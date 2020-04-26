@@ -14,6 +14,7 @@ import (
 type (
 	game struct {
 		log         *log.Logger
+		id          int
 		lobby       *lobby
 		createdAt   string
 		state       gameState
@@ -144,23 +145,19 @@ func (g *game) handleGameJoin(m message) {
 	}
 	m.Player.messages <- message{
 		Type:  socketInfo,
-		Info:  fmt.Sprintf("joining game with tiles: %v", newTiles),
+		Info:  "joining game",
 		Tiles: newTiles,
 	}
 }
 
 func (g *game) handleGameLeave(m message) {
-	g.messages <- message{
-		Type:   playerDelete,
-		Player: m.Player,
-	}
 	g.log.Printf("%v left a game", m.Player.username)
 }
 
 func (g *game) handleGameDelete(m message) {
 	for _, gps := range g.players {
-		g.messages <- message{
-			Type:   playerDelete,
+		gps.player.messages <- message{
+			Type:   gameDelete,
 			Player: gps.player,
 			Info:   m.Info,
 		}
@@ -251,7 +248,7 @@ func (g *game) handleGameSnag(m message) {
 	}
 	m.Player.messages <- message{
 		Type:  socketInfo,
-		Info:  fmt.Sprintf("snagged a tile: %v", g.unusedTiles[0]),
+		Info:  "snagged a tile",
 		Tiles: g.unusedTiles[:1],
 	}
 	g.players[m.Player.username].unusedTiles[g.unusedTiles[0].ID] = g.unusedTiles[0]
@@ -268,7 +265,7 @@ func (g *game) handleGameSnag(m message) {
 	for i := 0; i < len(otherPlayers) && len(g.unusedTiles) > 0; i++ {
 		otherPlayers[i].messages <- message{
 			Type:  socketInfo,
-			Info:  fmt.Sprintf("%v snagged a tile, adding %v to your tiles", m.Player.username, g.unusedTiles[0]),
+			Info:  fmt.Sprintf("%v snagged a tile, adding a tile to your pile", m.Player.username),
 			Tiles: g.unusedTiles[:1],
 		}
 		g.players[otherPlayers[i].username].unusedTiles[g.unusedTiles[0].ID] = g.unusedTiles[0]
@@ -309,8 +306,9 @@ func (g *game) handleGameSwap(m message) {
 	}
 	m.Player.messages <- message{
 		Type:  socketInfo,
-		Info:  fmt.Sprintf("swapping %v tile for %v", t, newTiles),
-		Tiles: newTiles}
+		Info:  fmt.Sprintf("swapping %v tile", t.Ch),
+		Tiles: newTiles,
+	}
 	for u, p2 := range g.players {
 		if u != m.Player.username {
 			p2.player.messages <- message{
@@ -396,7 +394,7 @@ func (g *game) handleGameInfos(m message) {
 	//add cleanup timer to game when num players == 0, reset when players join...
 	_, canJoin := g.players[m.Player.username]
 	gi := gameInfo{
-		ID:        m.GameID,
+		ID:        g.id,
 		Players:   usernames,
 		CanJoin:   canJoin,
 		CreatedAt: g.createdAt,
@@ -410,7 +408,6 @@ func (g *game) handlePlayerDelete(m message) {
 		m.Player.messages <- message{Type: socketError, Info: "cannot leave game player is not a part of"}
 		return
 	}
-	// Note that this makes the player's tiles disappear
 	delete(g.players, m.Player.username)
 	if len(g.players) == 0 {
 		g.lobby.messages <- message{Type: gameDelete, Info: "deleting game because it has no players"}
