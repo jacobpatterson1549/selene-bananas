@@ -96,8 +96,9 @@ var game = {
         gameLogItemElement.className = cls;
         var date = new Date();
         var hour = date.getHours();
-        var minutes = date.getMinutes()
-        var time = hour + ":" + (minutes > 9 ? minutes : "0" + minutes);
+        var minutes = date.getMinutes();
+        var seconds = date.getSeconds();
+        var time = hour + ":" + (minutes > 9 ? minutes : "0" + minutes) + ":" + (seconds > 9 ? seconds : "0" + seconds);
         gameLogItemElement.textContent = time + " : " + text;
         var gameLogElement = document.getElementById("game-log");
         var doScroll = gameLogElement.scrollTop >= gameLogElement.scrollHeight - gameLogElement.clientHeight;
