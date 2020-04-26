@@ -181,6 +181,7 @@ func (g *game) handleGameStateChange(m message) {
 			m.Player.messages <- message{Type: socketError, Info: "can only attempt to set game that is in progress to finished"}
 			return
 		}
+		g.finish(m.Player)
 	default:
 		if m.GameState != gameFinished {
 			m.Player.messages <- message{Type: socketError, Info: "cannot change game state"}
@@ -200,9 +201,9 @@ func (g *game) start() {
 	g.log.Print("game started")
 }
 
-func (g *game) finish(finishingPlayer player) {
+func (g *game) finish(finishingPlayer *player) {
 	if len(g.unusedTiles) != 0 {
-		finishingPlayer.messages <- message{Type: socketError, Info: "peel first"}
+		finishingPlayer.messages <- message{Type: socketError, Info: "snag first"}
 		return
 	}
 	gps := g.players[finishingPlayer.username]
@@ -351,7 +352,7 @@ func (g *game) handleGameTileMoved(m message) {
 	gps.usedTileLocs[tp.X][tp.Y] = tp.Tile
 }
 
-func (g game) handleGameTilePositions(m message) {
+func (g *game) handleGameTilePositions(m message) {
 	gps := g.players[m.Player.username]
 	unusedTiles := make([]tile, len(gps.unusedTiles))
 	usedTilePositions := make([]tilePosition, len(gps.usedTiles))
@@ -383,7 +384,7 @@ func (g game) handleGameTilePositions(m message) {
 	}
 }
 
-func (g game) handleGameInfos(m message) {
+func (g *game) handleGameInfos(m message) {
 	usernames := make([]db.Username, len(g.players))
 	i := 0
 	for u := range g.players {
@@ -416,7 +417,7 @@ func (g *game) handlePlayerDelete(m message) {
 	}
 }
 
-func (g game) updateUserPoints(winningUsername db.Username) {
+func (g *game) updateUserPoints(winningUsername db.Username) {
 	users := make([]db.Username, len(g.players))
 	i := 0
 	for u := range g.players {
