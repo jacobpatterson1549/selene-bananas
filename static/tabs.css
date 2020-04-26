@@ -62,3 +62,12 @@
 #has-websocket:not(:checked)+div {
     display: none;
 }
+
+#game-log {
+    height: 5em;
+    overflow: auto;
+}
+
+#game-log>.error {
+    color:red;
+}

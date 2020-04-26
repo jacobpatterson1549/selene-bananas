@@ -18,7 +18,7 @@ func TestMessageJSON(t *testing.T) {
 			j: `{"type":2,"gameID":6}`,
 		},
 		{
-			m: message{Type: gameStart, Info: "Selene started the game."},
+			m: message{Type: gameStateChange, Info: "Selene started the game."},
 			j: `{"type":5,"info":"Selene started the game."}`,
 		},
 		{
@@ -42,8 +42,8 @@ func TestMessageJSON(t *testing.T) {
 			j: `{"type":10,"tilePositions":[{"tile":{"id":8,"ch":"R"},"x":3,"y":47}]}`,
 		},
 		{
-			m: message{Type: gameInfos, GameInfos: []gameInfo{{Players: []db.Username{"fred", "barney"}, CanJoin: true, CreatedAt: "long_ago"}}},
-			j: `{"type":11,"gameInfos":[{"players":["fred","barney"],"canJoin":true,"createdAt":"long_ago"}]}`,
+			m: message{Type: gameInfos, GameInfos: []gameInfo{{ID: 7, State: gameFinished, Players: []db.Username{"fred", "barney"}, CanJoin: true, CreatedAt: "long_ago"}}},
+			j: `{"type":11,"gameInfos":[{"id":7,"state":2,"players":["fred","barney"],"canJoin":true,"createdAt":"long_ago"}]}`,
 		},
 		{
 			m: message{Type: gameInfos},

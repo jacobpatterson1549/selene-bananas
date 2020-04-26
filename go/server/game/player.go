@@ -31,7 +31,7 @@ func (p player) run() {
 			p.socket.messages <- m
 		case socketInfo, socketError, gameInfos:
 			p.socket.messages <- m
-		case gameStart, gameFinish, gameSnag, gameSwap, gameTileMoved:
+		case gameStateChange, gameSnag, gameSwap, gameTileMoved, gameTilePositions:
 			if p.game == nil {
 				p.socket.messages <- message{
 					Type: socketError,

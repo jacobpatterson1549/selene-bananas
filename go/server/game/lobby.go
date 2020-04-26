@@ -137,14 +137,15 @@ func (l lobby) handleGameCreate(m message) {
 
 func (l lobby) newGame(p *player) game {
 	g := game{
-		log:        l.log,
-		createdAt:  time.Now().Format(time.UnixDate),
-		words:      l.words,
-		players:    make(map[db.Username]gamePlayerState, 2),
-		userDao:    l.userDao,
-		started:    false,
-		maxPlayers: 8,
-		messages:   make(chan message, 64),
+		log:         l.log,
+		createdAt:   time.Now().Format(time.UnixDate),
+		state:       gameUnstarted,
+		words:       l.words,
+		players:     make(map[db.Username]gamePlayerState, 2),
+		userDao:     l.userDao,
+		maxPlayers:  8,
+		numNewTiles: 21,
+		messages:    make(chan message, 64),
 		shuffleTilesFunc: func(tiles []tile) {
 			rand.Shuffle(len(tiles), func(i, j int) {
 				tiles[i], tiles[j] = tiles[j], tiles[i]

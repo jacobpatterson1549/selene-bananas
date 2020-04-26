@@ -12,6 +12,7 @@ type (
 		TilePositions []tilePosition `json:"tilePositions,omitempty"`
 		GameInfos     []gameInfo     `json:"gameInfos,omitempty"`
 		GameID        int            `json:"gameID,omitempty"`
+		GameState     gameState      `json:"gameState,omitempty"`
 		// pointers for inter-goroutine communication:
 		Player       *player         `json:"-"`
 		Game         *game           `json:"-"`
@@ -24,9 +25,8 @@ const (
 	gameCreate        messageType = 1
 	gameJoin          messageType = 2
 	gameLeave         messageType = 3
-	gameDelete        messageType = 4
-	gameStart         messageType = 5
-	gameFinish        messageType = 6
+	gameDelete        messageType = 4 // TODO: remove this, add gameState = delete
+	gameStateChange   messageType = 5
 	gameSnag          messageType = 7
 	gameSwap          messageType = 8
 	gameTileMoved     messageType = 9

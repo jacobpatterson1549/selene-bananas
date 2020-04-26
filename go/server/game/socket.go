@@ -59,7 +59,7 @@ func (s socket) readMessages() {
 			s.player.lobby.messages <- message{Type: gameDelete, Info: fmt.Sprintf("%v deleted the game", s.player.username)}
 		case gameCreate, gameJoin, gameLeave, gameInfos, playerDelete:
 			s.player.lobby.messages <- m
-		case gameStart, gameFinish, gameSnag, gameSwap, gameTileMoved:
+		case gameStateChange, gameSnag, gameSwap, gameTileMoved:
 			s.player.messages <- m
 		default:
 			s.log.Printf("player does not know how to handle a messageType of %v", m.Type)

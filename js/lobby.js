@@ -29,7 +29,7 @@ var lobby = {
                 var joinGameButtonTemplate = document.getElementById("join-game-button");
                 var joinGameButtonElement = joinGameButtonTemplate.content.cloneNode(true);
                 joinGameButtonElement.children[0].value = gameInfos[i].id;
-                rowElement.children[2].appendChild(joinGameButton);
+                rowElement.children[2].appendChild(joinGameButtonElement);
             }
             tbodyElement.appendChild(gameInfoElement);
         }

@@ -56,12 +56,20 @@ var websocket = {
                 lobby.setGameInfos(message.gameInfos);
                 break;
             case 14: // socketInfo
-                console.log("info:", message.info); // TODO: DELETEME (handle all infos correctly)
-                // TODO: put in output window
+                if (message.tilePositions) {
+                    game.replaceGameTiles(message.Tiles, message.tilePositions)
+                    break;
+                }
+                if (message.tiles) {
+                    game.addUnusedTiles(message.tiles);
+                } else {
+                    console.log("info:", message.info); // TODO: DELETEME (handle all infos correctly)
+                }
+                game.log("info", message.info);
                 break;
             case 15: // socketError
                 console.log("error:", message.info);
-                // TODO: put in output window
+                game.log("error", message.info);
                 break;
             default:
                 console.log('unknown message type received:', event.data);
