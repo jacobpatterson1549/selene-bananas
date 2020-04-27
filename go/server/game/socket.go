@@ -21,15 +21,13 @@ type (
 // TODO: put some of these parameters as env arguments
 // derived from gorilla websocket example chat client
 const (
-	writeWait           = 5 * time.Second
-	pongPeriod          = 20 * time.Second
-	pingPeriod          = (pongPeriod * 80) / 100 // should be less than pongPeriod
-	maxReadMessageBytes = 100
+	writeWait  = 5 * time.Second
+	pongPeriod = 20 * time.Second
+	pingPeriod = (pongPeriod * 80) / 100 // should be less than pongPeriod
 )
 
 func (s socket) readMessages() {
 	defer s.close()
-	s.conn.SetReadLimit(maxReadMessageBytes)
 	err := s.refreshReadDeadline()
 	if err != nil {
 		return
