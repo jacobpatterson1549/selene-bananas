@@ -73,7 +73,7 @@ var game = {
             this.usedTiles[t.ID] = tp;
             this.usedTileLocs[tp.x][tp.y] = tp.tile;
         }
-        this._drawCanvas();
+        canvas.redraw()
     },
 
     addUnusedTiles: function (unusedTiles) {
@@ -87,7 +87,7 @@ var game = {
         }
         tileStrings.sort();
         this.log("info", "adding " + tileStrings + " unused tiles");
-        this._drawCanvas();
+        canvas.redraw();
     },
 
     log: function (cls, text) {
@@ -107,8 +107,4 @@ var game = {
             gameLogElement.scrollTop = gameLogElement.scrollHeight - gameLogElement.clientHeight;
         }
     },
-
-    _drawCanvas: function() {
-        console.log("TODO: draw canvas");
-    }
 };
