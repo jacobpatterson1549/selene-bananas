@@ -43,16 +43,13 @@ var game = {
         websocket.send({ type: 5, gameState: 2 }); // gameStateChange, gameFinished
     },
 
-    snag: function (event) {
+    snagTile: function (event) {
         websocket.send({ type: 7 }); // gameSnag
     },
 
-    swap: function (event) {
-        console.log("TODO: swap tile request"); // how to specify which tile?
-    },
-
-    moveTile: function (event) {
-        console.log("TODO: move tile");
+    swapTile: function (event) {
+        this.log("info", "click a tile to swap for three others from the pile");
+        canvas.isSwap = true;
     },
 
     _setTabActive: function () {
@@ -65,18 +62,20 @@ var game = {
     replaceGameTiles: function (unusedTiles, usedTileLocs) {
         this._setTabActive();
         this.unusedTiles = {}
-        this.addUnusedTiles(unusedTiles);
-        this.unusedTiles = {}
         this.usedTileLocs = {}
+        this.addUnusedTiles(unusedTiles, true);
         for (var i = 0; i < usedTileLocs.length; i++) {
-            tp = usedTileLocs[i]
-            this.usedTiles[t.ID] = tp;
+            var tp = usedTileLocs[i]
+            this.usedTiles[tp.id] = tp;
+            if (this.usedTileLocs[tp.x] == null) {
+                this.usedTileLocs[tp.x] = {};
+            }
             this.usedTileLocs[tp.x][tp.y] = tp.tile;
         }
         canvas.redraw()
     },
 
-    addUnusedTiles: function (unusedTiles) {
+    addUnusedTiles: function (unusedTiles, skipRedraw) {
         this._setTabActive();
         var tileStrings = []
         tileStrings.length = unusedTiles.length;
@@ -87,7 +86,9 @@ var game = {
         }
         tileStrings.sort();
         this.log("info", "adding " + tileStrings + " unused tiles");
-        canvas.redraw();
+        if (skipRedraw == null || !skipRedraw) {
+            canvas.redraw();
+        }
     },
 
     log: function (cls, text) {

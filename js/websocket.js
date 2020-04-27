@@ -57,7 +57,7 @@ var websocket = {
                 break;
             case 14: // socketInfo
                 if (message.tilePositions) {
-                    game.replaceGameTiles(message.Tiles, message.tilePositions)
+                    game.replaceGameTiles(message.tiles, message.tilePositions)
                     break;
                 }
                 if (message.tiles) {
