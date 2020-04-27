@@ -25,7 +25,6 @@ var canvas = {
             this._drawTile(ctx, i * tileLength, tileLength, game.unusedTiles[unusedTileId], tileLength, textOffset);
         }
 
-        // draw used grid
         ctx.fillText("Game Area:", 0, tileLength * 4 - textOffset);
         var usedPadding = 5;
         var tileLengthRound = x => Math.ceil(x / tileLength) * tileLength
@@ -33,23 +32,17 @@ var canvas = {
         var usedMinY = tileLengthRound(usedPadding + tileLength * 4);
         var usedMaxX = tileLengthRound(width - usedPadding);
         var usedMaxY = tileLengthRound(height - usedPadding);
+        ctx.moveTo(usedMinX, usedMinY);
+        ctx.lineTo(usedMinX, usedMaxX);
+        ctx.lineTo(usedMaxX, usedMaxY);
+        ctx.lineTo(usedMaxX, usedMinY),
+        ctx.lineTo(usedMinX, usedMinY);
         var numRows = Math.floor((usedMaxY - usedMinY) / tileLength);
         var numCols = Math.floor((usedMaxX - usedMinX) / tileLength);
-        // grid rows
-        for (var i = 0; i <= numRows; i++) {
-            ctx.moveTo(usedMinX, usedMinY + i * tileLength);
-            ctx.lineTo(usedMaxX, usedMinY + i * tileLength);
-        }
-        // grid cols
-        for (var i = 0; i <= numCols; i++) {
-            ctx.moveTo(usedMinX + i * tileLength, usedMinY);
-            ctx.lineTo(usedMinX + i * tileLength, usedMaxY);
-        }
         // draw used tiles
         for (var c = 0; c < numCols; c++) { // x
             for (var r = 0; r < numRows; r++) { // y
                 if (game.usedTileLocs[c] != null && game.usedTileLocs[c][r] != null) {
-                    // TODO: this redraws the border, but it is not a big deal now.  Maybe later, the grid should not be drawn (only the border).
                     this._drawTile(ctx, usedMinX + c * tileLength, usedMinY + r * tileLength, game.usedTileLocs[c][r], tileLength, textOffset);
                 }
             }

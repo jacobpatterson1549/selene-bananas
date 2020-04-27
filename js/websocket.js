@@ -62,8 +62,6 @@ var websocket = {
                 }
                 if (message.tiles) {
                     game.addUnusedTiles(message.tiles);
-                } else {
-                    console.log("info:", message.info); // TODO: DELETEME (handle all infos correctly)
                 }
                 game.log("info", message.info);
                 break;
