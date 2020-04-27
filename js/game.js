@@ -78,13 +78,15 @@ var game = {
     addUnusedTiles: function (unusedTiles, skipRedraw) {
         this._setTabActive();
         var tileStrings = []
-        tileStrings.length = unusedTiles.length;
-        for (var i = 0; i < unusedTiles.length; i++) {
-            var t = unusedTiles[i];
-            tileStrings[i] = t.ch;
-            this.unusedTiles[t.id] = t;
+        if (unusedTiles != null) {
+            tileStrings.length = unusedTiles.length;
+            for (var i = 0; i < unusedTiles.length; i++) {
+                var t = unusedTiles[i];
+                tileStrings[i] = t.ch;
+                this.unusedTiles[t.id] = t;
+            }
+            tileStrings.sort();
         }
-        tileStrings.sort();
         this.log("info", "adding " + tileStrings + " unused tiles");
         if (skipRedraw == null || !skipRedraw) {
             canvas.redraw();
