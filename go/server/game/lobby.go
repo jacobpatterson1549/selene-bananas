@@ -145,7 +145,7 @@ func (l lobby) newGame(p *player, id int) game {
 		createdAt:   time.Now().Format(time.UnixDate),
 		state:       gameUnstarted,
 		words:       l.words,
-		players:     make(map[db.Username]gamePlayerState, 2),
+		players:     make(map[db.Username]*gamePlayerState, 2),
 		userDao:     l.userDao,
 		maxPlayers:  8,
 		numNewTiles: 21,

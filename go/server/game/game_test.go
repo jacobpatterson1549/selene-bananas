@@ -100,8 +100,8 @@ func TestUsedWords(t *testing.T) {
 			},
 			usedTileLocs: map[int]map[int]tile{
 				2: map[int]tile{
-					7: tile{ID: 5, Ch: 'A'},
-					8: tile{ID: 4, Ch: 'B'},
+					7:  tile{ID: 5, Ch: 'A'},
+					8:  tile{ID: 4, Ch: 'B'},
 					10: tile{ID: 7, Ch: 'C'},
 					11: tile{ID: 3, Ch: 'D'},
 				},
@@ -160,6 +160,52 @@ func TestUsedWords(t *testing.T) {
 		got := gps.usedWords()
 		if !reflect.DeepEqual(test.want, got) {
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
+		}
+	}
+}
+
+func TestSingleUsedGroup(t *testing.T) {
+	singleUsedGroupTests := []struct {
+		usedTiles    map[int]tilePosition
+		usedTileLocs map[int]map[int]tile
+		want         bool
+	}{
+		{
+			usedTiles: map[int]tilePosition{
+				5: tilePosition{Tile: tile{ID: 5, Ch: 'A'}, X: 7, Y: 2},
+				4: tilePosition{Tile: tile{ID: 4, Ch: 'B'}, X: 7, Y: 3},
+			},
+			usedTileLocs: map[int]map[int]tile{
+				7: map[int]tile{
+					2: tile{ID: 5, Ch: 'A'},
+					3: tile{ID: 4, Ch: 'B'},
+				},
+			},
+			want: true,
+		},
+		{
+			usedTiles: map[int]tilePosition{
+				5: tilePosition{Tile: tile{ID: 5, Ch: 'A'}, X: 7, Y: 2},
+				4: tilePosition{Tile: tile{ID: 4, Ch: 'B'}, X: 7, Y: 4},
+			},
+			usedTileLocs: map[int]map[int]tile{
+				7: map[int]tile{
+					2: tile{ID: 5, Ch: 'A'},
+					4: tile{ID: 4, Ch: 'B'},
+				},
+			},
+			want: false,
+		},
+		{},
+	}
+	for i, test := range singleUsedGroupTests {
+		gps := gamePlayerState{
+			usedTiles:    test.usedTiles,
+			usedTileLocs: test.usedTileLocs,
+		}
+		got := gps.singleUsedGroup()
+		if test.want != got {
+			t.Errorf("Test %v: wanted: %v, got: %v", i, test.want, got)
 		}
 	}
 }

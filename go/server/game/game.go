@@ -20,7 +20,7 @@ type (
 		createdAt   string
 		state       gameState
 		words       map[string]bool
-		players     map[db.Username]gamePlayerState
+		players     map[db.Username]*gamePlayerState
 		userDao     db.UserDao
 		unusedTiles []tile
 		maxPlayers  int
@@ -136,7 +136,7 @@ func (g *game) handleGameJoin(m message) {
 	for _, t := range newTiles {
 		newTilesByID[t.ID] = t
 	}
-	g.players[m.Player.username] = gamePlayerState{
+	g.players[m.Player.username] = &gamePlayerState{
 		player:       m.Player,
 		unusedTiles:  newTilesByID,
 		usedTiles:    make(map[int]tilePosition),
@@ -205,10 +205,13 @@ func (g *game) finish(finishingPlayer *player) {
 	}
 	gps := g.players[finishingPlayer.username]
 	if len(gps.unusedTiles) != 0 {
-		if gps.winPoints > 2 {
-			gps.winPoints--
-		}
-		finishingPlayer.messages <- message{Type: socketError, Info: "not all letters used"}
+		gps.decrementWinPoints()
+		finishingPlayer.messages <- message{Type: socketError, Info: "not all tiles used"}
+		return
+	}
+	if !gps.singleUsedGroup() {
+		gps.decrementWinPoints()
+		finishingPlayer.messages <- message{Type: socketError, Info: "not all used tiles form a single group"}
 		return
 	}
 	usedWords := gps.usedWords()
@@ -220,9 +223,7 @@ func (g *game) finish(finishingPlayer *player) {
 		}
 	}
 	if len(invalidWords) > 0 {
-		if gps.winPoints > 2 {
-			gps.winPoints--
-		}
+		gps.decrementWinPoints()
 		finishingPlayer.messages <- message{
 			Type: socketError,
 			Info: fmt.Sprintf("invalid words: %v", invalidWords),
@@ -445,6 +446,12 @@ func (g *game) updateUserPoints(winningUsername db.Username) {
 	}
 }
 
+func (gps *gamePlayerState) decrementWinPoints() {
+	if gps.winPoints > 2 {
+		gps.winPoints--
+	}
+}
+
 func (gps gamePlayerState) usedWords() []string {
 	horizontalWords := gps.usedWordsX()
 	verticalWords := gps.usedWordsY()
@@ -511,4 +518,37 @@ func (gps gamePlayerState) usedWordsZ(tiles map[int]map[int]tile, ord func(tp ti
 		i += len(keyedUsedWords[k])
 	}
 	return usedWords
+}
+
+func (gps gamePlayerState) singleUsedGroup() bool {
+	if len(gps.usedTiles) == 0 {
+		return false
+	}
+	seenTileIds := make(map[int]bool)
+	for x, yTiles := range gps.usedTileLocs {
+		for y, t := range yTiles {
+			gps.addSeenTileIds(x, y, t, seenTileIds)
+			break // only check one tile's surrounding tilePositions
+		}
+		break
+	}
+	return len(seenTileIds) == len(gps.usedTiles)
+}
+
+// helper function which does a depth-first search for surrounding tiles, modifying the seenTileIds map
+func (gps gamePlayerState) addSeenTileIds(x, y int, t tile, seenTileIds map[int]bool) {
+	seenTileIds[t.ID] = true
+	for dx := -1; dx <= 1; dx++ { // check neighboring columns
+		for dy := -1; dy <= 1; dy++ { // check neighboring rows
+			if (dx != 0 || dy != 0) && dx*dy == 0 { // one delta is not zero, the other is
+				if yTiles, ok := gps.usedTileLocs[x+dx]; ok { // x+dx is valid
+					if t2, ok := yTiles[y+dy]; ok { // y+dy is valid
+						if _, ok := seenTileIds[t2.ID]; !ok { // tile not yet seen
+							gps.addSeenTileIds(x+dx, y+dy, t2, seenTileIds) // recursive call
+						}
+					}
+				}
+			}
+		}
+	}
 }
