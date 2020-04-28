@@ -39,7 +39,9 @@ var websocket = {
     send: function (message) {
         var messageJSON = JSON.stringify(message);
         console.log("sending message json:", messageJSON);
-        this._websocket.send(messageJSON);
+        if (this._websocket != null) {
+            this._websocket.send(messageJSON);
+        }
     },
 
     onMessage: function (event) {
