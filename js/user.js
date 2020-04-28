@@ -18,7 +18,6 @@ var user = {
                 var lobbyTab = document.getElementById("tab-4");
                 lobbyTab.checked = true;
                 content.setLoggedIn(true);
-                // TODO: create websocket
             });
     },
 
@@ -107,7 +106,6 @@ var user = {
                 Authorization: "Bearer " + jwt,
             };
         }
-        // TODO: add authorization here
         fetch(url, data)
             .then(async response => {
                 if (response.status >= 400) {

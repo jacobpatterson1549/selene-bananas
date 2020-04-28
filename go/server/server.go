@@ -107,6 +107,7 @@ func (s server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 		httpError(w, http.StatusMethodNotAllowed)
 	}
 	if err != nil {
+		s.log.Printf("server error: %v", err)
 		httpError(w, http.StatusInternalServerError)
 	}
 }
