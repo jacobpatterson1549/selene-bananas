@@ -106,7 +106,7 @@ var canvas = {
         var destinationTile = canvas._getTile(event.offsetX, event.offsetY);
         if (canvas.isSwap) {
             canvas.isSwap = false;
-            canvas._swap(_selectedTile, destinationTile);
+            canvas._swap(selectedTile, destinationTile);
             return;
         }
         if (destinationTile.tile != null || !destinationTile.isUsed) {

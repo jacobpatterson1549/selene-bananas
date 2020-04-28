@@ -298,10 +298,10 @@ func (g *game) handleGameSwap(m message) {
 		delete(gps.usedTileLocs[tp.X], tp.Y)
 	}
 	g.shuffleTilesFunc(g.unusedTiles)
-
-	newTiles := make([]tile, 1)
+	var newTiles []tile
 	for i := 0; i < 3 && len(g.unusedTiles) > 0; i++ {
 		newTiles = append(newTiles, g.unusedTiles[0])
+		gps.unusedTiles[g.unusedTiles[0].ID] = g.unusedTiles[0]
 		g.unusedTiles = g.unusedTiles[1:]
 	}
 	m.Player.messages <- message{

@@ -60,10 +60,10 @@ var websocket = {
                     game.replaceGameTiles(message.tiles, message.tilePositions)
                     break;
                 }
+                game.log("info", message.info);
                 if (message.tiles) {
                     game.addUnusedTiles(message.tiles);
                 }
-                game.log("info", message.info);
                 break;
             case 15: // socketError
                 console.log("error:", message.info);
