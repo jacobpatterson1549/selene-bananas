@@ -111,7 +111,7 @@ func (s server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		s.log.Printf("server error: %v", err)
-		httpError(w, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
