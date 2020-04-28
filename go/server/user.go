@@ -42,7 +42,9 @@ func (s server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	}
 	u2, err := s.userDao.Read(u)
 	if err != nil {
-		return err
+		s.log.Printf("login failure: %v", err)
+		http.Error(w, "incorrect username/password", http.StatusUnauthorized)
+		return nil
 	}
 	return s.addAuthorization(w, u2)
 }
