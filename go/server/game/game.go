@@ -394,10 +394,14 @@ func (g *game) handleGameInfos(m message) {
 		usernames[i] = u
 		i++
 	}
-	// TODO: allow players to join games they previously left.
-	//Also, do not delete games if players leave -> their connections may have died.
-	//add cleanup timer to game when num players == 0, reset when players join...
-	_, canJoin := g.players[m.Player.username]
+	//TODO: add cleanup timer to game for inactivity
+	var canJoin bool
+	switch g.state {
+	case gameUnstarted:
+		canJoin = true
+	case gameInProgress:
+		_, canJoin = g.players[m.Player.username]
+	}
 	gi := gameInfo{
 		ID:        g.id,
 		Players:   usernames,
