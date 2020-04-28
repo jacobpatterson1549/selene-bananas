@@ -79,7 +79,6 @@ func (g game) createTiles() []tile {
 	add("E", 18)
 	g.shuffleTilesFunc(tiles)
 	for i := range tiles {
-		// t.ID = i + 1
 		tiles[i].ID = i + 1
 	}
 	return tiles
@@ -333,11 +332,13 @@ func (g *game) handleGameTileMoved(m message) {
 		}
 		delete(gps.unusedTiles, tp.Tile.ID)
 	case 2:
-		if gps.unusedTiles[tp.Tile.ID] != tp.Tile {
-			m.Player.messages <- message{Type: socketError, Info: "trying move tile from location of other tile"}
-			return
-		}
 		tp = m.TilePositions[1]
+		if xTiles, ok := gps.usedTileLocs[tp.X]; ok {
+			if destTp, ok := xTiles[tp.Y]; ok && destTp.ID != tp.Tile.ID {
+				m.Player.messages <- message{Type: socketError, Info: "trying move tile to location of other tile"}
+				return
+			}
+		}
 	}
 	if _, ok := gps.usedTileLocs[tp.X]; !ok {
 		gps.usedTileLocs[tp.X] = make(map[int]tile)
