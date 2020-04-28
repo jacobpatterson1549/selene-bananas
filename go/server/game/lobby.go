@@ -133,6 +133,7 @@ func (l *lobby) handleGameCreate(m message) {
 		id++
 	}
 	g := l.newGame(m.Player, id)
+	go g.run()
 	l.games[id] = g
 	l.handleGameJoin(message{Type: gameJoin, Player: m.Player, GameID: id})
 }
@@ -161,7 +162,6 @@ func (l lobby) newGame(p *player, id int) game {
 		},
 	}
 	g.unusedTiles = g.createTiles()
-	go g.run()
 	return g
 }
 
