@@ -332,6 +332,7 @@ func (g *game) handleGameTileMoved(m message) {
 		}
 		delete(gps.unusedTiles, tp.Tile.ID)
 	case 2:
+		srcTp := tp
 		tp = m.TilePositions[1]
 		if xTiles, ok := gps.usedTileLocs[tp.X]; ok {
 			if destTp, ok := xTiles[tp.Y]; ok && destTp.ID != tp.Tile.ID {
@@ -339,6 +340,7 @@ func (g *game) handleGameTileMoved(m message) {
 				return
 			}
 		}
+		delete(gps.usedTileLocs[srcTp.X], srcTp.Y)
 	}
 	if _, ok := gps.usedTileLocs[tp.X]; !ok {
 		gps.usedTileLocs[tp.X] = make(map[int]tile)
