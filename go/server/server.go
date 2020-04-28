@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -54,7 +56,8 @@ func (cfg Config) NewServer() (Server, error) {
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	serveMux := new(http.ServeMux)
 	staticFileHandler := http.FileServer(http.Dir("./static"))
-	tokenizer, err := newTokenizer()
+	rand := rand.New(rand.NewSource(time.Now().Unix()))
+	tokenizer, err := newTokenizer(rand)
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}
@@ -63,7 +66,7 @@ func (cfg Config) NewServer() (Server, error) {
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}
-	lobby, err := game.NewLobby(cfg.Log, game.FileSystemWordsSupplier(cfg.WordsFileName), userDao)
+	lobby, err := game.NewLobby(cfg.Log, game.FileSystemWordsSupplier(cfg.WordsFileName), userDao, rand)
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}

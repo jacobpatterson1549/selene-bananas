@@ -23,6 +23,7 @@ type (
 	lobby struct {
 		log      *log.Logger
 		upgrader *websocket.Upgrader
+		rand     *rand.Rand
 		words    map[string]bool
 		userDao  db.UserDao
 		players  map[db.Username]*player
@@ -33,7 +34,7 @@ type (
 )
 
 // NewLobby creates a new game lobby
-func NewLobby(log *log.Logger, ws WordsSupplier, userDao db.UserDao) (Lobby, error) {
+func NewLobby(log *log.Logger, ws WordsSupplier, userDao db.UserDao, rand *rand.Rand) (Lobby, error) {
 	u := new(websocket.Upgrader)
 	u.Error = func(w http.ResponseWriter, r *http.Request, status int, reason error) {
 		log.Println(reason)
@@ -45,6 +46,7 @@ func NewLobby(log *log.Logger, ws WordsSupplier, userDao db.UserDao) (Lobby, err
 	l := lobby{
 		log:      log,
 		upgrader: u,
+		rand:     rand,
 		words:    words,
 		userDao:  userDao,
 		games:    make(map[int]game),
@@ -148,12 +150,12 @@ func (l lobby) newGame(p *player, id int) game {
 		numNewTiles: 21,
 		messages:    make(chan message, 64),
 		shuffleTilesFunc: func(tiles []tile) {
-			rand.Shuffle(len(tiles), func(i, j int) {
+			l.rand.Shuffle(len(tiles), func(i, j int) {
 				tiles[i], tiles[j] = tiles[j], tiles[i]
 			})
 		},
 		shufflePlayersFunc: func(players []*player) {
-			rand.Shuffle(len(players), func(i, j int) {
+			l.rand.Shuffle(len(players), func(i, j int) {
 				players[i], players[j] = players[j], players[i]
 			})
 		},
