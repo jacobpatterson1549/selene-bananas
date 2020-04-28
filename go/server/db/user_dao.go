@@ -113,7 +113,7 @@ func (ud userDao) UpdatePointsIncrement(usernames []Username, f UserPointsIncrem
 	queries := make([]sqlQuery, len(usernames))
 	for i, u := range usernames {
 		pointsDelta := f(u)
-		queries[i] = newExecSQLFunction("user_update_points", u, pointsDelta)
+		queries[i] = newExecSQLFunction("user_update_points_increment", u, pointsDelta)
 	}
 	return execTransaction(ud.db, queries)
 }
