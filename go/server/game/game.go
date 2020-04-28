@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
 	// TODO: refactor: replace db.Username with string to avoid imports in this package
@@ -211,9 +212,10 @@ func (g *game) finish(finishingPlayer *player) {
 		return
 	}
 	usedWords := gps.usedWords()
-	invalidWords := make([]string, 8)
+	var invalidWords []string
 	for _, w := range usedWords {
-		if _, ok := g.words[w]; !ok {
+		lowerW := strings.ToLower(w) // TODO: this is innefficient, words are lowercase, tiles are uppercase...
+		if _, ok := g.words[lowerW]; !ok {
 			invalidWords = append(invalidWords, w)
 		}
 	}
