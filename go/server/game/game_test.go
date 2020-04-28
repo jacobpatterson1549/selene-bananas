@@ -1,6 +1,7 @@
 package game
 
 import (
+	"reflect"
 	"sort"
 	"testing"
 )
@@ -81,5 +82,84 @@ func TestCreateTiles_uniqueIds(t *testing.T) {
 			t.Errorf("tile id %v repeated", tile.ID)
 		}
 		tileIds[tile.ID] = true
+	}
+}
+
+func TestUsedWords(t *testing.T) {
+	usedWordsTests := []struct {
+		usedTiles    map[int]tilePosition
+		usedTileLocs map[int]map[int]tile
+		want         []string
+	}{
+		{
+			usedTiles: map[int]tilePosition{
+				5: tilePosition{Tile: tile{ID: 5, Ch: 'A'}, X: 2, Y: 7},
+				4: tilePosition{Tile: tile{ID: 4, Ch: 'B'}, X: 2, Y: 8},
+				7: tilePosition{Tile: tile{ID: 5, Ch: 'C'}, X: 2, Y: 10},
+				3: tilePosition{Tile: tile{ID: 4, Ch: 'D'}, X: 2, Y: 11},
+			},
+			usedTileLocs: map[int]map[int]tile{
+				2: map[int]tile{
+					7: tile{ID: 5, Ch: 'A'},
+					8: tile{ID: 4, Ch: 'B'},
+					10: tile{ID: 7, Ch: 'C'},
+					11: tile{ID: 3, Ch: 'D'},
+				},
+			},
+			want: []string{"AB", "CD"},
+		},
+		{
+			usedTiles: map[int]tilePosition{
+				5: tilePosition{Tile: tile{ID: 5, Ch: 'A'}, X: 7, Y: 2},
+				4: tilePosition{Tile: tile{ID: 4, Ch: 'B'}, X: 8, Y: 2},
+			},
+			usedTileLocs: map[int]map[int]tile{
+				7: map[int]tile{
+					2: tile{ID: 5, Ch: 'A'},
+				},
+				8: map[int]tile{
+					2: tile{ID: 4, Ch: 'B'},
+				},
+			},
+			want: []string{"AB"},
+		},
+		{
+			usedTiles: map[int]tilePosition{
+				8: tilePosition{Tile: tile{ID: 8, Ch: 'N'}, X: 4, Y: 3},
+				7: tilePosition{Tile: tile{ID: 7, Ch: 'A'}, X: 5, Y: 3},
+				4: tilePosition{Tile: tile{ID: 4, Ch: 'P'}, X: 6, Y: 3},
+				9: tilePosition{Tile: tile{ID: 9, Ch: 'O'}, X: 4, Y: 4},
+				1: tilePosition{Tile: tile{ID: 1, Ch: 'R'}, X: 5, Y: 4},
+				2: tilePosition{Tile: tile{ID: 2, Ch: 'E'}, X: 5, Y: 5},
+			},
+			usedTileLocs: map[int]map[int]tile{
+				4: map[int]tile{
+					3: tile{ID: 8, Ch: 'N'},
+					4: tile{ID: 9, Ch: 'O'},
+				},
+				5: map[int]tile{
+					3: tile{ID: 7, Ch: 'A'},
+					4: tile{ID: 1, Ch: 'R'},
+					5: tile{ID: 2, Ch: 'E'},
+				},
+				6: map[int]tile{
+					3: tile{ID: 4, Ch: 'P'},
+				},
+			},
+			want: []string{"NAP", "OR", "NO", "ARE"},
+		},
+		{
+			want: []string{},
+		},
+	}
+	for i, test := range usedWordsTests {
+		gps := gamePlayerState{
+			usedTiles:    test.usedTiles,
+			usedTileLocs: test.usedTileLocs,
+		}
+		got := gps.usedWords()
+		if !reflect.DeepEqual(test.want, got) {
+			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
+		}
 	}
 }

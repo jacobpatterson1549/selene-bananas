@@ -437,11 +437,13 @@ func (g *game) updateUserPoints(winningUsername db.Username) {
 }
 
 func (gps gamePlayerState) usedWords() []string {
-	return append(gps.usedWordsY(), gps.usedWordsX()...)
+	horizontalWords := gps.usedWordsX()
+	verticalWords := gps.usedWordsY()
+	return append(horizontalWords, verticalWords...)
 }
 
 func (gps gamePlayerState) usedWordsY() []string {
-	return gps.usedWordsZ(gps.usedTileLocs, func(tp tilePosition) int { return tp.X })
+	return gps.usedWordsZ(gps.usedTileLocs, func(tp tilePosition) int { return tp.Y })
 }
 
 func (gps gamePlayerState) usedWordsX() []string {
@@ -454,15 +456,16 @@ func (gps gamePlayerState) usedWordsX() []string {
 			usedTilesYx[y][x] = t
 		}
 	}
-	return gps.usedWordsZ(usedTilesYx, func(tp tilePosition) int { return tp.Y })
+	return gps.usedWordsZ(usedTilesYx, func(tp tilePosition) int { return tp.X })
 }
 
 func (gps gamePlayerState) usedWordsZ(tiles map[int]map[int]tile, ord func(tp tilePosition) int) []string {
-	usedWords := make([]string, 32)
-	for _, xTiles := range tiles {
-		tilePositions := make([]tilePosition, len(xTiles))
+	keyedUsedWords := make(map[int][]string, len(tiles))
+	wordCount := 0
+	for z, zTiles := range tiles {
+		tilePositions := make([]tilePosition, len(zTiles))
 		i := 0
-		for _, t := range xTiles {
+		for _, t := range zTiles {
 			tilePositions[i] = gps.usedTiles[t.ID]
 			i++
 		}
@@ -470,16 +473,33 @@ func (gps gamePlayerState) usedWordsZ(tiles map[int]map[int]tile, ord func(tp ti
 			return ord(tilePositions[i]) < ord(tilePositions[j])
 		})
 		buffer := new(bytes.Buffer)
+		var zWords []string
 		for i, tp := range tilePositions {
-			if i > 1 && ord(tilePositions[i-1]) < ord(tp)-1 && buffer.Len() > 0 {
-				usedWords = append(usedWords, buffer.String())
+			if i > 1 && ord(tilePositions[i-1]) < ord(tp)-1 && buffer.Len() > 1 {
+				zWords = append(zWords, buffer.String())
 				buffer = new(bytes.Buffer)
 			}
 			buffer.WriteString(tp.Tile.Ch.String())
-			if i+1 == len(tilePositions) {
-				usedWords = append(usedWords, buffer.String())
+			if i+1 == len(tilePositions) && buffer.Len() > 1 {
+				zWords = append(zWords, buffer.String())
 			}
 		}
+		keyedUsedWords[z] = zWords
+		wordCount += len(zWords)
+	}
+	//sort the keyedUsedWords by the keys (z)
+	keys := make([]int, len(keyedUsedWords))
+	i := 0
+	for k := range keyedUsedWords {
+		keys[i] = k
+		i++
+	}
+	sort.Ints(keys)
+	usedWords := make([]string, wordCount)
+	i = 0
+	for _, k := range keys {
+		copy(usedWords[i:], keyedUsedWords[k])
+		i += len(keyedUsedWords[k])
 	}
 	return usedWords
 }
