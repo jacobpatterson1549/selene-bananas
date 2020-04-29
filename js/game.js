@@ -1,6 +1,7 @@
 var game = {
 
     unusedTiles: {},
+    unusedTileIds: [],
     usedTiles: {},
     usedTileLocs: {},
 
@@ -84,8 +85,8 @@ var game = {
                 var t = unusedTiles[i];
                 tileStrings[i] = t.ch;
                 this.unusedTiles[t.id] = t;
+                this.unusedTileIds.push(t.id);
             }
-            tileStrings.sort();
         }
         log.info("adding " + tileStrings + " unused tiles");
         if (skipRedraw == null || !skipRedraw) {

@@ -19,10 +19,10 @@ var canvas = {
 
         // draw unused tiles
         ctx.fillText("Unused Tiles:", 0, tileLength - textOffset);
-        var unusedTileIds = Object.keys(game.unusedTiles);
-        for (var i = 0; i < unusedTileIds.length; i++) {
-            var unusedTileId = unusedTileIds[i];
-            this._drawTile(ctx, i * tileLength, tileLength, game.unusedTiles[unusedTileId], tileLength, textOffset);
+        for (var i = 0; i < game.unusedTileIds.length; i++) {
+            var unusedTileId = game.unusedTileIds[i];
+            var tile = game.unusedTiles[unusedTileId];
+            this._drawTile(ctx, i * tileLength, tileLength, tile, tileLength, textOffset);
         }
 
         ctx.fillText("Game Area:", 0, tileLength * 4 - textOffset);
@@ -58,10 +58,9 @@ var canvas = {
         var height = canvasElement.height;
         var tileLength = 20;
         // unused tile check
-        var unusedTileIds = Object.keys(game.unusedTiles)
-        if (x >= 0 && x < unusedTileIds.length * tileLength && y >= tileLength && y <= 2 * tileLength) {
+        if (x >= 0 && x < game.unusedTileIds.length * tileLength && y >= tileLength && y <= 2 * tileLength) {
             var idx = Math.floor(x / tileLength);
-            var id = unusedTileIds[idx];
+            var id = game.unusedTileIds[idx];
             var tile = game.unusedTiles[id];
             console.log("selected unused tile: ", tile.ch);
             return { tile: tile, isUsed: false };
@@ -119,6 +118,12 @@ var canvas = {
             delete game.usedTileLocs[selectedTile.x][selectedTile.y];
         } else {
             delete game.unusedTiles[selectedTile.tile.id];
+            for (var i = 0; i < game.unusedTileIds.length; i++) {
+                if (game.unusedTileIds[i] == selectedTile.tile.id) {
+                    game.unusedTileIds.splice(i, 1);
+                    break;
+                }
+            }
         }
         game.usedTiles[selectedTile.tile.id] = selectedTile.tile;
         if (game.usedTileLocs[destinationTile.x] == null) {
@@ -150,6 +155,12 @@ var canvas = {
             delete game.usedTiles[src.tile.id];
         } else {
             delete game.unusedTiles[src.tile.id];
+            for (var i = 0; i < game.unusedTileIds.length; i++) {
+                if (game.unusedTileIds[i] == selectedTile.tile.id) {
+                    game.unusedTileIds.splice(i, 1);
+                    break;
+                }
+            }
         }
         websocket.send({ type: 8, tiles: [src.tile] }); // gameSwap
     },
