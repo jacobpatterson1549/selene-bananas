@@ -71,6 +71,9 @@ var websocket = {
                 console.log("error:", message.info);
                 log.error(message.info);
                 break;
+            case 16: // socketClosed
+                log.error(message.info);
+                lobby.leave();
             default:
                 console.log('unknown message type received:', event.data);
                 break;

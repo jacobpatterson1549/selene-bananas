@@ -19,8 +19,7 @@ type (
 )
 
 func (p *player) run() {
-	// TODO: start ticker to periodically get gameTilePositions
-	// TODO: add inactivity timeout (10 min)
+	// TODO: start ticker to periodically get gameTilePositions (like socket idleTicker)
 	for m := range p.messages {
 		switch m.Type {
 		case gameJoin:

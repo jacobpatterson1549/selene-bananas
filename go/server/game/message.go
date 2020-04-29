@@ -36,4 +36,5 @@ const (
 	playerDelete      messageType = 13
 	socketInfo        messageType = 14
 	socketError       messageType = 15
+	socketClosed      messageType = 16
 )

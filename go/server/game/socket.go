@@ -15,6 +15,7 @@ type (
 		conn     *websocket.Conn
 		player   *player
 		messages chan message
+		active   bool
 	}
 )
 
@@ -24,9 +25,10 @@ const (
 	writeWait  = 5 * time.Second
 	pongPeriod = 20 * time.Second
 	pingPeriod = (pongPeriod * 80) / 100 // should be less than pongPeriod
+	idlePeriod = 5 * time.Minute
 )
 
-func (s socket) readMessages() {
+func (s *socket) readMessages() {
 	defer s.close()
 	err := s.refreshReadDeadline()
 	if err != nil {
@@ -48,7 +50,7 @@ func (s socket) readMessages() {
 				s.log.Print("unexpected websocket closure", err)
 			}
 			s.close()
-			break
+			return
 		}
 		s.log.Printf("receiving messages from %v: %v", s.player.username, m)
 		m.Player = s.player
@@ -65,12 +67,15 @@ func (s socket) readMessages() {
 		default:
 			s.log.Printf("player does not know how to handle a messageType of %v", m.Type)
 		}
+		s.active = true // (mutates the socket)
 	}
 }
 
 func (s *socket) writeMessages() {
 	pingTicker := time.NewTicker(pingPeriod)
 	defer pingTicker.Stop()
+	idleTicker := time.NewTicker(idlePeriod)
+	defer idleTicker.Stop()
 	defer s.close()
 	for {
 		var err error
@@ -85,6 +90,9 @@ func (s *socket) writeMessages() {
 				s.log.Printf("error writing websocket message: %v", err)
 				return
 			}
+			if m.Type == playerDelete {
+				return
+			}
 		case _, ok := <-pingTicker.C:
 			if !ok {
 				return
@@ -97,6 +105,18 @@ func (s *socket) writeMessages() {
 				s.log.Printf("error writing websocket ping message: %v", err)
 				return
 			}
+		case _, ok := <-idleTicker.C:
+			if !ok {
+				return
+			}
+			if !s.active {
+				err := s.conn.WriteJSON(message{Type: socketClosed, Info: "connection closing due to inactivity"})
+				if err != nil {
+					s.log.Printf("error writing websocket message: %v", err)
+				}
+				return
+			}
+			s.active = false
 		}
 	}
 }

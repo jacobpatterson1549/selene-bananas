@@ -38,5 +38,6 @@ var lobby = {
 
     leave: function () {
         websocket.close();
+        game.leave();
     },
 };
