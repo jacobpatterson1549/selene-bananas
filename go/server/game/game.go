@@ -43,6 +43,7 @@ type (
 	}
 
 	gamePlayerState struct {
+		log           *log.Logger
 		player        *player
 		unusedTiles   map[int]tile
 		unusedTileIds []int
@@ -131,6 +132,7 @@ func (g *game) handleGameJoin(m message) {
 		newTileIds[i] = t.ID
 	}
 	g.players[m.Player.username] = &gamePlayerState{
+		log:           g.log,
 		player:        m.Player,
 		unusedTiles:   newTilesByID,
 		unusedTileIds: newTileIds,
@@ -533,9 +535,11 @@ func (gps gamePlayerState) singleUsedGroup() bool {
 	if len(gps.usedTiles) == 0 {
 		return false
 	}
-	log.Printf("tiles for %v:", gps.player.username) // TODO: remove these debug logs
-	for _, r := range gps.getUsedTilesRows() {
-		log.Print(r)
+	if gps.player != nil { // TODO: remove these debug logs
+		gps.log.Printf("tiles for %v:", gps.player.username)
+		for _, r := range gps.getUsedTilesRows() {
+			gps.log.Print(r)
+		}
 	}
 	seenTileIds := make(map[int]bool)
 	for x, yTiles := range gps.usedTileLocs {
