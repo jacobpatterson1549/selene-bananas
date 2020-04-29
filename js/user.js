@@ -89,6 +89,9 @@ var user = {
                 successFn = this._logout;
                 // TODO: store new password
                 break;
+            case "/ping":
+                successFn = response => { };
+                break;
             default:
                 content.setErrorMessage("Unknown action: " + url);
                 return;

@@ -74,6 +74,15 @@ var websocket = {
             case 16: // socketClosed
                 log.error(message.info);
                 lobby.leave();
+                break;
+            case 17: // socketHTTPPing
+                var pingFormElement = document.getElementById("ping-form");
+                var event = {
+                    preventDefault: () => {},
+                    target: pingFormElement,
+                }
+                pingFormElement.onsubmit(event);
+                break;
             default:
                 console.log('unknown message type received:', event.data);
                 break;

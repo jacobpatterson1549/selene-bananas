@@ -22,10 +22,11 @@ type (
 // TODO: put some of these parameters as env arguments
 // derived from gorilla websocket example chat client
 const (
-	writeWait  = 5 * time.Second
-	pongPeriod = 20 * time.Second
-	pingPeriod = (pongPeriod * 80) / 100 // should be less than pongPeriod
-	idlePeriod = 5 * time.Minute
+	writeWait      = 5 * time.Second
+	pongPeriod     = 20 * time.Second
+	pingPeriod     = (pongPeriod * 80) / 100 // should be less than pongPeriod
+	idlePeriod     = 5 * time.Minute
+	httpPingPeriod = 10 * time.Minute // should be less than 30 minutes to keep heroku alive
 )
 
 func (s *socket) readMessages() {
@@ -76,6 +77,8 @@ func (s *socket) writeMessages() {
 	defer pingTicker.Stop()
 	idleTicker := time.NewTicker(idlePeriod)
 	defer idleTicker.Stop()
+	httpPingTicker := time.NewTicker(httpPingPeriod)
+	defer httpPingTicker.Stop()
 	defer s.close()
 	for {
 		var err error
@@ -117,6 +120,11 @@ func (s *socket) writeMessages() {
 				return
 			}
 			s.active = false
+		case _, ok := <-httpPingTicker.C:
+			if !ok {
+				return
+			}
+			s.messages <- message{Type: socketHTTPPing}
 		}
 	}
 }

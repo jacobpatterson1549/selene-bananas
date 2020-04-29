@@ -134,7 +134,7 @@ func (s server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 			return nil
 		}
 		return s.handleUserJoinLobby(w, r, tokenUsername)
-	case "/user_logout":
+	case "/user_logout", "/ping":
 		_, err := s.checkAuthorization(r)
 		if err != nil {
 			httpError(w, http.StatusUnauthorized)

@@ -1,3 +1,6 @@
+<form method="get" action="/ping" onsubmit="user.request(event)" id="ping-form" hidden>
+    <input type="submit">
+</form>
 <form method="get" action="/user_join_lobby" onsubmit="lobby.getGameInfos(event)">
     <fieldset>
         <legend>Refresh Games</legend>
@@ -18,7 +21,7 @@
     </table>
     <template id="no-game-info-row">
         <tr>
-            <td colspan="3">No games exist.  Create one.</td>
+            <td colspan="3">No games exist. Create one.</td>
         </tr>
     </template>
     <template id="game-info-row">
@@ -30,7 +33,7 @@
     </template>
     <template id="join-game-button">
         <input type="number" class="game-id" hidden>
-        <button type="button" id="game-join" onclick="game.join(event)">Join</button>    
+        <button type="button" id="game-join" onclick="game.join(event)">Join</button>
     </template>
     <button type="button" id="game-create" onclick="game.create(event)">Create Game</button>
     <button type="button" id="leave-lobby" onclick="lobby.leave(event)">Leave Lobby</button>
