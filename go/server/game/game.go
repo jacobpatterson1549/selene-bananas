@@ -43,11 +43,12 @@ type (
 	}
 
 	gamePlayerState struct {
-		player       *player
-		unusedTiles  map[int]tile
-		usedTiles    map[int]tilePosition
-		usedTileLocs map[int]map[int]tile // X -> Y -> tile
-		winPoints    int
+		player        *player
+		unusedTiles   map[int]tile
+		unusedTileIds []int
+		usedTiles     map[int]tilePosition
+		usedTileLocs  map[int]map[int]tile // X -> Y -> tile
+		winPoints     int
 	}
 )
 
@@ -124,15 +125,18 @@ func (g *game) handleGameJoin(m message) {
 	newTiles := g.unusedTiles[:g.numNewTiles]
 	g.unusedTiles = g.unusedTiles[g.numNewTiles:]
 	newTilesByID := make(map[int]tile, g.numNewTiles)
-	for _, t := range newTiles {
+	newTileIds := make([]int, g.numNewTiles)
+	for i, t := range newTiles {
 		newTilesByID[t.ID] = t
+		newTileIds[i] = t.ID
 	}
 	g.players[m.Player.username] = &gamePlayerState{
-		player:       m.Player,
-		unusedTiles:  newTilesByID,
-		usedTiles:    make(map[int]tilePosition),
-		usedTileLocs: make(map[int]map[int]tile),
-		winPoints:    10,
+		player:        m.Player,
+		unusedTiles:   newTilesByID,
+		unusedTileIds: newTileIds,
+		usedTiles:     make(map[int]tilePosition),
+		usedTileLocs:  make(map[int]map[int]tile),
+		winPoints:     10,
 	}
 	m.Player.messages <- message{
 		Type:  socketInfo,
@@ -245,6 +249,7 @@ func (g *game) handleGameSnag(m message) {
 		Tiles: g.unusedTiles[:1],
 	}
 	g.players[m.Player.username].unusedTiles[g.unusedTiles[0].ID] = g.unusedTiles[0]
+	g.players[m.Player.username].unusedTileIds = append(g.players[m.Player.username].unusedTileIds, g.unusedTiles[0].ID)
 	g.unusedTiles = g.unusedTiles[1:]
 	otherPlayers := make([]*player, len(g.players)-1)
 	i := 0
@@ -262,6 +267,7 @@ func (g *game) handleGameSnag(m message) {
 			Tiles: g.unusedTiles[:1],
 		}
 		g.players[otherPlayers[i].username].unusedTiles[g.unusedTiles[0].ID] = g.unusedTiles[0]
+		g.players[otherPlayers[i].username].unusedTileIds = append(g.players[otherPlayers[i].username].unusedTileIds, g.unusedTiles[0].ID)
 		g.unusedTiles = g.unusedTiles[1:]
 	}
 }
@@ -284,7 +290,14 @@ func (g *game) handleGameSwap(m message) {
 	gps := g.players[m.Player.username]
 	g.unusedTiles = append(g.unusedTiles, t)
 	if _, ok := gps.unusedTiles[t.ID]; ok {
+		// TODO: gps.removeTile(id) which calls gps.removeUnusedTile(), gps.removeUsedTile()
 		delete(gps.unusedTiles, t.ID)
+		for i := 0; i < len(gps.unusedTileIds); i++ {
+			if gps.unusedTileIds[i] == t.ID {
+				gps.unusedTileIds = append(gps.unusedTileIds[:i], gps.unusedTileIds[i+1:]...)
+				break
+			}
+		}
 	} else {
 		tp := gps.usedTiles[t.ID]
 		delete(gps.usedTiles, t.ID)
@@ -295,6 +308,7 @@ func (g *game) handleGameSwap(m message) {
 	for i := 0; i < 3 && len(g.unusedTiles) > 0; i++ {
 		newTiles = append(newTiles, g.unusedTiles[0])
 		gps.unusedTiles[g.unusedTiles[0].ID] = g.unusedTiles[0]
+		gps.unusedTileIds = append(gps.unusedTileIds, g.unusedTiles[0].ID)
 		g.unusedTiles = g.unusedTiles[1:]
 	}
 	m.Player.messages <- message{
@@ -325,6 +339,12 @@ func (g *game) handleGameTileMoved(m message) {
 			return
 		}
 		delete(gps.unusedTiles, tp.Tile.ID)
+		for i := 0; i < len(gps.unusedTileIds); i++ {
+			if gps.unusedTileIds[i] == tp.Tile.ID {
+				gps.unusedTileIds = append(gps.unusedTileIds[:i], gps.unusedTileIds[i+1:]...)
+				break
+			}
+		}
 	case 2:
 		srcTp := tp
 		tp = m.TilePositions[1]
@@ -350,13 +370,11 @@ func (g *game) handleGameTileMoved(m message) {
 func (g *game) handleGameTilePositions(m message) {
 	gps := g.players[m.Player.username]
 	unusedTiles := make([]tile, len(gps.unusedTiles))
+	for i, id := range gps.unusedTileIds {
+		unusedTiles[i] = gps.unusedTiles[id]
+	}
 	usedTilePositions := make([]tilePosition, len(gps.usedTiles))
 	i := 0
-	for _, t := range gps.unusedTiles {
-		unusedTiles[i] = t
-		i++
-	}
-	i = 0
 	for _, tps := range gps.usedTiles {
 		usedTilePositions[i] = tps
 		i++

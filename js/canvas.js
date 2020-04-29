@@ -156,7 +156,7 @@ var canvas = {
         } else {
             delete game.unusedTiles[src.tile.id];
             for (var i = 0; i < game.unusedTileIds.length; i++) {
-                if (game.unusedTileIds[i] == selectedTile.tile.id) {
+                if (game.unusedTileIds[i] == src.tile.id) {
                     game.unusedTileIds.splice(i, 1);
                     break;
                 }
