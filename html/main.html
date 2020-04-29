@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="Description" content="word game">
     <title>{{.ApplicationName}}</title>
-    <link rel="stylesheet" type="text/css" href="main.css" />
+    <link rel="stylesheet" href="/main.css">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 
@@ -15,6 +15,7 @@
         <h1><a href="/">{{.ApplicationName}}</a></h1>
     </header>
     <main>
+        {{ template "log.html" . }}
         {{ template "content.html" . }}
     </main>
 </body>

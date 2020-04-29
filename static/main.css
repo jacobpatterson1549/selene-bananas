@@ -1,0 +1,85 @@
+form label {
+    display: inline-block;
+}
+
+.tabs {
+    display: block;
+    position: relative;
+    margin: 2em 0;
+    clear: both;
+    min-height: 200px;
+}
+
+.tabs>div {
+    float: left;
+}
+
+.tabs>div>label {
+    margin: 1em .2em;
+    padding: .3em;
+    border: 1px solid black;
+    background: #eee;
+}
+
+.tabs>div>label:hover {
+    background: #ddd;
+}
+
+.tabs>div>label:active {
+    background: #ccc;
+}
+
+.tabs>div>input {
+    display: none;
+}
+
+.tabs>div>input:checked+label {
+    background: #bbb;
+}
+
+.tabs>div>div {
+    position: absolute;
+    left: 0;
+    display: none;
+    background: #fff;
+    margin: 1em;
+}
+
+#has-login:checked+.tabs>div.logout-required {
+    display: none;
+}
+
+#has-login:not(:checked)+.tabs>div.login-required {
+    display: none;
+}
+
+.tabs>div>input:checked+label+div {
+    display: block;
+}
+
+#has-game-infos:not(:checked)+div {
+    display:none;
+}
+
+#has-game:not(:checked)+div {
+    display: none;
+}
+
+#has-websocket:not(:checked)+div {
+    display: none;
+}
+
+#has-log:not(:checked)+div#log {
+    display: none;
+}
+
+#log-scroll {
+    height: 5em;
+    overflow: auto;
+}
+
+#log-scroll>.error {
+    color:red;
+}
+
+

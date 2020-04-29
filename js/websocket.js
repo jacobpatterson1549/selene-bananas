@@ -62,14 +62,14 @@ var websocket = {
                     game.replaceGameTiles(message.tiles, message.tilePositions)
                     break;
                 }
-                game.log("info", message.info);
+                log.info(message.info);
                 if (message.tiles) {
                     game.addUnusedTiles(message.tiles);
                 }
                 break;
             case 15: // socketError
                 console.log("error:", message.info);
-                game.log("error", message.info);
+                log.error(message.info);
                 break;
             default:
                 console.log('unknown message type received:', event.data);

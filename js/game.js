@@ -48,7 +48,7 @@ var game = {
     },
 
     swapTile: function (event) {
-        this.log("info", "click a tile to swap for three others from the pile");
+        log.info("click a tile to swap for three others from the pile");
         canvas.isSwap = true;
     },
 
@@ -87,27 +87,9 @@ var game = {
             }
             tileStrings.sort();
         }
-        this.log("info", "adding " + tileStrings + " unused tiles");
+        log.info("adding " + tileStrings + " unused tiles");
         if (skipRedraw == null || !skipRedraw) {
             canvas.redraw();
-        }
-    },
-
-    log: function (cls, text) {
-        var gameLogItemTemplate = document.getElementById("game-log-item")
-        var gameLogItemElement = gameLogItemTemplate.content.cloneNode(true).children[0];
-        gameLogItemElement.className = cls;
-        var date = new Date();
-        var hour = date.getHours();
-        var minutes = date.getMinutes();
-        var seconds = date.getSeconds();
-        var time = hour + ":" + (minutes > 9 ? minutes : "0" + minutes) + ":" + (seconds > 9 ? seconds : "0" + seconds);
-        gameLogItemElement.textContent = time + " : " + text;
-        var gameLogElement = document.getElementById("game-log");
-        var doScroll = gameLogElement.scrollTop >= gameLogElement.scrollHeight - gameLogElement.clientHeight;
-        gameLogElement.appendChild(gameLogItemElement);
-        if (doScroll) {
-            gameLogElement.scrollTop = gameLogElement.scrollHeight - gameLogElement.clientHeight;
         }
     },
 };
