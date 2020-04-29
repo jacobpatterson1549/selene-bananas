@@ -12,11 +12,9 @@ COPY . /app/
 
 RUN CGO_ENABLED=0 go build -o /app/selene_bananas main.go
 
-FROM bash
+FROM alpine
 
 WORKDIR /app
-
-COPY --from=0 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
 COPY --from=0 /usr/share/dict/american-english /usr/share/dict/american-english
 

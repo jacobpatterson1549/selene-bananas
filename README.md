@@ -44,8 +44,14 @@ POSTGRES_PORT=54320
 1. Access application by opening <http://localhost:8000>.
 
 ### Heroku
-1. Provision a new app on [Heroku](https://dashboard.heroku.com/apps).
+1. Provision a new app on [Heroku](https://dashboard.heroku.com/apps).  The name of the application is referenced as HEROKU_APP_NAME in the steps below
 1. Provision a [Heroku Postgres](https://www.heroku.com/postgres) **add-on** on the **Overview** (main) tab for the app.
-1. Configure additional environment variables on the **Settings** tab.  The PORT and DATABASE_URL variable is automatically configured.
-1. Connect the app to this GitHub repository on the **Deploy** tab.
-1. Trigger a **Manual deploy** on the **Deploy** tab.
+1. Configure additional environment variables, such as APPLICATION_NAME on the **Settings** tab.  The PORT and DATABASE_URL variables automatically configured, although the PORT variable is not displayed.
+1. Connect the app to this GitHub repository on the **Deploy** tab.  Use the GIT_URL, likely https://github.com/jacobpatterson1549/selene-bananas.git.
+1. In a terminal, with the [heroku-cli](https://devcenter.heroku.com/articles/heroku-cli):
+```
+git clone GIT_URL
+heroku stack:set container
+heroku git:remote -a HEROKU_APP_NAME
+git push heroku master
+```
