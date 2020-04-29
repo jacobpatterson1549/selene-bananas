@@ -18,6 +18,7 @@ New dependencies are automatically added to [go.mod](go.mod) when the project is
 * [Font-Awesome](https://github.com/FortAwesome/Font-Awesome) (icons on about page)
 
 ## Build/Run
+The files in the sql folder are ran when the app starts.
 
 ### Environment configuration
 Environment properties are needed to customize server characteristics.  Sample config:
@@ -28,7 +29,7 @@ PORT=8000 # Server port
 ```
 
 ### Make
-Run `make` to build and run the application.  Requires Go to be installed and a Postgres database to be installed.
+Run `make serve` to build and run the application.  Requires Go and a and a Postgres database to be installed.
 
 ### Docker
 Launching the application with [Docker](https://www.docker.com) requires minimal configuration. 

@@ -1,9 +1,12 @@
-.PHONY: all serve clean
+.PHONY: all install serve clean
 
-all: serve
+all: install
 
-serve:
+install:
+	go test ./... -v
 	go build -o main main.go
+
+serve: install
 	export $(shell grep -v '^#' .env | xargs) && ./main
 
 clean:
