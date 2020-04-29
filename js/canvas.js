@@ -36,7 +36,7 @@ var canvas = {
         ctx.lineTo(usedMinX, usedMaxX);
         ctx.lineTo(usedMaxX, usedMaxY);
         ctx.lineTo(usedMaxX, usedMinY),
-        ctx.lineTo(usedMinX, usedMinY);
+            ctx.lineTo(usedMinX, usedMinY);
         var numRows = Math.floor((usedMaxY - usedMinY) / tileLength);
         var numCols = Math.floor((usedMaxX - usedMinX) / tileLength);
         // draw used tiles
@@ -74,11 +74,11 @@ var canvas = {
         var usedMaxX = tileLengthRound(width - usedPadding);
         var usedMaxY = tileLengthRound(height - usedPadding);
         if (x >= usedMinX && x <= usedMaxX && y >= usedMinY && y <= usedMaxY) {
-            var c  = Math.floor((x - usedMinX) / tileLength);
-            var r  = Math.floor((y - usedMinY) / tileLength);
+            var c = Math.floor((x - usedMinX) / tileLength);
+            var r = Math.floor((y - usedMinY) / tileLength);
             var tile = game.usedTileLocs[c] ? game.usedTileLocs[c][r] : null;
             console.log("selected unused tile: ", (tile ? tile.ch : '-'), ", row ", r, ", col ", c);
-            return { tile: tile, isUsed: true, x: c, y: r};
+            return { tile: tile, isUsed: true, x: c, y: r };
         }
 
         return {};
@@ -130,9 +130,9 @@ var canvas = {
         // send notification to server
         var tilePositions = [];
         if (selectedTile.isUsed) {
-            tilePositions.push({tile: selectedTile.tile, x: selectedTile.x, y: selectedTile.y});
+            tilePositions.push({ tile: selectedTile.tile, x: selectedTile.x, y: selectedTile.y });
         }
-        tilePositions.push({tile: selectedTile.tile, x: destinationTile.x, y: destinationTile.y});
+        tilePositions.push({ tile: selectedTile.tile, x: destinationTile.x, y: destinationTile.y });
         websocket.send({ type: 9, tilePositions: tilePositions }); // gameTileMoved
     },
 
