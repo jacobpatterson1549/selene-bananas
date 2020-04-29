@@ -533,6 +533,10 @@ func (gps gamePlayerState) singleUsedGroup() bool {
 	if len(gps.usedTiles) == 0 {
 		return false
 	}
+	log.Printf("tiles for %v:", gps.player.username) // TODO: remove these debug logs
+	for _, r := range gps.getUsedTilesRows() {
+		log.Print(r)
+	}
 	seenTileIds := make(map[int]bool)
 	for x, yTiles := range gps.usedTileLocs {
 		for y, t := range yTiles {
@@ -560,4 +564,54 @@ func (gps gamePlayerState) addSeenTileIds(x, y int, t tile, seenTileIds map[int]
 			}
 		}
 	}
+}
+
+// Debug function
+func (gps gamePlayerState) getUsedTilesRows() []string {
+	// compute bounds
+	var xSeen, ySeen bool
+	var xMin, xMax, yMin, yMax int
+	for x, yTiles := range gps.usedTileLocs {
+		switch {
+		case !xSeen:
+			xSeen = true
+			xMin = x
+			xMax = x
+		case x < xMin:
+			xMin = x
+		case x > xMax:
+			xMax = x
+		}
+		for y := range yTiles {
+			switch {
+			case !ySeen:
+				ySeen = true
+				yMin = y
+				yMax = y
+			case y < yMin:
+				yMin = y
+			case y > yMax:
+				yMax = y
+			}
+		}
+	}
+	// computer array
+	rows := make([]string, yMax-yMin+1)
+	for r := yMin; r <= yMax; r++ {
+		var buffer bytes.Buffer
+		for c := xMin; c <= xMax; c++ {
+			var tileFound bool
+			if yTiles, ok := gps.usedTileLocs[c]; ok {
+				if t, ok := yTiles[r]; ok {
+					buffer.WriteRune(rune(t.Ch))
+					tileFound = true
+				}
+			}
+			if !tileFound {
+				buffer.WriteRune(' ')
+			}
+		}
+		rows[r-yMin] = buffer.String()
+	}
+	return rows
 }
