@@ -1,3 +1,5 @@
+// +heroku goVersion go1.13
+
 module github.com/jacobpatterson1549/selene-bananas
 
 go 1.13
