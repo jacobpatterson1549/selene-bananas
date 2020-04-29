@@ -96,17 +96,16 @@ var canvas = {
     _onMouseUp: function (event) {
         var selectedTile = canvas._selectedTile;
         canvas._selectedTile = null;
-        if (selectedTile.tile == null) {
-            if (canvas.isSwap) {
-                this.log("error", "invalid swap");
-                canvas.isSwap = false;
-            }
-            return;
-        }
         var destinationTile = canvas._getTile(event.offsetX, event.offsetY);
         if (canvas.isSwap) {
             canvas.isSwap = false;
             canvas._swap(selectedTile, destinationTile);
+            return;
+        }
+        if (selectedTile == null || selectedTile.tile == null) {
+            if (canvas.isSwap) {
+                canvas.isSwap = false;
+            }
             return;
         }
         if (destinationTile.tile != null || !destinationTile.isUsed) {
@@ -139,17 +138,20 @@ var canvas = {
     // TODO: onMouseMove
 
     _swap: function (src, dest) {
-        if (src == null || dest == null || src.tile == null || dest.tile == null || src.tile.id != dest.tile.id) {
-            this.log("error", "invalid swap");
+        if (src == null || dest == null) {
             return;
         }
-        if (dest.isUsed) {
-            delete game.usedTileLocs[dest.x][dest.y];
-            delete game.usedTiles[dest.tile.id];
-        } else {
-            delete game.unusedTiles[dest.tile.id];
+        if (src.tile == null || dest.tile == null || src.tile.id != dest.tile.id) {
+            log.info("swap cancelled");
+            return;
         }
-        websocket.send({ type: 8, tiles: [dest.tile] }); // gameSwap
+        if (src.isUsed) {
+            delete game.usedTileLocs[src.x][src.y];
+            delete game.usedTiles[src.tile.id];
+        } else {
+            delete game.unusedTiles[src.tile.id];
+        }
+        websocket.send({ type: 8, tiles: [src.tile] }); // gameSwap
     },
 
     init: function () {
