@@ -1,6 +1,6 @@
 var log = {
     info: function (text) {
-        this._log("", text);
+        this._log("info", text);
     },
 
     error: function (text) {
