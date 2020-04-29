@@ -51,7 +51,7 @@ POSTGRES_PORT=54320
 1. In a terminal, with the [heroku-cli](https://devcenter.heroku.com/articles/heroku-cli):
 ```
 git clone GIT_URL
-heroku stack:set container
 heroku git:remote -a HEROKU_APP_NAME
+heroku stack:set container
 git push heroku master
 ```
