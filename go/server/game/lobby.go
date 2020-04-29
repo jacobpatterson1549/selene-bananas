@@ -149,8 +149,9 @@ func (l lobby) newGame(p *player, id int) game {
 		userDao:     l.userDao,
 		maxPlayers:  8,
 		numNewTiles: 21,
+		tileLetters: "",
 		messages:    make(chan message, 64),
-		shuffleTilesFunc: func(tiles []tile) {
+		shuffleUnusedTilesFunc: func(tiles []tile) {
 			l.rand.Shuffle(len(tiles), func(i, j int) {
 				tiles[i], tiles[j] = tiles[j], tiles[i]
 			})
@@ -161,7 +162,7 @@ func (l lobby) newGame(p *player, id int) game {
 			})
 		},
 	}
-	g.unusedTiles = g.createTiles()
+	g.initializeUnusedTiles()
 	return g
 }
 

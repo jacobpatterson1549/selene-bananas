@@ -25,10 +25,11 @@ type (
 		unusedTiles []tile
 		maxPlayers  int
 		numNewTiles int
+		tileLetters string
 		messages    chan message
 		// the shuffle functions shuffles the slices my mutating them
-		shuffleTilesFunc   func(tiles []tile)
-		shufflePlayersFunc func(players []*player)
+		shuffleUnusedTilesFunc func(tiles []tile)
+		shufflePlayersFunc     func(players []*player)
 	}
 
 	gameState int
@@ -51,38 +52,28 @@ type (
 )
 
 const (
+	defaultTileLetters = "AAAAAAAAAAAAABBBCCCDDDDDDEEEEEEEEEEEEEEEEEEFFFGGGGHHHIIIIIIIIIIIIJJKKLLLLLMMMNNNNNNNNOOOOOOOOOOOPPPQQRRRRRRRRRSSSSSSTTTTTTTTTUUUUUUVVVWWWXXYYYZZ"
 	// not using iota because gameStates hardcoded in ui javascript
 	gameUnstarted  gameState = 0
 	gameInProgress gameState = 1
 	gameFinished   gameState = 2
 )
 
-func (g game) createTiles() []tile {
-	var tiles []tile
-	add := func(s string, n int) {
-		for i := 0; i < len(s); i++ {
-			ch := s[i]
-			for j := 0; j < n; j++ {
-				tiles = append(tiles, tile{Ch: letter(ch)})
-			}
+// initialize unusedTiles from tileLetters or defaultTileLetters and shuffles them
+func (g *game) initializeUnusedTiles() {
+	if len(g.tileLetters) == 0 {
+		g.tileLetters = defaultTileLetters
+	}
+	g.unusedTiles = make([]tile, len(g.tileLetters))
+	for i, ch := range g.tileLetters {
+		g.unusedTiles[i] = tile{
+			ID: i + 1,
+			Ch: letter(ch),
 		}
 	}
-	add("JKQXZ", 2)
-	add("BCFHMPVWY", 3)
-	add("G", 4)
-	add("L", 5)
-	add("DSU", 6)
-	add("N", 8)
-	add("TR", 9)
-	add("O", 11)
-	add("I", 12)
-	add("A", 13)
-	add("E", 18)
-	g.shuffleTilesFunc(tiles)
-	for i := range tiles {
-		tiles[i].ID = i + 1
+	if g.shuffleUnusedTilesFunc != nil {
+		g.shuffleUnusedTilesFunc(g.unusedTiles)
 	}
-	return tiles
 }
 
 func (g *game) run() {
@@ -299,7 +290,7 @@ func (g *game) handleGameSwap(m message) {
 		delete(gps.usedTiles, t.ID)
 		delete(gps.usedTileLocs[tp.X], tp.Y)
 	}
-	g.shuffleTilesFunc(g.unusedTiles)
+	g.shuffleUnusedTilesFunc(g.unusedTiles)
 	var newTiles []tile
 	for i := 0; i < 3 && len(g.unusedTiles) > 0; i++ {
 		newTiles = append(newTiles, g.unusedTiles[0])
