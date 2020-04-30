@@ -36,7 +36,6 @@ func (s *socket) readMessages() {
 		return
 	}
 	s.conn.SetPongHandler(func(pong string) error {
-		s.log.Printf("handling pong for %v: %v", s.player.username, pong)
 		return s.refreshReadDeadline()
 	})
 	for {
@@ -53,7 +52,6 @@ func (s *socket) readMessages() {
 			s.close()
 			return
 		}
-		s.log.Printf("receiving messages from %v: %v", s.player.username, m)
 		m.Player = s.player
 		switch m.Type {
 		case gameCreate, gameJoin, gameInfos, playerDelete: // TODO: this a bit of a hack.  It would be nice if the socket only interfaced with the player
@@ -82,7 +80,6 @@ func (s *socket) writeMessages() {
 			if !ok {
 				return
 			}
-			s.log.Printf("writing message for %v: %v", s.player.username, m)
 			err = s.conn.WriteJSON(m)
 			if err != nil {
 				s.log.Printf("error writing websocket message: %v", err)
@@ -98,7 +95,6 @@ func (s *socket) writeMessages() {
 			if err = s.refreshWriteDeadline(); err != nil {
 				return
 			}
-			s.log.Printf("writing ping message for %v", s.player.username)
 			if err = s.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				s.log.Printf("error writing websocket ping message: %v", err)
 				return
