@@ -37,7 +37,7 @@ var lobby = {
 
     },
 
-    _setState: function(element, state) {
+    _setState: function (element, state) {
         switch (state) {
             case 3: // gameNotStarted
                 element.innerHTML = "Not Started"
@@ -47,7 +47,6 @@ var lobby = {
                 break;
             case 2: // gameFinished
                 element.innerHTML = "Finished"
-            
                 break;
             default:
                 log.error("invalid gameState: ", state);
