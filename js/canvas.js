@@ -49,7 +49,6 @@ var canvas = {
         }
 
         ctx.stroke();
-        console.log("done drawing");
     },
 
     _getTile: function (x, y) { // return { tile:{ id:int, ch:string }, isUsed:bool, x:int, y:int }
@@ -62,7 +61,6 @@ var canvas = {
             var idx = Math.floor(x / tileLength);
             var id = game.unusedTileIds[idx];
             var tile = game.unusedTiles[id];
-            console.log("selected unused tile: ", tile.ch);
             return { tile: tile, isUsed: false };
         }
         // used tile check
@@ -76,7 +74,6 @@ var canvas = {
             var c = Math.floor((x - usedMinX) / tileLength);
             var r = Math.floor((y - usedMinY) / tileLength);
             var tile = game.usedTileLocs[c] ? game.usedTileLocs[c][r] : null;
-            console.log("selected unused tile: ", (tile ? tile.ch : '-'), ", row ", r, ", col ", c);
             return { tile: tile, isUsed: true, x: c, y: r };
         }
 

@@ -16,11 +16,10 @@ var websocket = {
             var websocketElement = document.getElementById("has-websocket");
             websocketElement.checked = true;
             this._websocket.onopen = event => {
-                console.log("websocket opened");
                 resolve(true);
             };
             this._websocket.onerror = event => {
-                console.log("websocket error: ", event);
+                log.error("websocket error: ", event);
                 resolve(false);
             };
             this._websocket.onmessage = this.onMessage;
@@ -38,24 +37,16 @@ var websocket = {
 
     send: function (message) {
         var messageJSON = JSON.stringify(message);
-        console.log("sending message json:", messageJSON);
-        if (this._websocket != null && this._websocket.readyState == 1) {
+        if (this._websocket != null && this._websocket.readyState == 1) { // OPEN
             this._websocket.send(messageJSON);
         } else {
-            log.error("websocket closed");
+            log.error("websocket not open, closing");
             this.close();
         }
     },
 
     onMessage: function (event) {
-        console.log("received message: " + event.data);
         var message = JSON.parse(event.data);
-
-        // handling
-        if (!message.type) {
-            console.log('unknown message received:', event.data);
-        }
-
         switch (message.type) {
             case 11: // gameInfos
                 lobby.setGameInfos(message.gameInfos);
@@ -83,11 +74,9 @@ var websocket = {
                 }
                 break;
             case 15: // socketError
-                console.log("error:", message.info);
                 log.error(message.info);
                 break;
             case 16: // socketClosed
-                log.error(message.info);
                 lobby.leave();
                 break;
             case 17: // socketHTTPPing
@@ -99,7 +88,7 @@ var websocket = {
                 pingFormElement.onsubmit(event);
                 break;
             default:
-                console.log('unknown message type received:', event.data);
+                log.error('unknown message type received - message:', event.data);
                 break;
         }
     },
