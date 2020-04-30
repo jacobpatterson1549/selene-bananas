@@ -149,6 +149,7 @@ func (g *game) handleGameJoin(m message) {
 		if u != m.Player.username {
 			gps.player.messages <- message{
 				Type:        socketInfo,
+				Info:        fmt.Sprintf("%v joined the game", m.Player.username),
 				TilesLeft:   len(g.unusedTiles),
 				GamePlayers: gamePlayers,
 			}
@@ -198,10 +199,10 @@ func (g *game) start() {
 	for _, gps := range g.players {
 		gps.player.messages <- message{
 			Type:      socketInfo,
+			Info:      "game started",
 			GameState: g.state,
 		}
 	}
-	g.log.Print("game started")
 }
 
 func (g *game) finish(finishingPlayer *player) {
@@ -303,7 +304,6 @@ func (g *game) handleGameSwap(m message) {
 	}
 	if len(g.unusedTiles) == 0 {
 		m.Player.messages <- message{Type: socketError, Info: "no tiles left to swap, user what you have to finish"}
-		g.messages <- message{Type: gameTilePositions, Player: m.Player}
 		return
 	}
 	t := m.Tiles[0]
