@@ -5,7 +5,15 @@ var game = {
     usedTiles: {},
     usedTileLocs: {},
 
+    _resetTiles: function() {
+        this.unusedTiles = {};
+        this.unusedTileIds = [];
+        this.usedTiles = {};
+        this.usedTileLocs = {};
+    },
+
     create: function (event) {
+        this._resetTiles();
         websocket.send({ type: 1 }); // gameCreate
     },
 
@@ -13,6 +21,7 @@ var game = {
         var joinGameButton = event.srcElement;
         var gameIdInput = joinGameButton.previousElementSibling;
         var gameId = parseInt(gameIdInput.value);
+        this._resetTiles();
         websocket.send({ type: 2, gameID: gameId }); // gameJoin
     },
 
