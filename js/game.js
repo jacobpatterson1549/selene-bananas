@@ -5,7 +5,7 @@ var game = {
     usedTiles: {},
     usedTileLocs: {},
 
-    _resetTiles: function() {
+    _resetTiles: function () {
         this.unusedTiles = {};
         this.unusedTileIds = [];
         this.usedTiles = {};
@@ -70,7 +70,6 @@ var game = {
     },
 
     replaceGameTiles: function (unusedTiles, usedTileLocs) {
-        this._setTabActive();
         this.unusedTiles = {}
         this.usedTileLocs = {}
         this.addUnusedTiles(unusedTiles, true);
@@ -82,11 +81,11 @@ var game = {
             }
             this.usedTileLocs[tp.x][tp.y] = tp.tile;
         }
-        canvas.redraw()
+        canvas.redraw();
+        this._setTabActive();
     },
 
     addUnusedTiles: function (unusedTiles, skipRedraw) {
-        this._setTabActive();
         var tileStrings = []
         if (unusedTiles != null) {
             tileStrings.length = unusedTiles.length;
@@ -100,6 +99,7 @@ var game = {
         log.info("adding " + tileStrings + " unused tiles");
         if (skipRedraw == null || !skipRedraw) {
             canvas.redraw();
+            this._setTabActive();
         }
     },
 

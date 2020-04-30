@@ -19,7 +19,11 @@ var websocket = {
                 resolve(true);
             };
             this._websocket.onerror = event => {
-                log.error("websocket error: ", event);
+                log.error("websocket error: " + JSON.stringify(event));
+                resolve(false);
+            };
+            this._websocket.onclose = event => {
+                this.close();
                 resolve(false);
             };
             this._websocket.onmessage = this.onMessage;
@@ -29,6 +33,11 @@ var websocket = {
     close: function () {
         var websocketElement = document.getElementById("has-websocket");
         websocketElement.checked = false;
+        log.error("websocket closing");
+        var hasGameElement = document.getElementById("has-game");
+        hasGameElement.checked = false;
+        var lobbyTab = document.getElementById("tab-4");
+        lobbyTab.checked = true;
         if (this._websocket != null) {
             this._websocket.close();
             this._websocket = null;
@@ -82,13 +91,13 @@ var websocket = {
             case 17: // socketHTTPPing
                 var pingFormElement = document.getElementById("ping-form");
                 var event = {
-                    preventDefault: () => {},
+                    preventDefault: () => { },
                     target: pingFormElement,
                 }
                 pingFormElement.onsubmit(event);
                 break;
             default:
-                log.error('unknown message type received - message:', event.data);
+                log.error('unknown message type received - message:' + event.data);
                 break;
         }
     },

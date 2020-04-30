@@ -27,7 +27,7 @@ type (
 		words    map[string]bool
 		userDao  db.UserDao
 		players  map[db.Username]*player
-		games    map[int]game
+		games    map[int]*game
 		maxGames int
 		messages chan message
 	}
@@ -49,7 +49,7 @@ func NewLobby(log *log.Logger, ws WordsSupplier, userDao db.UserDao, rand *rand.
 		rand:     rand,
 		words:    words,
 		userDao:  userDao,
-		games:    make(map[int]game),
+		games:    make(map[int]*game),
 		players:  make(map[db.Username]*player),
 		maxGames: 5,
 		messages: make(chan message, 16),
@@ -134,7 +134,7 @@ func (l *lobby) handleGameCreate(m message) {
 	}
 	g := l.newGame(m.Player, id)
 	go g.run()
-	l.games[id] = g
+	l.games[id] = &g
 	l.handleGameJoin(message{Type: gameJoin, Player: m.Player, GameID: id})
 }
 
@@ -148,8 +148,7 @@ func (l lobby) newGame(p *player, id int) game {
 		players:     make(map[db.Username]*gamePlayerState, 2),
 		userDao:     l.userDao,
 		maxPlayers:  8,
-		numNewTiles: 3,
-		tileLetters: "CARTE",
+		numNewTiles: 21,
 		messages:    make(chan message, 64),
 		shuffleUnusedTilesFunc: func(tiles []tile) {
 			l.rand.Shuffle(len(tiles), func(i, j int) {
@@ -173,7 +172,7 @@ func (l *lobby) handleGameJoin(m message) {
 		return
 	}
 	g.messages <- message{Type: gameJoin, Player: m.Player}
-	m.Player.messages <- message{Type: gameJoin, Game: &g}
+	m.Player.messages <- message{Type: gameJoin, Game: g}
 }
 
 func (l *lobby) handleGameDelete(m message) {

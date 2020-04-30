@@ -105,13 +105,7 @@ func (g *game) run() {
 
 func (g *game) handleGameJoin(m message) {
 	if _, ok := g.players[m.Player.username]; ok {
-		m.Player.messages <- message{
-			Type:        gameTilePositions,
-			Info:        "rejoining game",
-			TilesLeft:   len(g.unusedTiles),
-			GamePlayers: g.playerUsernames(),
-			GameState:   g.state,
-		}
+		g.handleGameTilePositions(m)
 		return
 	}
 	if len(g.players) >= g.maxPlayers {
@@ -179,7 +173,7 @@ func (g *game) handleGameDelete(m message) {
 
 func (g *game) handleGameStateChange(m message) {
 	switch g.state {
-	case 0, gameNotStarted:
+	case gameNotStarted:
 		if m.GameState != gameInProgress {
 			m.Player.messages <- message{Type: socketError, Info: "game already started or is finished"}
 			return
@@ -425,6 +419,9 @@ func (g *game) handleGameTilePositions(m message) {
 		Info:          m.Info,
 		Tiles:         unusedTiles,
 		TilePositions: usedTilePositions,
+		TilesLeft:     len(g.unusedTiles),
+		GameState:     g.state,
+		GamePlayers:   g.playerUsernames(),
 	}
 }
 
