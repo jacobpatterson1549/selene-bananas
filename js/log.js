@@ -7,6 +7,10 @@ var log = {
         this._log("error", text);
     },
 
+    chat: function (message) {
+        this._log("chat", message);
+    },
+
     clear: function () {
         var hasLogElement = document.getElementById("has-log");
         hasLogElement.checked = false;

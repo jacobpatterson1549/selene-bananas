@@ -90,6 +90,7 @@ func (g *game) run() {
 		gameTilePositions: g.handleGameTilePositions,
 		gameInfos:         g.handleGameInfos,
 		playerDelete:      g.handlePlayerDelete,
+		gameChatRecv:      g.handleGameChatRecv,
 	}
 	for m := range g.messages {
 		mh, ok := messageHandlers[m.Type]
@@ -451,6 +452,16 @@ func (g *game) handlePlayerDelete(m message) {
 	delete(g.players, m.Player.username)
 	if len(g.players) == 0 {
 		g.lobby.messages <- message{Type: gameDelete, Info: "deleting game because it has no players"}
+	}
+}
+
+func (g *game) handleGameChatRecv(m message) {
+	m2 := message{
+		Type: gameChatSend,
+		Info: fmt.Sprintf("%v : %v", m.Player.username, m.Info),
+	}
+	for _, gps := range g.players {
+		gps.player.messages <- m2
 	}
 }
 

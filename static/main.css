@@ -82,4 +82,7 @@ form label {
     color:red;
 }
 
+#log-scroll>.chat {
+    color:green;
+}
 

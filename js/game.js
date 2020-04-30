@@ -146,5 +146,13 @@ var game = {
     _setButtonDisabled(buttonElementId, state) {
         var buttonElement = document.querySelector("button#" + buttonElementId);
         buttonElement.disabled = state;
-    }
+    },
+
+    sendChat: function (event) {
+        event.preventDefault();
+        var gameChatElement = document.querySelector("input#game-chat");
+        var message = gameChatElement.value;
+        gameChatElement.value = "";
+        websocket.send({ type: 18, info: message }) // gameChatRecv
+    },
 };

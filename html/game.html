@@ -1,4 +1,4 @@
-<form>
+<form onsubmit="game.sendChat(event)">
     <label>
         <div>Status:</div>
         <input readonly type="text" id="game-state">
@@ -11,6 +11,11 @@
         <div>Players:</div>
         <input readonly type="text" id="game-players">
     </label>
+    <fieldset>
+        <legend>Game Chat</legend>
+        <input type="text" id="game-chat">
+        <input type="submit" value="Send">
+    </fieldset>
 </form>
 <canvas id="game-canvas" width="500" height="500"></canvas>
 <div>

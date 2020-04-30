@@ -34,9 +34,9 @@ func (p *player) run() {
 				GameID: p.game.id,
 				Info:   fmt.Sprintf("%v deleted the game", p.username),
 			}
-		case socketInfo, socketError, gameInfos:
+		case socketInfo, socketError, gameInfos, gameChatSend:
 			p.socket.messages <- m
-		case gameStateChange, gameSnag, gameSwap, gameTileMoved, gameTilePositions:
+		case gameStateChange, gameSnag, gameSwap, gameTileMoved, gameTilePositions, gameChatRecv:
 			if p.game == nil {
 				p.socket.messages <- message{
 					Type: socketError,

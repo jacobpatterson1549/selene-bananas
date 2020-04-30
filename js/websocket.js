@@ -97,6 +97,9 @@ var websocket = {
                 }
                 pingFormElement.onsubmit(event);
                 break;
+            case 19: // gameChatSend
+                log.chat(message.info);
+                break;
             default:
                 log.error('unknown message type received - message:' + event.data);
                 break;

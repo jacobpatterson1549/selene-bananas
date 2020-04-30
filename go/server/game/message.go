@@ -40,4 +40,6 @@ const (
 	socketError       messageType = 15
 	socketClosed      messageType = 16
 	socketHTTPPing    messageType = 17 // the socket should send a http ping every so often  This is  explicitly for heroku, which will shut down the server if 30 minutes passes between http requests
+	gameChatRecv      messageType = 18
+	gameChatSend      messageType = 19
 )
