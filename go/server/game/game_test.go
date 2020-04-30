@@ -198,10 +198,42 @@ func TestSingleUsedGroup(t *testing.T) {
 			},
 			want: false,
 		},
+		{
+			usedTiles: map[int]tilePosition{
+				1: {Tile: tile{ID: 1, Ch: 'C'}, X: 1, Y: 1},
+				2: {Tile: tile{ID: 2, Ch: 'C'}, X: 2, Y: 1},
+				3: {Tile: tile{ID: 3, Ch: 'C'}, X: 3, Y: 1},
+				4: {Tile: tile{ID: 4, Ch: 'C'}, X: 1, Y: 2},
+				5: {Tile: tile{ID: 5, Ch: 'C'}, X: 1, Y: 3},
+				6: {Tile: tile{ID: 6, Ch: 'C'}, X: 2, Y: 3},
+				7: {Tile: tile{ID: 7, Ch: 'C'}, X: 3, Y: 3},
+			},
+			usedTileLocs: map[int]map[int]tile{
+				1: {
+					1: {ID: 1, Ch: 'C'},
+					2: {ID: 4, Ch: 'C'},
+					3: {ID: 5, Ch: 'C'},
+				},
+				2: {
+					1: {ID: 2, Ch: 'C'},
+					3: {ID: 6, Ch: 'C'},
+				},
+				3: {
+					1: {ID: 3, Ch: 'C'},
+					3: {ID: 7, Ch: 'C'},
+				},
+			},
+			want: true,
+		},
 		{},
 	}
 	for i, test := range singleUsedGroupTests {
+		// var buffer bytes.Buffer
+		// log := log.New(&buffer, "", log.LstdFlags)
+		// log.SetOutput(os.Stdout)
 		gps := gamePlayerState{
+			// player:       &player{},
+			// log:          log,
 			usedTiles:    test.usedTiles,
 			usedTileLocs: test.usedTileLocs,
 		}
