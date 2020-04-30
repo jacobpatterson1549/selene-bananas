@@ -25,8 +25,15 @@ func (p *player) run() {
 		switch m.Type {
 		case gameJoin:
 			p.game = m.Game
-		case gameLeave, gameDelete:
+		case gameLeave:
 			p.game = nil
+			p.socket.messages <- m
+		case gameDelete:
+			p.lobby.messages <- message{
+				Type:   gameDelete,
+				GameID: p.game.id,
+				Info:   fmt.Sprintf("%v deleted the game", p.username),
+			}
 		case socketInfo, socketError, gameInfos:
 			p.socket.messages <- m
 		case gameStateChange, gameSnag, gameSwap, gameTileMoved, gameTilePositions:

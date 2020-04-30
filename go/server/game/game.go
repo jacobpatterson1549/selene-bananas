@@ -164,12 +164,10 @@ func (g *game) handleGameLeave(m message) {
 func (g *game) handleGameDelete(m message) {
 	for _, gps := range g.players {
 		gps.player.messages <- message{
-			Type:   gameDelete,
-			Player: gps.player,
-			Info:   m.Info,
+			Type: gameLeave,
+			Info: m.Info,
 		}
 	}
-	g.log.Print("game deleted")
 }
 
 func (g *game) handleGameStateChange(m message) {

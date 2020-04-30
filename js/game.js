@@ -26,7 +26,6 @@ var game = {
     },
 
     leave: function (event) {
-        websocket.send({ type: 3 }); // gameLeave
         var hasGameElement = document.getElementById("has-game");
         hasGameElement.checked = false;
         var lobbyTab = document.getElementById("tab-4");
@@ -39,10 +38,6 @@ var game = {
             return;
         }
         websocket.send({ type: 4 }); // gameDelete
-        var hasGameElement = document.getElementById("has-game");
-        hasGameElement.checked = false;
-        var lobbyTab = document.getElementById("tab-4");
-        lobbyTab.checked = true;
     },
 
     start: function (event) {

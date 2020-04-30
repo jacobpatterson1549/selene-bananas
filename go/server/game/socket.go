@@ -56,15 +56,10 @@ func (s *socket) readMessages() {
 		s.log.Printf("receiving messages from %v: %v", s.player.username, m)
 		m.Player = s.player
 		switch m.Type {
-		case gameCreate, gameJoin, gameLeave, gameInfos, playerDelete: // TODO: this a bit of a hack.  It would be nice if the socket only interfaced with the player
+		case gameCreate, gameJoin, gameInfos, playerDelete: // TODO: this a bit of a hack.  It would be nice if the socket only interfaced with the player
 			s.player.lobby.messages <- m
-		case gameStateChange, gameSnag, gameSwap, gameTileMoved:
+		case gameStateChange, gameSnag, gameSwap, gameTileMoved, gameDelete:
 			s.player.messages <- m
-		case gameDelete:
-			if s.player.game != nil {
-				m.GameID = s.player.game.id
-				s.player.lobby.messages <- m
-			}
 		default:
 			s.log.Printf("player does not know how to handle a messageType of %v", m.Type)
 		}

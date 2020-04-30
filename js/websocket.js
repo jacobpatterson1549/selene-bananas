@@ -45,18 +45,19 @@ var websocket = {
     },
 
     send: function (message) {
-        var messageJSON = JSON.stringify(message);
         if (this._websocket != null && this._websocket.readyState == 1) { // OPEN
+            var messageJSON = JSON.stringify(message);
             this._websocket.send(messageJSON);
-        } else {
-            log.error("websocket not open, closing");
-            this.close();
         }
     },
 
     onMessage: function (event) {
         var message = JSON.parse(event.data);
         switch (message.type) {
+            case 3: // gameLeave
+                game.leave();
+                    log.info(message.info);
+                break;
             case 11: // gameInfos
                 lobby.setGameInfos(message.gameInfos);
                 break;
