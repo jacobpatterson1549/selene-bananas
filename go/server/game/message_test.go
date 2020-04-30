@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
-
-	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
 )
 
 func TestMessageJSON(t *testing.T) {
@@ -42,7 +40,7 @@ func TestMessageJSON(t *testing.T) {
 			j: `{"type":10,"tilePositions":[{"tile":{"id":8,"ch":"R"},"x":3,"y":47}]}`,
 		},
 		{
-			m: message{Type: gameInfos, GameInfos: []gameInfo{{ID: 7, State: gameFinished, Players: []db.Username{"fred", "barney"}, CanJoin: true, CreatedAt: "long_ago"}}},
+			m: message{Type: gameInfos, GameInfos: []gameInfo{{ID: 7, State: gameFinished, Players: []string{"fred", "barney"}, CanJoin: true, CreatedAt: "long_ago"}}},
 			j: `{"type":11,"gameInfos":[{"id":7,"state":2,"players":["fred","barney"],"canJoin":true,"createdAt":"long_ago"}]}`,
 		},
 		{

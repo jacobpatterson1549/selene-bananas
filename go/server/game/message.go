@@ -10,9 +10,11 @@ type (
 		Info          string         `json:"info,omitempty"`
 		Tiles         []tile         `json:"tiles,omitempty"`
 		TilePositions []tilePosition `json:"tilePositions,omitempty"`
+		TilesLeft     int            `json:"tilesLeft,omitempty"`
 		GameInfos     []gameInfo     `json:"gameInfos,omitempty"`
 		GameID        int            `json:"gameID,omitempty"`
 		GameState     gameState      `json:"gameState,omitempty"`
+		GamePlayers   []string       `json:"gamePlayers,omitempty"`
 		// pointers for inter-goroutine communication:
 		Player       *player         `json:"-"`
 		Game         *game           `json:"-"`

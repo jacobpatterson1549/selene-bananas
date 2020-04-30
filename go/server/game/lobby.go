@@ -143,13 +143,13 @@ func (l lobby) newGame(p *player, id int) game {
 		log:         l.log,
 		id:          id,
 		createdAt:   time.Now().Format(time.UnixDate),
-		state:       gameUnstarted,
+		state:       gameNotStarted,
 		words:       l.words,
 		players:     make(map[db.Username]*gamePlayerState, 2),
 		userDao:     l.userDao,
 		maxPlayers:  8,
-		numNewTiles: 21,
-		tileLetters: "",
+		numNewTiles: 3,
+		tileLetters: "CARTE",
 		messages:    make(chan message, 64),
 		shuffleUnusedTilesFunc: func(tiles []tile) {
 			l.rand.Shuffle(len(tiles), func(i, j int) {

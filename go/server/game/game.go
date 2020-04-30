@@ -35,11 +35,11 @@ type (
 	gameState int
 
 	gameInfo struct {
-		ID        int           `json:"id"`
-		State     gameState     `json:"state"`
-		Players   []db.Username `json:"players"`
-		CanJoin   bool          `json:"canJoin"`
-		CreatedAt string        `json:"createdAt"`
+		ID        int       `json:"id"`
+		State     gameState `json:"state"`
+		Players   []string  `json:"players"`
+		CanJoin   bool      `json:"canJoin"`
+		CreatedAt string    `json:"createdAt"`
 	}
 
 	gamePlayerState struct {
@@ -56,9 +56,9 @@ type (
 const (
 	defaultTileLetters = "AAAAAAAAAAAAABBBCCCDDDDDDEEEEEEEEEEEEEEEEEEFFFGGGGHHHIIIIIIIIIIIIJJKKLLLLLMMMNNNNNNNNOOOOOOOOOOOPPPQQRRRRRRRRRSSSSSSTTTTTTTTTUUUUUUVVVWWWXXYYYZZ"
 	// not using iota because gameStates hardcoded in ui javascript
-	gameUnstarted  gameState = 0
 	gameInProgress gameState = 1
 	gameFinished   gameState = 2
+	gameNotStarted gameState = 3
 )
 
 // initialize unusedTiles from tileLetters or defaultTileLetters and shuffles them
@@ -105,11 +105,13 @@ func (g *game) run() {
 
 func (g *game) handleGameJoin(m message) {
 	if _, ok := g.players[m.Player.username]; ok {
-		m.Player.messages <- message{Type: gameTilePositions, Info: "rejoining game"}
-		return
-	}
-	if g.state != gameUnstarted {
-		m.Player.messages <- message{Type: socketError, Info: "game already started"}
+		m.Player.messages <- message{
+			Type:        gameTilePositions,
+			Info:        "rejoining game",
+			TilesLeft:   len(g.unusedTiles),
+			GamePlayers: g.playerUsernames(),
+			GameState:   g.state,
+		}
 		return
 	}
 	if len(g.players) >= g.maxPlayers {
@@ -140,10 +142,23 @@ func (g *game) handleGameJoin(m message) {
 		usedTileLocs:  make(map[int]map[int]tile),
 		winPoints:     10,
 	}
+	gamePlayers := g.playerUsernames()
 	m.Player.messages <- message{
-		Type:  socketInfo,
-		Info:  "joining game",
-		Tiles: newTiles,
+		Type:        socketInfo,
+		Info:        "joining game",
+		Tiles:       newTiles,
+		TilesLeft:   len(g.unusedTiles),
+		GamePlayers: gamePlayers,
+		GameState:   g.state,
+	}
+	for u, gps := range g.players {
+		if u != m.Player.username {
+			gps.player.messages <- message{
+				Type:        socketInfo,
+				TilesLeft:   len(g.unusedTiles),
+				GamePlayers: gamePlayers,
+			}
+		}
 	}
 }
 
@@ -164,7 +179,7 @@ func (g *game) handleGameDelete(m message) {
 
 func (g *game) handleGameStateChange(m message) {
 	switch g.state {
-	case gameUnstarted:
+	case 0, gameNotStarted:
 		if m.GameState != gameInProgress {
 			m.Player.messages <- message{Type: socketError, Info: "game already started or is finished"}
 			return
@@ -178,7 +193,7 @@ func (g *game) handleGameStateChange(m message) {
 		g.finish(m.Player)
 	default:
 		if m.GameState != gameFinished {
-			m.Player.messages <- message{Type: socketError, Info: "cannot change game state"}
+			m.Player.messages <- message{Type: socketError, Info: fmt.Sprintf("cannot change game state from %v", g.state)}
 			return
 		}
 	}
@@ -188,8 +203,8 @@ func (g *game) start() {
 	g.state = gameInProgress
 	for _, gps := range g.players {
 		gps.player.messages <- message{
-			Type: socketInfo,
-			Info: "game started", // TODO: add game state enum: [open, started, finished]
+			Type:      socketInfo,
+			GameState: g.state,
 		}
 	}
 	g.log.Print("game started")
@@ -231,7 +246,11 @@ func (g *game) finish(finishingPlayer *player) {
 	info := fmt.Sprintf("WINNER! - %v won, creating %v words, getting %v points.  Other players each get 1 point", finishingPlayer.username, len(usedWords), gps.winPoints)
 	g.updateUserPoints(finishingPlayer.username)
 	for _, gps := range g.players {
-		gps.player.messages <- message{Type: socketInfo, Info: info}
+		gps.player.messages <- message{
+			Type:      socketInfo,
+			Info:      info,
+			GameState: g.state,
+		}
 	}
 	g.messages <- message{Type: gameDelete}
 }
@@ -242,10 +261,11 @@ func (g *game) handleGameSnag(m message) {
 		return
 	}
 	if len(g.unusedTiles) == 0 {
-		m.Player.messages <- message{Type: socketInfo, Info: "no tiles left to snag, use what you have to finish"}
+		m.Player.messages <- message{Type: socketError, Info: "no tiles left to snag, use what you have to finish"}
 		return
 	}
-	m.Player.messages <- message{
+	snagPlayerMessages := make(map[db.Username]message, len(g.players))
+	snagPlayerMessages[m.Player.username] = message{
 		Type:  socketInfo,
 		Info:  "snagged a tile",
 		Tiles: g.unusedTiles[:1],
@@ -263,7 +283,7 @@ func (g *game) handleGameSnag(m message) {
 	}
 	g.shufflePlayersFunc(otherPlayers)
 	for i := 0; i < len(otherPlayers) && len(g.unusedTiles) > 0; i++ {
-		otherPlayers[i].messages <- message{
+		snagPlayerMessages[otherPlayers[i].username] = message{
 			Type:  socketInfo,
 			Info:  fmt.Sprintf("%v snagged a tile, adding a tile to your pile", m.Player.username),
 			Tiles: g.unusedTiles[:1],
@@ -271,6 +291,10 @@ func (g *game) handleGameSnag(m message) {
 		g.players[otherPlayers[i].username].unusedTiles[g.unusedTiles[0].ID] = g.unusedTiles[0]
 		g.players[otherPlayers[i].username].unusedTileIds = append(g.players[otherPlayers[i].username].unusedTileIds, g.unusedTiles[0].ID)
 		g.unusedTiles = g.unusedTiles[1:]
+	}
+	for u, m := range snagPlayerMessages {
+		m.TilesLeft = len(g.unusedTiles)
+		g.players[u].player.messages <- m
 	}
 }
 
@@ -284,7 +308,7 @@ func (g *game) handleGameSwap(m message) {
 		return
 	}
 	if len(g.unusedTiles) == 0 {
-		m.Player.messages <- message{Type: socketInfo, Info: "no tiles left to swap, user what you have to finish"}
+		m.Player.messages <- message{Type: socketError, Info: "no tiles left to swap, user what you have to finish"}
 		g.messages <- message{Type: gameTilePositions, Player: m.Player}
 		return
 	}
@@ -313,18 +337,23 @@ func (g *game) handleGameSwap(m message) {
 		gps.unusedTileIds = append(gps.unusedTileIds, g.unusedTiles[0].ID)
 		g.unusedTiles = g.unusedTiles[1:]
 	}
-	m.Player.messages <- message{
+	swapPlayerMessages := make(map[db.Username]message, len(g.players))
+	swapPlayerMessages[m.Player.username] = message{
 		Type:  socketInfo,
 		Info:  fmt.Sprintf("swapping %v tile", t.Ch),
 		Tiles: newTiles,
 	}
 	for u, p2 := range g.players {
 		if u != m.Player.username {
-			p2.player.messages <- message{
+			swapPlayerMessages[p2.player.username] = message{
 				Type: socketInfo,
 				Info: fmt.Sprintf("%v swapped a tile", m.Player.username),
 			}
 		}
+	}
+	for u, m := range swapPlayerMessages {
+		m.TilesLeft = len(g.unusedTiles)
+		g.players[u].player.messages <- m
 	}
 }
 
@@ -400,23 +429,18 @@ func (g *game) handleGameTilePositions(m message) {
 }
 
 func (g *game) handleGameInfos(m message) {
-	usernames := make([]db.Username, len(g.players))
-	i := 0
-	for u := range g.players {
-		usernames[i] = u
-		i++
-	}
 	//TODO: add cleanup timer to game for inactivity
 	var canJoin bool
 	switch g.state {
-	case gameUnstarted:
+	case gameNotStarted:
 		canJoin = true
 	case gameInProgress:
 		_, canJoin = g.players[m.Player.username]
 	}
 	gi := gameInfo{
 		ID:        g.id,
-		Players:   usernames,
+		State:     g.state,
+		Players:   g.playerUsernames(),
 		CanJoin:   canJoin,
 		CreatedAt: g.createdAt,
 	}
@@ -455,6 +479,17 @@ func (g *game) updateUserPoints(winningUsername db.Username) {
 			Info: fmt.Sprintf("updating user points: %v", err),
 		}
 	}
+}
+
+func (g game) playerUsernames() []string {
+	usernames := make([]string, len(g.players))
+	i := 0
+	for u := range g.players {
+		usernames[i] = string(u)
+		i++
+	}
+	sort.Strings(usernames)
+	return usernames
 }
 
 func (gps *gamePlayerState) decrementWinPoints() {

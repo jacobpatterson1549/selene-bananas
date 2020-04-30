@@ -61,13 +61,25 @@ var websocket = {
                 lobby.setGameInfos(message.gameInfos);
                 break;
             case 14: // socketInfo
-                if (message.tilePositions) {
+                if (message.gameState != null) {
+                    game.setState(message.gameState);
+                }
+                if (message.tilesLeft != null) { // keep after game.setState()
+                    game.setTilesLeft(message.tilesLeft);
+                }
+                if (message.gamePlayers != null) {
+                    game.setPlayers(message.gamePlayers);
+                }
+                if (message.tilePositions != null) {
                     game.replaceGameTiles(message.tiles, message.tilePositions)
                     break;
                 }
                 log.info(message.info);
-                if (message.tiles) {
+                if (message.tiles != null) {
                     game.addUnusedTiles(message.tiles);
+                    if (message.tilesLeft == null) { // the server will not send a tilesLeft = 0 because that is the empty value
+                        game.setTilesLeft(0);
+                    }
                 }
                 break;
             case 15: // socketError
