@@ -3,7 +3,7 @@ var user = {
     _login: function (response) {
         response.text()
             .then(jwt => {
-                var jwtInput = content.setJWT(jwt)
+                content.setJWT(jwt)
                 var parts = jwt.split(".");
                 var claims = parts[1];
                 var jwtUsernameClaims = atob(claims);
@@ -11,8 +11,7 @@ var user = {
                 var usernameElements = document.querySelectorAll("input.username");
                 for (i = 0; i < usernameElements.length; i++) {
                     usernameElements[i].value = user.username;
-                    // usernameElements[i].readonly = true;
-                    usernameElements[i].setAttribute("readonly", true);
+                    usernameElements[i].setAttribute("readonly", "readonly");
                 }
                 document.querySelector("input.points").value = user.points;
                 var lobbyTab = document.getElementById("tab-4");
@@ -28,12 +27,6 @@ var user = {
         firstUsernameElement.setAttribute("readonly", false);
         var loginTab = document.getElementById("tab-1");
         loginTab.checked = true;
-    },
-
-    setModifyAction: function (event) {
-        var userModifyRadio = event.target;
-        var userModifyForm = document.getElementById("user-modify");
-        userModifyForm.action = userModifyRadio.value;
     },
 
     request: function (event) {
@@ -128,7 +121,7 @@ var user = {
         var confirmPasswordElement = event.target;
         var confirmPasswordLabelElement = confirmPasswordElement.parentElement;
         var parentFormElement = confirmPasswordLabelElement.parentElement;
-        var passwordElement = parentFormElement.querySelector("label > input.password1");
+        var passwordElement = parentFormElement.querySelector("label>input.password1");
         if (passwordElement.value != confirmPasswordElement.value) {
             confirmPasswordElement.setCustomValidity("Please enter the same password.");
         } else {
@@ -137,7 +130,7 @@ var user = {
     },
 
     init: function () {
-        var confirmPasswordElements = document.querySelectorAll("form > label > input.password2");
+        var confirmPasswordElements = document.querySelectorAll("label>input.password2");
         for (var i = 0; i < confirmPasswordElements.length; i++) {
             confirmPasswordElements[i].onchange = this.validatePassword;
         }
