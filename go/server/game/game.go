@@ -106,6 +106,7 @@ func (g *game) run() {
 
 func (g *game) handleGameJoin(m message) {
 	if _, ok := g.players[m.Player.username]; ok {
+		g.players[m.Player.username].player = m.Player // replace the connection
 		g.handleGameTilePositions(m)
 		return
 	}
