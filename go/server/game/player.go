@@ -15,6 +15,7 @@ type (
 		game     *game // possibly nil
 		socket   *socket
 		messages chan message
+		deleted  bool
 	}
 )
 
@@ -39,6 +40,11 @@ func (p *player) run() {
 			m.Player = p
 			p.game.messages <- m
 		case playerDelete:
+			if !p.deleted {
+				m.Player = p
+				p.lobby.messages <- m
+			}
+			p.deleted = true
 			break
 		default:
 			p.log.Printf("player %v does not know how to handle messageType %v", p.username, m.Type)
