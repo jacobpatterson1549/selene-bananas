@@ -450,7 +450,6 @@ func (g *game) handleGameTilePositions(m message) {
 }
 
 func (g *game) handleGameInfos(m message) {
-	//TODO: add cleanup timer to game for inactivity
 	var canJoin bool
 	switch g.state {
 	case gameNotStarted:
