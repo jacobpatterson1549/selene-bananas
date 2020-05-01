@@ -20,6 +20,8 @@ type (
 	Config struct {
 		AppName       string
 		Port          string
+		HTTPSCertFile string
+		HTTPSKeyFile  string
 		Database      db.Database
 		Log           *log.Logger
 		WordsFileName string
@@ -34,6 +36,8 @@ type (
 	server struct {
 		data              templateData
 		addr              string
+		httpsCertFile     string
+		httpsKeyFile      string
 		log               *log.Logger
 		handler           http.Handler
 		staticFileHandler http.Handler
@@ -73,6 +77,8 @@ func (cfg Config) NewServer() (Server, error) {
 	s := server{
 		data:              data,
 		addr:              addr,
+		httpsCertFile:     cfg.HTTPSCertFile,
+		httpsKeyFile:      cfg.HTTPSKeyFile,
 		log:               cfg.Log,
 		handler:           serveMux,
 		staticFileHandler: staticFileHandler,
@@ -90,8 +96,15 @@ func (s server) Run() error {
 		Addr:    s.addr,
 		Handler: s.handler,
 	}
-	s.log.Println("starting server - locally running at http://127.0.0.1" + httpServer.Addr)
-	err := httpServer.ListenAndServe() // BLOCKS
+	s.log.Println("starting server - locally running at https://127.0.0.1" + httpServer.Addr)
+	var err error
+	// blocking calls to listen and serve
+	switch {
+	case len(s.httpsCertFile) != 0 && len(s.httpsKeyFile) != 0:
+		err = httpServer.ListenAndServeTLS(s.httpsCertFile, s.httpsKeyFile)
+	default:
+		err = httpServer.ListenAndServe()
+	}
 	if err != http.ErrServerClosed {
 		return fmt.Errorf("server stopped unexpectedly: %w", err)
 	}
@@ -99,6 +112,10 @@ func (s server) Run() error {
 }
 
 func (s server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
+	if r.TLS == nil {
+		httpsURL := "https://" + r.Host + r.URL.String()
+		http.Redirect(w, r, httpsURL, http.StatusMovedPermanently)
+	}
 	var err error
 	switch r.Method {
 	case "GET":
