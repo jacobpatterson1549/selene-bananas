@@ -18,7 +18,6 @@ New dependencies are automatically added to [go.mod](go.mod) when the project is
 * [Font-Awesome](https://github.com/FortAwesome/Font-Awesome) (icons on about page)
 
 ## Build/Run
-The files in the sql folder are ran when the app starts.
 
 ### Environment configuration
 Environment properties are needed to customize server characteristics.  Sample config:
@@ -28,6 +27,24 @@ DATABASE_URL=postgres://selene:selene123@127.0.0.1:54320/selene_bananas_db?sslmo
 PORT=8000 # Server port
 HTTPS_CERT_FILE=/home/selene/https-localhost-cert.pem
 HTTPS_KEY_FILE=/home/selene/https-localhost-key.pem
+```
+
+### Database
+The app stores user information in a postgresql database.  Every time the app starts, files in the [sql](sql) folder are ran to ensure the table and stored functions are fresh.
+
+A Postgresql database can be created with the following bash script.  Change the PGUSER and PGPASSWORD variables.  It requires administrator access.
+```bash
+PGDATABASE="selene_bananas_db" \
+PGUSER="selene" \
+PGPASSWORD="selene123" \
+PGHOSTADDR="127.0.0.1" \
+PGPORT="5432" \
+sh -c ' \
+sudo -u postgres psql \
+-c "CREATE DATABASE $PGDATABASE" \
+-c "CREATE USER $PGUSER WITH ENCRYPTED PASSWORD '"'"'$PGPASSWORD'"'"'" \
+-c "GRANT ALL PRIVILEGES ON DATABASE $PGDATABASE TO $PGUSER" \
+&& echo DATABASE_URL=postgres://$PGUSER:$PGPASSWORD@$PGHOSTADDR:$PGPORT/$PGDATABASE'
 ```
 
 ### HTTPS on localhost
@@ -45,17 +62,18 @@ openssl req \
 ```
 
 ### Make
-Run `make serve` to build and run the application.  Requires Go and a and a Postgres database to be installed.
+Run `make serve` to build and run the application.  Requires Go and a Postgres database to be installed.
 
 ### Docker
 Launching the application with [Docker](https://www.docker.com) requires minimal configuration. 
 1. Install [docker-compose](https://github.com/docker/compose)
-1. Set environment variables in a `.env` file in project root (next to Dockerfile). Sample:
+1. Set environment variables in a `.env` file in project root (next to Dockerfile).  Note that the DATABASE_URL will likely need the `sslmode=disable` query parameter.  Sample:
 ```
 POSTGRES_DB=selene_bananas_db
 POSTGRES_USER=selene
 POSTGRES_PASSWORD=selene123
 POSTGRES_PORT=54320
+DATABASE_URL=postgres://<...>?sslmode=disable
 ```
 3. Run `docker-compose up` to launch the application.
 1. Access application by opening <http://localhost:8000>.
