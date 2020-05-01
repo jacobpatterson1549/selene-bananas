@@ -6,6 +6,7 @@ import (
 	"log"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
 	// TODO: refactor: replace db.Username with string to avoid imports in this package
@@ -27,6 +28,7 @@ type (
 		numNewTiles int
 		tileLetters string
 		messages    chan message
+		active      bool
 		// the shuffle functions shuffles the slices my mutating them
 		shuffleUnusedTilesFunc func(tiles []tile)
 		shufflePlayersFunc     func(players []*player)
@@ -59,6 +61,8 @@ const (
 	gameInProgress gameState = 1
 	gameFinished   gameState = 2
 	gameNotStarted gameState = 3
+	// TODO: make this an environment argument
+	gameIdlePeriod = 15 * time.Minute
 )
 
 // initialize unusedTiles from tileLetters or defaultTileLetters and shuffles them
@@ -79,6 +83,11 @@ func (g *game) initializeUnusedTiles() {
 }
 
 func (g *game) run() {
+	idleTicker := time.NewTicker(gameIdlePeriod)
+	defer idleTicker.Stop()
+	defer func() {
+ 		g.lobby.messages <- message{Type: gameDelete}
+	}()
 	messageHandlers := map[messageType]func(message){
 		gameJoin:          g.handleGameJoin,
 		gameLeave:         g.handleGameLeave,
@@ -92,16 +101,31 @@ func (g *game) run() {
 		playerDelete:      g.handlePlayerDelete,
 		gameChatRecv:      g.handleGameChatRecv,
 	}
-	for m := range g.messages {
-		mh, ok := messageHandlers[m.Type]
-		if !ok {
-			g.log.Printf("game does not know how to handle messageType %v", m.Type)
-			continue
+	for {
+		select {
+		case m, ok := <-g.messages:
+			if !ok {
+				return
+			}
+			g.active = true
+			mh, ok := messageHandlers[m.Type]
+			if !ok {
+				g.log.Printf("game does not know how to handle messageType %v", m.Type)
+				continue
+			}
+			// TODO: validate Player, Tiles, TilePositions, ensure certain fields not set, ...
+			mh(m)
+		case _, ok := <-idleTicker.C:
+			if !ok {
+				return
+			}
+			if !g.active {
+				g.log.Print("closing game due to inactivity")
+				return
+			}
+			g.active = false
 		}
-		// TODO: validate Player, Tiles, TilePositions, ensure certain fields not set, ...
-		mh(m)
 	}
-	g.log.Printf("game closed")
 }
 
 func (g *game) handleGameJoin(m message) {

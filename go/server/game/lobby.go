@@ -138,9 +138,10 @@ func (l *lobby) handleGameCreate(m message) {
 	l.handleGameJoin(message{Type: gameJoin, Player: m.Player, GameID: id})
 }
 
-func (l lobby) newGame(p *player, id int) game {
+func (l *lobby) newGame(p *player, id int) game {
 	g := game{
 		log:         l.log,
+		lobby:       l,
 		id:          id,
 		createdAt:   time.Now().Format(time.UnixDate),
 		state:       gameNotStarted,
@@ -178,7 +179,9 @@ func (l *lobby) handleGameJoin(m message) {
 func (l *lobby) handleGameDelete(m message) {
 	g, ok := l.games[m.GameID]
 	if !ok {
-		m.Player.messages <- message{Type: socketError, Info: fmt.Sprintf("no game with id %v, please refresh games", m.GameID)}
+		if m.Player != nil {
+			m.Player.messages <- message{Type: socketError, Info: fmt.Sprintf("no game with id %v, please refresh games", m.GameID)}
+		}
 		return
 	}
 	delete(l.games, m.GameID)
