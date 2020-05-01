@@ -25,8 +25,6 @@ Environment properties are needed to customize server characteristics.  Sample c
 APPLICATION_NAME=selene_bananas
 DATABASE_URL=postgres://selene:selene123@127.0.0.1:54320/selene_bananas_db?sslmode=disable
 PORT=8000 # Server port
-HTTPS_CERT_FILE=/home/selene/https-localhost-cert.pem
-HTTPS_KEY_FILE=/home/selene/https-localhost-key.pem
 ```
 
 ### Database
@@ -45,20 +43,6 @@ sudo -u postgres psql \
 -c "CREATE USER $PGUSER WITH ENCRYPTED PASSWORD '"'"'$PGPASSWORD'"'"'" \
 -c "GRANT ALL PRIVILEGES ON DATABASE $PGDATABASE TO $PGUSER" \
 && echo DATABASE_URL=postgres://$PGUSER:$PGPASSWORD@$PGHOSTADDR:$PGPORT/$PGDATABASE'
-```
-
-### HTTPS on localhost
-The app requires HTTPS TLS to run.
-* Hosts such as Heroku provide their own certificates.  For these environments, do not provide HTTPS_CERT_FILE and HTTPS_KEY_FILE environment variables.
-* When running in a development environment, generate your own ssl certificate and key.  The script below creates a certificate and key that last a year.  Web browsers will note that the key is not trusted, but this warning can be bypassed.  Pass the absolute file paths to the app with the HTTPS_CERT_FILE and HTTPS_KEY_FILE arguments.
-```bash
-openssl req \
-    -x509 \
-    -nodes \
-    -days 365 \
-    -newkey rsa:2048 \
-    -out https-localhost-cert.pem \
-    -keyout https-localhost-key.pem
 ```
 
 ### Make

@@ -17,15 +17,11 @@ const (
 	environmentVariableApplicationName = "APPLICATION_NAME"
 	environmentVariableServerPort      = "PORT"
 	environmentVariableDatabaseURL     = "DATABASE_URL"
-	environmentVariableHTTPSCertFile   = "HTTPS_CERT_FILE"
-	environmentVariableHTTPSKeyFile    = "HTTPS_KEY_FILE"
 )
 
 type mainFlags struct {
 	applicationName string
 	serverPort      string
-	httpsCertFile   string
-	httpsKeyFile    string
 	databaseURL     string
 }
 
@@ -47,8 +43,6 @@ func main() {
 	cfg := server.Config{
 		AppName:       mainFlags.applicationName,
 		Port:          mainFlags.serverPort,
-		HTTPSCertFile: mainFlags.httpsCertFile,
-		HTTPSKeyFile:  mainFlags.httpsKeyFile,
 		Database:      db,
 		Log:           log,
 		WordsFileName: wordsFileName,
@@ -69,8 +63,6 @@ func flagUsage(fs *flag.FlagSet) {
 		environmentVariableApplicationName,
 		environmentVariableServerPort,
 		environmentVariableDatabaseURL,
-		environmentVariableHTTPSCertFile,
-		environmentVariableHTTPSKeyFile,
 	}
 	fmt.Fprintln(fs.Output(), "Starts the server")
 	fmt.Fprintln(fs.Output(), "Reads environment variables when possible:", fmt.Sprintf("[%s]", strings.Join(envVars, ",")))
@@ -91,7 +83,5 @@ func initFlags(programName string) (*flag.FlagSet, *mainFlags) {
 	fs.StringVar(&mainFlags.applicationName, "n", defaultApplicationName(), "The name of the application.")
 	fs.StringVar(&mainFlags.databaseURL, "ds", os.Getenv(environmentVariableDatabaseURL), "The data source to the PostgreSQL database (connection URI).")
 	fs.StringVar(&mainFlags.serverPort, "p", os.Getenv(environmentVariableServerPort), "The port number to run the server on.")
-	fs.StringVar(&mainFlags.httpsCertFile, "tls-cert", os.Getenv(environmentVariableHTTPSCertFile), "The absolute path of the certificate file to use for TLS")
-	fs.StringVar(&mainFlags.httpsKeyFile, "tls-key", os.Getenv(environmentVariableHTTPSKeyFile), "The absolute path of the key file to use for TLS.")
 	return fs, mainFlags
 }
