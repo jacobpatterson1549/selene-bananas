@@ -32,7 +32,7 @@ const (
 	gameSnag          messageType = 7
 	gameSwap          messageType = 8
 	gameTileMoved     messageType = 9
-	gameTilePositions messageType = 10 // TODO: is this needed anymore?
+	gameTilePositions messageType = 10
 	gameInfos         messageType = 11
 	playerCreate      messageType = 12
 	playerDelete      messageType = 13

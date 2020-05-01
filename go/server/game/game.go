@@ -47,6 +47,7 @@ type (
 	gamePlayerState struct {
 		log           *log.Logger
 		player        *player
+		refreshTicker *time.Ticker
 		unusedTiles   map[int]tile
 		unusedTileIds []int
 		usedTiles     map[int]tilePosition
@@ -153,15 +154,27 @@ func (g *game) handleGameJoin(m message) {
 		newTilesByID[t.ID] = t
 		newTileIds[i] = t.ID
 	}
-	g.players[m.Player.username] = &gamePlayerState{
+	gameTilePositionsTicker := time.NewTicker(1 * time.Minute) // TODO: make env var
+	gps := &gamePlayerState{
 		log:           g.log,
 		player:        m.Player,
+		refreshTicker: gameTilePositionsTicker,
 		unusedTiles:   newTilesByID,
 		unusedTileIds: newTileIds,
 		usedTiles:     make(map[int]tilePosition),
 		usedTileLocs:  make(map[int]map[int]tile),
 		winPoints:     10,
 	}
+	g.players[m.Player.username] = gps
+	go func() {
+		for {
+			_, ok := <-gameTilePositionsTicker.C
+			if !ok {
+				return
+			}
+			g.messages <- message{Type: gameTilePositions, Player: gps.player} // TODO: should only be username, not player
+		}
+	}()
 	gamePlayers := g.playerUsernames()
 	m.Player.messages <- message{
 		Type:        socketInfo,
@@ -189,6 +202,7 @@ func (g *game) handleGameLeave(m message) {
 
 func (g *game) handleGameDelete(m message) {
 	for _, gps := range g.players {
+		gps.refreshTicker.Stop()
 		gps.player.messages <- message{
 			Type: gameLeave,
 			Info: m.Info,
@@ -473,6 +487,7 @@ func (g *game) handlePlayerDelete(m message) {
 		m.Player.messages <- message{Type: socketError, Info: "cannot leave game player is not a part of"}
 		return
 	}
+	g.players[m.Player.username].refreshTicker.Stop()
 	delete(g.players, m.Player.username)
 	if len(g.players) == 0 {
 		g.lobby.messages <- message{Type: gameDelete, Info: "deleting game because it has no players"}

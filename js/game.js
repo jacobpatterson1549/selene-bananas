@@ -64,7 +64,7 @@ var game = {
         gameTab.checked = true;
     },
 
-    replaceGameTiles: function (unusedTiles, usedTileLocs) {
+    replaceGameTiles: function (unusedTiles, usedTileLocs, silent) {
         this.unusedTiles = {}
         this.usedTileLocs = {}
         this.addUnusedTiles(unusedTiles, true);
@@ -76,11 +76,13 @@ var game = {
             }
             this.usedTileLocs[tp.x][tp.y] = tp.tile;
         }
-        canvas.redraw();
-        this._setTabActive();
+        if (silent == null || !silent) {
+            canvas.redraw();
+            this._setTabActive();
+        }
     },
 
-    addUnusedTiles: function (unusedTiles, skipRedraw) {
+    addUnusedTiles: function (unusedTiles, silent) {
         var tileStrings = []
         if (unusedTiles != null) {
             tileStrings.length = unusedTiles.length;
@@ -91,8 +93,8 @@ var game = {
                 this.unusedTileIds.push(t.id);
             }
         }
-        log.info("adding " + tileStrings + " unused tiles");
-        if (skipRedraw == null || !skipRedraw) {
+        if (silent == null || !silent) {
+            log.info("adding " + tileStrings + " unused tiles");
             canvas.redraw();
             this._setTabActive();
         }
