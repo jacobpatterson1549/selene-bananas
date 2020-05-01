@@ -87,7 +87,7 @@ func (g *game) run() {
 	idleTicker := time.NewTicker(gameIdlePeriod)
 	defer idleTicker.Stop()
 	defer func() {
- 		g.lobby.messages <- message{Type: gameDelete}
+		g.lobby.messages <- message{Type: gameDelete}
 	}()
 	messageHandlers := map[messageType]func(message){
 		gameJoin:          g.handleGameJoin,
