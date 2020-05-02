@@ -91,6 +91,7 @@ var user = {
         }
         var data = {
             method: method,
+            credentials: 'include',
         };
         if (method === "post") {
             var formData = new FormData(form);
