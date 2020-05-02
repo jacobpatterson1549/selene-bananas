@@ -2,13 +2,11 @@ var game = {
 
     unusedTiles: {},
     unusedTileIds: [],
-    usedTiles: {},
     usedTileLocs: {},
 
     _resetTiles: function () {
         this.unusedTiles = {};
         this.unusedTileIds = [];
-        this.usedTiles = {};
         this.usedTileLocs = {};
     },
 

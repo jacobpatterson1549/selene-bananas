@@ -122,7 +122,6 @@ var canvas = {
                 }
             }
         }
-        game.usedTiles[selectedTile.tile.id] = selectedTile.tile;
         if (game.usedTileLocs[destinationTile.x] == null) {
             game.usedTileLocs[destinationTile.x] = {};
         }
@@ -145,7 +144,6 @@ var canvas = {
         }
         if (src.isUsed) {
             delete game.usedTileLocs[src.x][src.y];
-            delete game.usedTiles[src.tile.id];
         } else {
             delete game.unusedTiles[src.tile.id];
             for (var i = 0; i < game.unusedTileIds.length; i++) {
