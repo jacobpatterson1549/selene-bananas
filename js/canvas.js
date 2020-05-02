@@ -129,12 +129,8 @@ var canvas = {
         game.usedTileLocs[destinationTile.x][destinationTile.y] = selectedTile.tile;
         canvas.redraw();
         // send notification to server
-        var tilePositions = [];
-        if (selectedTile.isUsed) {
-            tilePositions.push({ tile: selectedTile.tile, x: selectedTile.x, y: selectedTile.y });
-        }
-        tilePositions.push({ tile: selectedTile.tile, x: destinationTile.x, y: destinationTile.y });
-        websocket.send({ type: 9, tilePositions: tilePositions }); // gameTileMoved
+        var tilePositions = [{ tile: selectedTile.tile, x: destinationTile.x, y: destinationTile.y }];
+        websocket.send({ type: 9, tilePositions: tilePositions }); // gameTileSMoved
     },
 
     // TODO: onMouseMove

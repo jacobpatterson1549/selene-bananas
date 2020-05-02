@@ -32,8 +32,8 @@ func TestMessageJSON(t *testing.T) {
 			j: `{"type":8,"info":"Selene swapped a 'Q' for ['A','B','C'].","tiles":[{"id":3,"ch":"A"},{"id":1,"ch":"B"},{"id":7,"ch":"C"}]}`,
 		},
 		{
-			m: message{Type: gameTileMoved, TilePositions: []tilePosition{{Tile: tile{ID: 8, Ch: 'R'}, X: 3, Y: 47}, {Tile: tile{ID: 8, Ch: 'R'}, X: 4, Y: 46}}},
-			j: `{"type":9,"tilePositions":[{"tile":{"id":8,"ch":"R"},"x":3,"y":47},{"tile":{"id":8,"ch":"R"},"x":4,"y":46}]}`,
+			m: message{Type: gameTilesMoved, TilePositions: []tilePosition{{Tile: tile{ID: 8, Ch: 'R'}, X: 4, Y: 46}}},
+			j: `{"type":9,"tilePositions":[{"tile":{"id":8,"ch":"R"},"x":4,"y":46}]}`,
 		},
 		{
 			m: message{Type: gameTilePositions, TilePositions: []tilePosition{{Tile: tile{ID: 8, Ch: 'R'}, X: 3, Y: 47}}},

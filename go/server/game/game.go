@@ -97,7 +97,7 @@ func (g *game) run() {
 		gameStateChange:   g.handleGameStateChange,
 		gameSnag:          g.handleGameSnag,
 		gameSwap:          g.handleGameSwap,
-		gameTileMoved:     g.handleGameTileMoved,
+		gameTilesMoved:    g.handleGameTilesMoved,
 		gameTilePositions: g.handleGameTilePositions,
 		gameInfos:         g.handleGameInfos,
 		playerDelete:      g.handlePlayerDelete,
@@ -391,45 +391,90 @@ func (g *game) handleGameSwap(m message) {
 	}
 }
 
-func (g *game) handleGameTileMoved(m message) {
+func (g *game) handleGameTilesMoved(m message) {
+	if m.Player == nil || m.TilePositions == nil {
+		m.Player.messages <- message{
+			Type: socketError,
+			Info: "missing player or tilePositions",
+		}
+		return
+	}
 	gps := g.players[m.Player.username]
-	tp := m.TilePositions[0]
-	switch len(m.TilePositions) {
-	case 1:
-		if _, ok := gps.unusedTiles[tp.Tile.ID]; !ok {
+	// validation
+	newUsedTileLocs := make(map[int]map[int]bool)
+	for _, tp := range m.TilePositions {
+		if _, ok := gps.unusedTiles[tp.Tile.ID]; ok {
+			continue
+		}
+		if _, ok := gps.usedTiles[tp.Tile.ID]; !ok {
 			m.Player.messages <- message{
 				Type: socketError,
-				Info: fmt.Sprintf("trying to add tile %v to the words area, but it is not in the unused pile", tp.Tile),
+				Info: fmt.Sprintf("cannot move tile %v that the player does not own", tp.Tile),
 			}
 			return
 		}
-		delete(gps.unusedTiles, tp.Tile.ID)
-		for i := 0; i < len(gps.unusedTileIds); i++ {
-			if gps.unusedTileIds[i] == tp.Tile.ID {
-				gps.unusedTileIds = append(gps.unusedTileIds[:i], gps.unusedTileIds[i+1:]...)
-				break
-			}
+		if _, ok := newUsedTileLocs[tp.X]; !ok {
+			newUsedTileLocs[tp.X] = make(map[int]bool)
+			newUsedTileLocs[tp.X][tp.Y] = true
+			continue
 		}
-	case 2:
-		srcTp := tp
-		tp = m.TilePositions[1]
-		if xTiles, ok := gps.usedTileLocs[tp.X]; ok {
-			if destTp, ok := xTiles[tp.Y]; ok && destTp.ID != tp.Tile.ID {
-				m.Player.messages <- message{Type: socketError, Info: "trying move tile to location of other tile"}
+		if _, ok := newUsedTileLocs[tp.X][tp.Y]; ok {
+			m.Player.messages <- message{
+				Type: socketError,
+				Info: fmt.Sprintf("cannot move multiple tiles to [%v,%v] ([c,r])", tp.X, tp.Y),
+			}
+			return
+		}
+		newUsedTileLocs[tp.X][tp.Y] = true
+	}
+	// for existing tp
+	for x, yTiles := range gps.usedTileLocs {
+		for y := range yTiles {
+			// duplicate-ish of above code:
+			if _, ok := newUsedTileLocs[x]; !ok {
+				newUsedTileLocs[x] = make(map[int]bool)
+				newUsedTileLocs[x][y] = true
+				continue
+			}
+			if _, ok := newUsedTileLocs[x][y]; ok {
+				m.Player.messages <- message{
+					Type: socketError,
+					Info: fmt.Sprintf("cannot move multiple tiles to [%v,%v] ([c,r])", x, y),
+				}
 				return
 			}
+			newUsedTileLocs[x][y] = true
 		}
-		delete(gps.usedTileLocs[srcTp.X], srcTp.Y)
 	}
-	if _, ok := gps.usedTileLocs[tp.X]; !ok {
-		gps.usedTileLocs[tp.X] = make(map[int]tile)
+	// actually move tiles
+	for _, tp := range m.TilePositions {
+		if _, ok := gps.unusedTiles[tp.Tile.ID]; ok { // unused
+			gps.usedTiles[tp.Tile.ID] = tp
+			delete(gps.unusedTiles, tp.Tile.ID)
+			for i, id := range gps.unusedTileIds {
+				if id == tp.Tile.ID {
+					gps.unusedTileIds = append(gps.unusedTileIds[:i], gps.unusedTileIds[i+1:]...)
+					break
+				}
+			}
+		} else { // previously used
+			tp2 := gps.usedTiles[tp.Tile.ID]
+			t2 := gps.usedTileLocs[tp2.X][tp2.Y]
+			if t2.ID == tp.Tile.ID { // remove from old location
+				switch {
+				case len(gps.usedTileLocs[tp2.X]) == 1:
+					delete(gps.usedTileLocs, tp2.X)
+				default:
+					delete(gps.usedTileLocs[tp2.X], tp2.Y)
+				}
+			}
+		}
+		if _, ok := gps.usedTileLocs[tp.X]; !ok {
+			gps.usedTileLocs[tp.X] = make(map[int]tile)
+		}
+		gps.usedTileLocs[tp.X][tp.Y] = tp.Tile
+		gps.usedTiles[tp.Tile.ID] = tp
 	}
-	if _, ok := gps.usedTileLocs[tp.X][tp.Y]; ok {
-		m.Player.messages <- message{Type: socketError, Info: "trying move tile to used location"}
-		return
-	}
-	gps.usedTiles[tp.Tile.ID] = tp
-	gps.usedTileLocs[tp.X][tp.Y] = tp.Tile
 }
 
 func (g *game) handleGameTilePositions(m message) {

@@ -31,7 +31,7 @@ const (
 	gameStateChange   messageType = 5
 	gameSnag          messageType = 7
 	gameSwap          messageType = 8
-	gameTileMoved     messageType = 9
+	gameTilesMoved    messageType = 9
 	gameTilePositions messageType = 10
 	gameInfos         messageType = 11
 	playerCreate      messageType = 12

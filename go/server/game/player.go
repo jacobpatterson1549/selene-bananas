@@ -38,7 +38,7 @@ func (p *player) run() {
 			if !p.deleted {
 				p.socket.messages <- m
 			}
-		case gameStateChange, gameSnag, gameSwap, gameTileMoved, gameChatRecv:
+		case gameStateChange, gameSnag, gameSwap, gameTilesMoved, gameChatRecv:
 			if p.game == nil {
 				p.socket.messages <- message{
 					Type: socketError,
