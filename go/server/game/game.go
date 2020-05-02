@@ -582,14 +582,16 @@ func (gps gamePlayerState) usedWordsZ(tiles map[int]map[int]tile, ord func(tp ti
 		buffer := new(bytes.Buffer)
 		var zWords []string
 		for i, tp := range tilePositions {
-			if i > 1 && ord(tilePositions[i-1]) < ord(tp)-1 && buffer.Len() > 1 {
-				zWords = append(zWords, buffer.String())
+			if i > 0 && ord(tilePositions[i-1]) < ord(tp)-1 {
+				if buffer.Len() > 1 {
+					zWords = append(zWords, buffer.String())
+				}
 				buffer = new(bytes.Buffer)
 			}
-			buffer.WriteString(tp.Tile.Ch.String())
-			if i+1 == len(tilePositions) && buffer.Len() > 1 {
-				zWords = append(zWords, buffer.String())
-			}
+			buffer.WriteRune(rune(tp.Tile.Ch))
+		}
+		if buffer.Len() > 1 {
+			zWords = append(zWords, buffer.String())
 		}
 		keyedUsedWords[z] = zWords
 		wordCount += len(zWords)

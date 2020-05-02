@@ -151,6 +151,36 @@ func TestUsedWords(t *testing.T) {
 			want: []string{"NAP", "OR", "NO", "ARE"},
 		},
 		{
+			// CON
+			// A
+			// RUT
+			usedTiles: map[int]tilePosition{
+				1: {Tile: tile{ID: 1, Ch: 'C'}, X: 1, Y: 1},
+				2: {Tile: tile{ID: 2, Ch: 'O'}, X: 2, Y: 1},
+				3: {Tile: tile{ID: 3, Ch: 'N'}, X: 3, Y: 1},
+				4: {Tile: tile{ID: 4, Ch: 'A'}, X: 1, Y: 2},
+				5: {Tile: tile{ID: 5, Ch: 'R'}, X: 1, Y: 3},
+				6: {Tile: tile{ID: 6, Ch: 'U'}, X: 2, Y: 3},
+				7: {Tile: tile{ID: 7, Ch: 'T'}, X: 3, Y: 3},
+			},
+			usedTileLocs: map[int]map[int]tile{
+				1: {
+					1: {ID: 1, Ch: 'C'},
+					2: {ID: 4, Ch: 'A'},
+					3: {ID: 5, Ch: 'R'},
+				},
+				2: {
+					1: {ID: 2, Ch: 'O'},
+					3: {ID: 6, Ch: 'U'},
+				},
+				3: {
+					1: {ID: 3, Ch: 'N'},
+					3: {ID: 7, Ch: 'T'},
+				},
+			},
+			want: []string{"CON", "RUT", "CAR"},
+		},
+		{
 			want: []string{},
 		},
 	}
@@ -201,26 +231,26 @@ func TestSingleUsedGroup(t *testing.T) {
 		{
 			usedTiles: map[int]tilePosition{
 				1: {Tile: tile{ID: 1, Ch: 'C'}, X: 1, Y: 1},
-				2: {Tile: tile{ID: 2, Ch: 'C'}, X: 2, Y: 1},
-				3: {Tile: tile{ID: 3, Ch: 'C'}, X: 3, Y: 1},
-				4: {Tile: tile{ID: 4, Ch: 'C'}, X: 1, Y: 2},
-				5: {Tile: tile{ID: 5, Ch: 'C'}, X: 1, Y: 3},
-				6: {Tile: tile{ID: 6, Ch: 'C'}, X: 2, Y: 3},
-				7: {Tile: tile{ID: 7, Ch: 'C'}, X: 3, Y: 3},
+				2: {Tile: tile{ID: 2, Ch: 'O'}, X: 2, Y: 1},
+				3: {Tile: tile{ID: 3, Ch: 'N'}, X: 3, Y: 1},
+				4: {Tile: tile{ID: 4, Ch: 'A'}, X: 1, Y: 2},
+				5: {Tile: tile{ID: 5, Ch: 'R'}, X: 1, Y: 3},
+				6: {Tile: tile{ID: 6, Ch: 'U'}, X: 2, Y: 3},
+				7: {Tile: tile{ID: 7, Ch: 'T'}, X: 3, Y: 3},
 			},
 			usedTileLocs: map[int]map[int]tile{
 				1: {
 					1: {ID: 1, Ch: 'C'},
-					2: {ID: 4, Ch: 'C'},
-					3: {ID: 5, Ch: 'C'},
+					2: {ID: 4, Ch: 'A'},
+					3: {ID: 5, Ch: 'R'},
 				},
 				2: {
-					1: {ID: 2, Ch: 'C'},
-					3: {ID: 6, Ch: 'C'},
+					1: {ID: 2, Ch: 'O'},
+					3: {ID: 6, Ch: 'U'},
 				},
 				3: {
-					1: {ID: 3, Ch: 'C'},
-					3: {ID: 7, Ch: 'C'},
+					1: {ID: 3, Ch: 'N'},
+					3: {ID: 7, Ch: 'T'},
 				},
 			},
 			want: true,
