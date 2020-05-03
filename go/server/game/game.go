@@ -62,8 +62,9 @@ const (
 	gameInProgress gameState = 1
 	gameFinished   gameState = 2
 	gameNotStarted gameState = 3
-	// TODO: make this an environment argument
-	gameIdlePeriod = 15 * time.Minute
+	// TODO: make these  environment arguments
+	gameIdlePeriod                 = 15 * time.Minute
+	gameTilePositionsRefreshPeriod = 1 * time.Minute
 )
 
 // initialize unusedTiles from tileLetters or defaultTileLetters and shuffles them
@@ -132,6 +133,7 @@ func (g *game) run() {
 func (g *game) handleGameJoin(m message) {
 	if _, ok := g.players[m.Player.username]; ok {
 		g.players[m.Player.username].player = m.Player // replace the connection
+		m.Type = socketInfo
 		g.handleGameTilePositions(m)
 		return
 	}
@@ -154,7 +156,7 @@ func (g *game) handleGameJoin(m message) {
 		newTilesByID[t.ID] = t
 		newTileIds[i] = t.ID
 	}
-	gameTilePositionsTicker := time.NewTicker(1 * time.Minute) // TODO: make env var
+	gameTilePositionsTicker := time.NewTicker(gameTilePositionsRefreshPeriod)
 	gps := &gamePlayerState{
 		log:           g.log,
 		player:        m.Player,
@@ -453,7 +455,7 @@ func (g *game) handleGameTilePositions(m message) {
 		}
 	})
 	m.Player.messages <- message{
-		Type:          socketInfo,
+		Type:          m.Type,
 		Info:          m.Info,
 		Tiles:         unusedTiles,
 		TilePositions: usedTilePositions,

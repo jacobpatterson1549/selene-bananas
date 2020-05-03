@@ -68,13 +68,15 @@ var game = {
         this.unusedTiles = {}
         this.usedTileLocs = {}
         this.addUnusedTiles(unusedTiles, true);
-        for (var i = 0; i < usedTileLocs.length; i++) {
-            var tp = usedTileLocs[i]
-            this.usedTiles[tp.id] = tp;
-            if (this.usedTileLocs[tp.x] == null) {
-                this.usedTileLocs[tp.x] = {};
+        if (usedTileLocs != null) {
+            for (var i = 0; i < usedTileLocs.length; i++) {
+                var tp = usedTileLocs[i]
+                this.usedTiles[tp.id] = tp;
+                if (this.usedTileLocs[tp.x] == null) {
+                    this.usedTileLocs[tp.x] = {};
+                }
+                this.usedTileLocs[tp.x][tp.y] = tp.tile;
             }
-            this.usedTileLocs[tp.x][tp.y] = tp.tile;
         }
         if (silent == null || !silent) {
             canvas.redraw();
