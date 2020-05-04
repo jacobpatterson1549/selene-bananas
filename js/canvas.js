@@ -388,7 +388,7 @@ var canvas = {
         if (selectedTile.isUsed) {
             delete game.usedTileLocs[selectedTile.x][selectedTile.y];
             if (Object.keys(game.usedTileLocs[selectedTile.x]).length == 0) {
-                delete game.usedTileLocs, selectedTile.x;
+                delete game.usedTileLocs[selectedTile.x];
             }
             delete game.usedTilePositions[selectedTile.tile.id];
         } else {
