@@ -57,14 +57,12 @@ var canvas = {
     },
 
     _drawUsedTiles: function (fromSelection) {
-        for (var c = 0; c < this._draw.numCols; c++) { // x
-            for (var r = 0; r < this._draw.numRows; r++) { // y
-                if (game.usedTileLocs[c] != null && game.usedTileLocs[c][r] != null) {
-                    var x = this._draw.usedMinX + c * this._draw.tileLength;
-                    var y = this._draw.usedMinY + r * this._draw.tileLength;
-                    var tile = game.usedTileLocs[c][r];
-                    this._drawTile(x, y, tile, fromSelection);
-                }
+        for (var c in game.usedTileLocs) {
+            for (var r in game.usedTileLocs[c]) {
+                var x = this._draw.usedMinX + c * this._draw.tileLength;
+                var y = this._draw.usedMinY + r * this._draw.tileLength;
+                var tile = game.usedTileLocs[c][r];
+                this._drawTile(x, y, tile, fromSelection);
             }
         }
     },
