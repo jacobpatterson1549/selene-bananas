@@ -377,6 +377,8 @@ var canvas = {
 
     startSwap: function () {
         this._selection.moveState = this._moveState_swap;
+        this._selection.tileIds = {};
+        this.redraw();
     },
 
     _swap: function () {
