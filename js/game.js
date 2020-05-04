@@ -69,7 +69,7 @@ var game = {
         this.unusedTiles = {};
         this.unusedTileIds =  [];
         this.usedTilePositions = {};
-        this.usedTileLocs; {};
+        this.usedTileLocs = {};
         this.addUnusedTiles(unusedTiles, true);
         if (usedTileLocs != null) {
             for (var i = 0; i < usedTileLocs.length; i++) {

@@ -94,11 +94,11 @@ var websocket = {
                 break;
             case 17: // socketHTTPPing
                 var pingFormElement = document.getElementById("ping-form");
-                var event = {
+                var pingEvent = {
                     preventDefault: () => { },
                     target: pingFormElement,
                 }
-                pingFormElement.onsubmit(event);
+                pingFormElement.onsubmit(pingEvent);
                 break;
             case 19: // gameChatSend
                 log.chat(message.info);

@@ -141,13 +141,14 @@ var canvas = {
         this._selection.startX = this._selection.endX = offsetX;
         this._selection.startY = this._selection.endY = offsetY;
         var selectedTile = canvas._getTileSelection(offsetX, offsetY);
+        var tileId;
         if (this._selection.moveState == this._moveState_swap) {
             if (selectedTile == null) {
                 this._selection.moveState = this._moveState_none;
                 log.info("swap cancelled");
                 return;
             }
-            var tileId = selectedTile.tile.id;
+            tileId = selectedTile.tile.id;
             this._selection.tileIds[tileId] = true;
             return;
         }
@@ -165,7 +166,7 @@ var canvas = {
                 this.redraw();
             }
         } else if (selectedTile != null) {
-            var tileId = selectedTile.tile.id;
+            tileId = selectedTile.tile.id;
             this._selection.tileIds[tileId] = true;
             this._selection.moveState = this._moveState_drag;
         } else {
@@ -244,7 +245,7 @@ var canvas = {
         return selectedUsedTileIds;
     },
 
-    _getSelectedUnusedTileIds: function (minX, maxX, minY, maxY) {
+    _getSelectedUnusedTileIds: function (minX, maxX) {
         var minIndex = Math.floor((minX - this._draw.unusedMinX) / this._draw.tileLength);
         var maxIndex = Math.floor((maxX - this._draw.unusedMinX) / this._draw.tileLength);
         minIndex = Math.max(minIndex, 0);
@@ -280,9 +281,10 @@ var canvas = {
 
     _moveSelectedTiles: function () {
         var tilePositions = this._getSelectionTilePositions();
+        var i, tp;
         // if any of the new tile positions are currently used by non-moving tiles, do not change any
-        for (var i = 0; i < tilePositions.length; i++) {
-            var tp = tilePositions[i];
+        for (i = 0; i < tilePositions.length; i++) {
+            tp = tilePositions[i];
             if (game.usedTileLocs[tp.x] != null && game.usedTileLocs[tp.x][tp.y] != null) {
                 var oldTile = game.usedTileLocs[tp.x][tp.y]
                 if (this._selection.tileIds[oldTile.id] == null) {
@@ -291,8 +293,8 @@ var canvas = {
                 }
             }
         }
-        for (var i = 0; i < tilePositions.length; i++) {
-            var tp = tilePositions[i];
+        for (i = 0; i < tilePositions.length; i++) {
+            tp = tilePositions[i];
             // cleanup old position
             if (game.unusedTiles[tp.tile.id] != null) {
                 delete game.unusedTiles[tp.tile.id];
@@ -339,7 +341,7 @@ var canvas = {
 
     _getSelectionUnusedTilePositions: function (tileIds, endC, endR, centralTile) {
         var tilePositions = [];
-        getUnusedTileIndex = function (tileId) {
+        var getUnusedTileIndex = function (tileId) {
             for (var i = 0; i < game.unusedTileIds.length; i++) {
                 if (game.unusedTileIds[i] == tileId) {
                     return i;

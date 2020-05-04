@@ -9,7 +9,7 @@ var user = {
                 var jwtUsernameClaims = atob(claims);
                 var user = JSON.parse(jwtUsernameClaims);
                 var usernameElements = document.querySelectorAll("input.username");
-                for (i = 0; i < usernameElements.length; i++) {
+                for (var i = 0; i < usernameElements.length; i++) {
                     usernameElements[i].value = user.username;
                     usernameElements[i].setAttribute("readonly", "readonly");
                 }
