@@ -150,8 +150,11 @@ var canvas = {
         }
         var hasPreviousSelection = Object.keys(this._selection.tileIds).length > 0;
         if (hasPreviousSelection) {
-            // must drag selected tile
-            if (selectedTile != null && this._selection.tileIds[selectedTile.tile.id] != null) {
+            if (selectedTile != null) {
+                if (this._selection.tileIds[selectedTile.tile.id] == null) {
+                    this._selection.tileIds = {};
+                    this._selection.tileIds[selectedTile.tile.id] = true;
+                }
                 this._selection.moveState = this._moveState_drag;
             } else {
                 this._selection.tileIds = {};
