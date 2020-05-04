@@ -64,7 +64,7 @@ const (
 	gameNotStarted gameState = 3
 	// TODO: make these  environment arguments
 	gameIdlePeriod                 = 15 * time.Minute
-	gameTilePositionsRefreshPeriod = 1 * time.Minute
+	gameTilePositionsRefreshPeriod = 5 * time.Minute
 )
 
 // initialize unusedTiles from tileLetters or defaultTileLetters and shuffles them
