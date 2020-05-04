@@ -69,16 +69,21 @@ var canvas = {
 
     _getTileSelection: function (x, y) { // return { tile:{ id:int, ch:string }, isUsed:bool, x:int, y:int }
         // unused tile check
-        if (this._draw.unusedMinX <= x && x <= this._draw.unusedMinX + game.unusedTileIds.length * this._draw.tileLength
-            && this._draw.unusedMinY <= y && y <= this._draw.unusedMinY + this._draw.tileLength) {
+        if (this._draw.unusedMinX <= x && x < this._draw.unusedMinX + game.unusedTileIds.length * this._draw.tileLength
+            && this._draw.unusedMinY <= y && y < this._draw.unusedMinY + this._draw.tileLength) {
             var idx = Math.floor(x / this._draw.tileLength);
             var id = game.unusedTileIds[idx];
             var tile = game.unusedTiles[id];
+            if (tile == null) {
+                console.log("logic error: the browser ui thinks there is a tile at [x,y]=" + x + "," + "y"
+                    + "but the tile storage variable says there is none");
+                return null;
+            }
             return { tile: tile, isUsed: false };
         }
         // used tile check
-        if (this._draw.usedMinX <= x && x <= this._draw.usedMinX + this._draw.numCols * this._draw.tileLength
-            && this._draw.usedMinY <= y && y <= this._draw.usedMinY + this._draw.numRows * this._draw.tileLength) {
+        if (this._draw.usedMinX <= x && x < this._draw.usedMinX + this._draw.numCols * this._draw.tileLength
+            && this._draw.usedMinY <= y && y < this._draw.usedMinY + this._draw.numRows * this._draw.tileLength) {
             var c = Math.floor((x - this._draw.usedMinX) / this._draw.tileLength);
             var r = Math.floor((y - this._draw.usedMinY) / this._draw.tileLength);
             if (game.usedTileLocs[c] != null && game.usedTileLocs[c][r] != null) {
@@ -124,8 +129,8 @@ var canvas = {
         [minY, maxY] = this._selection.startY < this._selection.endY
             ? [this._selection.startY, this._selection.endY]
             : [this._selection.endY, this._selection.startY];
-        return minX <= x && x <= maxX
-            && minY <= y && y <= maxY;
+        return minX <= x && x < maxX
+            && minY <= y && y < maxY;
     },
 
     _onMouseDown: function (event) {
@@ -221,13 +226,13 @@ var canvas = {
         var minY = this._selection.startY < this._selection.endY ? this._selection.startY : this._selection.endY;
         var maxY = this._selection.startY > this._selection.endY ? this._selection.startY : this._selection.endY;
         var selectedUnusedTileIds = {};
-        if (this._draw.unusedMinX <= maxX && minX <= this._draw.unusedMinX + game.unusedTileIds.length * this._draw.tileLength
-            && this._draw.unusedMinY <= maxY && minY <= this._draw.unusedMinY + this._draw.tileLength) {
+        if (this._draw.unusedMinX <= maxX && minX < this._draw.unusedMinX + game.unusedTileIds.length * this._draw.tileLength
+            && this._draw.unusedMinY <= maxY && minY < this._draw.unusedMinY + this._draw.tileLength) {
             selectedUnusedTileIds = this._getSelectedUnusedTileIds(minX, maxX, minY, maxY);
         }
         var selectedUsedTileIds = {}
-        if (this._draw.usedMinX <= maxX && minX <= this._draw.usedMinX + this._draw.numCols * this._draw.tileLength
-            && this._draw.usedMinY <= maxY && minY <= this._draw.usedMinY + this._draw.numRows * this._draw.tileLength) {
+        if (this._draw.usedMinX <= maxX && minX < this._draw.usedMinX + this._draw.numCols * this._draw.tileLength
+            && this._draw.usedMinY <= maxY && minY < this._draw.usedMinY + this._draw.numRows * this._draw.tileLength) {
             selectedUsedTileIds = this._getSelectedUsedTileIds(minX, maxX, minY, maxY);
         }
         if (Object.keys(selectedUnusedTileIds).length != 0) {
@@ -262,9 +267,9 @@ var canvas = {
             for (var j = 0; j < usedTilesY.length; j++) {
                 var r = parseInt(usedTilesY[j]);
                 if (this._draw.usedMinX + c * this._draw.tileLength <= maxX
-                    && minX <= this._draw.usedMinX + (c + 1) * this._draw.tileLength
+                    && minX < this._draw.usedMinX + (c + 1) * this._draw.tileLength
                     && this._draw.usedMinY + r * this._draw.tileLength <= maxY
-                    && minY <= this._draw.usedMinY + (r + 1) * this._draw.tileLength) {
+                    && minY < this._draw.usedMinY + (r + 1) * this._draw.tileLength) {
                     var tileId = usedTileLocsY[r].id;
                     tileIds[tileId] = true;
                 }
