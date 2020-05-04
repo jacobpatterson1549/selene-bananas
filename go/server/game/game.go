@@ -402,6 +402,7 @@ func (g *game) handleGameTilesMoved(m message) {
 	gps := g.players[m.Player.username]
 	// validation
 	newUsedTileLocs := make(map[int]map[int]bool)
+	movedTileIds := make(map[int]bool, len(m.TilePositions))
 	for _, tp := range m.TilePositions {
 		if _, ok := gps.unusedTiles[tp.Tile.ID]; ok {
 			continue
@@ -413,6 +414,7 @@ func (g *game) handleGameTilesMoved(m message) {
 			}
 			return
 		}
+		movedTileIds[tp.Tile.ID] = true
 		if _, ok := newUsedTileLocs[tp.X]; !ok {
 			newUsedTileLocs[tp.X] = make(map[int]bool)
 			newUsedTileLocs[tp.X][tp.Y] = true
@@ -429,7 +431,10 @@ func (g *game) handleGameTilesMoved(m message) {
 	}
 	// for existing tp
 	for x, yTiles := range gps.usedTileLocs {
-		for y := range yTiles {
+		for y, t := range yTiles {
+			if _, ok := movedTileIds[t.ID]; ok {
+				continue
+			}
 			// duplicate-ish of above code:
 			if _, ok := newUsedTileLocs[x]; !ok {
 				newUsedTileLocs[x] = make(map[int]bool)
@@ -439,7 +444,7 @@ func (g *game) handleGameTilesMoved(m message) {
 			if _, ok := newUsedTileLocs[x][y]; ok {
 				m.Player.messages <- message{
 					Type: socketError,
-					Info: fmt.Sprintf("cannot move multiple tiles to [%v,%v] ([c,r])", x, y),
+					Info: "cannot move tiles to location of tile that is not being moved",
 				}
 				return
 			}

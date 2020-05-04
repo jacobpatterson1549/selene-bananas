@@ -299,9 +299,11 @@ var canvas = {
                 }
             } else {
                 var prevTp = game.usedTilePositions[tp.tile.id];
-                delete game.usedTileLocs[prevTp.x][prevTp.y];
-                if (Object.keys(game.usedTileLocs[prevTp.x]).length == 0) {
-                    delete game.usedTileLocs[prevTp.x];
+                if (prevTp.tile.id == game.usedTileLocs[prevTp.x][prevTp.y].id) {
+                    delete game.usedTileLocs[prevTp.x][prevTp.y];
+                    if (Object.keys(game.usedTileLocs[prevTp.x]).length == 0) {
+                        delete game.usedTileLocs[prevTp.x];
+                    }
                 }
             }
             // update the tilePositions
