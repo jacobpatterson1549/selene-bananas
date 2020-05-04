@@ -241,8 +241,10 @@ var canvas = {
     _getSelectedUnusedTileIds: function (minX, maxX, minY, maxY) {
         var minIndex = Math.floor((minX - this._draw.unusedMinX) / this._draw.tileLength);
         var maxIndex = Math.floor((maxX - this._draw.unusedMinX) / this._draw.tileLength);
+        minIndex = Math.max(minIndex, 0);
+        maxIndex = Math.min(maxIndex, game.unusedTileIds.length);
         var tileIds = {};
-        for (var i = minIndex; i <= maxIndex; i++) {
+        for (var i = minIndex; i < maxIndex; i++) {
             var tileId = game.unusedTileIds[i];
             tileIds[tileId] = true;
         }
@@ -344,7 +346,7 @@ var canvas = {
             var deltaCentralTileIdx = tileIdx - centralTileIdx;
             var tile = game.unusedTiles[tileId];
             var c = endC + deltaCentralTileIdx;
-            if (c < 0 >= c >= game.unusedTileIds.length) {
+            if (c < 0 || c >= this._draw.numCols) {
                 return [];
             }
             tilePositions.push({ tile: tile, x: c, y: endR });
