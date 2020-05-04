@@ -1,8 +1,11 @@
 var game = {
 
-    unusedTiles: {},
-    unusedTileIds: [],
-    usedTileLocs: {},
+    // tile { id, ch }
+    // tilePosition { tile, x, y }
+    unusedTiles: {}, // id => tile
+    unusedTileIds: [], // id
+    usedTilePositions: {}, // id => tilePosition
+    usedTileLocs: {}, // x => y => tile
 
     _resetTiles: function () {
         this.unusedTiles = {};
@@ -52,7 +55,7 @@ var game = {
 
     swapTile: function (event) {
         log.info("click a tile to swap for three others from the pile");
-        canvas.isSwap = true;
+        canvas.startSwap();
     },
 
     _setTabActive: function () {
@@ -62,24 +65,24 @@ var game = {
         gameTab.checked = true;
     },
 
-    replaceGameTiles: function (unusedTiles, usedTileLocs, silent) {
-        this.unusedTiles = {}
-        this.usedTileLocs = {}
+    replaceGameTiles: function (unusedTiles, usedTileLocs) {
+        this.unusedTiles = {};
+        this.unusedTileIds =  [];
+        this.usedTilePositions = {};
+        this.usedTileLocs; {};
         this.addUnusedTiles(unusedTiles, true);
         if (usedTileLocs != null) {
             for (var i = 0; i < usedTileLocs.length; i++) {
                 var tp = usedTileLocs[i]
-                this.usedTiles[tp.id] = tp;
+                this.usedTilePositions[tp.tile.id] = tp;
                 if (this.usedTileLocs[tp.x] == null) {
                     this.usedTileLocs[tp.x] = {};
                 }
                 this.usedTileLocs[tp.x][tp.y] = tp.tile;
             }
         }
-        if (silent == null || !silent) {
-            canvas.redraw();
-            this._setTabActive();
-        }
+        canvas.redraw();
+        this._setTabActive();
     },
 
     addUnusedTiles: function (unusedTiles, silent) {
@@ -88,13 +91,13 @@ var game = {
             tileStrings.length = unusedTiles.length;
             for (var i = 0; i < unusedTiles.length; i++) {
                 var t = unusedTiles[i];
-                tileStrings[i] = t.ch;
+                tileStrings[i] = " '" + t.ch + "'";
                 this.unusedTiles[t.id] = t;
                 this.unusedTileIds.push(t.id);
             }
         }
         if (silent == null || !silent) {
-            log.info("adding " + tileStrings + " unused tiles");
+            log.info("adding unused tiles: " + tileStrings);
             canvas.redraw();
             this._setTabActive();
         }

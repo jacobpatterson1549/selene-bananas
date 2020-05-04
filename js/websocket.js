@@ -59,7 +59,6 @@ var websocket = {
                     log.info(message.info);
                 break;
             case 10: // messageType
-                console.log("setting game tile positions from server");
                 game.replaceGameTiles(message.tiles, message.tilePositions);
                 break;
             case 11: // gameInfos
@@ -76,8 +75,7 @@ var websocket = {
                     game.setPlayers(message.gamePlayers);
                 }
                 if (message.tilePositions != null) {
-                    console.log("refresh tiles");
-                    game.replaceGameTiles(message.tiles, message.tilePositions, true);
+                    game.replaceGameTiles(message.tiles, message.tilePositions);
                     break;
                 }
                 log.info(message.info);
