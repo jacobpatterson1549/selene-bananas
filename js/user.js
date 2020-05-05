@@ -54,6 +54,10 @@ var user = {
                 };
                 break;
             case "/user_delete":
+                var result = window.confirm("Are you sure? All accumulated points will be lost");
+                if (!result) {
+                    return;
+                }
                 if (!content.isLoggedIn()) {
                     content.setErrorMessage("not logged in");
                     return;

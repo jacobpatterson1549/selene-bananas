@@ -149,7 +149,8 @@ func (l *lobby) newGame(p *player, id int) game {
 		players:     make(map[db.Username]*gamePlayerState, 2),
 		userDao:     l.userDao,
 		maxPlayers:  8,
-		numNewTiles: 21,
+		numNewTiles: 5,
+		tileLetters: "HAMPLANEATGOING",
 		messages:    make(chan message, 64),
 		shuffleUnusedTilesFunc: func(tiles []tile) {
 			l.rand.Shuffle(len(tiles), func(i, j int) {
