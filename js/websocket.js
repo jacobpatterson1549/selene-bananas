@@ -56,7 +56,6 @@ var websocket = {
         switch (message.type) {
             case 3: // gameLeave
                 game.leave();
-                    log.info(message.info);
                 break;
             case 10: // messageType
                 game.replaceGameTiles(message.tiles, message.tilePositions);
