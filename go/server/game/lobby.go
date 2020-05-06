@@ -139,6 +139,7 @@ func (l *lobby) handleGameCreate(m message) {
 }
 
 func (l *lobby) newGame(p *player, id int) game {
+	// TODO: for createdAt, have TimeFunc variable that is a function which returns a time.Time, (time.Now) => TimeFunc().Format(...), share with jwt token
 	g := game{
 		log:         l.log,
 		lobby:       l,
