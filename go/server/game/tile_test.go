@@ -33,12 +33,12 @@ func TestUnmarshalLetter(t *testing.T) {
 		want    letter
 		wantErr bool
 	}{
-		// {`"A"`, letter('A'), false},
-		// {`"Z"`, letter('Z'), false},
-		// {`"X"`, letter('X'), false},
-		// {`"XYZ"`, letter('X'), true},
+		{`"A"`, letter('A'), false},
+		{`"Z"`, letter('Z'), false},
+		{`"X"`, letter('X'), false},
+		{`"XYZ"`, letter('X'), true},
 		{`X`, 0, true},
-		// {`"@"`, 0, true},
+		{`"@"`, 0, true},
 	}
 	for i, test := range unmarshalLetterTests {
 		var got letter
