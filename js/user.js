@@ -10,7 +10,7 @@ var user = {
                 var user = JSON.parse(jwtUsernameClaims);
                 var usernameElements = document.querySelectorAll("input.username");
                 for (var i = 0; i < usernameElements.length; i++) {
-                    usernameElements[i].value = user.username;
+                    usernameElements[i].value = user.sub; // the jwt subscriber
                     usernameElements[i].setAttribute("readonly", "readonly");
                 }
                 document.querySelector("input.points").value = user.points;
