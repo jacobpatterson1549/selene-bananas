@@ -1,4 +1,4 @@
-package game
+package tile
 
 import (
 	"encoding/json"

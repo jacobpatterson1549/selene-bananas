@@ -13,6 +13,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
 	"github.com/jacobpatterson1549/selene-bananas/go/server/game"
+	"github.com/jacobpatterson1549/selene-bananas/go/server/game/lobby"
 )
 
 type (
@@ -38,7 +39,7 @@ type (
 		handler           http.Handler
 		staticFileHandler http.Handler
 		upgrader          *websocket.Upgrader
-		lobby             game.Lobby
+		lobby             lobby.Lobby
 		userDao           db.UserDao
 		tokenizer         Tokenizer
 	}
@@ -66,7 +67,7 @@ func (cfg Config) NewServer() (Server, error) {
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}
-	lobby, err := game.NewLobby(cfg.Log, game.FileSystemWordsSupplier(cfg.WordsFileName), userDao, rand)
+	lobby, err := lobby.New(cfg.Log, game.FileSystemWordsSupplier(cfg.WordsFileName), userDao, rand)
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/jacobpatterson1549/selene-bananas/go/server/game"
+
 	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
 )
 
@@ -50,7 +52,8 @@ func (s server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, tokenUsername db.Username) error {
-	err := s.lobby.AddUser(tokenUsername, w, r)
+	playerName := game.PlayerName(tokenUsername)
+	err := s.lobby.AddUser(playerName, w, r)
 	if err != nil {
 		return fmt.Errorf("websocket error: %w", err)
 	}
@@ -76,7 +79,8 @@ func (s server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request,
 	if err != nil {
 		return err
 	}
-	s.lobby.RemoveUser(tokenUsername)
+	playerName := game.PlayerName(tokenUsername)
+	s.lobby.RemoveUser(playerName)
 	return nil
 }
 
@@ -98,6 +102,7 @@ func (s server) handleUserDelete(w http.ResponseWriter, r *http.Request, tokenUs
 	if err != nil {
 		return err
 	}
-	s.lobby.RemoveUser(u.Username)
+	playerName := game.PlayerName(tokenUsername)
+	s.lobby.RemoveUser(playerName)
 	return err
 }

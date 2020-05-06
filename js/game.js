@@ -42,11 +42,11 @@ var game = {
     },
 
     start: function (event) {
-        websocket.send({ type: 5, gameState: 1 }); // gameStateChange, gameInProgress
+        websocket.send({ type: 5, gameStatus: 1 }); // gameStatusChange, gameInProgress
     },
 
     finish: function (event) {
-        websocket.send({ type: 5, gameState: 2 }); // gameStateChange, gameFinished
+        websocket.send({ type: 5, gameStatus: 2 }); // gameStatusChange, gameFinished
     },
 
     snagTile: function (event) {
@@ -103,9 +103,9 @@ var game = {
         }
     },
 
-    setState: function (state) {
-        var stateElement = document.querySelector("input#game-state");
-        switch (state) {
+    setStatus: function (status) {
+        var stateElement = document.querySelector("input#game-status");
+        switch (status) {
             case 3: // gameNotStarted
                 stateElement.value = "Not Started"
                 this._setButtonDisabled("game-snag", true);
@@ -128,7 +128,7 @@ var game = {
                 this._setButtonDisabled("game-finish", true);
                 break;
             default:
-                log.error("invalid gameState: ", state);
+                log.error("invalid gameStatus: ", state);
                 break;
         }
     },

@@ -64,8 +64,8 @@ var websocket = {
                 lobby.setGameInfos(message.gameInfos);
                 break;
             case 14: // socketInfo
-                if (message.gameState != null) {
-                    game.setState(message.gameState);
+                if (message.gameStatus != null) {
+                    game.setStatus(message.gameStatus);
                 }
                 if (message.tilesLeft != null) { // keep after game.setState()
                     game.setTilesLeft(message.tilesLeft);

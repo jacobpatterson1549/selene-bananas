@@ -1,27 +1,19 @@
-package game
+package tile
 
 import (
 	"encoding/json"
 	"fmt"
 )
 
-type (
-	// Tile is a piece in the game
-	// TODO: make int a tileID type
-	tile struct {
-		ID int    `json:"id"`
-		Ch letter `json:"ch"`
-	}
+// letter is the value of a tile
+type letter rune
 
-	tilePosition struct {
-		Tile tile `json:"tile"`
-		X    int  `json:"x"`
-		Y    int  `json:"y"`
+func newLetter(r rune) (letter, error) {
+	if r < 'A' || 'Z' < r {
+		return 0, fmt.Errorf("letter must be uppercase and between A and Z")
 	}
-
-	// Letter is the value of a tile
-	letter rune
-)
+	return letter(r), nil
+}
 
 func (l letter) String() string {
 	return string(l)

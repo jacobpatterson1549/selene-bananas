@@ -25,7 +25,7 @@ var lobby = {
             var rowElement = gameInfoElement.children[0];
             rowElement.children[0].innerHTML = gameInfos[i].createdAt;
             rowElement.children[1].innerHTML = gameInfos[i].players;
-            this._setState(rowElement.children[2], gameInfos[i].state)
+            this._setStatus(rowElement.children[2], gameInfos[i].status)
             if (gameInfos[i].canJoin) {
                 var joinGameButtonTemplate = document.getElementById("join-game-button");
                 var joinGameButtonElement = joinGameButtonTemplate.content.cloneNode(true);
@@ -37,8 +37,8 @@ var lobby = {
 
     },
 
-    _setState: function (element, state) {
-        switch (state) {
+    _setStatus: function (element, status) {
+        switch (status) {
             case 3: // gameNotStarted
                 element.innerHTML = "Not Started"
                 break;
@@ -49,7 +49,7 @@ var lobby = {
                 element.innerHTML = "Finished"
                 break;
             default:
-                log.error("invalid gameState: ", state);
+                log.error("invalid gameStatus: ", status);
                 break;
         }
     },

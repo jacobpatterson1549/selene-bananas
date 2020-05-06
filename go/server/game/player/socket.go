@@ -1,4 +1,4 @@
-package game
+package player
 
 import (
 	"encoding/json"
@@ -7,15 +7,24 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/jacobpatterson1549/selene-bananas/go/server/game"
 )
 
 type (
+	// Socket reads and sends messages for the player
 	socket struct {
 		log      *log.Logger
 		conn     *websocket.Conn
-		player   *player
-		messages chan message
+		player   Player
+		messages chan game.Message
 		active   bool
+	}
+
+	player struct {
+		name  game.PlayerName
+		lobby game.Messenger
+		game  game.Messenger // possibly nil
+		game.Messenger
 	}
 )
 
@@ -29,6 +38,11 @@ const (
 	httpPingPeriod = 10 * time.Minute // should be less than 30 minutes to keep heroku alive
 )
 
+// Handle adds a message to the queue
+func (s *socket) Handle(m game.Message) {
+	s.messages <- m
+}
+
 func (s *socket) readMessages() {
 	defer s.close()
 	err := s.refreshReadDeadline()
@@ -39,11 +53,14 @@ func (s *socket) readMessages() {
 		return s.refreshReadDeadline()
 	})
 	for {
-		var m message
+		var m game.Message
 		err := s.conn.ReadJSON(&m)
 		if err != nil {
 			if _, ok := err.(*json.UnmarshalTypeError); ok {
-				s.messages <- message{Type: socketError, Info: err.Error()}
+				s.messages <- game.Message{
+					Type: game.SocketError,
+					Info: err.Error(),
+				}
 				continue
 			}
 			if _, ok := err.(*websocket.CloseError); !ok || websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
@@ -52,16 +69,17 @@ func (s *socket) readMessages() {
 			s.close()
 			return
 		}
-		m.Player = s.player
+		m.PlayerName = s.player.name
+		m.Player = &s.player
 		switch m.Type {
-		case gameCreate, gameJoin, gameInfos, playerDelete: // TODO: this a bit of a hack.  It would be nice if the socket only interfaced with the player
-			s.player.lobby.messages <- m
-		case gameStateChange, gameSnag, gameSwap, gameTilesMoved, gameDelete, gameChatRecv:
-			s.player.messages <- m
+		case game.Create, game.Join, game.Infos, game.PlayerDelete: // TODO: this a bit of a hack.  It would be nice if the socket only interfaced with the player
+			s.player.lobby.Handle(m)
+		case game.StatusChange, game.Snag, game.Swap, game.TilesMoved, game.Delete, game.ChatRecv:
+			s.player.Handle(m)
 		default:
 			s.log.Printf("player does not know how to handle a messageType of %v", m.Type)
 		}
-		s.active = true // (mutates the socket)
+		s.active = true
 	}
 }
 
@@ -85,7 +103,7 @@ func (s *socket) writeMessages() {
 				s.log.Printf("error writing websocket message: %v", err)
 				return
 			}
-			if m.Type == playerDelete {
+			if m.Type == game.PlayerDelete {
 				return
 			}
 		case _, ok := <-pingTicker.C:
@@ -104,7 +122,10 @@ func (s *socket) writeMessages() {
 				return
 			}
 			if !s.active {
-				err := s.conn.WriteJSON(message{Type: socketClosed, Info: "connection closing due to inactivity"})
+				err := s.conn.WriteJSON(game.Message{
+					Type: game.SocketClosed,
+					Info: "connection closing due to inactivity",
+				})
 				if err != nil {
 					s.log.Printf("error writing websocket message: %v", err)
 				}
@@ -115,29 +136,33 @@ func (s *socket) writeMessages() {
 			if !ok {
 				return
 			}
-			s.messages <- message{Type: socketHTTPPing}
+			s.messages <- game.Message{
+				Type: game.SocketHTTPPing,
+			}
 		}
 	}
 }
 
 func (s socket) close() {
-	s.log.Printf("closing socket connection for %v", s.player.username)
-	s.player.messages <- message{Type: playerDelete}
+	s.log.Printf("closing socket connection for %v", s.player.name)
+	s.player.Handle(game.Message{
+		Type: game.PlayerDelete,
+	})
 	s.conn.Close()
 }
 
-func (s socket) refreshReadDeadline() error {
-	return s.refreshDeadline(s.conn.SetReadDeadline, pongPeriod, "read")
+func (s *socket) refreshReadDeadline() error {
+	return s.refreshDeadline(s.conn.SetReadDeadline, pongPeriod)
 }
 
-func (s socket) refreshWriteDeadline() error {
-	return s.refreshDeadline(s.conn.SetWriteDeadline, pingPeriod, "write")
+func (s *socket) refreshWriteDeadline() error {
+	return s.refreshDeadline(s.conn.SetWriteDeadline, pingPeriod)
 }
 
-func (s socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration, name string) error {
+func (s *socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
 	err := refreshDeadlineFunc(time.Now().Add(period))
 	if err != nil {
-		err := fmt.Errorf("error refreshing %v deadline: %w", name, err)
+		err := fmt.Errorf("error refreshing ping/pong deadline for %v: %w", s.player.name, err)
 		s.log.Print(err)
 		return err
 	}
