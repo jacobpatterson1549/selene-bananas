@@ -211,8 +211,9 @@ func (g *Game) handleGameJoin(m game.Message) {
 				return
 			}
 			g.Handle(game.Message{
-				Type:   game.TilePositions,
-				Player: gps.player, // TODO: should only be username, not player DO THIS EVERYWHERE
+				Type:       game.TilePositions,
+				Player:     gps.player, // TODO: should only be username, not player DO THIS EVERYWHERE
+				PlayerName: m.PlayerName,
 			})
 		}
 	}()
