@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jacobpatterson1549/selene-bananas/go/db"
 	"github.com/jacobpatterson1549/selene-bananas/go/server"
-	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
 	_ "github.com/lib/pq"
 )
 

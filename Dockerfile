@@ -10,7 +10,7 @@ RUN go mod download
 
 COPY . /app/
 
-RUN CGO_ENABLED=0 go build -o /app/selene_bananas main.go
+RUN CGO_ENABLED=0 go build -o /app/selene_bananas go/main.go
 
 FROM alpine:3.11
 

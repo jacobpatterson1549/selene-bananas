@@ -8,12 +8,11 @@ import (
 	"sort"
 
 	"github.com/gorilla/websocket"
-
-	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
-	"github.com/jacobpatterson1549/selene-bananas/go/server/game"
-	"github.com/jacobpatterson1549/selene-bananas/go/server/game/controller"
-	"github.com/jacobpatterson1549/selene-bananas/go/server/game/player"
-	"github.com/jacobpatterson1549/selene-bananas/go/server/game/tile"
+	"github.com/jacobpatterson1549/selene-bananas/go/db"
+	"github.com/jacobpatterson1549/selene-bananas/go/game"
+	"github.com/jacobpatterson1549/selene-bananas/go/game/controller"
+	"github.com/jacobpatterson1549/selene-bananas/go/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
 )
 
 type (

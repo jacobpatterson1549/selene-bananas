@@ -6,8 +6,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-
-	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
+	"github.com/jacobpatterson1549/selene-bananas/go/db"
 )
 
 type (

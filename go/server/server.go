@@ -10,10 +10,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-
-	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
-	"github.com/jacobpatterson1549/selene-bananas/go/server/game"
-	"github.com/jacobpatterson1549/selene-bananas/go/server/game/lobby"
+	"github.com/jacobpatterson1549/selene-bananas/go/db"
+	"github.com/jacobpatterson1549/selene-bananas/go/game"
+	"github.com/jacobpatterson1549/selene-bananas/go/game/lobby"
 )
 
 type (

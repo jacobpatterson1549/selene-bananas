@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jacobpatterson1549/selene-bananas/go/server/game"
-
-	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
+	"github.com/jacobpatterson1549/selene-bananas/go/db"
+	"github.com/jacobpatterson1549/selene-bananas/go/game"
 )
 
 type (

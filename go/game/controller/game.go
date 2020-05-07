@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jacobpatterson1549/selene-bananas/go/server/db"
-	"github.com/jacobpatterson1549/selene-bananas/go/server/game"
-	"github.com/jacobpatterson1549/selene-bananas/go/server/game/tile"
+	"github.com/jacobpatterson1549/selene-bananas/go/db"
+	"github.com/jacobpatterson1549/selene-bananas/go/game"
+	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
 )
 
 type (

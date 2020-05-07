@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/jacobpatterson1549/selene-bananas/go/server/game"
+	"github.com/jacobpatterson1549/selene-bananas/go/game"
 )
 
 type (

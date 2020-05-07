@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/jacobpatterson1549/selene-bananas/go/server/game/tile"
+	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
 )
 
 func TestInitializeUnusedTiles_correctAmount(t *testing.T) {

@@ -10,7 +10,7 @@ type letter rune
 
 func newLetter(r rune) (letter, error) {
 	if r < 'A' || 'Z' < r {
-		return 0, fmt.Errorf("letter must be uppercase and between A and Z")
+		return 0, fmt.Errorf("letter must be uppercase and between A and Z: %v", r)
 	}
 	return letter(r), nil
 }
