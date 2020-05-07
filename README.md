@@ -43,7 +43,6 @@ sudo -u postgres psql \
 -c "CREATE USER $PGUSER WITH ENCRYPTED PASSWORD '"'"'$PGPASSWORD'"'"'" \
 -c "GRANT ALL PRIVILEGES ON DATABASE $PGDATABASE TO $PGUSER" \
 && echo DATABASE_URL=postgres://$PGUSER:$PGPASSWORD@$PGHOSTADDR:$PGPORT/$PGDATABASE'
-```
 
 ### Make
 Run `make serve` to build and run the application.  Requires Go and a Postgres database to be installed.
