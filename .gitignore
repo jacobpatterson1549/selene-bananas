@@ -9,7 +9,7 @@ main
 
 # Visual Studio Code files
 .vscode
-__debug_bin
+go/__debug_bin
 
 # SonarQube static analysis
 .scannerwork

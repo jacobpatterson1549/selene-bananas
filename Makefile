@@ -11,4 +11,4 @@ serve: install
 	export $(shell grep -v '^#' .env | xargs) && ./main
 
 clean:
-	rm -f main __debug_bin
+	rm -f main go/__debug_bin
