@@ -340,6 +340,9 @@ var canvas = {
     },
 
     _getSelectionUnusedTilePositions: function (tileIds, endC, endR, centralTile) {
+        if (endR < 0 || endR >= this._draw.numRows) {
+            return [];
+        }
         var tilePositions = [];
         var getUnusedTileIndex = function (tileId) {
             for (var i = 0; i < game.unusedTileIds.length; i++) {
