@@ -262,7 +262,7 @@ func (g *Game) handleGameStateChange(m game.Message) {
 			})
 			return
 		}
-		g.start()
+		g.start(m)
 	case game.InProgress:
 		if m.GameStatus != game.Finished {
 			m.Player.Handle(game.Message{
@@ -283,12 +283,13 @@ func (g *Game) handleGameStateChange(m game.Message) {
 	}
 }
 
-func (g *Game) start() {
+func (g *Game) start(m game.Message) {
 	g.status = game.InProgress
+	info := fmt.Sprintf("%v started the game", m.PlayerName)
 	for _, gps := range g.players {
 		gps.player.Handle(game.Message{
 			Type:       game.SocketInfo,
-			Info:       "game started",
+			Info:       info,
 			GameStatus: g.status,
 		})
 	}
