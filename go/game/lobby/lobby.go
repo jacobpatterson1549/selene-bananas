@@ -212,6 +212,7 @@ func (l *Lobby) handleGameInfos(m game.Message) {
 		g.Handle(game.Message{
 			Type:         game.Infos,
 			Player:       m.Player,
+			PlayerName:   m.PlayerName,
 			GameInfoChan: c,
 		})
 	}
