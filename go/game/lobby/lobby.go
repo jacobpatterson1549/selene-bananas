@@ -23,9 +23,9 @@ type (
 		rand      *rand.Rand
 		words     map[string]bool
 		playerCfg player.Config
-		players   map[game.PlayerName]game.Messenger
+		players   map[game.PlayerName]game.MessageHandler
 		gameCfg   controller.Config
-		games     map[game.ID]game.Messenger
+		games     map[game.ID]game.MessageHandler
 		maxGames  int
 		messages  chan game.Message
 	}
@@ -49,8 +49,8 @@ func New(log *log.Logger, ws game.WordsSupplier, userDao db.UserDao, rand *rand.
 		upgrader: u,
 		rand:     rand,
 		words:    words,
-		games:    make(map[game.ID]game.Messenger),
-		players:  make(map[game.PlayerName]game.Messenger),
+		games:    make(map[game.ID]game.MessageHandler),
+		players:  make(map[game.PlayerName]game.MessageHandler),
 		maxGames: 5,
 		messages: make(chan game.Message, 16),
 	}

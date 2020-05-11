@@ -20,14 +20,14 @@ type (
 		GameStatus    Status          `json:"gameStatus,omitempty"`
 		GamePlayers   []string        `json:"gamePlayers,omitempty"`
 		// pointers for inter-goroutine communication:
-		PlayerName   PlayerName  `json:"-"`
-		Player       Messenger   `json:"-"`
-		Game         Messenger   `json:"-"`
-		GameInfoChan chan<- Info `json:"-"`
+		PlayerName   PlayerName     `json:"-"`
+		Player       MessageHandler `json:"-"` // TODO: DELETEME
+		Game         MessageHandler `json:"-"` // TODO: DELETEME
+		GameInfoChan chan<- Info    `json:"-"`
 	}
 
-	// Messenger handles messages
-	Messenger interface {
+	// MessageHandler handles messages
+	MessageHandler interface {
 		Handle(m Message)
 	}
 )

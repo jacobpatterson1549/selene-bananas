@@ -18,7 +18,7 @@ type (
 	Game struct {
 		log         *log.Logger
 		id          game.ID
-		lobby       game.Messenger
+		lobby       game.MessageHandler
 		createdAt   string
 		status      game.Status
 		players     map[game.PlayerName]*gamePlayerState
@@ -38,7 +38,7 @@ type (
 	// Config contiains the properties to create similar games
 	Config struct {
 		Log         *log.Logger
-		Lobby       game.Messenger
+		Lobby       game.MessageHandler
 		UserDao     db.UserDao
 		MaxPlayers  int
 		NumNewTiles int
@@ -50,7 +50,7 @@ type (
 	}
 
 	gamePlayerState struct {
-		player        game.Messenger
+		player        game.MessageHandler
 		refreshTicker *time.Ticker
 		unusedTiles   map[tile.ID]tile.Tile
 		unusedTileIds []tile.ID
@@ -73,7 +73,7 @@ func (g *Game) Handle(m game.Message) {
 }
 
 // New creates a new game from the config and runs it
-func (cfg Config) New(id game.ID, player game.Messenger) Game {
+func (cfg Config) New(id game.ID, player game.MessageHandler) Game {
 	// TODO: for createdAt, have TimeFunc variable that is a function which returns a time.Time, (time.Now) => TimeFunc().Format(...), share with jwt token
 	g := Game{
 		log:                    cfg.Log,

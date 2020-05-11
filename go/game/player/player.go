@@ -14,10 +14,10 @@ type (
 	Player struct {
 		log      *log.Logger
 		name     game.PlayerName
-		lobby    game.Messenger
-		game     game.Messenger // possibly nil
+		lobby    game.MessageHandler
+		game     game.MessageHandler // possibly nil
 		gameID   game.ID
-		socket   game.Messenger
+		socket   game.MessageHandler
 		messages chan game.Message
 		deleted  bool
 	}
@@ -25,7 +25,7 @@ type (
 	// Config contains commonly shared player properties
 	Config struct {
 		Log   *log.Logger
-		Lobby game.Messenger
+		Lobby game.MessageHandler
 	}
 )
 

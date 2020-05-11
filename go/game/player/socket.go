@@ -22,9 +22,9 @@ type (
 
 	player struct {
 		name  game.PlayerName
-		lobby game.Messenger
-		game  game.Messenger // possibly nil
-		game.Messenger
+		lobby game.MessageHandler
+		game  game.MessageHandler // possibly nil
+		game.MessageHandler
 	}
 )
 
