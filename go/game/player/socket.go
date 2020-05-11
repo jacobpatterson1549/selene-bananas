@@ -28,6 +28,8 @@ type (
 	}
 )
 
+var _ game.MessageHandler = &socket{}
+
 // TODO: put some of these parameters as env arguments
 // derived from gorilla websocket example chat client
 const (

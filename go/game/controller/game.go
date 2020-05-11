@@ -67,6 +67,8 @@ const (
 	gameTilePositionsRefreshPeriod = 5 * time.Minute
 )
 
+var _ game.MessageHandler = &Game{}
+
 // Handle adds a message to the queue
 func (g *Game) Handle(m game.Message) {
 	g.messages <- m

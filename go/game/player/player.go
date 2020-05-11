@@ -29,6 +29,8 @@ type (
 	}
 )
 
+var _ game.MessageHandler = &Player{}
+
 // New creates a player from the config and starts it
 func (cfg Config) New(name game.PlayerName, conn *websocket.Conn) Player {
 	s := socket{

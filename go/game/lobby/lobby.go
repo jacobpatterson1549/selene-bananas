@@ -34,6 +34,8 @@ type (
 	playername string
 )
 
+var _ game.MessageHandler = &Lobby{}
+
 // New creates a new game lobby
 func New(log *log.Logger, ws game.WordsSupplier, userDao db.UserDao, rand *rand.Rand) (Lobby, error) {
 	u := new(websocket.Upgrader)
