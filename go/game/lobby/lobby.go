@@ -124,6 +124,7 @@ func (l *Lobby) run() {
 		// game.Leave: TODO
 		game.Create:         l.handleGameCreate,
 		game.Join:           l.handleGameMessage,
+		game.Leave:          l.handlePlayerMessage,
 		game.Delete:         l.handleGameDelete,
 		game.StatusChange:   l.handleGameMessage,
 		game.Snag:           l.handleGameMessage,
@@ -195,8 +196,8 @@ func (l *Lobby) handleGameCreate(m game.Message) {
 	g := l.gameCfg.NewGame(id)
 	l.games[id] = &g
 	p.Handle(game.Message{
-		Type:       game.Join,
-		GameID:     id,
+		Type:   game.Join,
+		GameID: id,
 	})
 	g.Handle(game.Message{
 		Type:       game.Join,
@@ -270,10 +271,10 @@ func (l *Lobby) handleGameInfos(m game.Message) {
 }
 
 func (l *Lobby) handlePlayerCreate(p player) {
-	if _, ok := l.players[p.name]; ok {
-		p.Handle(game.Message{
-			Type: game.SocketError,
-			Info: "player already in lobby, replacing connection",
+	if previousPlayer, ok := l.players[p.name]; ok {
+		previousPlayer.Handle(game.Message{
+			Type: game.PlayerDelete,
+			Info: "logged in from second location, replacing connection",
 		})
 	}
 	l.players[p.name] = p

@@ -19,28 +19,35 @@ var websocket = {
                 resolve(true);
             };
             this._websocket.onerror = event => {
-                log.error("websocket error: " + JSON.stringify(event));
+                log.error("websocket error - check browser console");
                 resolve(false);
             };
             this._websocket.onclose = event => {
-                this.close();
-                resolve(false);
+                this._close(false);
             };
             this._websocket.onmessage = this.onMessage;
         });
     },
 
     close: function () {
+        this._close(true)
+    },
+
+    _close: function (expected) {
+        if (this._websocket == null) {
+            return;
+        }
         var websocketElement = document.getElementById("has-websocket");
         websocketElement.checked = false;
-        log.error("websocket closing");
         var hasGameElement = document.getElementById("has-game");
         hasGameElement.checked = false;
         var lobbyTab = document.getElementById("tab-4");
         lobbyTab.checked = true;
-        if (this._websocket != null) {
-            this._websocket.close();
-            this._websocket = null;
+        this._websocket.onclose = null;
+        this._websocket.close();
+        this._websocket = null;
+        if (!expected) {
+            log.error("lobby closed");
         }
     },
 

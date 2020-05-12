@@ -19,6 +19,7 @@ type (
 		lobby    game.MessageHandler
 		messages chan game.Message
 		active   bool
+		close    chan bool
 		gameID   game.ID // mutable
 	}
 
@@ -57,16 +58,22 @@ func (cfg Config) NewPlayer(name game.PlayerName, conn *websocket.Conn) Player {
 	if conn != nil {
 		go p.readMessages()
 		go p.writeMessages()
+		go func() {
+			<-p.close
+			p.log.Printf("closing socket connection for %v", p.name)
+			p.conn.WriteJSON(game.Message{ // ignore possible error
+				Type: game.PlayerDelete,
+			})
+			p.conn.Close()
+		}()
 	}
 	return p
 }
 
 func (p *Player) readMessages() {
-	defer p.close()
-	err := p.refreshReadDeadline("")
-	if err != nil {
-		return
-	}
+	defer func() {
+		p.close <- true
+	}()
 	p.conn.SetPongHandler(p.refreshReadDeadline)
 	for {
 		var m game.Message
@@ -82,7 +89,6 @@ func (p *Player) readMessages() {
 			if _, ok := err.(*websocket.CloseError); !ok || websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
 				p.log.Print("unexpected websocket closure", err)
 			}
-			p.close()
 			return
 		}
 		m.PlayerName = p.name
@@ -99,12 +105,14 @@ func (p *Player) readMessages() {
 
 func (p *Player) writeMessages() {
 	pingTicker := time.NewTicker(pingPeriod)
-	defer pingTicker.Stop()
 	idleTicker := time.NewTicker(idlePeriod)
-	defer idleTicker.Stop()
 	httpPingTicker := time.NewTicker(httpPingPeriod)
-	defer httpPingTicker.Stop()
-	defer p.close()
+	defer func() {
+		pingTicker.Stop()
+		idleTicker.Stop()
+		httpPingTicker.Stop()
+		p.close <- true
+	}()
 	for {
 		var err error
 		select {
@@ -116,7 +124,7 @@ func (p *Player) writeMessages() {
 			case game.Join:
 				p.gameID = m.GameID
 				continue
-			case game.Delete:
+			case game.Delete, game.Leave:
 				p.gameID = 0
 			}
 			err = p.conn.WriteJSON(m)
@@ -135,7 +143,6 @@ func (p *Player) writeMessages() {
 				return
 			}
 			if err = p.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				p.log.Printf("error writing websocket ping message: %v", err)
 				return
 			}
 		case _, ok := <-idleTicker.C:
@@ -159,14 +166,6 @@ func (p *Player) writeMessages() {
 			}
 		}
 	}
-}
-
-func (p *Player) close() {
-	p.log.Printf("closing socket connection for %v", p.name)
-	p.conn.WriteJSON(game.Message{ // ignore possible error
-		Type: game.PlayerDelete,
-	})
-	p.conn.Close()
 }
 
 func (p *Player) refreshReadDeadline(appData string) error {
