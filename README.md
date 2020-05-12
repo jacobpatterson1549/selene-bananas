@@ -6,7 +6,8 @@
 
 
 ## A Banagrams clone
-https://bananagrams.com/games/bananagrams
+A tile-based word-forming game Based on the popular Banagrams game.  https://bananagrams.com/games/bananagrams
+
 Uses WebSockets to allow multiple users to play a word game over a network.
 
 ## Dependencies
@@ -30,7 +31,7 @@ PORT=8000 # Server port
 ### Database
 The app stores user information in a postgresql database.  Every time the app starts, files in the [sql](sql) folder are ran to ensure the table and stored functions are fresh.
 
-A Postgresql database can be created with the following bash script.  Change the PGUSER and PGPASSWORD variables.  It requires administrator access.
+A Postgresql database can be created with the command below.  Change the PGUSER and PGPASSWORD variables.  The command requires administrator access.
 ```bash
 PGDATABASE="selene_bananas_db" \
 PGUSER="selene" \
@@ -43,6 +44,7 @@ sudo -u postgres psql \
 -c "CREATE USER $PGUSER WITH ENCRYPTED PASSWORD '"'"'$PGPASSWORD'"'"'" \
 -c "GRANT ALL PRIVILEGES ON DATABASE $PGDATABASE TO $PGUSER" \
 && echo DATABASE_URL=postgres://$PGUSER:$PGPASSWORD@$PGHOSTADDR:$PGPORT/$PGDATABASE'
+```
 
 ### Make
 Run `make serve` to build and run the application.  Requires Go and a Postgres database to be installed.
@@ -64,9 +66,9 @@ DATABASE_URL=postgres://<...>?sslmode=disable
 ### Heroku
 1. Provision a new app on [Heroku](https://dashboard.heroku.com/apps).  The name of the application is referenced as HEROKU_APP_NAME in the steps below
 1. Provision a [Heroku Postgres](https://www.heroku.com/postgres) **add-on** on the **Overview** (main) tab for the app.
-1. Configure additional environment variables, such as APPLICATION_NAME on the **Settings** tab.  The PORT and DATABASE_URL variables automatically configured, although the PORT variable is not displayed.
-1. Connect the app to this GitHub repository on the **Deploy** tab.  Use the GIT_URL, likely https://github.com/jacobpatterson1549/selene-bananas.git.
-1. In a terminal, with the [heroku-cli](https://devcenter.heroku.com/articles/heroku-cli):
+1. Configure additional environment variables, such as APPLICATION_NAME on the **Settings** tab.  The PORT and DATABASE_URL variables are automatically configured, although the PORT variable is not displayed.
+1. Connect the app to this GitHub repository on the **Deploy** tab.  Use the GIT_URL, https://github.com/jacobpatterson1549/selene-bananas.git.
+1. In a terminal, with [heroku-cli](https://devcenter.heroku.com/articles/heroku-cli) run the command below.  This builds the and deploys the code to Heroku using a docker image.
 ```
 git clone GIT_URL
 heroku git:remote -a HEROKU_APP_NAME
