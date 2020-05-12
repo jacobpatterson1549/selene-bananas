@@ -13,7 +13,7 @@ var game = {
         this.usedTileLocs = {};
     },
 
-    create: function (event) {
+    create: function () {
         this._resetTiles();
         websocket.send({ type: 1 }); // gameCreate
     },
@@ -26,14 +26,14 @@ var game = {
         websocket.send({ type: 2, gameID: gameId }); // gameJoin
     },
 
-    leave: function (event) {
+    leave: function () {
         var hasGameElement = document.getElementById("has-game");
         hasGameElement.checked = false;
         var lobbyTab = document.getElementById("tab-4");
         lobbyTab.checked = true;
     },
 
-    delete: function (event) {
+    delete: function () {
         var result = window.confirm("Are you sure? Deleting the game will kick everyone out.");
         if (!result) {
             return;
@@ -41,19 +41,19 @@ var game = {
         websocket.send({ type: 4 }); // gameDelete
     },
 
-    start: function (event) {
+    start: function () {
         websocket.send({ type: 5, gameStatus: 1 }); // gameStatusChange, gameInProgress
     },
 
-    finish: function (event) {
+    finish: function () {
         websocket.send({ type: 5, gameStatus: 2 }); // gameStatusChange, gameFinished
     },
 
-    snagTile: function (event) {
+    snagTile: function () {
         websocket.send({ type: 7 }); // gameSnag
     },
 
-    swapTile: function (event) {
+    swapTile: function () {
         log.info("click a tile to swap for three others from the pile");
         canvas.startSwap();
     },
