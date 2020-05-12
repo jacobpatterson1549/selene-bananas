@@ -11,27 +11,31 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/db"
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/controller"
-	"github.com/jacobpatterson1549/selene-bananas/go/game/player"
+	player_socket "github.com/jacobpatterson1549/selene-bananas/go/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
 )
 
 type (
 	// Lobby is the place users can create, join, and participate in games
 	Lobby struct {
-		log       *log.Logger
-		upgrader  *websocket.Upgrader
-		rand      *rand.Rand
-		words     map[string]bool
-		playerCfg player.Config
-		players   map[game.PlayerName]game.MessageHandler
-		gameCfg   controller.Config
-		games     map[game.ID]game.MessageHandler
-		maxGames  int
-		messages  chan game.Message
+		log        *log.Logger
+		upgrader   *websocket.Upgrader
+		rand       *rand.Rand
+		words      map[string]bool
+		playerCfg  player_socket.Config
+		players    map[game.PlayerName]player
+		gameCfg    controller.Config
+		games      map[game.ID]game.MessageHandler
+		maxGames   int
+		messages   chan game.Message
+		newPlayers chan player
 	}
 
-	gameID     int
-	playername string
+	player struct {
+		name   game.PlayerName
+		gameID game.ID
+		game.MessageHandler
+	}
 )
 
 var _ game.MessageHandler = &Lobby{}
@@ -47,16 +51,17 @@ func New(log *log.Logger, ws game.WordsSupplier, userDao db.UserDao, rand *rand.
 		return Lobby{}, err
 	}
 	l := Lobby{
-		log:      log,
-		upgrader: u,
-		rand:     rand,
-		words:    words,
-		games:    make(map[game.ID]game.MessageHandler),
-		players:  make(map[game.PlayerName]game.MessageHandler),
-		maxGames: 5,
-		messages: make(chan game.Message, 16),
+		log:        log,
+		upgrader:   u,
+		rand:       rand,
+		words:      words,
+		games:      make(map[game.ID]game.MessageHandler),
+		players:    make(map[game.PlayerName]player),
+		maxGames:   5,
+		messages:   make(chan game.Message, 16),
+		newPlayers: make(chan player, 8),
 	}
-	l.playerCfg = player.Config{
+	l.playerCfg = player_socket.Config{
 		Log:   l.log,
 		Lobby: &l,
 	}
@@ -84,21 +89,22 @@ func New(log *log.Logger, ws game.WordsSupplier, userDao db.UserDao, rand *rand.
 }
 
 // AddUser adds a user to the lobby, it opens a new websocket (player) for the username
-func (l *Lobby) AddUser(n game.PlayerName, w http.ResponseWriter, r *http.Request) error {
+func (l *Lobby) AddUser(name game.PlayerName, w http.ResponseWriter, r *http.Request) error {
 	conn, err := l.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return fmt.Errorf("upgrading to websocket connection: %w", err)
 	}
-	p := l.playerCfg.New(n, conn)
-	l.Handle(game.Message{
-		Type:       game.PlayerCreate,
-		Player:     &p,
-		PlayerName: n,
-	})
+	playerSocket := l.playerCfg.NewPlayer(name, conn)
+	p := player{
+		name,
+		game.ID(0),
+		&playerSocket,
+	}
+	l.newPlayers <- p
 	return nil
 }
 
-// RemoveUser removes the user from the lobby an a game, if any
+// RemoveUser removes the user from the lobby and a game, if any
 func (l *Lobby) RemoveUser(n game.PlayerName) {
 	// TODO: this is probably broken
 	l.Handle(game.Message{
@@ -113,22 +119,48 @@ func (l *Lobby) Handle(m game.Message) {
 }
 
 func (l *Lobby) run() {
+	defer l.close()
 	messageHandlers := map[game.MessageType]func(game.Message){
-		game.Create:       l.handleGameCreate,
-		game.Join:         l.handleGameJoin,
-		game.Delete:       l.handleGameDelete,
-		game.Infos:        l.handleGameInfos,
-		game.PlayerCreate: l.handlePlayerCreate,
-		game.PlayerDelete: l.handlePlayerDelete,
+		// game.Leave: TODO
+		game.Create:         l.handleGameCreate,
+		game.Join:           l.handleGameMessage,
+		game.Delete:         l.handleGameDelete,
+		game.StatusChange:   l.handleGameMessage,
+		game.Snag:           l.handleGameMessage,
+		game.Swap:           l.handleGameMessage,
+		game.TilesMoved:     l.handleGameMessage,
+		game.Infos:          l.handleGameInfos,
+		game.PlayerDelete:   l.handlePlayerDelete,
+		game.SocketInfo:     l.handlePlayerMessage,
+		game.SocketError:    l.handlePlayerMessage,
+		game.SocketHTTPPing: l.handlePlayerMessage,
 	}
-	for m := range l.messages {
-		mh, ok := messageHandlers[m.Type]
-		if !ok {
-			l.log.Printf("lobby does not know how to handle messageType %v", m.Type)
-			continue
+	for {
+		select {
+		case m, ok := <-l.messages:
+			if !ok {
+				return
+			}
+			mh, ok := messageHandlers[m.Type]
+			if !ok {
+				l.log.Printf("lobby does not know how to handle messageType %v", m.Type)
+				continue
+			}
+			if _, ok := l.players[m.PlayerName]; !ok {
+				l.log.Printf("lobby does not have player named '%v'", m.PlayerName)
+				continue
+			}
+			mh(m)
+		case p, ok := <-l.newPlayers:
+			if !ok {
+				return
+			}
+			l.handlePlayerCreate(p)
 		}
-		mh(m)
 	}
+}
+
+func (l *Lobby) close() {
 	for _, p := range l.players {
 		p.Handle(game.Message{
 			Type: game.PlayerDelete,
@@ -145,8 +177,9 @@ func (l *Lobby) run() {
 }
 
 func (l *Lobby) handleGameCreate(m game.Message) {
+	p := l.players[m.PlayerName]
 	if len(l.games) >= l.maxGames {
-		m.Player.Handle(game.Message{
+		p.Handle(game.Message{
 			Type: game.SocketError,
 			Info: "the maximum number of games have already been created",
 		})
@@ -159,76 +192,66 @@ func (l *Lobby) handleGameCreate(m game.Message) {
 		}
 		id++
 	}
-	g := l.gameCfg.New(id, m.Player)
+	g := l.gameCfg.NewGame(id)
 	l.games[id] = &g
-	l.Handle(game.Message{
+	p.Handle(game.Message{
 		Type:       game.Join,
-		Player:     m.Player,
-		PlayerName: m.PlayerName,
 		GameID:     id,
 	})
-}
-
-func (l *Lobby) handleGameJoin(m game.Message) {
-	g, ok := l.games[m.GameID]
-	if !ok {
-		m.Player.Handle(game.Message{
-			Type: game.SocketError,
-			Info: fmt.Sprintf("no game with id %v, please refresh games", m.GameID),
-		})
-		return
-	}
 	g.Handle(game.Message{
 		Type:       game.Join,
-		Player:     m.Player,
 		PlayerName: m.PlayerName,
-	})
-	m.Player.Handle(game.Message{
-		Type:   game.Join,
-		Game:   g,
-		GameID: m.GameID,
+		GameID:     id,
 	})
 }
 
 func (l *Lobby) handleGameDelete(m game.Message) {
 	g, ok := l.games[m.GameID]
 	if !ok {
-		if m.Player != nil {
-			m.Player.Handle(game.Message{
-				Type: game.SocketError,
-				Info: fmt.Sprintf("no game with id %v, please refresh games", m.GameID),
-			})
-		}
 		return
 	}
 	delete(l.games, m.GameID)
 	g.Handle(game.Message{
 		Type: game.Delete,
-		Info: m.Info,
 	})
+	for n, p := range l.players {
+		var info string
+		switch n {
+		case m.PlayerName:
+			info = "game deleted"
+		default:
+			info = fmt.Sprintf("%v deleted the game", m.PlayerName)
+		}
+		p.Handle(game.Message{
+			Type: game.Delete,
+			Info: info,
+		})
+	}
 }
 
 func (l *Lobby) handleGameInfos(m game.Message) {
+	p := l.players[m.PlayerName]
+	n := len(l.games)
 	c := make(chan game.Info, len(l.games))
 	for _, g := range l.games {
 		g.Handle(game.Message{
 			Type:         game.Infos,
-			Player:       m.Player,
 			PlayerName:   m.PlayerName,
 			GameInfoChan: c,
 		})
 	}
-	n := len(l.games)
+
 	s := make([]game.Info, n)
 	if n > 0 {
 		i := 0
 		for {
 			gameInfo, ok := <-c
 			if !ok {
-				m.Player.Handle(game.Message{
+				p.Handle(game.Message{
 					Type: game.SocketError,
 					Info: "could not get game infos, the outbound game info channel closed unexpectedly",
 				})
+				return
 			}
 			s[i] = gameInfo
 			i++
@@ -240,22 +263,21 @@ func (l *Lobby) handleGameInfos(m game.Message) {
 	sort.Slice(s, func(i, j int) bool {
 		return s[i].CreatedAt < s[j].CreatedAt
 	})
-	m.Player.Handle(game.Message{
+	p.Handle(game.Message{
 		Type:      game.Infos,
 		GameInfos: s,
 	})
 }
 
-func (l *Lobby) handlePlayerCreate(m game.Message) {
-	_, ok := l.players[m.PlayerName]
-	if ok {
-		m.Player.Handle(game.Message{
+func (l *Lobby) handlePlayerCreate(p player) {
+	if _, ok := l.players[p.name]; ok {
+		p.Handle(game.Message{
 			Type: game.SocketError,
 			Info: "player already in lobby, replacing connection",
 		})
 	}
-	l.players[m.PlayerName] = m.Player
-	l.log.Printf("%v joined the lobby", m.PlayerName)
+	l.players[p.name] = p
+	l.log.Printf("%v joined the lobby", p.name)
 }
 
 func (l Lobby) handlePlayerDelete(m game.Message) {
@@ -269,4 +291,22 @@ func (l Lobby) handlePlayerDelete(m game.Message) {
 		Type: game.PlayerDelete,
 	})
 	l.log.Printf("%v left the lobby", m.PlayerName)
+}
+
+func (l *Lobby) handleGameMessage(m game.Message) {
+	p := l.players[m.PlayerName]
+	g, ok := l.games[m.GameID]
+	if !ok {
+		p.Handle(game.Message{
+			Type: game.SocketError,
+			Info: fmt.Sprintf("no game with id %v, please refresh games", m.GameID),
+		})
+		return
+	}
+	g.Handle(m)
+}
+
+func (l *Lobby) handlePlayerMessage(m game.Message) {
+	p := l.players[m.PlayerName]
+	p.Handle(m)
 }

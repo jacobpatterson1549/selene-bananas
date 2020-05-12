@@ -8,16 +8,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
 )
 
-type (
-	mockMessenger struct {
-		HandleFunc func(m Message)
-	}
-)
-
-func (mm *mockMessenger) Handle(m Message) {
-	mm.HandleFunc(m)
-}
-
 func TestMessageJSON(t *testing.T) {
 	MessageJSONTests := []struct {
 		m Message
@@ -80,7 +70,7 @@ func TestMessageJSON(t *testing.T) {
 }
 
 func TestMessageMarshal_omitInternals(t *testing.T) {
-	m := Message{Player: &mockMessenger{}, Game: &mockMessenger{}, GameInfoChan: make(chan Info, 0)}
+	m := Message{PlayerName: "selene", GameInfoChan: make(chan Info, 0)}
 	want := []byte(`{"type":0}`)
 	got, err := json.Marshal(m)
 	switch {

@@ -19,11 +19,8 @@ type (
 		GameID        ID              `json:"gameID,omitempty"`
 		GameStatus    Status          `json:"gameStatus,omitempty"`
 		GamePlayers   []string        `json:"gamePlayers,omitempty"`
-		// pointers for inter-goroutine communication:
-		PlayerName   PlayerName     `json:"-"`
-		Player       MessageHandler `json:"-"` // TODO: DELETEME
-		Game         MessageHandler `json:"-"` // TODO: DELETEME
-		GameInfoChan chan<- Info    `json:"-"`
+		PlayerName    PlayerName      `json:"-"`
+		GameInfoChan  chan<- Info     `json:"-"` // TODO: get rid of this. maybe make game have a special info channel that lobby can listen to.
 	}
 
 	// MessageHandler handles messages
@@ -32,24 +29,23 @@ type (
 	}
 )
 
-// not using iota because MessageTypes are switched on on in javascript
+// not using iota because MessageTypes are used in javascript
 const (
 	Create         MessageType = 1
 	Join           MessageType = 2
 	Leave          MessageType = 3
-	Delete         MessageType = 4 // TODO: remove this, add gameState = delete
+	Delete         MessageType = 4
 	StatusChange   MessageType = 5
 	Snag           MessageType = 7
 	Swap           MessageType = 8
 	TilesMoved     MessageType = 9
 	TilePositions  MessageType = 10
 	Infos          MessageType = 11
-	PlayerCreate   MessageType = 12
 	PlayerDelete   MessageType = 13
 	SocketInfo     MessageType = 14
 	SocketError    MessageType = 15
-	SocketClosed   MessageType = 16
-	SocketHTTPPing MessageType = 17 // the socket should send a http ping every so often  This is  explicitly for heroku, which will shut down the server if 30 minutes passes between http requests
+	SocketHTTPPing MessageType = 17
 	ChatRecv       MessageType = 18
 	ChatSend       MessageType = 19
+	GetInfos       MessageType = 20
 )
