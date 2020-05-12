@@ -62,7 +62,7 @@ type (
 const (
 	defaultTileLetters = "AAAAAAAAAAAAABBBCCCDDDDDDEEEEEEEEEEEEEEEEEEFFFGGGGHHHIIIIIIIIIIIIJJKKLLLLLMMMNNNNNNNNOOOOOOOOOOOPPPQQRRRRRRRRRSSSSSSTTTTTTTTTUUUUUUVVVWWWXXYYYZZ"
 	// TODO: make these  environment arguments
-	gameIdlePeriod                 = 15 * time.Minute
+	gameIdlePeriod                 = 10 * time.Minute
 	gameTilePositionsRefreshPeriod = 5 * time.Minute
 )
 

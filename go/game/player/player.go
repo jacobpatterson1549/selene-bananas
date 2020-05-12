@@ -34,7 +34,7 @@ const (
 	writeWait      = 5 * time.Second
 	pongPeriod     = 20 * time.Second
 	pingPeriod     = (pongPeriod * 80) / 100 // should be less than pongPeriod
-	idlePeriod     = 5 * time.Minute
+	idlePeriod     = 15 * time.Minute
 	httpPingPeriod = 10 * time.Minute // should be less than 30 minutes to keep heroku alive
 )
 
@@ -143,13 +143,10 @@ func (p *Player) writeMessages() {
 				return
 			}
 			if !p.active {
-				err := p.conn.WriteJSON(game.Message{
+				p.conn.WriteJSON(game.Message{ // ignore error
 					Type: game.PlayerDelete,
 					Info: "connection closing due to inactivity",
 				})
-				if err != nil {
-					p.log.Printf("error writing websocket message: %v", err)
-				}
 				return
 			}
 			p.active = false
