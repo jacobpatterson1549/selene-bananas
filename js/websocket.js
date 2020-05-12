@@ -55,7 +55,11 @@ var websocket = {
         var message = JSON.parse(event.data);
         switch (message.type) {
             case 3: // gameLeave
+            case 4: // gameDelete
                 game.leave();
+                if (message.info) {
+                    log.info(message.info);
+                }
                 break;
             case 10: // tilePositions
                 game.replaceGameTiles(message.tiles, message.tilePositions);

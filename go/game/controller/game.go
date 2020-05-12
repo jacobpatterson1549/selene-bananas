@@ -147,11 +147,19 @@ func (g *Game) run() {
 			g.active = true
 			mh, ok := messageHandlers[m.Type]
 			if !ok {
-				g.log.Printf("game does not know how to handle MessageType %v", m.Type)
+				g.lobby.Handle(game.Message{
+					Type:       game.Leave,
+					PlayerName: m.PlayerName,
+					Info:       fmt.Sprintf("game does not know how to handle MessageType %v", m.Type),
+				})
 				continue
 			}
 			if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join {
-				g.log.Printf("game does not have player named '%v'", m.PlayerName)
+				g.lobby.Handle(game.Message{
+					Type:       game.Leave,
+					PlayerName: m.PlayerName,
+					Info:       fmt.Sprintf("game does not have player named '%v'", m.PlayerName),
+				})
 				continue
 			}
 			// TODO: validate Player, Tiles, TilePositions, ensure certain fields not set, ...
