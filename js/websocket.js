@@ -63,6 +63,9 @@ var websocket = {
             case 11: // gameInfos
                 lobby.setGameInfos(message.gameInfos);
                 break;
+            case 13: // playerDelete
+                lobby.leave();
+                break;
             case 14: // socketInfo
                 if (message.gameStatus != null) {
                     game.setStatus(message.gameStatus);
