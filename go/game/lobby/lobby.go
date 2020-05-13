@@ -138,10 +138,7 @@ func (l *Lobby) run() {
 	}
 	for {
 		select {
-		case m, ok := <-l.messages:
-			if !ok {
-				return
-			}
+		case m := <-l.messages:
 			mh, ok := messageHandlers[m.Type]
 			if !ok {
 				l.log.Printf("lobby does not know how to handle messageType %v", m.Type)
@@ -152,10 +149,7 @@ func (l *Lobby) run() {
 				continue
 			}
 			mh(m)
-		case p, ok := <-l.newPlayers:
-			if !ok {
-				return
-			}
+		case p := <-l.newPlayers:
 			l.handlePlayerCreate(p)
 		}
 	}

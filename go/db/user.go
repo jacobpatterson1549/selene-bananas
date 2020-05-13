@@ -44,9 +44,9 @@ func (u Username) isValid() bool {
 	case len(u) > 32:
 		return false
 	default:
-		validPasswordChars := "abcdefghijklmnopqrstuvwxyz"
+		validRunes := "abcdefghijklmnopqrstuvwxyz"
 		for i := 0; i < len(u); i++ {
-			if strings.IndexByte(validPasswordChars, u[i]) < 0 {
+			if strings.IndexByte(validRunes, u[i]) < 0 {
 				return false
 			}
 		}

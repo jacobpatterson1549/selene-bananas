@@ -116,10 +116,7 @@ func (p *Player) writeMessages() {
 	for {
 		var err error
 		select {
-		case m, ok := <-p.messages:
-			if !ok {
-				return
-			}
+		case m := <-p.messages:
 			switch m.Type {
 			case game.Join:
 				p.gameID = m.GameID
@@ -135,20 +132,14 @@ func (p *Player) writeMessages() {
 			if m.Type == game.PlayerDelete {
 				return
 			}
-		case _, ok := <-pingTicker.C:
-			if !ok {
-				return
-			}
+		case <-pingTicker.C:
 			if err = p.refreshWriteDeadline(); err != nil {
 				return
 			}
 			if err = p.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
-		case _, ok := <-idleTicker.C:
-			if !ok {
-				return
-			}
+		case <-idleTicker.C:
 			if !p.active {
 				p.conn.WriteJSON(game.Message{ // ignore error
 					Type: game.PlayerDelete,
@@ -157,10 +148,7 @@ func (p *Player) writeMessages() {
 				return
 			}
 			p.active = false
-		case _, ok := <-httpPingTicker.C:
-			if !ok {
-				return
-			}
+		case <-httpPingTicker.C:
 			p.messages <- game.Message{
 				Type: game.SocketHTTPPing,
 			}

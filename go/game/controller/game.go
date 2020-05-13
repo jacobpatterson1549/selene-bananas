@@ -140,10 +140,7 @@ func (g *Game) run() {
 	}
 	for {
 		select {
-		case m, ok := <-g.messages:
-			if !ok {
-				return
-			}
+		case m := <-g.messages:
 			g.active = true
 			mh, ok := messageHandlers[m.Type]
 			if !ok {
@@ -164,10 +161,7 @@ func (g *Game) run() {
 			}
 			// TODO: validate Player, Tiles, TilePositions, ensure certain fields not set, ...
 			mh(m)
-		case _, ok := <-idleTicker.C:
-			if !ok {
-				return
-			}
+		case <-idleTicker.C:
 			if !g.active {
 				g.log.Print("closing game due to inactivity")
 				return
@@ -218,10 +212,7 @@ func (g *Game) handleGameJoin(m game.Message) {
 	g.players[m.PlayerName] = gps
 	go func() {
 		for {
-			_, ok := <-gameTilePositionsTicker.C
-			if !ok {
-				return
-			}
+			<-gameTilePositionsTicker.C
 			g.Handle(game.Message{
 				Type:       game.TilePositions,
 				PlayerName: m.PlayerName,
