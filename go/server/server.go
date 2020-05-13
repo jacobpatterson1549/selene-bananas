@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/jacobpatterson1549/selene-bananas/go/db"
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/lobby"
@@ -37,7 +36,6 @@ type (
 		log               *log.Logger
 		handler           http.Handler
 		staticFileHandler http.Handler
-		upgrader          *websocket.Upgrader
 		lobby             lobby.Lobby
 		userDao           db.UserDao
 		tokenizer         Tokenizer
