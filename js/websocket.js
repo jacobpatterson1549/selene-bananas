@@ -76,6 +76,9 @@ var websocket = {
                 break;
             case 13: // playerDelete
                 lobby.leave();
+                if (message.info) {
+                    log.error(message.info);
+                }
                 break;
             case 14: // socketInfo
                 if (message.gameStatus != null) {

@@ -141,7 +141,9 @@ func (g *Game) run() {
 	for {
 		select {
 		case m := <-g.messages:
-			g.active = true
+			if m.Type != game.TilePositions {
+				g.active = true
+			}
 			mh, ok := messageHandlers[m.Type]
 			if !ok {
 				g.lobby.Handle(game.Message{
