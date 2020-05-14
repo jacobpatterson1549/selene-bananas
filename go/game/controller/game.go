@@ -152,7 +152,6 @@ func (g *Game) run() {
 				})
 				continue
 			}
-			// TODO: validate Player, Tiles, TilePositions, ensure certain fields not set, ...
 			mh(m)
 		case <-idleTicker.C:
 			if !g.active {
