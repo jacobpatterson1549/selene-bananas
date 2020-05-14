@@ -21,7 +21,7 @@ type (
 		lobby       game.MessageHandler
 		createdAt   string
 		status      game.Status
-		players     map[game.PlayerName]*gamePlayerState
+		players     map[game.PlayerName]*player
 		userDao     db.UserDao
 		unusedTiles []tile.Tile
 		maxPlayers  int
@@ -48,14 +48,6 @@ type (
 		ShuffleUnusedTilesFunc func(tiles []tile.Tile)
 		ShufflePlayersFunc     func(playerNames []game.PlayerName)
 	}
-
-	gamePlayerState struct {
-		*time.Ticker
-		winPoints
-		board.Board
-	}
-
-	winPoints int
 )
 
 const (
@@ -82,7 +74,7 @@ func (cfg Config) NewGame(id game.ID) Game {
 		createdAt:              time.Now().Format(time.UnixDate),
 		status:                 game.NotStarted,
 		words:                  cfg.Words,
-		players:                make(map[game.PlayerName]*gamePlayerState, 2),
+		players:                make(map[game.PlayerName]*player, 2),
 		userDao:                cfg.UserDao,
 		maxPlayers:             cfg.MaxPlayers,
 		numNewTiles:            cfg.NumNewTiles,
@@ -200,12 +192,12 @@ func (g *Game) handleGameJoin(m game.Message) {
 	g.unusedTiles = g.unusedTiles[g.numNewTiles:]
 	boardRefreshTicker := time.NewTicker(boardRefreshPeriod)
 	b := board.New(newTiles)
-	gps := &gamePlayerState{
+	p := &player{
 		Ticker:    boardRefreshTicker,
 		winPoints: 10,
 		Board:     b,
 	}
-	g.players[m.PlayerName] = gps
+	g.players[m.PlayerName] = p
 	go func() {
 		for {
 			<-boardRefreshTicker.C
@@ -243,8 +235,8 @@ func (g *Game) handleGameLeave(m game.Message) {
 }
 
 func (g *Game) handleGameDelete(m game.Message) {
-	for _, gps := range g.players {
-		gps.stopBoardRefresh()
+	for _, p := range g.players {
+		p.stopBoardRefresh()
 		g.lobby.Handle(game.Message{
 			Type:       game.Leave,
 			PlayerName: m.PlayerName,
@@ -301,8 +293,8 @@ func (g *Game) start(startingPlayerName game.PlayerName) {
 }
 
 func (g *Game) finish(finishingPlayerName game.PlayerName) {
-	gps := g.players[finishingPlayerName]
-	if len(gps.UnusedTiles) != 0 {
+	p := g.players[finishingPlayerName]
+	if len(p.UnusedTiles) != 0 {
 		g.lobby.Handle(game.Message{
 			Type:       game.SocketError,
 			PlayerName: finishingPlayerName,
@@ -310,8 +302,8 @@ func (g *Game) finish(finishingPlayerName game.PlayerName) {
 		})
 		return
 	}
-	if len(gps.UnusedTiles) != 0 {
-		gps.decrementWinPoints()
+	if len(p.UnusedTiles) != 0 {
+		p.decrementWinPoints()
 		g.lobby.Handle(game.Message{
 			Type:       game.SocketError,
 			PlayerName: finishingPlayerName,
@@ -319,8 +311,8 @@ func (g *Game) finish(finishingPlayerName game.PlayerName) {
 		})
 		return
 	}
-	if !gps.HasSingleUsedGroup() {
-		gps.decrementWinPoints()
+	if !p.HasSingleUsedGroup() {
+		p.decrementWinPoints()
 		g.lobby.Handle(game.Message{
 			Type:       game.SocketError,
 			PlayerName: finishingPlayerName,
@@ -328,7 +320,7 @@ func (g *Game) finish(finishingPlayerName game.PlayerName) {
 		})
 		return
 	}
-	usedWords := gps.UsedTileWords()
+	usedWords := p.UsedTileWords()
 	var invalidWords []string
 	for _, w := range usedWords {
 		lowerW := strings.ToLower(w) // TODO: this is innefficient, words are lowercase, tiles are uppercase...
@@ -337,7 +329,7 @@ func (g *Game) finish(finishingPlayerName game.PlayerName) {
 		}
 	}
 	if len(invalidWords) > 0 {
-		gps.decrementWinPoints()
+		p.decrementWinPoints()
 		g.lobby.Handle(game.Message{
 			Type:       game.SocketError,
 			PlayerName: finishingPlayerName,
@@ -350,7 +342,7 @@ func (g *Game) finish(finishingPlayerName game.PlayerName) {
 		"WINNER! - %v won, creating %v words, getting %v points.  Other players each get 1 point",
 		finishingPlayerName,
 		len(usedWords),
-		gps.winPoints,
+		p.winPoints,
 	)
 	g.updateUserPoints(finishingPlayerName)
 	for n := range g.players {
@@ -443,8 +435,8 @@ func (g *Game) handleGameSwap(m game.Message) {
 		return
 	}
 	t := m.Tiles[0]
-	gps := g.players[m.PlayerName]
-	err := gps.RemoveTile(t)
+	p := g.players[m.PlayerName]
+	err := p.RemoveTile(t)
 	if err != nil {
 		g.lobby.Handle(game.Message{
 			Type:       game.SocketError,
@@ -457,7 +449,7 @@ func (g *Game) handleGameSwap(m game.Message) {
 	var newTiles []tile.Tile
 	for i := 0; i < 3 && len(g.unusedTiles) > 0; i++ {
 		newTiles = append(newTiles, g.unusedTiles[0])
-		gps.AddTile(g.unusedTiles[0])
+		p.AddTile(g.unusedTiles[0])
 		g.unusedTiles = g.unusedTiles[1:]
 	}
 	swapPlayerMessages := make(map[game.PlayerName]game.Message, len(g.players))
@@ -494,14 +486,14 @@ func (g *Game) handleGameTilesMoved(m game.Message) {
 }
 
 func (g *Game) handleBoardRefresh(m game.Message) {
-	gps := g.players[m.PlayerName]
-	unusedTiles := make([]tile.Tile, len(gps.UnusedTiles))
-	for i, id := range gps.UnusedTileIDs {
-		unusedTiles[i] = gps.UnusedTiles[id]
+	p := g.players[m.PlayerName]
+	unusedTiles := make([]tile.Tile, len(p.UnusedTiles))
+	for i, id := range p.UnusedTileIDs {
+		unusedTiles[i] = p.UnusedTiles[id]
 	}
-	usedTilePositions := make([]tile.Position, len(gps.UsedTiles))
+	usedTilePositions := make([]tile.Position, len(p.UsedTiles))
 	i := 0
-	for _, tps := range gps.UsedTiles {
+	for _, tps := range p.UsedTiles {
 		usedTilePositions[i] = tps
 		i++
 	}
@@ -575,8 +567,8 @@ func (g *Game) updateUserPoints(winningPlayerName game.PlayerName) {
 	}
 	userPointsIncrementFunc := func(u db.Username) int {
 		if string(u) == string(winningPlayerName) {
-			gps := g.players[winningPlayerName]
-			return int(gps.winPoints)
+			p := g.players[winningPlayerName]
+			return int(p.winPoints)
 		}
 		return 1
 	}
@@ -599,14 +591,4 @@ func (g Game) playerNames() []string {
 	}
 	sort.Strings(playerNames)
 	return playerNames
-}
-
-func (gps *gamePlayerState) decrementWinPoints() {
-	if gps.winPoints > 2 {
-		gps.winPoints--
-	}
-}
-
-func (gps *gamePlayerState) stopBoardRefresh() {
-	gps.Ticker.Stop()
 }
