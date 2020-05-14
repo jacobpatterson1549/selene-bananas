@@ -1,10 +1,12 @@
-.PHONY: all install serve clean
+.PHONY: all test install serve clean
 
 all: install
 
-install:
+test:
 	go generate github.com/jacobpatterson1549/selene-bananas/go
 	go test ./... -v
+
+install: test
 	go build -o main go/main.go
 
 serve: install

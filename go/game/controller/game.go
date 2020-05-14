@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"sort"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/go/db"
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
+	"github.com/jacobpatterson1549/selene-bananas/go/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
 )
 
@@ -50,20 +50,19 @@ type (
 	}
 
 	gamePlayerState struct {
-		refreshTicker *time.Ticker
-		unusedTiles   map[tile.ID]tile.Tile
-		unusedTileIds []tile.ID
-		usedTiles     map[tile.ID]tile.Position
-		usedTileLocs  map[tile.X]map[tile.Y]tile.Tile
-		winPoints     int
+		*time.Ticker
+		winPoints
+		board.Board
 	}
+
+	winPoints int
 )
 
 const (
-	defaultTileLetters = "AAAAAAAAAAAAABBBCCCDDDDDDEEEEEEEEEEEEEEEEEEFFFGGGGHHHIIIIIIIIIIIIJJKKLLLLLMMMNNNNNNNNOOOOOOOOOOOPPPQQRRRRRRRRRSSSSSSTTTTTTTTTUUUUUUVVVWWWXXYYYZZ"
 	// TODO: make these  environment arguments
-	gameIdlePeriod                 = 10 * time.Minute
-	gameTilePositionsRefreshPeriod = 5 * time.Minute
+	defaultTileLetters = "AAAAAAAAAAAAABBBCCCDDDDDDEEEEEEEEEEEEEEEEEEFFFGGGGHHHIIIIIIIIIIIIJJKKLLLLLMMMNNNNNNNNOOOOOOOOOOOPPPQQRRRRRRRRRSSSSSSTTTTTTTTTUUUUUUVVVWWWXXYYYZZ"
+	gameIdlePeriod     = 10 * time.Minute
+	boardRefreshPeriod = 5 * time.Minute
 )
 
 var _ game.MessageHandler = &Game{}
@@ -126,22 +125,22 @@ func (g *Game) run() {
 		})
 	}()
 	messageHandlers := map[game.MessageType]func(game.Message){
-		game.Join:          g.handleGameJoin,
-		game.Leave:         g.handleGameLeave,
-		game.Delete:        g.handleGameDelete,
-		game.StatusChange:  g.handleGameStatusChange,
-		game.Snag:          g.handleGameSnag,
-		game.Swap:          g.handleGameSwap,
-		game.TilesMoved:    g.handleGameTilesMoved,
-		game.TilePositions: g.handleGameTilePositions,
-		game.Infos:         g.handleGameInfos,
-		game.PlayerDelete:  g.handlePlayerDelete,
-		game.ChatRecv:      g.handleGameChatRecv,
+		game.Join:         g.handleGameJoin,
+		game.Leave:        g.handleGameLeave,
+		game.Delete:       g.handleGameDelete,
+		game.StatusChange: g.handleGameStatusChange,
+		game.Snag:         g.handleGameSnag,
+		game.Swap:         g.handleGameSwap,
+		game.TilesMoved:   g.handleGameTilesMoved,
+		game.BoardRefresh: g.handleBoardRefresh,
+		game.Infos:        g.handleGameInfos,
+		game.PlayerDelete: g.handlePlayerDelete,
+		game.ChatRecv:     g.handleGameChatRecv,
 	}
 	for {
 		select {
 		case m := <-g.messages:
-			if m.Type != game.TilePositions {
+			if m.Type != game.BoardRefresh {
 				g.active = true
 			}
 			mh, ok := messageHandlers[m.Type]
@@ -176,7 +175,10 @@ func (g *Game) run() {
 func (g *Game) handleGameJoin(m game.Message) {
 	if _, ok := g.players[m.PlayerName]; ok {
 		m.Type = game.SocketInfo
-		g.handleGameTilePositions(m) // TODO: this is sneaky.  gameTilePositions are used for as info and secret refreshes.  make more clear
+		g.Handle(game.Message{
+			Type:       game.BoardRefresh,
+			PlayerName: m.PlayerName,
+		})
 		return
 	}
 	if len(g.players) >= g.maxPlayers {
@@ -196,27 +198,19 @@ func (g *Game) handleGameJoin(m game.Message) {
 	}
 	newTiles := g.unusedTiles[:g.numNewTiles]
 	g.unusedTiles = g.unusedTiles[g.numNewTiles:]
-	newTilesByID := make(map[tile.ID]tile.Tile, g.numNewTiles)
-	newTileIds := make([]tile.ID, g.numNewTiles)
-	for i, t := range newTiles {
-		newTilesByID[t.ID] = t
-		newTileIds[i] = t.ID
-	}
-	gameTilePositionsTicker := time.NewTicker(gameTilePositionsRefreshPeriod)
+	boardRefreshTicker := time.NewTicker(boardRefreshPeriod)
+	b := board.New(newTiles)
 	gps := &gamePlayerState{
-		refreshTicker: gameTilePositionsTicker,
-		unusedTiles:   newTilesByID,
-		unusedTileIds: newTileIds,
-		usedTiles:     make(map[tile.ID]tile.Position),
-		usedTileLocs:  make(map[tile.X]map[tile.Y]tile.Tile),
-		winPoints:     10,
+		Ticker:    boardRefreshTicker,
+		winPoints: 10,
+		Board:     b,
 	}
 	g.players[m.PlayerName] = gps
 	go func() {
 		for {
-			<-gameTilePositionsTicker.C
+			<-boardRefreshTicker.C
 			g.Handle(game.Message{
-				Type:       game.TilePositions,
+				Type:       game.BoardRefresh,
 				PlayerName: m.PlayerName,
 			})
 		}
@@ -250,7 +244,7 @@ func (g *Game) handleGameLeave(m game.Message) {
 
 func (g *Game) handleGameDelete(m game.Message) {
 	for _, gps := range g.players {
-		gps.refreshTicker.Stop()
+		gps.stopBoardRefresh()
 		g.lobby.Handle(game.Message{
 			Type:       game.Leave,
 			PlayerName: m.PlayerName,
@@ -270,7 +264,7 @@ func (g *Game) handleGameStatusChange(m game.Message) {
 			})
 			return
 		}
-		g.start(m)
+		g.start(m.PlayerName)
 	case game.InProgress:
 		if m.GameStatus != game.Finished {
 			g.lobby.Handle(game.Message{
@@ -293,9 +287,9 @@ func (g *Game) handleGameStatusChange(m game.Message) {
 	}
 }
 
-func (g *Game) start(m game.Message) {
+func (g *Game) start(startingPlayerName game.PlayerName) {
 	g.status = game.InProgress
-	info := fmt.Sprintf("%v started the game", m.PlayerName)
+	info := fmt.Sprintf("%v started the game", startingPlayerName)
 	for n := range g.players {
 		g.lobby.Handle(game.Message{
 			Type:       game.SocketInfo,
@@ -308,7 +302,7 @@ func (g *Game) start(m game.Message) {
 
 func (g *Game) finish(finishingPlayerName game.PlayerName) {
 	gps := g.players[finishingPlayerName]
-	if len(g.unusedTiles) != 0 {
+	if len(gps.UnusedTiles) != 0 {
 		g.lobby.Handle(game.Message{
 			Type:       game.SocketError,
 			PlayerName: finishingPlayerName,
@@ -316,7 +310,7 @@ func (g *Game) finish(finishingPlayerName game.PlayerName) {
 		})
 		return
 	}
-	if len(gps.unusedTiles) != 0 {
+	if len(gps.UnusedTiles) != 0 {
 		gps.decrementWinPoints()
 		g.lobby.Handle(game.Message{
 			Type:       game.SocketError,
@@ -325,7 +319,7 @@ func (g *Game) finish(finishingPlayerName game.PlayerName) {
 		})
 		return
 	}
-	if !gps.singleUsedGroup() {
+	if !gps.HasSingleUsedGroup() {
 		gps.decrementWinPoints()
 		g.lobby.Handle(game.Message{
 			Type:       game.SocketError,
@@ -334,7 +328,7 @@ func (g *Game) finish(finishingPlayerName game.PlayerName) {
 		})
 		return
 	}
-	usedWords := gps.usedWords()
+	usedWords := gps.UsedTileWords()
 	var invalidWords []string
 	for _, w := range usedWords {
 		lowerW := strings.ToLower(w) // TODO: this is innefficient, words are lowercase, tiles are uppercase...
@@ -393,8 +387,7 @@ func (g *Game) handleGameSnag(m game.Message) {
 		Info:       "snagged a tile",
 		Tiles:      g.unusedTiles[:1],
 	}
-	g.players[m.PlayerName].unusedTiles[g.unusedTiles[0].ID] = g.unusedTiles[0]
-	g.players[m.PlayerName].unusedTileIds = append(g.players[m.PlayerName].unusedTileIds, g.unusedTiles[0].ID)
+	g.players[m.PlayerName].AddTile(g.unusedTiles[0])
 	g.unusedTiles = g.unusedTiles[1:]
 	otherPlayers := make([]game.PlayerName, len(g.players)-1)
 	i := 0
@@ -415,8 +408,7 @@ func (g *Game) handleGameSnag(m game.Message) {
 			Info:       fmt.Sprintf("%v snagged a tile, adding a tile to your pile", m.PlayerName),
 			Tiles:      g.unusedTiles[:1],
 		}
-		g.players[n2].unusedTiles[g.unusedTiles[0].ID] = g.unusedTiles[0]
-		g.players[n2].unusedTileIds = append(g.players[n2].unusedTileIds, g.unusedTiles[0].ID)
+		g.players[n2].AddTile(g.unusedTiles[0])
 		g.unusedTiles = g.unusedTiles[1:]
 	}
 	for _, m := range snagPlayerMessages {
@@ -426,7 +418,6 @@ func (g *Game) handleGameSnag(m game.Message) {
 }
 
 func (g *Game) handleGameSwap(m game.Message) {
-	gps := g.players[m.PlayerName]
 	if g.status != game.InProgress {
 		g.lobby.Handle(game.Message{
 			Type:       game.SocketError,
@@ -452,27 +443,21 @@ func (g *Game) handleGameSwap(m game.Message) {
 		return
 	}
 	t := m.Tiles[0]
-	g.unusedTiles = append(g.unusedTiles, t)
-	if _, ok := gps.unusedTiles[t.ID]; ok {
-		// TODO: gps.removeTile(id) which calls gps.removeUnusedTile(), gps.removeUsedTile()
-		delete(gps.unusedTiles, t.ID)
-		for i := 0; i < len(gps.unusedTileIds); i++ {
-			if gps.unusedTileIds[i] == t.ID {
-				gps.unusedTileIds = append(gps.unusedTileIds[:i], gps.unusedTileIds[i+1:]...)
-				break
-			}
-		}
-	} else {
-		tp := gps.usedTiles[t.ID]
-		delete(gps.usedTiles, t.ID)
-		delete(gps.usedTileLocs[tp.X], tp.Y)
+	gps := g.players[m.PlayerName]
+	err := gps.RemoveTile(t)
+	if err != nil {
+		g.lobby.Handle(game.Message{
+			Type:       game.SocketError,
+			PlayerName: m.PlayerName,
+			Info:       err.Error(),
+		})
 	}
+	g.unusedTiles = append(g.unusedTiles, t)
 	g.shuffleUnusedTilesFunc(g.unusedTiles)
 	var newTiles []tile.Tile
 	for i := 0; i < 3 && len(g.unusedTiles) > 0; i++ {
 		newTiles = append(newTiles, g.unusedTiles[0])
-		gps.unusedTiles[g.unusedTiles[0].ID] = g.unusedTiles[0]
-		gps.unusedTileIds = append(gps.unusedTileIds, g.unusedTiles[0].ID)
+		gps.AddTile(g.unusedTiles[0])
 		g.unusedTiles = g.unusedTiles[1:]
 	}
 	swapPlayerMessages := make(map[game.PlayerName]game.Message, len(g.players))
@@ -498,115 +483,31 @@ func (g *Game) handleGameSwap(m game.Message) {
 }
 
 func (g *Game) handleGameTilesMoved(m game.Message) {
-	gps := g.players[m.PlayerName]
-	if m.TilePositions == nil {
+	err := g.players[m.PlayerName].MoveTiles(m.TilePositions)
+	if err != nil {
 		g.lobby.Handle(game.Message{
 			Type:       game.SocketError,
 			PlayerName: m.PlayerName,
-			Info:       "missing tilePositions",
+			Info:       err.Error(),
 		})
-		return
-	}
-	// validation
-	newUsedTileLocs := make(map[tile.X]map[tile.Y]bool)
-	movedTileIds := make(map[tile.ID]bool, len(m.TilePositions))
-	for _, tp := range m.TilePositions {
-		if _, ok := gps.unusedTiles[tp.Tile.ID]; ok {
-			continue
-		}
-		if _, ok := gps.usedTiles[tp.Tile.ID]; !ok {
-			g.lobby.Handle(game.Message{
-				Type:       game.SocketError,
-				PlayerName: m.PlayerName,
-				Info:       fmt.Sprintf("cannot move tile %v that the player does not own", tp.Tile),
-			})
-			return
-		}
-		movedTileIds[tp.Tile.ID] = true
-		if _, ok := newUsedTileLocs[tp.X]; !ok {
-			newUsedTileLocs[tp.X] = make(map[tile.Y]bool)
-			newUsedTileLocs[tp.X][tp.Y] = true
-			continue
-		}
-		if _, ok := newUsedTileLocs[tp.X][tp.Y]; ok {
-			g.lobby.Handle(game.Message{
-				Type:       game.SocketError,
-				PlayerName: m.PlayerName,
-				Info:       fmt.Sprintf("cannot move multiple tiles to [%v,%v] ([c,r])", tp.X, tp.Y),
-			})
-			return
-		}
-		newUsedTileLocs[tp.X][tp.Y] = true
-	}
-	// for existing tp
-	for x, yTiles := range gps.usedTileLocs {
-		for y, t := range yTiles {
-			if _, ok := movedTileIds[t.ID]; ok {
-				continue
-			}
-			// duplicate-ish of above code:
-			if _, ok := newUsedTileLocs[x]; !ok {
-				newUsedTileLocs[x] = make(map[tile.Y]bool)
-				newUsedTileLocs[x][y] = true
-				continue
-			}
-			if _, ok := newUsedTileLocs[x][y]; ok {
-				g.lobby.Handle(game.Message{
-					Type:       game.SocketError,
-					PlayerName: m.PlayerName,
-					Info:       "cannot move tiles to location of tile that is not being moved",
-				})
-				return
-			}
-			newUsedTileLocs[x][y] = true
-		}
-	}
-	// actually move tiles
-	for _, tp := range m.TilePositions {
-		if _, ok := gps.unusedTiles[tp.Tile.ID]; ok { // unused
-			gps.usedTiles[tp.Tile.ID] = tp
-			delete(gps.unusedTiles, tp.Tile.ID)
-			for i, id := range gps.unusedTileIds {
-				if id == tp.Tile.ID {
-					gps.unusedTileIds = append(gps.unusedTileIds[:i], gps.unusedTileIds[i+1:]...)
-					break
-				}
-			}
-		} else { // previously used
-			tp2 := gps.usedTiles[tp.Tile.ID]
-			t2 := gps.usedTileLocs[tp2.X][tp2.Y]
-			if t2.ID == tp.Tile.ID { // remove from old location
-				switch {
-				case len(gps.usedTileLocs[tp2.X]) == 1:
-					delete(gps.usedTileLocs, tp2.X)
-				default:
-					delete(gps.usedTileLocs[tp2.X], tp2.Y)
-				}
-			}
-		}
-		if _, ok := gps.usedTileLocs[tp.X]; !ok {
-			gps.usedTileLocs[tp.X] = make(map[tile.Y]tile.Tile)
-		}
-		gps.usedTileLocs[tp.X][tp.Y] = tp.Tile
-		gps.usedTiles[tp.Tile.ID] = tp
 	}
 }
 
-func (g *Game) handleGameTilePositions(m game.Message) {
+func (g *Game) handleBoardRefresh(m game.Message) {
 	gps := g.players[m.PlayerName]
-	unusedTiles := make([]tile.Tile, len(gps.unusedTiles))
-	for i, id := range gps.unusedTileIds {
-		unusedTiles[i] = gps.unusedTiles[id]
+	unusedTiles := make([]tile.Tile, len(gps.UnusedTiles))
+	for i, id := range gps.UnusedTileIDs {
+		unusedTiles[i] = gps.UnusedTiles[id]
 	}
-	usedTilePositions := make([]tile.Position, len(gps.usedTiles))
+	usedTilePositions := make([]tile.Position, len(gps.UsedTiles))
 	i := 0
-	for _, tps := range gps.usedTiles {
+	for _, tps := range gps.UsedTiles {
 		usedTilePositions[i] = tps
 		i++
 	}
-	// sort top-bottom, left-right
 	sort.Slice(usedTilePositions, func(i, j int) bool {
 		a, b := usedTilePositions[i], usedTilePositions[j]
+		// top-bottom, left-right
 		switch {
 		case a.Y == b.Y:
 			return a.X < b.X
@@ -644,7 +545,7 @@ func (g *Game) handleGameInfos(m game.Message) {
 }
 
 func (g *Game) handlePlayerDelete(m game.Message) {
-	g.players[m.PlayerName].refreshTicker.Stop()
+	g.players[m.PlayerName].stopBoardRefresh()
 	delete(g.players, m.PlayerName)
 	if len(g.players) == 0 {
 		g.lobby.Handle(game.Message{
@@ -672,13 +573,14 @@ func (g *Game) updateUserPoints(winningPlayerName game.PlayerName) {
 		users[i] = db.Username(n)
 		i++
 	}
-	err := g.userDao.UpdatePointsIncrement(users, func(u db.Username) int {
+	userPointsIncrementFunc := func(u db.Username) int {
 		if string(u) == string(winningPlayerName) {
 			gps := g.players[winningPlayerName]
-			return gps.winPoints
+			return int(gps.winPoints)
 		}
 		return 1
-	})
+	}
+	err := g.userDao.UpdatePointsIncrement(users, userPointsIncrementFunc)
 	if err != nil {
 		g.lobby.Handle(game.Message{
 			Type:       game.SocketError,
@@ -705,115 +607,6 @@ func (gps *gamePlayerState) decrementWinPoints() {
 	}
 }
 
-func (gps gamePlayerState) usedWords() []string {
-	horizontalWords := gps.usedWordsX()
-	verticalWords := gps.usedWordsY()
-	return append(horizontalWords, verticalWords...)
-}
-
-func (gps gamePlayerState) usedWordsY() []string {
-	usedTilesXy := make(map[int]map[int]tile.Tile)
-	for x, yTiles := range gps.usedTileLocs {
-		xi := int(x)
-		usedTilesXy[xi] = make(map[int]tile.Tile, len(yTiles))
-		for y, t := range yTiles {
-			usedTilesXy[xi][int(y)] = t
-		}
-	}
-	return gps.usedWordsZ(usedTilesXy, func(tp tile.Position) int { return int(tp.Y) })
-}
-
-func (gps gamePlayerState) usedWordsX() []string {
-	usedTilesYx := make(map[int]map[int]tile.Tile)
-	for x, yTiles := range gps.usedTileLocs {
-		xi := int(x)
-		for y, t := range yTiles {
-			yi := int(y)
-			if _, ok := usedTilesYx[yi]; !ok {
-				usedTilesYx[yi] = make(map[int]tile.Tile)
-			}
-			usedTilesYx[yi][xi] = t
-		}
-	}
-	return gps.usedWordsZ(usedTilesYx, func(tp tile.Position) int { return int(tp.X) })
-}
-
-func (gps gamePlayerState) usedWordsZ(tiles map[int]map[int]tile.Tile, ord func(tp tile.Position) int) []string {
-	keyedUsedWords := make(map[int][]string, len(tiles))
-	wordCount := 0
-	for z, zTiles := range tiles {
-		tilePositions := make([]tile.Position, len(zTiles))
-		i := 0
-		for _, t := range zTiles {
-			tilePositions[i] = gps.usedTiles[t.ID]
-			i++
-		}
-		sort.Slice(tilePositions, func(i, j int) bool {
-			return ord(tilePositions[i]) < ord(tilePositions[j])
-		})
-		buffer := new(bytes.Buffer)
-		var zWords []string
-		for i, tp := range tilePositions {
-			if i > 0 && ord(tilePositions[i-1]) < ord(tp)-1 {
-				if buffer.Len() > 1 {
-					zWords = append(zWords, buffer.String())
-				}
-				buffer = new(bytes.Buffer)
-			}
-			buffer.WriteRune(rune(tp.Tile.Ch))
-		}
-		if buffer.Len() > 1 {
-			zWords = append(zWords, buffer.String())
-		}
-		keyedUsedWords[z] = zWords
-		wordCount += len(zWords)
-	}
-	//sort the keyedUsedWords by the keys (z)
-	keys := make([]int, len(keyedUsedWords))
-	i := 0
-	for k := range keyedUsedWords {
-		keys[i] = k
-		i++
-	}
-	sort.Ints(keys)
-	usedWords := make([]string, wordCount)
-	i = 0
-	for _, k := range keys {
-		copy(usedWords[i:], keyedUsedWords[k])
-		i += len(keyedUsedWords[k])
-	}
-	return usedWords
-}
-
-func (gps gamePlayerState) singleUsedGroup() bool {
-	if len(gps.usedTiles) == 0 {
-		return false
-	}
-	seenTileIds := make(map[tile.ID]bool)
-	for x, yTiles := range gps.usedTileLocs {
-		for y, t := range yTiles {
-			gps.addSeenTileIds(int(x), int(y), t, seenTileIds)
-			break // only check one tile's surrounding tilePositions
-		}
-		break
-	}
-	return len(seenTileIds) == len(gps.usedTiles)
-}
-
-// helper function which does a depth-first search for surrounding tiles, modifying the seenTileIds map
-func (gps gamePlayerState) addSeenTileIds(x int, y int, t tile.Tile, seenTileIds map[tile.ID]bool) {
-	seenTileIds[t.ID] = true
-	for dx := -1; dx <= 1; dx++ { // check neighboring columns
-		for dy := -1; dy <= 1; dy++ { // check neighboring rows
-			if (dx != 0 || dy != 0) && dx*dy == 0 { // one delta is not zero, the other is
-				if yTiles, ok := gps.usedTileLocs[tile.X(int(x)+dx)]; ok { // x+dx is valid
-					if t2, ok := yTiles[tile.Y(int(y)+dy)]; ok { // y+dy is valid
-						if _, ok := seenTileIds[t2.ID]; !ok { // tile not yet seen
-							gps.addSeenTileIds(int(x)+dx, int(y)+dy, t2, seenTileIds) // recursive call
-						}
-					}
-				}
-			}
-		}
-	}
+func (gps *gamePlayerState) stopBoardRefresh() {
+	gps.Ticker.Stop()
 }

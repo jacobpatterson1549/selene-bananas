@@ -62,13 +62,18 @@ var websocket = {
         var message = JSON.parse(event.data);
         switch (message.type) {
             case 3: // gameLeave
-            case 4: // gameDelete
                 game.leave();
                 if (message.info) {
                     log.info(message.info);
                 }
                 break;
-            case 10: // tilePositions
+            case 4: // gameDelete
+                lobby.leave();
+                if (message.info) {
+                    log.info(message.info);
+                }
+                break;
+            case 10: // BoardRefresh
                 game.replaceGameTiles(message.tiles, message.tilePositions);
                 break;
             case 11: // gameInfos
@@ -104,9 +109,6 @@ var websocket = {
                 break;
             case 15: // socketError
                 log.error(message.info);
-                break;
-            case 16: // socketClosed
-                lobby.leave();
                 break;
             case 17: // socketHTTPPing
                 var pingFormElement = document.getElementById("ping-form");

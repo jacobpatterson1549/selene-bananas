@@ -130,6 +130,7 @@ func (l *Lobby) run() {
 		game.Snag:           l.handleGameMessage,
 		game.Swap:           l.handleGameMessage,
 		game.TilesMoved:     l.handleGameMessage,
+		game.BoardRefresh:   l.handlePlayerMessage,
 		game.Infos:          l.handleGameInfos,
 		game.PlayerDelete:   l.handlePlayerDelete,
 		game.SocketInfo:     l.handlePlayerMessage,

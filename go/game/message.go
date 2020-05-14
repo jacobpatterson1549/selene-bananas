@@ -39,7 +39,7 @@ const (
 	Snag           MessageType = 7
 	Swap           MessageType = 8
 	TilesMoved     MessageType = 9
-	TilePositions  MessageType = 10
+	BoardRefresh   MessageType = 10
 	Infos          MessageType = 11
 	PlayerDelete   MessageType = 13
 	SocketInfo     MessageType = 14

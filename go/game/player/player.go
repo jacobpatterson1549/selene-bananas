@@ -142,7 +142,7 @@ func (p *Player) writeMessages() {
 		case <-idleTicker.C:
 			if !p.active {
 				p.conn.WriteJSON(game.Message{ // ignore error
-					Type: game.PlayerDelete,
+					Type: game.Leave,
 					Info: "connection closing due to inactivity",
 				})
 				return
