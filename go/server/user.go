@@ -19,7 +19,7 @@ func (s server) handleUserCreate(w http.ResponseWriter, r *http.Request) error {
 	}
 	username := r.FormValue("username")
 	password := r.FormValue("password_confirm")
-	u, err := db.NewUser(username, password)
+	u, err := db.NewUser(db.Username(username), password)
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func (s server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	}
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	u, err := db.NewUser(username, password)
+	u, err := db.NewUser(db.Username(username), password)
 	if err != nil {
 		return err
 	}
@@ -50,8 +50,8 @@ func (s server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	return s.addAuthorization(w, u2)
 }
 
-func (s server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, tokenUsername db.Username) error {
-	playerName := game.PlayerName(tokenUsername)
+func (s server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, username db.Username) error {
+	playerName := game.PlayerName(username)
 	err := s.lobby.AddUser(playerName, w, r)
 	if err != nil {
 		return fmt.Errorf("websocket error: %w", err)
@@ -59,17 +59,9 @@ func (s server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, toke
 	return nil
 }
 
-func (s server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request, tokenUsername db.Username) error {
-	err := r.ParseForm()
-	if err != nil {
-		return fmt.Errorf("parsing form: %w", err)
-	}
-	username := r.FormValue("username")
+func (s server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request, username db.Username) error {
 	password := r.FormValue("password")
 	newPassword := r.FormValue("password_confirm")
-	if string(tokenUsername) != username {
-		return fmt.Errorf("cannot modify other user") // TODO: return 403 forbidden
-	}
 	u, err := db.NewUser(username, password)
 	if err != nil {
 		return err
@@ -78,21 +70,13 @@ func (s server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request,
 	if err != nil {
 		return err
 	}
-	playerName := game.PlayerName(tokenUsername)
+	playerName := game.PlayerName(username)
 	s.lobby.RemoveUser(playerName)
 	return nil
 }
 
-func (s server) handleUserDelete(w http.ResponseWriter, r *http.Request, tokenUsername db.Username) error {
-	err := r.ParseForm()
-	if err != nil {
-		return fmt.Errorf("parsing form: %w", err)
-	}
-	username := r.FormValue("username")
+func (s server) handleUserDelete(w http.ResponseWriter, r *http.Request, username db.Username) error {
 	password := r.FormValue("password")
-	if string(tokenUsername) != username {
-		return fmt.Errorf("cannot modify other user") // TODO: return 403 forbidden
-	}
 	u, err := db.NewUser(username, password)
 	if err != nil {
 		return err
@@ -101,7 +85,7 @@ func (s server) handleUserDelete(w http.ResponseWriter, r *http.Request, tokenUs
 	if err != nil {
 		return err
 	}
-	playerName := game.PlayerName(tokenUsername)
+	playerName := game.PlayerName(username)
 	s.lobby.RemoveUser(playerName)
 	return err
 }

@@ -135,7 +135,8 @@ func (s server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	case "/user_logout", "/ping":
 		_, err := s.checkAuthorization(r)
 		if err != nil {
-			httpError(w, http.StatusUnauthorized)
+			s.log.Print(err)
+			httpError(w, http.StatusForbidden)
 			return nil
 		}
 	default:
@@ -152,7 +153,8 @@ func (s server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 	default:
 		tokenUsername, err = s.checkAuthorization(r)
 		if err != nil {
-			httpError(w, http.StatusUnauthorized)
+			s.log.Print(err)
+			httpError(w, http.StatusForbidden)
 			return nil
 		}
 	}
@@ -208,6 +210,17 @@ func (s server) checkAuthorization(r *http.Request) (db.Username, error) {
 		return "", fmt.Errorf("invalid authorization header: %v", authorization)
 	}
 	tokenString := authorization[7:]
-	// TODO: make sure user modifications (update/delete/logout) are only done for this user
-	return s.tokenizer.Read(tokenString)
+	tokenUsername, err := s.tokenizer.Read(tokenString)
+	if err != nil {
+		return "", err
+	}
+	err = r.ParseForm()
+	if err != nil {
+		return "", fmt.Errorf("parsing form: %w", err)
+	}
+	formUsername := r.FormValue("username")
+	if string(tokenUsername) != formUsername {
+		return "", fmt.Errorf("user not same as token user")
+	}
+	return tokenUsername, nil
 }

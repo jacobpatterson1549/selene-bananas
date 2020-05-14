@@ -20,9 +20,9 @@ type (
 )
 
 // NewUser creates a new user with the specified name and password.
-func NewUser(u, p string) (User, error) {
+func NewUser(u Username, p string) (User, error) {
 	var user User
-	username := Username(u)
+	username := u
 	password := password(p)
 	if !username.isValid() {
 		return user, errors.New(username.helpText())
