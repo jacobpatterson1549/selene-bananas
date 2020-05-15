@@ -88,10 +88,10 @@ func initFlags(programName string) (*flag.FlagSet, *mainFlags) {
 		_, ok := os.LookupEnv(environmentVariableDebugGame)
 		return ok
 	}
-	fs.StringVar(&mainFlags.applicationName, "n", envOrDefault(environmentVariableApplicationName, programName), "The name of the application.")
-	fs.StringVar(&mainFlags.databaseURL, "ds", os.Getenv(environmentVariableDatabaseURL), "The data source to the PostgreSQL database (connection URI).")
-	fs.StringVar(&mainFlags.serverPort, "p", os.Getenv(environmentVariableServerPort), "The port number to run the server on.")
-	fs.StringVar(&mainFlags.wordsFile, "wf", envOrDefault(environmentVariableWordsFile, "/usr/share/dict/american-english"), "The list of valid lower-case words that can be used.")
-	fs.BoolVar(&mainFlags.debugGame, "dg", defaultDebugGame(), "Logs game message types in the console if present.")
+	fs.StringVar(&mainFlags.applicationName, "app-name", envOrDefault(environmentVariableApplicationName, programName), "The name of the application.")
+	fs.StringVar(&mainFlags.databaseURL, "data-source", os.Getenv(environmentVariableDatabaseURL), "The data source to the PostgreSQL database (connection URI).")
+	fs.StringVar(&mainFlags.serverPort, "port", os.Getenv(environmentVariableServerPort), "The port number to run the server on.")
+	fs.StringVar(&mainFlags.wordsFile, "words-file", envOrDefault(environmentVariableWordsFile, "/usr/share/dict/american-english"), "The list of valid lower-case words that can be used.")
+	fs.BoolVar(&mainFlags.debugGame, "debug-game", defaultDebugGame(), "Logs game message types in the console if present.")
 	return fs, mainFlags
 }
