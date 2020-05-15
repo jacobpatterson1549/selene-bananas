@@ -14,6 +14,9 @@ func TestWords(t *testing.T) {
 	}{
 		{},
 		{
+			wordsToRead: "   ",
+		},
+		{
 			wordsToRead: "a bad cat",
 			want:        map[string]bool{"a": true, "bad": true, "cat": true},
 		},
