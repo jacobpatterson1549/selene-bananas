@@ -17,6 +17,7 @@ const (
 	environmentVariableApplicationName = "APPLICATION_NAME"
 	environmentVariableServerPort      = "PORT"
 	environmentVariableDatabaseURL     = "DATABASE_URL"
+	environmentVariableWordsFile       = "WORDS_FILE"
 	environmentVariableDebugGame       = "DEBUG_GAME_MESSAGES"
 )
 
@@ -24,6 +25,7 @@ type mainFlags struct {
 	applicationName string
 	serverPort      string
 	databaseURL     string
+	wordsFile       string
 	debugGame       bool
 }
 
@@ -40,14 +42,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	wordsFileName := "/usr/share/dict/american-english" // TODO: add env variable
 
 	cfg := server.Config{
 		AppName:       mainFlags.applicationName,
 		Port:          mainFlags.serverPort,
 		Database:      db,
 		Log:           log,
-		WordsFileName: wordsFileName,
+		WordsFileName: mainFlags.wordsFile,
 		DebugGame:     mainFlags.debugGame,
 	}
 	server, err := cfg.NewServer()
@@ -77,19 +78,20 @@ func initFlags(programName string) (*flag.FlagSet, *mainFlags) {
 	fs := flag.NewFlagSet(programName, flag.ExitOnError)
 	fs.Usage = func() { flagUsage(fs) }
 	mainFlags := new(mainFlags)
-	defaultApplicationName := func() string {
-		if applicationName, ok := os.LookupEnv(environmentVariableApplicationName); ok {
-			return applicationName
+	envOrDefault := func(envKey, defaultValue string) string {
+		if envValue, ok := os.LookupEnv(envKey); ok {
+			return envValue
 		}
-		return programName
+		return defaultValue
 	}
 	defaultDebugGame := func() bool {
 		_, ok := os.LookupEnv(environmentVariableDebugGame)
 		return ok
 	}
-	fs.StringVar(&mainFlags.applicationName, "n", defaultApplicationName(), "The name of the application.")
+	fs.StringVar(&mainFlags.applicationName, "n", envOrDefault(environmentVariableApplicationName, programName), "The name of the application.")
 	fs.StringVar(&mainFlags.databaseURL, "ds", os.Getenv(environmentVariableDatabaseURL), "The data source to the PostgreSQL database (connection URI).")
 	fs.StringVar(&mainFlags.serverPort, "p", os.Getenv(environmentVariableServerPort), "The port number to run the server on.")
+	fs.StringVar(&mainFlags.wordsFile, "wf", envOrDefault(environmentVariableWordsFile, "/usr/share/dict/american-english"), "The list of valid lower-case words that can be used.")
 	fs.BoolVar(&mainFlags.debugGame, "dg", defaultDebugGame(), "Logs game message types in the console if present.")
 	return fs, mainFlags
 }
