@@ -220,7 +220,7 @@ func (s server) checkAuthorization(r *http.Request) (db.Username, error) {
 	}
 	formUsername := r.FormValue("username")
 	if string(tokenUsername) != formUsername {
-		return "", fmt.Errorf("user not same as token user")
+		return "", fmt.Errorf("username not same as token username")
 	}
 	return tokenUsername, nil
 }

@@ -11,16 +11,16 @@ var websocket = {
         url = url.replace(/^http/, "ws");
         var jwt = content.getJWT();
         url += "?access_token=" + jwt
-        return new Promise(resolve => {
+        return new Promise((resolve, reject) => {
             this._websocket = new WebSocket(url);
             var websocketElement = document.getElementById("has-websocket");
             websocketElement.checked = true;
             this._websocket.onopen = event => {
-                resolve(true);
+                resolve();
             };
             this._websocket.onerror = event => {
                 log.error("websocket error - check browser console");
-                resolve(false);
+                reject();
             };
             this._websocket.onclose = event => {
                 this._close(false);

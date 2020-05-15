@@ -1,6 +1,7 @@
 <form method="get" action="/user_logout" onsubmit="user.request(event)">
     <fieldset>
         <legend>Sign Out User</legend>
+        {{ template "username.html" . }}
         <input type="submit">
     </fieldset>
 </form>
