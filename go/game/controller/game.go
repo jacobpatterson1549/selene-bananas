@@ -144,7 +144,7 @@ func (g *Game) run() {
 			mh, ok := messageHandlers[m.Type]
 			if !ok {
 				g.lobby.Handle(game.Message{
-					Type:       game.Leave,
+					Type:       game.SocketError,
 					PlayerName: m.PlayerName,
 					Info:       fmt.Sprintf("game does not know how to handle MessageType %v", m.Type),
 				})
@@ -152,7 +152,7 @@ func (g *Game) run() {
 			}
 			if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join {
 				g.lobby.Handle(game.Message{
-					Type:       game.Leave,
+					Type:       game.SocketError,
 					PlayerName: m.PlayerName,
 					Info:       fmt.Sprintf("game does not have player named '%v'", m.PlayerName),
 				})
@@ -240,12 +240,19 @@ func (g *Game) handleGameLeave(m game.Message) {
 }
 
 func (g *Game) handleGameDelete(m game.Message) {
-	for _, p := range g.players {
+	for n, p := range g.players {
+		var info string
+		switch n {
+		case m.PlayerName:
+			info = "game deleted"
+		default:
+			info = fmt.Sprintf("%v deleted the game", m.PlayerName)
+		}
 		p.stopBoardRefresh()
 		g.lobby.Handle(game.Message{
 			Type:       game.Leave,
-			PlayerName: m.PlayerName,
-			Info:       m.Info,
+			PlayerName: n,
+			Info:       info,
 		})
 	}
 }

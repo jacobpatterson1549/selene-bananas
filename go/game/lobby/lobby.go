@@ -129,18 +129,18 @@ func (l *Lobby) run() {
 		// game.Leave: TODO
 		game.Create:         l.handleGameCreate,
 		game.Join:           l.handleGameMessage,
-		game.Leave:          l.handlePlayerMessage,
+		game.Leave:          l.handleSocketMessage,
 		game.Delete:         l.handleGameDelete,
 		game.StatusChange:   l.handleGameMessage,
 		game.Snag:           l.handleGameMessage,
 		game.Swap:           l.handleGameMessage,
 		game.TilesMoved:     l.handleGameMessage,
-		game.BoardRefresh:   l.handlePlayerMessage,
+		game.BoardRefresh:   l.handleSocketMessage,
 		game.Infos:          l.handleGameInfos,
 		game.PlayerDelete:   l.handlePlayerDelete,
-		game.SocketInfo:     l.handlePlayerMessage,
-		game.SocketError:    l.handlePlayerMessage,
-		game.SocketHTTPPing: l.handlePlayerMessage,
+		game.SocketInfo:     l.handleSocketMessage,
+		game.SocketError:    l.handleSocketMessage,
+		game.SocketHTTPPing: l.handleSocketMessage,
 	}
 	for {
 		select {
@@ -212,29 +212,19 @@ func (l *Lobby) handleGameCreate(m game.Message) {
 func (l *Lobby) handleGameDelete(m game.Message) {
 	g, ok := l.games[m.GameID]
 	if !ok {
+		s := l.sockets[m.PlayerName]
+		s.Handle(game.Message{
+			Type: game.SocketError,
+			Info: fmt.Sprintf("no game to delete with id %v", m.GameID),
+		})
 		return
 	}
 	delete(l.games, m.GameID)
-	g.Handle(game.Message{
-		Type: game.Delete,
-	})
-	for n, s := range l.sockets {
-		var info string
-		switch n {
-		case m.PlayerName:
-			info = "game deleted"
-		default:
-			info = fmt.Sprintf("%v deleted the game", m.PlayerName)
-		}
-		s.Handle(game.Message{
-			Type: game.Delete,
-			Info: info,
-		})
-	}
+	g.Handle(m)
 }
 
 func (l *Lobby) handleGameInfos(m game.Message) {
-	p := l.sockets[m.PlayerName]
+	s := l.sockets[m.PlayerName]
 	n := len(l.games)
 	c := make(chan game.Info, len(l.games))
 	for _, g := range l.games {
@@ -244,32 +234,31 @@ func (l *Lobby) handleGameInfos(m game.Message) {
 			GameInfoChan: c,
 		})
 	}
-
-	s := make([]game.Info, n)
+	infos := make([]game.Info, n)
 	if n > 0 {
 		i := 0
 		for {
 			gameInfo, ok := <-c
 			if !ok {
-				p.Handle(game.Message{
+				s.Handle(game.Message{
 					Type: game.SocketError,
 					Info: "could not get game infos, the outbound game info channel closed unexpectedly",
 				})
 				return
 			}
-			s[i] = gameInfo
+			infos[i] = gameInfo
 			i++
 			if i == n {
 				break
 			}
 		}
 	}
-	sort.Slice(s, func(i, j int) bool {
-		return s[i].CreatedAt < s[j].CreatedAt
+	sort.Slice(infos, func(i, j int) bool {
+		return infos[i].CreatedAt < infos[j].CreatedAt
 	})
-	p.Handle(game.Message{
+	s.Handle(game.Message{
 		Type:      game.Infos,
-		GameInfos: s,
+		GameInfos: infos,
 	})
 }
 
@@ -310,7 +299,7 @@ func (l *Lobby) handleGameMessage(m game.Message) {
 	g.Handle(m)
 }
 
-func (l *Lobby) handlePlayerMessage(m game.Message) {
+func (l *Lobby) handleSocketMessage(m game.Message) {
 	p := l.sockets[m.PlayerName]
 	p.Handle(m)
 }
