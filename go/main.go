@@ -17,12 +17,14 @@ const (
 	environmentVariableApplicationName = "APPLICATION_NAME"
 	environmentVariableServerPort      = "PORT"
 	environmentVariableDatabaseURL     = "DATABASE_URL"
+	environmentVariableDebugGame       = "DEBUG_GAME_MESSAGES"
 )
 
 type mainFlags struct {
 	applicationName string
 	serverPort      string
 	databaseURL     string
+	debugGame       bool
 }
 
 func main() {
@@ -46,6 +48,7 @@ func main() {
 		Database:      db,
 		Log:           log,
 		WordsFileName: wordsFileName,
+		DebugGame:     mainFlags.debugGame,
 	}
 	server, err := cfg.NewServer()
 	if err != nil {
@@ -80,8 +83,13 @@ func initFlags(programName string) (*flag.FlagSet, *mainFlags) {
 		}
 		return programName
 	}
+	defaultDebugGame := func() bool {
+		_, ok := os.LookupEnv(environmentVariableDebugGame)
+		return ok
+	}
 	fs.StringVar(&mainFlags.applicationName, "n", defaultApplicationName(), "The name of the application.")
 	fs.StringVar(&mainFlags.databaseURL, "ds", os.Getenv(environmentVariableDatabaseURL), "The data source to the PostgreSQL database (connection URI).")
 	fs.StringVar(&mainFlags.serverPort, "p", os.Getenv(environmentVariableServerPort), "The port number to run the server on.")
+	fs.BoolVar(&mainFlags.debugGame, "dg", defaultDebugGame(), "Logs game message types in the console if present.")
 	return fs, mainFlags
 }

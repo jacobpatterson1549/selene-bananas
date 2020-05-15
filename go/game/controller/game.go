@@ -16,6 +16,7 @@ import (
 type (
 	// Game contains the logic to play a tile-base word-forming game between users
 	Game struct {
+		debug       bool
 		log         *log.Logger
 		id          game.ID
 		lobby       game.MessageHandler
@@ -37,6 +38,7 @@ type (
 
 	// Config contiains the properties to create similar games
 	Config struct {
+		Debug       bool
 		Log         *log.Logger
 		Lobby       game.MessageHandler
 		UserDao     db.UserDao
@@ -68,6 +70,7 @@ func (g *Game) Handle(m game.Message) {
 func (cfg Config) NewGame(id game.ID) Game {
 	// TODO: for createdAt, have TimeFunc variable that is a function which returns a time.Time, (time.Now) => TimeFunc().Format(...), share with jwt token
 	g := Game{
+		debug:                  cfg.Debug,
 		log:                    cfg.Log,
 		lobby:                  cfg.Lobby,
 		id:                     id,
@@ -132,6 +135,9 @@ func (g *Game) run() {
 	for {
 		select {
 		case m := <-g.messages:
+			if g.debug {
+				g.log.Printf("game handling message with type %v", m.Type)
+			}
 			if m.Type != game.BoardRefresh {
 				g.active = true
 			}

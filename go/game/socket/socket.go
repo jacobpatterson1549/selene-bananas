@@ -13,6 +13,7 @@ import (
 type (
 	// Socket reads and writes messages to the browsers
 	Socket struct {
+		debug      bool
 		log        *log.Logger
 		conn       *websocket.Conn
 		playerName game.PlayerName
@@ -25,6 +26,7 @@ type (
 
 	// Config contains commonly shared Socket properties
 	Config struct {
+		Debug bool
 		Log   *log.Logger
 		Lobby game.MessageHandler
 	}
@@ -49,6 +51,7 @@ func (s *Socket) Handle(m game.Message) {
 // NewSocket creates a socket and runs it
 func (cfg Config) NewSocket(playerName game.PlayerName, conn *websocket.Conn) Socket {
 	s := Socket{
+		debug:      cfg.Debug,
 		log:        cfg.Log,
 		conn:       conn,
 		playerName: playerName,
@@ -91,6 +94,9 @@ func (s *Socket) readMessages() {
 			}
 			return
 		}
+		if s.debug {
+			s.log.Printf("socket reading message with type %v", m.Type)
+		}
 		m.PlayerName = s.playerName
 		switch m.Type {
 		case game.Join:
@@ -117,6 +123,9 @@ func (s *Socket) writeMessages() {
 		var err error
 		select {
 		case m := <-s.messages:
+			if s.debug {
+				s.log.Printf("socket writing message with type %v", m.Type)
+			}
 			switch m.Type {
 			case game.Join:
 				s.gameID = m.GameID

@@ -22,6 +22,7 @@ type (
 		Database      db.Database
 		Log           *log.Logger
 		WordsFileName string
+		DebugGame     bool
 	}
 
 	// Server can be run to serve the site
@@ -64,7 +65,19 @@ func (cfg Config) NewServer() (Server, error) {
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}
-	lobby, err := lobby.New(cfg.Log, game.FileSystemWordsSupplier(cfg.WordsFileName), userDao, rand)
+	ws := game.FileSystemWordsSupplier(cfg.WordsFileName)
+	words, err := ws.Words()
+	if err != nil {
+		cfg.Log.Fatal(err)
+	}
+	lobbyCfg := lobby.Config{
+		Debug:   cfg.DebugGame,
+		Log:     cfg.Log,
+		Rand:    rand,
+		Words:   words,
+		UserDao: userDao,
+	}
+	lobby, err := lobbyCfg.NewLobby()
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}

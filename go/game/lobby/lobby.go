@@ -18,6 +18,7 @@ import (
 type (
 	// Lobby is the place users can create, join, and participate in games
 	Lobby struct {
+		debug            bool
 		log              *log.Logger
 		upgrader         *websocket.Upgrader
 		rand             *rand.Rand
@@ -31,6 +32,15 @@ type (
 		newPlayerSockets chan playerSocket
 	}
 
+	// Config contiains the properties to create a lobby
+	Config struct {
+		Debug   bool
+		Log     *log.Logger
+		Rand    *rand.Rand
+		Words   map[string]bool
+		UserDao db.UserDao
+	}
+
 	playerSocket struct {
 		game.PlayerName
 		game.MessageHandler
@@ -39,21 +49,18 @@ type (
 
 var _ game.MessageHandler = &Lobby{}
 
-// New creates a new game lobby
-func New(log *log.Logger, ws game.WordsSupplier, userDao db.UserDao, rand *rand.Rand) (Lobby, error) {
+// NewLobby creates a new game lobby
+func (cfg Config) NewLobby() (Lobby, error) {
 	u := new(websocket.Upgrader)
 	u.Error = func(w http.ResponseWriter, r *http.Request, status int, reason error) {
 		log.Println(reason)
 	}
-	words, err := ws.Words()
-	if err != nil {
-		return Lobby{}, err
-	}
 	l := Lobby{
-		log:              log,
+		debug:            cfg.Debug,
+		log:              cfg.Log,
 		upgrader:         u,
-		rand:             rand,
-		words:            words,
+		rand:             cfg.Rand,
+		words:            cfg.Words,
 		games:            make(map[game.ID]game.MessageHandler),
 		sockets:          make(map[game.PlayerName]game.MessageHandler),
 		maxGames:         5,
@@ -61,14 +68,16 @@ func New(log *log.Logger, ws game.WordsSupplier, userDao db.UserDao, rand *rand.
 		newPlayerSockets: make(chan playerSocket, 8),
 	}
 	l.socketCfg = socket.Config{
+		Debug: cfg.Debug,
 		Log:   l.log,
 		Lobby: &l,
 	}
 	l.gameCfg = controller.Config{
+		Debug:       cfg.Debug,
 		Log:         l.log,
 		Lobby:       &l,
-		UserDao:     userDao,
-		Words:       words,
+		UserDao:     cfg.UserDao,
+		Words:       cfg.Words,
 		MaxPlayers:  8,
 		NumNewTiles: 21,
 		ShuffleUnusedTilesFunc: func(tiles []tile.Tile) {
@@ -137,6 +146,9 @@ func (l *Lobby) run() {
 	for {
 		select {
 		case m := <-l.messages:
+			if l.debug {
+				l.log.Printf("lobby handling message with type %v", m.Type)
+			}
 			mh, ok := messageHandlers[m.Type]
 			if !ok {
 				l.log.Printf("lobby does not know how to handle messageType %v", m.Type)
