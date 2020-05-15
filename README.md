@@ -24,18 +24,20 @@ New dependencies are automatically added to [go.mod](go.mod) when the project is
 
 ### Environment configuration
 
-Environment properties are needed to customize the server.  Sample config:
+Environment variables are needed to customize the server.  Sample config:
 ```
 APPLICATION_NAME=selene_bananas
 DATABASE_URL=postgres://selene:selene123@127.0.0.1:54320/selene_bananas_db?sslmode=disable
 PORT=8000 # Server web port
 ```
 
+It is recommended to install the [wamerican-small](https://packages.debian.org/buster/wamerican-small) package.  This package provides /usr/share/dict/american-english-small, which is the default location of the word list.  Lowercase words are read from the word list for checking valid words in the game.  This can be overridden by providing the `WORDS_FILE` environment variable.
+
 ### Database
 
 The app stores user information in a postgresql database.  Every time the app starts, files in the [sql](sql) folder are ran to ensure the table and stored functions are fresh.
 
-A Postgresql database can be created with the command below.  Change the PGUSER and PGPASSWORD variables.  The command requires administrator access.
+A Postgresql database can be created with the command below.  Change the `PGUSER` and `PGPASSWORD` variables.  The command requires administrator access.
 ```bash
 PGDATABASE="selene_bananas_db" \
 PGUSER="selene" \
