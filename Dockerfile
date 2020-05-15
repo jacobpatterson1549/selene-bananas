@@ -1,6 +1,6 @@
 FROM golang:1.13-buster
 
-RUN apt-get update && apt-get install -y wamerican-small
+RUN apt-get update && apt-get install -y wamerican-small=2018.04.16-1
 
 WORKDIR /app
 
