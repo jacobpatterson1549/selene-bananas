@@ -7,10 +7,12 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 
-	"github.com/jacobpatterson1549/selene-bananas/go/db"
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
+
+	"github.com/jacobpatterson1549/selene-bananas/go/db"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/lobby"
 )
 
@@ -65,19 +67,20 @@ func (cfg Config) NewServer() (Server, error) {
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}
-	ws := game.FileSystemWordsSupplier(cfg.WordsFileName)
-	words, err := ws.Words()
-	if err != nil {
-		cfg.Log.Fatal(err)
-	}
 	lobbyCfg := lobby.Config{
 		Debug:   cfg.DebugGame,
 		Log:     cfg.Log,
 		Rand:    rand,
-		Words:   words,
 		UserDao: userDao,
 	}
-	lobby, err := lobbyCfg.NewLobby()
+	wordsFile, err := os.Open(cfg.WordsFileName)
+	if err != nil {
+		cfg.Log.Fatal(err)
+	}
+	ws := game.WordsSupplier{
+		Reader: wordsFile,
+	}
+	lobby, err := lobbyCfg.NewLobby(ws)
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}

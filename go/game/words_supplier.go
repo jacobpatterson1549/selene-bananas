@@ -1,40 +1,34 @@
 package game
 
 import (
-	"fmt"
-	"io/ioutil"
+	"bufio"
+	"io"
 	"strings"
 )
 
 type (
 	// WordsSupplier can be used to retrieve words.
-	WordsSupplier interface {
-		Words() (map[string]bool, error)
+	WordsSupplier struct {
+		io.Reader
 	}
-
-	// FileSystemWordsSupplier gets distinct words from a file
-	FileSystemWordsSupplier string
 )
 
 const (
 	validWordCharacters string = "abcdefghijklmnopqrstuvwxyz"
 )
 
-// Words gets distinct, lowercase, words
-func (f FileSystemWordsSupplier) Words() (map[string]bool, error) {
-	wordsFileContents, err := ioutil.ReadFile(string(f))
-	if err != nil {
-		return nil, fmt.Errorf("reading words from file '%v': %w", f, err)
-	}
-
-	rawWords := strings.Fields(string(wordsFileContents))
+// Words gets distinct, lowercase, words that are separated by spaces or newlines.
+func (ws WordsSupplier) Words() map[string]bool {
 	words := make(map[string]bool)
-	for _, rawWord := range rawWords {
+	scanner := bufio.NewScanner(ws)
+	scanner.Split(bufio.ScanWords) // TODO: split over lowercase characters
+	for scanner.Scan() {
+		rawWord := scanner.Text()
 		if hasOnlyLowercaseLetters(rawWord) {
 			words[rawWord] = true
 		}
 	}
-	return words, nil
+	return words
 }
 
 func hasOnlyLowercaseLetters(word string) bool {

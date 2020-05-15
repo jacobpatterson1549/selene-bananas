@@ -37,7 +37,6 @@ type (
 		Debug   bool
 		Log     *log.Logger
 		Rand    *rand.Rand
-		Words   map[string]bool
 		UserDao db.UserDao
 	}
 
@@ -50,7 +49,7 @@ type (
 var _ game.MessageHandler = &Lobby{}
 
 // NewLobby creates a new game lobby
-func (cfg Config) NewLobby() (Lobby, error) {
+func (cfg Config) NewLobby(ws game.WordsSupplier) (Lobby, error) {
 	u := new(websocket.Upgrader)
 	u.Error = func(w http.ResponseWriter, r *http.Request, status int, reason error) {
 		log.Println(reason)
@@ -60,7 +59,6 @@ func (cfg Config) NewLobby() (Lobby, error) {
 		log:              cfg.Log,
 		upgrader:         u,
 		rand:             cfg.Rand,
-		words:            cfg.Words,
 		games:            make(map[game.ID]game.MessageHandler),
 		sockets:          make(map[game.PlayerName]game.MessageHandler),
 		maxGames:         5,
@@ -72,12 +70,13 @@ func (cfg Config) NewLobby() (Lobby, error) {
 		Log:   l.log,
 		Lobby: &l,
 	}
+	words := ws.Words()
 	l.gameCfg = controller.Config{
 		Debug:       cfg.Debug,
 		Log:         l.log,
 		Lobby:       &l,
 		UserDao:     cfg.UserDao,
-		Words:       cfg.Words,
+		Words:       words,
 		MaxPlayers:  8,
 		NumNewTiles: 21,
 		ShuffleUnusedTilesFunc: func(tiles []tile.Tile) {
