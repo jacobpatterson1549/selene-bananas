@@ -28,7 +28,7 @@ type (
 		maxPlayers  int
 		numNewTiles int
 		tileLetters string
-		words       map[string]bool
+		words       map[string]struct{}
 		messages    chan game.Message
 		// the shuffle functions shuffles the slices my mutating them
 		shuffleUnusedTilesFunc func(tiles []tile.Tile)
@@ -44,7 +44,7 @@ type (
 		MaxPlayers  int
 		NumNewTiles int
 		TileLetters string
-		Words       map[string]bool
+		Words       map[string]struct{}
 		// the shuffle functions shuffles the slices my mutating them
 		ShuffleUnusedTilesFunc func(tiles []tile.Tile)
 		ShufflePlayersFunc     func(playerNames []game.PlayerName)

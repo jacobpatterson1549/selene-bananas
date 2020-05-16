@@ -112,8 +112,9 @@ func (b *Board) MoveTiles(tilePositions []tile.Position) error {
 // CanMoveTiles determines if the player's tiles can be moved to/in the used area
 // without overlapping any other tiles
 func (b *Board) CanMoveTiles(tilePositions []tile.Position) bool {
-	desiredUsedTileLocs := make(map[tile.X]map[tile.Y]bool, len(b.UsedTileLocs))
-	movedTileIds := make(map[tile.ID]bool, len(tilePositions))
+	desiredUsedTileLocs := make(map[tile.X]map[tile.Y]struct{}, len(b.UsedTileLocs))
+	var e struct{}
+	movedTileIds := make(map[tile.ID]struct{}, len(tilePositions))
 	for _, tp := range tilePositions {
 		if !b.hasTile(tp.Tile) {
 			return false
@@ -121,14 +122,14 @@ func (b *Board) CanMoveTiles(tilePositions []tile.Position) bool {
 		if _, ok := movedTileIds[tp.Tile.ID]; ok {
 			return false
 		}
-		movedTileIds[tp.Tile.ID] = true
+		movedTileIds[tp.Tile.ID] = e
 		if _, ok := desiredUsedTileLocs[tp.X]; !ok {
-			desiredUsedTileLocs[tp.X] = make(map[tile.Y]bool, 1)
+			desiredUsedTileLocs[tp.X] = make(map[tile.Y]struct{}, 1)
 		}
 		if _, ok := desiredUsedTileLocs[tp.X][tp.Y]; ok {
 			return false
 		}
-		desiredUsedTileLocs[tp.X][tp.Y] = true
+		desiredUsedTileLocs[tp.X][tp.Y] = e
 	}
 	for t2ID, tp2 := range b.UsedTiles {
 		if _, ok := movedTileIds[t2ID]; !ok {
@@ -148,7 +149,7 @@ func (b *Board) HasSingleUsedGroup() bool {
 	if len(b.UsedTiles) == 0 {
 		return false
 	}
-	seenTileIds := make(map[tile.ID]bool)
+	seenTileIds := make(map[tile.ID]struct{})
 	for x, yTiles := range b.UsedTileLocs {
 		for y, t := range yTiles {
 			b.addSeenTileIds(int(x), int(y), t, seenTileIds)
@@ -244,8 +245,8 @@ func (b Board) usedTileWordsZ(tiles map[int]map[int]tile.Tile, ord func(tp tile.
 }
 
 // addSeenTileIds  does a depth-first search for surrounding tiles, modifying the seenTileIds map.
-func (b *Board) addSeenTileIds(x, y int, t tile.Tile, seenTileIds map[tile.ID]bool) {
-	seenTileIds[t.ID] = true
+func (b *Board) addSeenTileIds(x, y int, t tile.Tile, seenTileIds map[tile.ID]struct{}) {
+	seenTileIds[t.ID] = struct{}{}
 	for dx := -1; dx <= 1; dx++ { // check neighboring columns
 		for dy := -1; dy <= 1; dy++ { // check neighboring rows
 			if (dx != 0 || dy != 0) && dx*dy == 0 { // one delta is not zero, the other is

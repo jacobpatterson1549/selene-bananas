@@ -13,13 +13,14 @@ type (
 )
 
 // Words gets distinct, lowercase, words that are separated by spaces or newlines.
-func (ws WordsSupplier) Words() map[string]bool {
-	words := make(map[string]bool)
+func (ws WordsSupplier) Words() map[string]struct{} {
+	words := make(map[string]struct{})
 	scanner := bufio.NewScanner(ws)
 	scanner.Split(scanLowerWords)
+	var e struct{}
 	for scanner.Scan() {
 		rawWord := scanner.Text()
-		words[rawWord] = true
+		words[rawWord] = e
 	}
 	return words
 }

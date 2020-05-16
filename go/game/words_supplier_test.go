@@ -8,9 +8,10 @@ import (
 )
 
 func TestWords(t *testing.T) {
+	var e struct{}
 	wordsTests := []struct {
 		wordsToRead string
-		want        map[string]bool
+		want        map[string]struct{}
 	}{
 		{},
 		{
@@ -18,11 +19,15 @@ func TestWords(t *testing.T) {
 		},
 		{
 			wordsToRead: "a bad cat",
-			want:        map[string]bool{"a": true, "bad": true, "cat": true},
+			want: map[string]struct{}{
+				"a":   e,
+				"bad": e,
+				"cat": e,
+			},
 		},
 		{
 			wordsToRead: "A man, a plan, a canal, panama!",
-			want:        map[string]bool{"a": true},
+			want:        map[string]struct{}{"a": e},
 		},
 		{
 			wordsToRead: "Abc 'words' they're top-secret not.",

@@ -22,7 +22,7 @@ type (
 		log              *log.Logger
 		upgrader         *websocket.Upgrader
 		rand             *rand.Rand
-		words            map[string]bool
+		words            map[string]struct{}
 		socketCfg        socket.Config
 		sockets          map[game.PlayerName]game.MessageHandler
 		gameCfg          controller.Config
