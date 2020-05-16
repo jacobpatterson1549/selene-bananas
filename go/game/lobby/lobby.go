@@ -153,7 +153,7 @@ func (l *Lobby) run() {
 				l.log.Printf("lobby does not know how to handle messageType %v", m.Type)
 				continue
 			}
-			if _, ok := l.sockets[m.PlayerName]; !ok {
+			if _, ok := l.sockets[m.PlayerName]; !ok && m.Type != game.Join && m.Type != game.Delete {
 				l.log.Printf("lobby does not have socket for '%v'", m.PlayerName)
 				continue
 			}

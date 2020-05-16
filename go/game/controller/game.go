@@ -30,7 +30,6 @@ type (
 		tileLetters string
 		words       map[string]bool
 		messages    chan game.Message
-		active      bool
 		// the shuffle functions shuffles the slices my mutating them
 		shuffleUnusedTilesFunc func(tiles []tile.Tile)
 		shufflePlayersFunc     func(playerNames []game.PlayerName)
@@ -112,13 +111,6 @@ func (g *Game) initializeUnusedTiles() {
 }
 
 func (g *Game) run() {
-	idleTicker := time.NewTicker(gameIdlePeriod)
-	defer idleTicker.Stop()
-	defer func() {
-		g.lobby.Handle(game.Message{
-			Type: game.Delete,
-		})
-	}()
 	messageHandlers := map[game.MessageType]func(game.Message){
 		game.Join:         g.handleGameJoin,
 		game.Leave:        g.handleGameLeave,
@@ -138,9 +130,6 @@ func (g *Game) run() {
 			if g.debug {
 				g.log.Printf("game handling message with type %v", m.Type)
 			}
-			if m.Type != game.BoardRefresh {
-				g.active = true
-			}
 			mh, ok := messageHandlers[m.Type]
 			if !ok {
 				g.lobby.Handle(game.Message{
@@ -159,12 +148,6 @@ func (g *Game) run() {
 				continue
 			}
 			mh(m)
-		case <-idleTicker.C:
-			if !g.active {
-				g.log.Print("closing game due to inactivity")
-				return
-			}
-			g.active = false
 		}
 	}
 }
@@ -241,18 +224,11 @@ func (g *Game) handleGameLeave(m game.Message) {
 
 func (g *Game) handleGameDelete(m game.Message) {
 	for n, p := range g.players {
-		var info string
-		switch n {
-		case m.PlayerName:
-			info = "game deleted"
-		default:
-			info = fmt.Sprintf("%v deleted the game", m.PlayerName)
-		}
 		p.stopBoardRefresh()
 		g.lobby.Handle(game.Message{
 			Type:       game.Leave,
 			PlayerName: n,
-			Info:       info,
+			Info:       m.Info,
 		})
 	}
 }
