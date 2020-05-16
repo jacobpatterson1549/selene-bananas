@@ -19,7 +19,6 @@ type (
 		playerName game.PlayerName
 		lobby      game.MessageHandler
 		messages   chan game.Message
-		active     bool
 		close      chan bool
 		gameID     game.ID // mutable
 	}
@@ -105,17 +104,14 @@ func (s *Socket) readMessages() {
 			m.GameID = s.gameID
 		}
 		s.lobby.Handle(m)
-		s.active = true
 	}
 }
 
 func (s *Socket) writeMessages() {
 	pingTicker := time.NewTicker(pingPeriod)
-	idleTicker := time.NewTicker(idlePeriod)
 	httpPingTicker := time.NewTicker(httpPingPeriod)
 	defer func() {
 		pingTicker.Stop()
-		idleTicker.Stop()
 		httpPingTicker.Stop()
 		s.close <- true
 	}()
@@ -148,15 +144,6 @@ func (s *Socket) writeMessages() {
 			if err = s.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
-		case <-idleTicker.C:
-			if !s.active {
-				s.conn.WriteJSON(game.Message{ // ignore error
-					Type: game.Leave,
-					Info: "connection closing due to inactivity",
-				})
-				return
-			}
-			s.active = false
 		case <-httpPingTicker.C:
 			s.Handle(game.Message{
 				Type: game.SocketHTTPPing,

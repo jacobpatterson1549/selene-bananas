@@ -178,23 +178,12 @@ func (g *Game) handleGameJoin(m game.Message) {
 	}
 	newTiles := g.unusedTiles[:g.numNewTiles]
 	g.unusedTiles = g.unusedTiles[g.numNewTiles:]
-	boardRefreshTicker := time.NewTicker(boardRefreshPeriod)
 	b := board.New(newTiles)
 	p := &player{
-		Ticker:    boardRefreshTicker,
 		winPoints: 10,
 		Board:     b,
 	}
 	g.players[m.PlayerName] = p
-	go func() {
-		for {
-			<-boardRefreshTicker.C
-			g.Handle(game.Message{
-				Type:       game.BoardRefresh,
-				PlayerName: m.PlayerName,
-			})
-		}
-	}()
 	gamePlayers := g.playerNames()
 	g.lobby.Handle(game.Message{
 		Type:        game.SocketInfo,
@@ -223,8 +212,7 @@ func (g *Game) handleGameLeave(m game.Message) {
 }
 
 func (g *Game) handleGameDelete(m game.Message) {
-	for n, p := range g.players {
-		p.stopBoardRefresh()
+	for n := range g.players {
 		g.lobby.Handle(game.Message{
 			Type:       game.Leave,
 			PlayerName: n,
@@ -525,7 +513,6 @@ func (g *Game) handleGameInfos(m game.Message) {
 }
 
 func (g *Game) handlePlayerDelete(m game.Message) {
-	g.players[m.PlayerName].stopBoardRefresh()
 	delete(g.players, m.PlayerName)
 	if len(g.players) == 0 {
 		g.lobby.Handle(game.Message{
