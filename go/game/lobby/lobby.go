@@ -23,7 +23,6 @@ type (
 		log           *log.Logger
 		upgrader      *websocket.Upgrader
 		rand          *rand.Rand
-		words         map[string]struct{}
 		socketCfg     socket.Config
 		gameCfg       controller.Config
 		maxGames      int
@@ -147,6 +146,7 @@ func (l *Lobby) Run(done <-chan struct{}) {
 				switch m.Type {
 				case game.Create:
 					gameMessages, err = l.createGame(m, games)
+					continue
 				case game.Delete:
 					err = l.deleteGame(m, games)
 				}

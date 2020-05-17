@@ -13,9 +13,9 @@ var websocket = {
         url += "?access_token=" + jwt
         return new Promise((resolve, reject) => {
             this._websocket = new WebSocket(url);
-            var websocketElement = document.getElementById("has-websocket");
-            websocketElement.checked = true;
             this._websocket.onopen = event => {
+                var websocketElement = document.getElementById("has-websocket");
+                websocketElement.checked = true;
                 resolve();
             };
             this._websocket.onerror = event => {
