@@ -22,11 +22,6 @@ type (
 		PlayerName    PlayerName      `json:"-"`
 		GameInfoChan  chan<- Info     `json:"-"` // TODO: get rid of this. maybe make game have a special info channel that lobby can listen to.
 	}
-
-	// MessageHandler handles messages
-	MessageHandler interface {
-		Handle(m Message)
-	}
 )
 
 // not using iota because MessageTypes are used in javascript
@@ -46,6 +41,6 @@ const (
 	SocketError    MessageType = 15
 	SocketHTTPPing MessageType = 17
 	ChatRecv       MessageType = 18
-	ChatSend       MessageType = 19
+	ChatSend       MessageType = 19 // TODO: combine with ChatRecv
 	GetInfos       MessageType = 20
 )

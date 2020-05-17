@@ -19,7 +19,6 @@ type (
 		debug       bool
 		log         *log.Logger
 		id          game.ID
-		lobby       game.MessageHandler
 		createdAt   string
 		status      game.Status
 		players     map[game.PlayerName]*player
@@ -29,7 +28,6 @@ type (
 		numNewTiles int
 		tileLetters string
 		words       map[string]struct{}
-		messages    chan game.Message
 		// the shuffle functions shuffles the slices my mutating them
 		shuffleUnusedTilesFunc func(tiles []tile.Tile)
 		shufflePlayersFunc     func(playerNames []game.PlayerName)
@@ -39,7 +37,6 @@ type (
 	Config struct {
 		Debug       bool
 		Log         *log.Logger
-		Lobby       game.MessageHandler
 		UserDao     db.UserDao
 		MaxPlayers  int
 		NumNewTiles int
@@ -54,24 +51,13 @@ type (
 const (
 	// TODO: make these  environment arguments
 	defaultTileLetters = "AAAAAAAAAAAAABBBCCCDDDDDDEEEEEEEEEEEEEEEEEEFFFGGGGHHHIIIIIIIIIIIIJJKKLLLLLMMMNNNNNNNNOOOOOOOOOOOPPPQQRRRRRRRRRSSSSSSTTTTTTTTTUUUUUUVVVWWWXXYYYZZ"
-	gameIdlePeriod     = 10 * time.Minute
-	boardRefreshPeriod = 5 * time.Minute
 )
-
-var _ game.MessageHandler = &Game{}
-
-// Handle adds a message to the queue
-func (g *Game) Handle(m game.Message) {
-	g.messages <- m
-}
 
 // NewGame creates a new game and runs it
 func (cfg Config) NewGame(id game.ID) Game {
-	// TODO: for createdAt, have TimeFunc variable that is a function which returns a time.Time, (time.Now) => TimeFunc().Format(...), share with jwt token
 	g := Game{
 		debug:                  cfg.Debug,
 		log:                    cfg.Log,
-		lobby:                  cfg.Lobby,
 		id:                     id,
 		createdAt:              time.Now().Format(time.UnixDate),
 		status:                 game.NotStarted,
@@ -81,17 +67,15 @@ func (cfg Config) NewGame(id game.ID) Game {
 		maxPlayers:             cfg.MaxPlayers,
 		numNewTiles:            cfg.NumNewTiles,
 		tileLetters:            cfg.TileLetters,
-		messages:               make(chan game.Message, 64),
 		shuffleUnusedTilesFunc: cfg.ShuffleUnusedTilesFunc,
 		shufflePlayersFunc:     cfg.ShufflePlayersFunc,
 	}
 	g.initializeUnusedTiles()
-	go g.run()
 	return g
 }
 
 // initialize unusedTiles from tileLetters or defaultTileLetters and shuffles them
-func (g *Game) initializeUnusedTiles() {
+func (g *Game) initializeUnusedTiles() error {
 	if len(g.tileLetters) == 0 {
 		g.tileLetters = defaultTileLetters
 	}
@@ -100,21 +84,21 @@ func (g *Game) initializeUnusedTiles() {
 		id := tile.ID(i + 1)
 		t, err := tile.New(id, ch)
 		if err != nil {
-			g.log.Printf("creating tile: %v", err)
-			continue
+			return fmt.Errorf("creating tile: %w", err)
 		}
 		g.unusedTiles[i] = t
 	}
 	if g.shuffleUnusedTilesFunc != nil {
 		g.shuffleUnusedTilesFunc(g.unusedTiles)
 	}
+	return nil
 }
 
-func (g *Game) run() {
-	messageHandlers := map[game.MessageType]func(game.Message){
+// Run runs the game
+func (g *Game) Run(done <-chan struct{}, messages <-chan game.Message) <-chan game.Message {
+	out := make(chan game.Message)
+	messageHandlers := map[game.MessageType]func(game.Message, chan<- game.Message){
 		game.Join:         g.handleGameJoin,
-		game.Leave:        g.handleGameLeave,
-		game.Delete:       g.handleGameDelete,
 		game.StatusChange: g.handleGameStatusChange,
 		game.Snag:         g.handleGameSnag,
 		game.Swap:         g.handleGameSwap,
@@ -124,56 +108,62 @@ func (g *Game) run() {
 		game.PlayerDelete: g.handlePlayerDelete,
 		game.ChatRecv:     g.handleGameChatRecv,
 	}
-	for {
-		select {
-		case m := <-g.messages:
-			if g.debug {
-				g.log.Printf("game handling message with type %v", m.Type)
+	go func() {
+		defer close(out)
+		for {
+			select {
+			case <-done:
+				return
+			case m := <-messages:
+				if g.debug {
+					g.log.Printf("game handling message with type %v", m.Type)
+				}
+				mh, ok := messageHandlers[m.Type]
+				if !ok {
+					out <- game.Message{
+						Type:       game.SocketError,
+						PlayerName: m.PlayerName,
+						Info:       fmt.Sprintf("game does not know how to handle MessageType %v", m.Type),
+					}
+					continue
+				}
+				if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join {
+					out <- game.Message{
+						Type:       game.SocketError,
+						PlayerName: m.PlayerName,
+						Info:       fmt.Sprintf("game does not have player named '%v'", m.PlayerName),
+					}
+					continue
+				}
+				mh(m, out)
 			}
-			mh, ok := messageHandlers[m.Type]
-			if !ok {
-				g.lobby.Handle(game.Message{
-					Type:       game.SocketError,
-					PlayerName: m.PlayerName,
-					Info:       fmt.Sprintf("game does not know how to handle MessageType %v", m.Type),
-				})
-				continue
-			}
-			if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join {
-				g.lobby.Handle(game.Message{
-					Type:       game.SocketError,
-					PlayerName: m.PlayerName,
-					Info:       fmt.Sprintf("game does not have player named '%v'", m.PlayerName),
-				})
-				continue
-			}
-			mh(m)
 		}
-	}
+	}()
+	return out
 }
 
-func (g *Game) handleGameJoin(m game.Message) {
+func (g *Game) handleGameJoin(m game.Message, messages chan<- game.Message) {
 	if _, ok := g.players[m.PlayerName]; ok {
 		m.Type = game.SocketInfo
-		g.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.BoardRefresh,
 			PlayerName: m.PlayerName,
-		})
+		}
 		return
 	}
 	if len(g.players) >= g.maxPlayers {
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketError,
 			PlayerName: m.PlayerName,
 			Info:       "no room for another player in game",
-		})
+		}
 		return
 	}
 	if len(g.unusedTiles) < g.numNewTiles {
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type: game.SocketInfo,
 			Info: "deleting game because it can not start: there are not enough tiles",
-		})
+		}
 		return
 	}
 	newTiles := g.unusedTiles[:g.numNewTiles]
@@ -185,7 +175,7 @@ func (g *Game) handleGameJoin(m game.Message) {
 	}
 	g.players[m.PlayerName] = p
 	gamePlayers := g.playerNames()
-	g.lobby.Handle(game.Message{
+	messages <- game.Message{
 		Type:        game.SocketInfo,
 		PlayerName:  m.PlayerName,
 		Info:        "joining game",
@@ -193,107 +183,90 @@ func (g *Game) handleGameJoin(m game.Message) {
 		TilesLeft:   len(g.unusedTiles),
 		GamePlayers: gamePlayers,
 		GameStatus:  g.status,
-	})
+	}
 	for n := range g.players {
 		if n != m.PlayerName {
-			g.lobby.Handle(game.Message{
+			messages <- game.Message{
 				Type:        game.SocketInfo,
 				PlayerName:  n,
 				Info:        fmt.Sprintf("%v joined the game", m.PlayerName),
 				TilesLeft:   len(g.unusedTiles),
 				GamePlayers: gamePlayers,
-			})
+			}
 		}
 	}
 }
 
-func (g *Game) handleGameLeave(m game.Message) {
-	g.log.Printf("%v left a game", m.PlayerName)
-}
-
-func (g *Game) handleGameDelete(m game.Message) {
-	for n := range g.players {
-		g.lobby.Handle(game.Message{
-			Type:       game.Leave,
-			PlayerName: n,
-			Info:       m.Info,
-		})
-	}
-}
-
-func (g *Game) handleGameStatusChange(m game.Message) {
+func (g *Game) handleGameStatusChange(m game.Message, messages chan<- game.Message) {
 	switch g.status {
 	case game.NotStarted:
 		if m.GameStatus != game.InProgress {
-			g.lobby.Handle(game.Message{
+			messages <- game.Message{
 				Type:       game.SocketError,
 				PlayerName: m.PlayerName,
 				Info:       "game already started or is finished",
-			})
+			}
 			return
 		}
-		g.start(m.PlayerName)
+		g.start(m.PlayerName, messages)
 	case game.InProgress:
 		if m.GameStatus != game.Finished {
-			g.lobby.Handle(game.Message{
+			messages <- game.Message{
 				Type:       game.SocketError,
 				PlayerName: m.PlayerName,
 				Info:       "can only attempt to set game that is in progress to finished",
-			})
+			}
 			return
 		}
-		g.finish(m.PlayerName)
+		g.finish(m.PlayerName, messages)
 	default:
-		if m.GameStatus != game.Finished {
-			g.lobby.Handle(game.Message{
-				Type:       game.SocketError,
-				PlayerName: m.PlayerName,
-				Info:       fmt.Sprintf("cannot change game state from %v", g.status),
-			})
-			return
+		messages <- game.Message{
+			Type:       game.SocketError,
+			PlayerName: m.PlayerName,
+			Info:       fmt.Sprintf("cannot change game state from %v", g.status),
 		}
 	}
 }
 
-func (g *Game) start(startingPlayerName game.PlayerName) {
+func (g *Game) start(startingPlayerName game.PlayerName, messages chan<- game.Message) {
 	g.status = game.InProgress
 	info := fmt.Sprintf("%v started the game", startingPlayerName)
 	for n := range g.players {
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketInfo,
 			PlayerName: n,
 			Info:       info,
 			GameStatus: g.status,
-		})
+		}
 	}
 }
 
-func (g *Game) finish(finishingPlayerName game.PlayerName) {
+func (g *Game) finish(finishingPlayerName game.PlayerName, messages chan<- game.Message) {
 	p := g.players[finishingPlayerName]
 	if len(p.UnusedTiles) != 0 {
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketError,
 			PlayerName: finishingPlayerName,
 			Info:       "snag first",
-		})
+		}
 		return
 	}
 	if len(p.UnusedTiles) != 0 {
 		p.decrementWinPoints()
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketError,
 			PlayerName: finishingPlayerName,
 			Info:       "not all tiles used",
-		})
+		}
 		return
 	}
 	if !p.HasSingleUsedGroup() {
 		p.decrementWinPoints()
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketError,
 			PlayerName: finishingPlayerName,
 			Info:       "not all used tiles form a single group",
-		})
+		}
 		return
 	}
 	usedWords := p.UsedTileWords()
@@ -306,11 +279,11 @@ func (g *Game) finish(finishingPlayerName game.PlayerName) {
 	}
 	if len(invalidWords) > 0 {
 		p.decrementWinPoints()
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketError,
 			PlayerName: finishingPlayerName,
 			Info:       fmt.Sprintf("invalid words: %v", invalidWords),
-		})
+		}
 		return
 	}
 	g.status = game.Finished
@@ -320,32 +293,35 @@ func (g *Game) finish(finishingPlayerName game.PlayerName) {
 		len(usedWords),
 		p.winPoints,
 	)
-	g.updateUserPoints(finishingPlayerName)
+	err := g.updateUserPoints(finishingPlayerName)
+	if err != nil {
+		info = err.Error()
+	}
 	for n := range g.players {
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketInfo,
 			PlayerName: n,
 			Info:       info,
 			GameStatus: g.status,
-		})
+		}
 	}
 }
 
-func (g *Game) handleGameSnag(m game.Message) {
+func (g *Game) handleGameSnag(m game.Message, messages chan<- game.Message) {
 	if g.status != game.InProgress {
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketError,
 			PlayerName: m.PlayerName,
 			Info:       "game has not started or is finished",
-		})
+		}
 		return
 	}
 	if len(g.unusedTiles) == 0 {
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketError,
 			PlayerName: m.PlayerName,
 			Info:       "no tiles left to snag, use what you have to finish",
-		})
+		}
 		return
 	}
 	snagPlayerMessages := make(map[game.PlayerName]game.Message, len(g.players))
@@ -381,44 +357,44 @@ func (g *Game) handleGameSnag(m game.Message) {
 	}
 	for _, m := range snagPlayerMessages {
 		m.TilesLeft = len(g.unusedTiles)
-		g.lobby.Handle(m)
+		messages <- m
 	}
 }
 
-func (g *Game) handleGameSwap(m game.Message) {
+func (g *Game) handleGameSwap(m game.Message, messages chan<- game.Message) {
 	if g.status != game.InProgress {
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketError,
 			PlayerName: m.PlayerName,
 			Info:       "game has not started or is finished",
-		})
+		}
 		return
 	}
 	if len(m.Tiles) != 1 {
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketError,
 			PlayerName: m.PlayerName,
 			Info:       "no tile specified for swap",
-		})
+		}
 		return
 	}
 	if len(g.unusedTiles) == 0 {
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketError,
 			PlayerName: m.PlayerName,
 			Info:       "no tiles left to swap, user what you have to finish",
-		})
+		}
 		return
 	}
 	t := m.Tiles[0]
 	p := g.players[m.PlayerName]
 	err := p.RemoveTile(t)
 	if err != nil {
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketError,
 			PlayerName: m.PlayerName,
 			Info:       err.Error(),
-		})
+		}
 	}
 	g.unusedTiles = append(g.unusedTiles, t)
 	g.shuffleUnusedTilesFunc(g.unusedTiles)
@@ -446,22 +422,22 @@ func (g *Game) handleGameSwap(m game.Message) {
 	}
 	for _, m := range swapPlayerMessages {
 		m.TilesLeft = len(g.unusedTiles)
-		g.lobby.Handle(m)
+		messages <- m
 	}
 }
 
-func (g *Game) handleGameTilesMoved(m game.Message) {
+func (g *Game) handleGameTilesMoved(m game.Message, messages chan<- game.Message) {
 	err := g.players[m.PlayerName].MoveTiles(m.TilePositions)
 	if err != nil {
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.SocketError,
 			PlayerName: m.PlayerName,
 			Info:       err.Error(),
-		})
+		}
 	}
 }
 
-func (g *Game) handleBoardRefresh(m game.Message) {
+func (g *Game) handleBoardRefresh(m game.Message, messages chan<- game.Message) {
 	p := g.players[m.PlayerName]
 	unusedTiles := make([]tile.Tile, len(p.UnusedTiles))
 	for i, id := range p.UnusedTileIDs {
@@ -483,7 +459,7 @@ func (g *Game) handleBoardRefresh(m game.Message) {
 			return a.Y > b.Y
 		}
 	})
-	g.lobby.Handle(game.Message{
+	messages <- game.Message{
 		Type:          m.Type,
 		PlayerName:    m.PlayerName,
 		Info:          m.Info,
@@ -492,10 +468,10 @@ func (g *Game) handleBoardRefresh(m game.Message) {
 		TilesLeft:     len(g.unusedTiles),
 		GameStatus:    g.status,
 		GamePlayers:   g.playerNames(),
-	})
+	}
 }
 
-func (g *Game) handleGameInfos(m game.Message) {
+func (g *Game) handleGameInfos(m game.Message, messages chan<- game.Message) {
 	var canJoin bool
 	switch g.status {
 	case game.NotStarted:
@@ -512,28 +488,22 @@ func (g *Game) handleGameInfos(m game.Message) {
 	}
 }
 
-func (g *Game) handlePlayerDelete(m game.Message) {
+func (g *Game) handlePlayerDelete(m game.Message, messages chan<- game.Message) {
 	delete(g.players, m.PlayerName)
-	if len(g.players) == 0 {
-		g.lobby.Handle(game.Message{
-			Type: game.Delete,
-			Info: "deleting game because it has no players",
-		})
-	}
 }
 
-func (g *Game) handleGameChatRecv(m game.Message) {
+func (g *Game) handleGameChatRecv(m game.Message, messages chan<- game.Message) {
 	info := fmt.Sprintf("%v : %v", m.PlayerName, m.Info)
 	for n := range g.players {
-		g.lobby.Handle(game.Message{
+		messages <- game.Message{
 			Type:       game.ChatSend,
 			PlayerName: n,
 			Info:       info,
-		})
+		}
 	}
 }
 
-func (g *Game) updateUserPoints(winningPlayerName game.PlayerName) {
+func (g *Game) updateUserPoints(winningPlayerName game.PlayerName) error {
 	users := make([]db.Username, len(g.players))
 	i := 0
 	for n := range g.players {
@@ -547,14 +517,7 @@ func (g *Game) updateUserPoints(winningPlayerName game.PlayerName) {
 		}
 		return 1
 	}
-	err := g.userDao.UpdatePointsIncrement(users, userPointsIncrementFunc)
-	if err != nil {
-		g.lobby.Handle(game.Message{
-			Type:       game.SocketError,
-			PlayerName: winningPlayerName,
-			Info:       fmt.Sprintf("updating user points: %v", err),
-		})
-	}
+	return g.userDao.UpdatePointsIncrement(users, userPointsIncrementFunc)
 }
 
 func (g Game) playerNames() []string {

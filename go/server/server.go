@@ -104,8 +104,11 @@ func (s server) Run() error {
 		Addr:    s.addr,
 		Handler: s.handler,
 	}
+	done := make(chan struct{})
+	s.lobby.Run(done)
 	s.log.Println("starting server - locally running at http://127.0.0.1" + httpServer.Addr)
 	err := httpServer.ListenAndServe() // BLOCKS
+	done <- struct{}{}
 	if err != http.ErrServerClosed {
 		return fmt.Errorf("server stopped unexpectedly: %w", err)
 	}

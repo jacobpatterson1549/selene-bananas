@@ -17,9 +17,6 @@ type (
 		log        *log.Logger
 		conn       *websocket.Conn
 		playerName game.PlayerName
-		lobby      game.MessageHandler
-		messages   chan game.Message
-		close      chan bool
 		gameID     game.ID // mutable
 	}
 
@@ -27,129 +24,151 @@ type (
 	Config struct {
 		Debug bool
 		Log   *log.Logger
-		Lobby game.MessageHandler
 	}
 )
 
 // TODO: put some of these parameters as env arguments
 const (
-	writeWait      = 5 * time.Second
 	pongPeriod     = 20 * time.Second
 	pingPeriod     = (pongPeriod * 80) / 100 // should be less than pongPeriod
 	idlePeriod     = 15 * time.Minute
 	httpPingPeriod = 10 * time.Minute // should be less than 30 minutes to keep heroku alive
 )
 
-var _ game.MessageHandler = &Socket{}
-
-// Handle adds a message to the queue
-func (s *Socket) Handle(m game.Message) {
-	s.messages <- m
-}
-
-// NewSocket creates a socket and runs it
-func (cfg Config) NewSocket(playerName game.PlayerName, conn *websocket.Conn) Socket {
-	s := Socket{
+// NewSocket creates a socket
+func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) Socket {
+	return Socket{
 		debug:      cfg.Debug,
 		log:        cfg.Log,
 		conn:       conn,
 		playerName: playerName,
-		lobby:      cfg.Lobby,
-		messages:   make(chan game.Message, 16),
 	}
-	if conn != nil {
-		go s.readMessages()
-		go s.writeMessages()
-		go func() {
-			<-s.close
-			s.log.Printf("closing socket connection for %v", s.playerName)
-			s.conn.WriteJSON(game.Message{ // ignore possible error
-				Type: game.PlayerDelete,
-			})
+}
+
+// ReadMessages receives messages from the connected socket and writes the to the messages channel
+// messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel
+func (s *Socket) ReadMessages(done <-chan struct{}) (<-chan game.Message, <-chan error) {
+	messages := make(chan game.Message)
+	errs := make(chan error, 1)
+	go func() {
+		defer func() {
 			s.conn.Close()
+			close(messages)
+			close(errs)
 		}()
-	}
-	return s
-}
-
-func (s *Socket) readMessages() {
-	defer func() {
-		s.close <- true
-	}()
-	s.conn.SetPongHandler(s.refreshReadDeadline)
-	for {
+		s.conn.SetPongHandler(s.refreshReadDeadline)
 		var m game.Message
-		err := s.conn.ReadJSON(&m)
-		if err != nil {
-			if _, ok := err.(*json.UnmarshalTypeError); ok {
-				s.Handle(game.Message{
-					Type: game.SocketError,
-					Info: err.Error(),
-				})
-				continue
+		for {
+			err := s.readMessage(&m)
+			select {
+			case <-done:
+				return
+			default:
+				if err != nil {
+					errs <- err
+					return
+				}
+				messages <- m
 			}
-			if _, ok := err.(*websocket.CloseError); !ok || websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
-				s.log.Print("unexpected websocket closure", err)
-			}
-			return
 		}
-		if s.debug {
-			s.log.Printf("socket reading message with type %v", m.Type)
-		}
-		m.PlayerName = s.playerName
-		switch m.Type {
-		case game.Join:
-			s.gameID = m.GameID
-		default:
-			m.GameID = s.gameID
-		}
-		s.lobby.Handle(m)
-	}
+	}()
+	return messages, errs
 }
 
-func (s *Socket) writeMessages() {
+// WriteMessages sends messages added to the messages channel to the connected socket
+// messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel
+func (s *Socket) WriteMessages(done <-chan struct{}) (chan<- game.Message, <-chan error) {
 	pingTicker := time.NewTicker(pingPeriod)
 	httpPingTicker := time.NewTicker(httpPingPeriod)
-	defer func() {
-		pingTicker.Stop()
-		httpPingTicker.Stop()
-		s.close <- true
-	}()
-	for {
+	messages := make(chan game.Message)
+	errs := make(chan error, 1)
+	go func() {
+		defer func() {
+			pingTicker.Stop()
+			httpPingTicker.Stop()
+			close(messages)
+			close(errs)
+		}()
 		var err error
-		select {
-		case m := <-s.messages:
-			if s.debug {
-				s.log.Printf("socket writing message with type %v", m.Type)
+		for {
+			select {
+			case <-done:
+				return
+			case m := <-messages:
+				err = s.writeMessage(m)
+			case <-pingTicker.C:
+				err = s.writePing()
+			case <-httpPingTicker.C:
+				err = s.writeMessage(game.Message{
+					Type: game.SocketHTTPPing,
+				})
 			}
-			switch m.Type {
-			case game.Join:
-				s.gameID = m.GameID
-				continue
-			case game.Delete, game.Leave:
-				s.gameID = 0
-			}
-			err = s.conn.WriteJSON(m)
 			if err != nil {
-				s.log.Printf("error writing websocket message: %v", err)
+				errs <- err
 				return
 			}
-			if m.Type == game.PlayerDelete {
-				return
-			}
-		case <-pingTicker.C:
-			if err = s.refreshWriteDeadline(); err != nil {
-				return
-			}
-			if err = s.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return
-			}
-		case <-httpPingTicker.C:
-			s.Handle(game.Message{
-				Type: game.SocketHTTPPing,
-			})
 		}
+	}()
+	return messages, errs
+}
+
+func (s *Socket) readMessage(m *game.Message) error {
+	err := s.conn.ReadJSON(m)
+	if err != nil {
+		if _, ok := err.(*json.UnmarshalTypeError); ok {
+			m = &game.Message{
+				Type: game.SocketError,
+				Info: err.Error(),
+			}
+			return nil
+		}
+		if _, ok := err.(*websocket.CloseError); !ok || websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
+			return fmt.Errorf("unexpected websocket closure: %v", err)
+		}
+		return fmt.Errorf("closed")
 	}
+	if s.debug {
+		s.log.Printf("reading message with type %v", m.Type)
+	}
+	m.PlayerName = s.playerName
+	switch m.Type {
+	case game.Join:
+		s.gameID = m.GameID
+	default:
+		m.GameID = s.gameID
+	}
+	return nil
+}
+
+func (s *Socket) writeMessage(m game.Message) error {
+	if s.debug {
+		s.log.Printf("writing message with type %v", m.Type)
+	}
+	switch m.Type {
+	case game.Join:
+		s.gameID = m.GameID
+		return nil
+	case game.Delete, game.Leave:
+		s.gameID = 0
+	}
+	err := s.conn.WriteJSON(m)
+	if err != nil {
+		return fmt.Errorf("writing websocket message: %v", err)
+	}
+	if m.Type == game.PlayerDelete {
+		return fmt.Errorf("player deleted")
+	}
+	return nil
+}
+
+func (s *Socket) writePing() error {
+	if err := s.refreshWriteDeadline(); err != nil {
+		return err
+	}
+	if err := s.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Socket) refreshReadDeadline(appData string) error {
@@ -161,8 +180,7 @@ func (s *Socket) refreshWriteDeadline() error {
 }
 
 func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
-	err := refreshDeadlineFunc(time.Now().Add(period))
-	if err != nil {
+	if err := refreshDeadlineFunc(time.Now().Add(period)); err != nil {
 		err := fmt.Errorf("error refreshing ping/pong deadline for %v: %w", s.playerName, err)
 		s.log.Print(err)
 		return err
