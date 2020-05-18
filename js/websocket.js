@@ -4,7 +4,7 @@ var websocket = {
 
     connect: function (event) {
         if (this._websocket != null) {
-            return new Promise(resolve => { resolve(true); });
+            return new Promise(resolve => { resolve(); });
         }
         var form = event.target;
         var url = form.action;

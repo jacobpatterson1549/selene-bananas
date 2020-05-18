@@ -209,25 +209,19 @@ func (l *Lobby) handleGameInfos(m game.Message) {
 		l.sendSocketErrorMessage(m, fmt.Sprintf("no socket to send game infos to for playerName=%v", m.PlayerName))
 		return
 	}
-	n := len(l.games)
-	c := make(chan game.Info, n)
+	infosC := make(chan game.Info)
 	for _, gmh := range l.games {
 		gmh.writeMessages <- game.Message{
 			Type:         game.Infos,
 			PlayerName:   m.PlayerName,
-			GameInfoChan: c,
+			GameInfoChan: infosC,
 		}
 	}
-	infos := make([]game.Info, n)
-	if n > 0 {
-		i := 0
-		for {
-			gameInfo := <-c
-			infos[i] = gameInfo
-			i++
-			if i == n {
-				break
-			}
+	infos := make([]game.Info, 0, len(l.games))
+	for range l.games {
+		select {
+		case gameInfo := <-infosC:
+			infos = append(infos, gameInfo)
 		}
 	}
 	sort.Slice(infos, func(i, j int) bool {
