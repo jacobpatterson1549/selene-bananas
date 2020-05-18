@@ -217,11 +217,13 @@ func (l *Lobby) handleGameInfos(m game.Message) {
 			GameInfoChan: infosC,
 		}
 	}
-	infos := make([]game.Info, 0, len(l.games))
+	infos := make([]game.Info, len(l.games))
+	i := 0
 	for range l.games {
 		select {
 		case gameInfo := <-infosC:
-			infos = append(infos, gameInfo)
+			infos[i] = gameInfo
+			i++
 		}
 	}
 	sort.Slice(infos, func(i, j int) bool {
