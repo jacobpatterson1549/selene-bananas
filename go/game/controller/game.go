@@ -330,35 +330,45 @@ func (g *Game) handleGameSnag(m game.Message, out chan<- game.Message) {
 		return
 	}
 	snagPlayerMessages := make(map[game.PlayerName]game.Message, len(g.players))
-	snagPlayerMessages[m.PlayerName] = game.Message{
-		Type:       game.SocketInfo,
-		PlayerName: m.PlayerName,
-		Info:       "snagged a tile",
-		Tiles:      g.unusedTiles[:1],
-	}
-	g.players[m.PlayerName].AddTile(g.unusedTiles[0])
-	g.unusedTiles = g.unusedTiles[1:]
-	otherPlayers := make([]game.PlayerName, len(g.players)-1)
-	i := 0
+	snagPlayerNames := make([]game.PlayerName, len(g.players))
+	snagPlayerNames[0] = m.PlayerName
+	i := 1
 	for n2 := range g.players {
 		if m.PlayerName != n2 {
-			otherPlayers[i] = n2
+			snagPlayerNames[i] = n2
 			i++
 		}
 	}
-	g.shufflePlayersFunc(otherPlayers)
-	for _, n2 := range otherPlayers {
-		if len(g.unusedTiles) == 0 {
-			break
+	g.shufflePlayersFunc(snagPlayerNames[1:])
+	for _, n2 := range snagPlayerNames {
+		var m2 *game.Message
+		switch {
+		case n2 == m.PlayerName:
+			m2 = &game.Message{
+				Type:       game.SocketInfo,
+				PlayerName: n2,
+				Tiles:      g.unusedTiles[:1],
+				Info:       "snagged a tile",
+			}
+			g.players[n2].AddTile(g.unusedTiles[0])
+			g.unusedTiles = g.unusedTiles[1:]
+		case len(g.unusedTiles) == 0:
+			m2 = &game.Message{
+				Type:       game.SocketInfo,
+				PlayerName: n2,
+				Info:       fmt.Sprintf("%v snagged a tile", m.PlayerName),
+			}
+		default:
+			m2 = &game.Message{
+				Type:       game.SocketInfo,
+				PlayerName: n2,
+				Info:       fmt.Sprintf("%v snagged a tile, adding a tile to your pile", m.PlayerName),
+				Tiles:      g.unusedTiles[:1],
+			}
+			g.players[n2].AddTile(g.unusedTiles[0])
+			g.unusedTiles = g.unusedTiles[1:]
 		}
-		snagPlayerMessages[n2] = game.Message{
-			Type:       game.SocketInfo,
-			PlayerName: n2,
-			Info:       fmt.Sprintf("%v snagged a tile, adding a tile to your pile", m.PlayerName),
-			Tiles:      g.unusedTiles[:1],
-		}
-		g.players[n2].AddTile(g.unusedTiles[0])
-		g.unusedTiles = g.unusedTiles[1:]
+		snagPlayerMessages[n2] = *m2
 	}
 	for _, m := range snagPlayerMessages {
 		m.TilesLeft = len(g.unusedTiles)
