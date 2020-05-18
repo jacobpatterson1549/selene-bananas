@@ -62,7 +62,7 @@ func (cfg Config) NewGame(id game.ID) Game {
 		createdAt:              time.Now().Format(time.UnixDate),
 		status:                 game.NotStarted,
 		words:                  cfg.Words,
-		players:                make(map[game.PlayerName]*player, 2),
+		players:                make(map[game.PlayerName]*player),
 		userDao:                cfg.UserDao,
 		maxPlayers:             cfg.MaxPlayers,
 		numNewTiles:            cfg.NumNewTiles,
@@ -98,6 +98,7 @@ func (g *Game) initializeUnusedTiles() error {
 func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game.Message) {
 	messageHandlers := map[game.MessageType]func(game.Message, chan<- game.Message){
 		game.Join:         g.handleGameJoin,
+		game.Delete:       g.handleGameDelete,
 		game.StatusChange: g.handleGameStatusChange,
 		game.Snag:         g.handleGameSnag,
 		game.Swap:         g.handleGameSwap,
@@ -187,6 +188,16 @@ func (g *Game) handleGameJoin(m game.Message, out chan<- game.Message) {
 				TilesLeft:   len(g.unusedTiles),
 				GamePlayers: gamePlayers,
 			}
+		}
+	}
+}
+
+func (g *Game) handleGameDelete(m game.Message, out chan<- game.Message) {
+	for n := range g.players {
+		out <- game.Message{
+			Type:       game.Delete,
+			PlayerName: n,
+			Info:       "game deleted",
 		}
 	}
 }
@@ -420,7 +431,8 @@ func (g *Game) handleGameSwap(m game.Message, out chan<- game.Message) {
 }
 
 func (g *Game) handleGameTilesMoved(m game.Message, out chan<- game.Message) {
-	err := g.players[m.PlayerName].MoveTiles(m.TilePositions)
+	p := g.players[m.PlayerName]
+	err := p.MoveTiles(m.TilePositions)
 	if err != nil {
 		out <- game.Message{
 			Type:       game.SocketError,

@@ -169,6 +169,7 @@ func (l *Lobby) Run(done <-chan struct{}) {
 func (l *Lobby) createGame(m game.Message) {
 	if len(l.games) == l.maxGames {
 		l.sendSocketErrorMessage(m, fmt.Sprintf("the maximum number of games have already been created (%v)", l.maxGames))
+		return
 	}
 	var id game.ID = 1
 	for existingID := range l.games {
@@ -200,7 +201,6 @@ func (l *Lobby) deleteGame(m game.Message) {
 	}
 	gmh.writeMessages <- m
 	delete(l.games, m.GameID)
-	l.sendGameMessage(m)
 }
 
 func (l *Lobby) handleGameInfos(m game.Message) {
@@ -265,6 +265,7 @@ func (l *Lobby) sendGameMessage(m game.Message) {
 	gmh, ok := l.games[m.GameID]
 	if !ok {
 		l.sendSocketErrorMessage(m, fmt.Sprintf("no game with id %v, please refresh games", m.GameID))
+		return
 	}
 	gmh.writeMessages <- m
 }
@@ -273,6 +274,7 @@ func (l *Lobby) sendSocketMessage(m game.Message) {
 	smh, ok := l.sockets[m.PlayerName]
 	if !ok {
 		l.log.Printf("no socket for player named '%v' to send message to: %v", m.PlayerName, m)
+		return
 	}
 	smh.writeMessages <- m
 }
@@ -282,6 +284,7 @@ func (l *Lobby) sendSocketErrorMessage(m game.Message, info string) {
 	smh, ok := l.sockets[m.PlayerName]
 	if !ok {
 		l.log.Printf("no socket for player named '%v' to send message to: %v", m.PlayerName, m)
+		return
 	}
 	smh.writeMessages <- game.Message{
 		Type:       game.SocketError,
