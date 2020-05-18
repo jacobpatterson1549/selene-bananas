@@ -94,7 +94,6 @@ func (b *Board) MoveTiles(tilePositions []tile.Position) error {
 		switch {
 		case tileUnused:
 			b.removeUnusedTile(tp.Tile)
-			b.UsedTiles[tp.Tile.ID] = tp
 		default:
 			oldTp := b.UsedTiles[tp.Tile.ID]
 			delete(b.UsedTileLocs[oldTp.X], oldTp.Y)
@@ -106,6 +105,7 @@ func (b *Board) MoveTiles(tilePositions []tile.Position) error {
 			b.UsedTileLocs[tp.X] = make(map[tile.Y]tile.Tile, 1)
 		}
 		b.UsedTileLocs[tp.X][tp.Y] = tp.Tile
+		b.UsedTiles[tp.Tile.ID] = tp
 	}
 	return nil
 }
