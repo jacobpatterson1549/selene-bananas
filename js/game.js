@@ -65,12 +65,12 @@ var game = {
         gameTab.checked = true;
     },
 
-    replaceGameTiles: function (unusedTiles, usedTileLocs) {
+    replaceGameTiles: function (unusedTiles, usedTileLocs, silent) {
         this.unusedTiles = {};
-        this.unusedTileIds =  [];
+        this.unusedTileIds = [];
         this.usedTilePositions = {};
         this.usedTileLocs = {};
-        this.addUnusedTiles(unusedTiles, true);
+        this.addUnusedTiles(unusedTiles, silent);
         if (usedTileLocs != null) {
             for (var i = 0; i < usedTileLocs.length; i++) {
                 var tp = usedTileLocs[i]
@@ -98,9 +98,9 @@ var game = {
         }
         if (silent == null || !silent) {
             log.info("adding unused tiles: " + tileStrings);
-            canvas.redraw();
-            this._setTabActive();
         }
+        canvas.redraw();
+        this._setTabActive();
     },
 
     setStatus: function (status) {

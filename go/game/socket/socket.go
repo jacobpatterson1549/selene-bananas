@@ -47,14 +47,10 @@ func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) So
 
 // ReadMessages receives messages from the connected socket and writes the to the messages channel
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel
-func (s *Socket) ReadMessages(done <-chan struct{}) (<-chan game.Message, <-chan error) {
-	messages := make(chan game.Message)
-	errs := make(chan error, 1)
+func (s *Socket) ReadMessages(done <-chan struct{}, messages chan<- game.Message, errs chan<- error) {
 	go func() {
 		defer func() {
 			s.conn.Close()
-			close(messages)
-			close(errs)
 		}()
 		s.conn.SetPongHandler(s.refreshReadDeadline)
 		var m game.Message
@@ -72,22 +68,18 @@ func (s *Socket) ReadMessages(done <-chan struct{}) (<-chan game.Message, <-chan
 			}
 		}
 	}()
-	return messages, errs
 }
 
 // WriteMessages sends messages added to the messages channel to the connected socket
 // messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel
-func (s *Socket) WriteMessages(done <-chan struct{}) (chan<- game.Message, <-chan error) {
+func (s *Socket) WriteMessages(done <-chan struct{}, errs chan<- error) chan<- game.Message {
 	pingTicker := time.NewTicker(pingPeriod)
 	httpPingTicker := time.NewTicker(httpPingPeriod)
 	messages := make(chan game.Message)
-	errs := make(chan error, 1)
 	go func() {
 		defer func() {
 			pingTicker.Stop()
 			httpPingTicker.Stop()
-			close(messages)
-			close(errs)
 		}()
 		var err error
 		for {
@@ -109,7 +101,7 @@ func (s *Socket) WriteMessages(done <-chan struct{}) (chan<- game.Message, <-cha
 			}
 		}
 	}()
-	return messages, errs
+	return messages
 }
 
 func (s *Socket) readMessage(m *game.Message) error {
@@ -128,13 +120,10 @@ func (s *Socket) readMessage(m *game.Message) error {
 		return fmt.Errorf("closed")
 	}
 	if s.debug {
-		s.log.Printf("reading message with type %v", m.Type)
+		s.log.Printf("socket reading message with type %v", m.Type)
 	}
 	m.PlayerName = s.playerName
-	switch m.Type {
-	case game.Join:
-		s.gameID = m.GameID
-	default:
+	if m.Type != game.Join {
 		m.GameID = s.gameID
 	}
 	return nil
@@ -142,12 +131,11 @@ func (s *Socket) readMessage(m *game.Message) error {
 
 func (s *Socket) writeMessage(m game.Message) error {
 	if s.debug {
-		s.log.Printf("writing message with type %v", m.Type)
+		s.log.Printf("socket writing message with type %v", m.Type)
 	}
 	switch m.Type {
 	case game.Join:
 		s.gameID = m.GameID
-		return nil
 	case game.Delete, game.Leave:
 		s.gameID = 0
 	}

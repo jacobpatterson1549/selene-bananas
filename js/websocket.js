@@ -61,45 +61,50 @@ var websocket = {
     onMessage: function (event) {
         var message = JSON.parse(event.data);
         switch (message.type) {
-            case 3: // gameLeave
-            case 4: // gameDelete
+            case 3: // game.Leave
+            case 4: // game.Delete
                 game.leave();
                 if (message.info) {
                     log.info(message.info);
                 }
                 break;
-            case 10: // BoardRefresh
+            case 10: // game.BoardRefresh
                 game.replaceGameTiles(message.tiles, message.tilePositions);
                 break;
-            case 11: // gameInfos
+            case 11: // game.Infos
                 lobby.setGameInfos(message.gameInfos);
                 break;
-            case 13: // playerDelete
+            case 13: // game.playerDelete
                 lobby.leave();
                 if (message.info) {
                     log.error(message.info);
                 }
                 break;
-            case 14: // socketInfo
+            case 2: // game.Join
+            case 14: // game.SocketInfo
                 if (message.gameStatus != null) {
                     game.setStatus(message.gameStatus);
                 }
-                if (message.tilesLeft != null) { // keep after game.setState()
+                if (message.tilesLeft != null) {
                     game.setTilesLeft(message.tilesLeft);
                 }
                 if (message.gamePlayers != null) {
                     game.setPlayers(message.gamePlayers);
                 }
                 if (message.tilePositions != null) {
-                    game.replaceGameTiles(message.tiles, message.tilePositions);
+                    var silent = message.type == 2;
+                    game.replaceGameTiles(message.tiles, message.tilePositions, silent);
                     break;
                 }
-                log.info(message.info);
-                if (message.tiles != null) {
-                    game.addUnusedTiles(message.tiles);
+                else if (message.tiles != null) {
+                    var silent = message.type == 2;
+                    game.addUnusedTiles(message.tiles, silent);
                     if (message.tilesLeft == null) { // the server will not send a tilesLeft = 0 because that is the empty value
                         game.setTilesLeft(0);
                     }
+                }
+                if (message.info) {
+                    log.info(message.info);
                 }
                 break;
             case 15: // socketError
