@@ -84,12 +84,14 @@ func (s *Socket) readMessages(done <-chan struct{}, messages chan<- game.Message
 func (s *Socket) writeMessages(done <-chan struct{}) chan<- game.Message {
 	pingTicker := time.NewTicker(pingPeriod)
 	httpPingTicker := time.NewTicker(httpPingPeriod)
-	idleTimeoutTicker := time.NewTicker(idlePeriod)
+	idleTicker := time.NewTicker(idlePeriod)
 	messages := make(chan game.Message)
 	go func() {
 		defer func() {
 			pingTicker.Stop()
 			httpPingTicker.Stop()
+			idleTicker.Stop()
+			close(messages)
 		}()
 		var err error
 		for {
@@ -104,7 +106,7 @@ func (s *Socket) writeMessages(done <-chan struct{}) chan<- game.Message {
 				err = s.writeMessage(game.Message{
 					Type: game.SocketHTTPPing,
 				})
-			case <-idleTimeoutTicker.C:
+			case <-idleTicker.C:
 				if !s.active {
 					s.writeMessage(game.Message{
 						Type: game.SocketWarning,
