@@ -448,7 +448,7 @@ func (g *Game) handleGameInfos(m game.Message, out chan<- game.Message) error {
 	switch g.status {
 	case game.NotStarted:
 		canJoin = true
-	case game.InProgress:
+	case game.InProgress, game.Finished:
 		_, canJoin = g.players[m.PlayerName]
 	}
 	m.GameInfoChan <- game.Info{
