@@ -226,3 +226,23 @@ func TestSingleUsedGroup(t *testing.T) {
 		}
 	}
 }
+
+func TestMoveTilesSwap(t *testing.T) {
+	b := New([]tile.Tile{})
+	t1 := tile.Tile{ID: 1}
+	t2 := tile.Tile{ID: 2}
+	b.AddTile(t1)
+	b.AddTile(t2)
+	b.MoveTiles([]tile.Position{
+		{Tile: t1, X: 1, Y: 1},
+		{Tile: t2, X: 2, Y: 2},
+	})
+	b.MoveTiles([]tile.Position{
+		{Tile: t1, X: 2, Y: 2},
+		{Tile: t2, X: 1, Y: 1},
+	})
+	want, got := 2, len(b.UsedTileLocs)
+	if want != got {
+		t.Errorf("wanted %v, got %v", want, got)
+	}
+}

@@ -96,9 +96,11 @@ func (b *Board) MoveTiles(tilePositions []tile.Position) error {
 			b.removeUnusedTile(tp.Tile)
 		default:
 			oldTp := b.UsedTiles[tp.Tile.ID]
-			delete(b.UsedTileLocs[oldTp.X], oldTp.Y)
-			if len(b.UsedTileLocs[oldTp.X]) == 0 {
-				delete(b.UsedTileLocs, oldTp.X)
+			if b.UsedTileLocs[oldTp.X][oldTp.Y].ID == tp.Tile.ID {
+				delete(b.UsedTileLocs[oldTp.X], oldTp.Y)
+				if len(b.UsedTileLocs[oldTp.X]) == 0 {
+					delete(b.UsedTileLocs, oldTp.X)
+				}
 			}
 		}
 		if _, ok := b.UsedTileLocs[tp.X]; !ok {
