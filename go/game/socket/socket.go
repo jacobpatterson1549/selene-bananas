@@ -18,6 +18,7 @@ type (
 		conn       *websocket.Conn
 		playerName game.PlayerName
 		gameID     game.ID // mutable
+		active     bool
 	}
 
 	// Config contains commonly shared Socket properties
@@ -47,6 +48,7 @@ func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) So
 
 // Run writes Socket messages to the messages channel and reads incoming messages on a separate goroutine
 func (s *Socket) Run(done <-chan struct{}, messages chan<- game.Message) chan<- game.Message {
+
 	go s.readMessages(done, messages)
 	return s.writeMessages(done)
 }
@@ -70,8 +72,9 @@ func (s *Socket) readMessages(done <-chan struct{}, messages chan<- game.Message
 					s.log.Printf("reading socket messages stopped for %v: %v", s.playerName, err)
 					return
 				}
-				messages <- m
 			}
+			messages <- m
+			s.active = true
 		}
 	}()
 }
@@ -81,6 +84,7 @@ func (s *Socket) readMessages(done <-chan struct{}, messages chan<- game.Message
 func (s *Socket) writeMessages(done <-chan struct{}) chan<- game.Message {
 	pingTicker := time.NewTicker(pingPeriod)
 	httpPingTicker := time.NewTicker(httpPingPeriod)
+	idleTimeoutTicker := time.NewTicker(idlePeriod)
 	messages := make(chan game.Message)
 	go func() {
 		defer func() {
@@ -100,6 +104,15 @@ func (s *Socket) writeMessages(done <-chan struct{}) chan<- game.Message {
 				err = s.writeMessage(game.Message{
 					Type: game.SocketHTTPPing,
 				})
+			case <-idleTimeoutTicker.C:
+				if !s.active {
+					s.writeMessage(game.Message{
+						Type: game.SocketWarning,
+						Info: "closing socket due to inactivity",
+					})
+					return
+				}
+				s.active = false
 			}
 			if err != nil {
 				s.log.Printf("writing socket messages stopped for %v: %v", s.playerName, err)
