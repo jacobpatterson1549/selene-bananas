@@ -145,8 +145,6 @@ func (l *Lobby) Run(done <-chan struct{}) {
 				switch m.Type {
 				case game.Create:
 					l.createGame(m)
-				case game.Delete:
-					l.deleteGame(m)
 				case game.Infos:
 					l.handleGameInfos(m)
 				default:
@@ -187,16 +185,6 @@ func (l *Lobby) createGame(m game.Message) {
 		Type:       game.Join,
 		PlayerName: m.PlayerName,
 	}
-}
-
-func (l *Lobby) deleteGame(m game.Message) {
-	gmh, ok := l.games[m.GameID]
-	if !ok {
-		l.sendSocketErrorMessage(m, fmt.Sprintf("no game to delete with id %v", m.GameID))
-		return
-	}
-	gmh.writeMessages <- m
-	delete(l.games, m.GameID)
 }
 
 func (l *Lobby) handleGameInfos(m game.Message) {
@@ -269,6 +257,10 @@ func (l *Lobby) sendGameMessage(m game.Message) {
 }
 
 func (l *Lobby) sendSocketMessage(m game.Message) {
+	if m.Type == game.Delete && m.GameID != 0 {
+		delete(l.games, m.GameID)
+		return
+	}
 	smh, ok := l.sockets[m.PlayerName]
 	if !ok {
 		l.log.Printf("no socket for player named '%v' to send message to: %v", m.PlayerName, m)

@@ -32,8 +32,8 @@ type (
 const (
 	pongPeriod     = 20 * time.Second
 	pingPeriod     = (pongPeriod * 80) / 100 // should be less than pongPeriod
-	idlePeriod     = 15 * time.Minute
-	httpPingPeriod = 10 * time.Minute // should be less than 30 minutes to keep heroku alive
+	idlePeriod     = 15 * time.Minute        // will be 2x from creation
+	httpPingPeriod = 10 * time.Minute        // should be less than 30 minutes to keep heroku alive
 )
 
 // NewSocket creates a socket
@@ -48,7 +48,6 @@ func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) So
 
 // Run writes Socket messages to the messages channel and reads incoming messages on a separate goroutine
 func (s *Socket) Run(done <-chan struct{}, messages chan<- game.Message) chan<- game.Message {
-
 	go s.readMessages(done, messages)
 	return s.writeMessages(done)
 }

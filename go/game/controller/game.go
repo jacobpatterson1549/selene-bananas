@@ -51,6 +51,7 @@ type (
 const (
 	// TODO: make these  environment arguments
 	defaultTileLetters = "AAAAAAAAAAAAABBBCCCDDDDDDEEEEEEEEEEEEEEEEEEFFFGGGGHHHIIIIIIIIIIIIJJKKLLLLLMMMNNNNNNNNOOOOOOOOOOOPPPQQRRRRRRRRRSSSSSSTTTTTTTTTUUUUUUVVVWWWXXYYYZZ"
+	idlePeriod         = 60 * time.Minute // will be 2x from creation
 )
 
 // NewGame creates a new game and runs it
@@ -96,6 +97,8 @@ func (g *Game) initializeUnusedTiles() error {
 
 // Run runs the game
 func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game.Message) {
+	idleTicker := time.NewTicker(idlePeriod)
+	active := false
 	messageHandlers := map[game.MessageType]func(game.Message, chan<- game.Message) error{
 		game.Join:         g.handleGameJoin,
 		game.Delete:       g.handleGameDelete,
@@ -124,6 +127,9 @@ func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game
 				} else if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join && m.Type != game.Infos {
 					err = fmt.Errorf("game does not have player named '%v'", m.PlayerName)
 				} else {
+					if m.Type != game.BoardRefresh {
+						active = true
+					}
 					err = mh(m, out)
 				}
 				if err != nil {
@@ -141,6 +147,13 @@ func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game
 						Info:       err.Error(),
 					}
 				}
+			case <-idleTicker.C:
+				if !active {
+					var m game.Message
+					g.log.Printf("deleted game %v due to inactivity", g.id)
+					g.handleGameDelete(m, out)
+				}
+				active = false
 			}
 		}
 	}()
@@ -191,6 +204,10 @@ func (g *Game) handleGameJoin(m game.Message, out chan<- game.Message) error {
 }
 
 func (g *Game) handleGameDelete(m game.Message, out chan<- game.Message) error {
+	out <- game.Message{
+		Type:   game.Delete,
+		GameID: g.id,
+	}
 	for n := range g.players {
 		out <- game.Message{
 			Type:       game.Delete,
