@@ -103,7 +103,7 @@ var game = {
         this._setTabActive();
     },
 
-    setStatus: function (status) {
+    setStatus: function (status, tilesLeft) {
         var stateElement = document.querySelector("input#game-status");
         switch (status) {
             case 3: // gameNotStarted
@@ -127,13 +127,16 @@ var game = {
                 this._setButtonDisabled("game-start", true);
                 this._setButtonDisabled("game-finish", true);
                 break;
-            default:
-                log.error("invalid gameStatus: ", state);
-                break;
+        }
+        if (tilesLeft != null) {
+            this._setTilesLeft(tilesLeft);
+        }
+        if (status == 2) {
+            this._setButtonDisabled("game-finish", true);
         }
     },
 
-    setTilesLeft: function (tilesLeft) {
+    _setTilesLeft: function (tilesLeft) {
         var tilesLeftElement = document.querySelector("input#game-tiles-left");
         tilesLeftElement.value = tilesLeft;
         if (tilesLeft == 0) {

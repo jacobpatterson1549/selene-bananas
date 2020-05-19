@@ -82,11 +82,8 @@ var websocket = {
                 break;
             case 2: // game.Join
             case 14: // game.SocketInfo
-                if (message.gameStatus != null) {
-                    game.setStatus(message.gameStatus);
-                }
-                if (message.tilesLeft != null || message.type == 2) {
-                    game.setTilesLeft(message.tilesLeft | 0 );
+                if (message.gameStatus != null || message.tilesLeft != null || message.tiles) {
+                    game.setStatus(message.gameStatus, message.tilesLeft || 0);
                 }
                 if (message.gamePlayers != null) {
                     game.setPlayers(message.gamePlayers);
@@ -99,9 +96,6 @@ var websocket = {
                 else if (message.tiles != null) {
                     var silent = message.type == 2;
                     game.addUnusedTiles(message.tiles, silent);
-                    if (message.tilesLeft == null) { // the server will not send a tilesLeft = 0 because that is the empty value
-                        game.setTilesLeft(0);
-                    }
                 }
                 if (message.info) {
                     log.info(message.info);

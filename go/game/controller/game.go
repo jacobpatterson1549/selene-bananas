@@ -242,6 +242,7 @@ func (g *Game) start(startingPlayerName game.PlayerName, out chan<- game.Message
 			PlayerName: n,
 			Info:       info,
 			GameStatus: g.status,
+			TilesLeft:  len(g.unusedTiles),
 		}
 	}
 	return nil
@@ -249,7 +250,7 @@ func (g *Game) start(startingPlayerName game.PlayerName, out chan<- game.Message
 
 func (g *Game) finish(finishingPlayerName game.PlayerName, out chan<- game.Message) error {
 	p := g.players[finishingPlayerName]
-	if len(p.UnusedTiles) != 0 {
+	if len(g.unusedTiles) != 0 {
 		return gameWarning("snag first")
 	}
 	if len(p.UnusedTiles) != 0 {
@@ -289,6 +290,7 @@ func (g *Game) finish(finishingPlayerName game.PlayerName, out chan<- game.Messa
 			PlayerName: n,
 			Info:       info,
 			GameStatus: g.status,
+			TilesLeft:  len(g.unusedTiles),
 		}
 	}
 	return nil
