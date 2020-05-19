@@ -58,6 +58,10 @@ func (s *Socket) readMessages(done <-chan struct{}, messages chan<- game.Message
 	go func() {
 		defer func() {
 			s.conn.Close()
+			messages <- game.Message{
+				Type:       game.PlayerDelete,
+				PlayerName: s.playerName,
+			}
 		}()
 		s.conn.SetPongHandler(s.refreshReadDeadline)
 		var m game.Message

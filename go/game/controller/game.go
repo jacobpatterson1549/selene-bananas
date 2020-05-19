@@ -108,7 +108,6 @@ func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game
 		game.TilesMoved:   g.handleGameTilesMoved,
 		game.BoardRefresh: g.handleBoardRefresh,
 		game.Infos:        g.handleGameInfos,
-		game.PlayerDelete: g.handlePlayerDelete,
 		game.ChatRecv:     g.handleGameChatRecv,
 	}
 	go func() {
@@ -459,11 +458,6 @@ func (g *Game) handleGameInfos(m game.Message, out chan<- game.Message) error {
 		CanJoin:   canJoin,
 		CreatedAt: g.createdAt,
 	}
-	return nil
-}
-
-func (g *Game) handlePlayerDelete(m game.Message, out chan<- game.Message) error {
-	delete(g.players, m.PlayerName)
 	return nil
 }
 

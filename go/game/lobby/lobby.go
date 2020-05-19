@@ -147,6 +147,8 @@ func (l *Lobby) Run(done <-chan struct{}) {
 					l.createGame(m)
 				case game.Infos:
 					l.handleGameInfos(m)
+				case game.PlayerDelete:
+					delete(l.sockets, m.PlayerName)
 				default:
 					l.sendGameMessage(m)
 				}
@@ -242,6 +244,7 @@ func (l *Lobby) removeSocket(pn game.PlayerName) {
 		l.log.Printf("no socket to remove for %v", pn)
 		return
 	}
+	delete(l.sockets, pn)
 	mh.done <- struct{}{} // readMessages
 	mh.done <- struct{}{} // writeMessages
 }
