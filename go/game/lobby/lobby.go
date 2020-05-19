@@ -30,7 +30,6 @@ type (
 		addPlayers     chan playerSocket
 		socketMessages chan game.Message
 		gameMessages   chan game.Message
-		errs           chan error
 	}
 
 	// Config contiains the properties to create a lobby
@@ -71,7 +70,6 @@ func (cfg Config) NewLobby(ws game.WordsSupplier) (Lobby, error) {
 		addPlayers:     make(chan playerSocket),
 		socketMessages: make(chan game.Message),
 		gameMessages:   make(chan game.Message),
-		errs:           make(chan error),
 	}
 	l.socketCfg = socket.Config{
 		Debug: cfg.Debug,
@@ -124,7 +122,6 @@ func (l *Lobby) RemoveUser(playerName game.PlayerName) {
 
 // Run runs the lobby
 func (l *Lobby) Run(done <-chan struct{}) {
-	errs := make(<-chan error)
 	go func() {
 		defer func() {
 			for _, gmh := range l.games {
@@ -160,8 +157,6 @@ func (l *Lobby) Run(done <-chan struct{}) {
 					l.log.Printf("lobby reading game message with type %v", m.Type)
 				}
 				l.sendSocketMessage(m)
-			case err := <-errs:
-				l.log.Printf(err.Error())
 			}
 		}
 	}()
@@ -240,8 +235,7 @@ func (l *Lobby) handleGameInfos(m game.Message) {
 // addSocket adds the playerSocket to the socket messageHandlers and returns the merged inbound message and error channels
 func (l *Lobby) addSocket(ps playerSocket) {
 	done := make(chan struct{}, 2)
-	ps.Socket.ReadMessages(done, l.socketMessages, l.errs)
-	writeMessages := ps.Socket.WriteMessages(done, l.errs)
+	writeMessages := ps.Socket.Run(done, l.socketMessages)
 	mh := messageHandler{
 		done:          done,
 		writeMessages: writeMessages,

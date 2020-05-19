@@ -45,9 +45,15 @@ func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) So
 	}
 }
 
-// ReadMessages receives messages from the connected socket and writes the to the messages channel
+// Run writes Socket messages to the messages channel and reads incoming messages on a separate goroutine
+func (s *Socket) Run(done <-chan struct{}, messages chan<- game.Message) chan<- game.Message {
+	go s.readMessages(done, messages)
+	return s.writeMessages(done)
+}
+
+// readMessages receives messages from the connected socket and writes the to the messages channel
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel
-func (s *Socket) ReadMessages(done <-chan struct{}, messages chan<- game.Message, errs chan<- error) {
+func (s *Socket) readMessages(done <-chan struct{}, messages chan<- game.Message) {
 	go func() {
 		defer func() {
 			s.conn.Close()
@@ -61,7 +67,8 @@ func (s *Socket) ReadMessages(done <-chan struct{}, messages chan<- game.Message
 				return
 			default:
 				if err != nil {
-					errs <- err
+					s.log.Printf("reading socket messages stopped for %v: %v", s.playerName, err)
+					return
 				}
 				messages <- m
 			}
@@ -69,9 +76,9 @@ func (s *Socket) ReadMessages(done <-chan struct{}, messages chan<- game.Message
 	}()
 }
 
-// WriteMessages sends messages added to the messages channel to the connected socket
+// writeMessages sends messages added to the messages channel to the connected socket
 // messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel
-func (s *Socket) WriteMessages(done <-chan struct{}, errs chan<- error) chan<- game.Message {
+func (s *Socket) writeMessages(done <-chan struct{}) chan<- game.Message {
 	pingTicker := time.NewTicker(pingPeriod)
 	httpPingTicker := time.NewTicker(httpPingPeriod)
 	messages := make(chan game.Message)
@@ -95,7 +102,8 @@ func (s *Socket) WriteMessages(done <-chan struct{}, errs chan<- error) chan<- g
 				})
 			}
 			if err != nil {
-				errs <- err
+				s.log.Printf("writing socket messages stopped for %v: %v", s.playerName, err)
+				return
 			}
 		}
 	}()
@@ -113,9 +121,9 @@ func (s *Socket) readMessage(m *game.Message) error {
 			return nil
 		}
 		if _, ok := err.(*websocket.CloseError); !ok || websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
-			return fmt.Errorf("unexpected websocket closure: %v", err)
+			return fmt.Errorf("unexpected socket closure: %v", err)
 		}
-		return fmt.Errorf("closed")
+		return fmt.Errorf("socket closed")
 	}
 	if s.debug {
 		s.log.Printf("socket reading message with type %v", m.Type)
@@ -139,7 +147,7 @@ func (s *Socket) writeMessage(m game.Message) error {
 	}
 	err := s.conn.WriteJSON(m)
 	if err != nil {
-		return fmt.Errorf("writing websocket message: %v", err)
+		return fmt.Errorf("writing socket message: %v", err)
 	}
 	if m.Type == game.PlayerDelete {
 		return fmt.Errorf("player deleted")
@@ -167,7 +175,7 @@ func (s *Socket) refreshWriteDeadline() error {
 
 func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
 	if err := refreshDeadlineFunc(time.Now().Add(period)); err != nil {
-		err := fmt.Errorf("error refreshing ping/pong deadline for %v: %w", s.playerName, err)
+		err := fmt.Errorf("error refreshing ping/pong deadline: %w", err)
 		s.log.Print(err)
 		return err
 	}
