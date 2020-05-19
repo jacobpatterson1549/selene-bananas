@@ -86,6 +86,10 @@ form label {
     color:green;
 }
 
+#log-scroll>.warning {
+    color:orange;
+}
+
 #game-canvas {
     border: 1px dotted black; 
 }

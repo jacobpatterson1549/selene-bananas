@@ -43,4 +43,5 @@ const (
 	ChatRecv       MessageType = 18
 	ChatSend       MessageType = 19 // TODO: combine with ChatRecv
 	GetInfos       MessageType = 20
+	SocketWarning  MessageType = 21
 )

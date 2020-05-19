@@ -84,6 +84,7 @@ var websocket = {
             case 14: // game.SocketInfo
                 if (message.gameStatus != null) {
                     game.setStatus(message.gameStatus);
+                    game.setTilesLeft(message.tilesLeft | 0);
                 }
                 if (message.tilesLeft != null) {
                     game.setTilesLeft(message.tilesLeft);
@@ -109,6 +110,9 @@ var websocket = {
                 break;
             case 15: // socketError
                 log.error(message.info);
+                break;
+            case 21: // socketWarning
+                log.warning(message.info);
                 break;
             case 17: // socketHTTPPing
                 var pingFormElement = document.getElementById("ping-form");

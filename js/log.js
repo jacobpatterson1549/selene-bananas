@@ -3,6 +3,10 @@ var log = {
         this._log("info", text);
     },
 
+    warning: function (text) {
+        this._log("warning", text);
+    },
+
     error: function (text) {
         this._log("error", text);
     },
