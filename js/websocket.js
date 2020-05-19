@@ -84,10 +84,9 @@ var websocket = {
             case 14: // game.SocketInfo
                 if (message.gameStatus != null) {
                     game.setStatus(message.gameStatus);
-                    game.setTilesLeft(message.tilesLeft | 0);
                 }
-                if (message.tilesLeft != null) {
-                    game.setTilesLeft(message.tilesLeft);
+                if (message.tilesLeft != null || message.type == 2) {
+                    game.setTilesLeft(message.tilesLeft | 0 );
                 }
                 if (message.gamePlayers != null) {
                     game.setPlayers(message.gamePlayers);
