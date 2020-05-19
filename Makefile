@@ -1,13 +1,15 @@
 .PHONY: all test install serve clean
 
+GO=/usr/local/go/bin/go
+
 all: install
 
 test:
-	go generate github.com/jacobpatterson1549/selene-bananas/go
-	go test ./... -v
+	$(GO) generate github.com/jacobpatterson1549/selene-bananas/go
+	$(GO) test ./... -v
 
 install: test
-	go build -o main go/main.go
+	$(GO) build -o main go/main.go
 
 serve: install
 	export $(shell grep -v '^#' .env | xargs) && ./main
