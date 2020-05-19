@@ -86,7 +86,6 @@ func TestRead(t *testing.T) {
 }
 
 func TestCreateRead_time(t *testing.T) {
-	// TODO: make these long test structures vars above the function declaration.  this will help the complexity
 	readTests := []struct {
 		creationTime int64 // not before
 		readTime     int64 // not equal or after
