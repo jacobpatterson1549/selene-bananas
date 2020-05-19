@@ -126,7 +126,8 @@ func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game
 					}
 					continue
 				}
-				if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join {
+				if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join && m.Type != game.Infos {
+					// TODO: this might cause a deadlock
 					out <- game.Message{
 						Type:       game.SocketError,
 						PlayerName: m.PlayerName,

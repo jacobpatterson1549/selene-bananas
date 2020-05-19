@@ -226,6 +226,7 @@ func (l *Lobby) handleGameInfos(m game.Message) {
 			i++
 		}
 	}
+	close(infosC)
 	sort.Slice(infos, func(i, j int) bool {
 		return infos[i].CreatedAt < infos[j].CreatedAt
 	})
