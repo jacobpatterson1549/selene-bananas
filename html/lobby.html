@@ -1,4 +1,5 @@
 <form method="get" action="/ping" onsubmit="user.request(event)" id="ping-form" hidden>
+    {{ template "username.html" . }}
     <input type="submit">
 </form>
 <form method="get" action="/user_join_lobby" onsubmit="lobby.getGameInfos(event)">

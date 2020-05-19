@@ -62,7 +62,6 @@ func (s *Socket) ReadMessages(done <-chan struct{}, messages chan<- game.Message
 			default:
 				if err != nil {
 					errs <- err
-					return
 				}
 				messages <- m
 			}
@@ -97,7 +96,6 @@ func (s *Socket) WriteMessages(done <-chan struct{}, errs chan<- error) chan<- g
 			}
 			if err != nil {
 				errs <- err
-				return
 			}
 		}
 	}()
