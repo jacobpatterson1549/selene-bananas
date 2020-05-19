@@ -126,7 +126,6 @@ var user = {
                     content.setErrorMessage('');
                     return successPromise(response)
                         .then(() => {
-                            form.reset();
                             return Promise.resolve();
                         });
                 }

@@ -71,6 +71,7 @@ func (cfg Config) NewLobby(ws game.WordsSupplier) (Lobby, error) {
 		addPlayers:     make(chan playerSocket),
 		socketMessages: make(chan game.Message),
 		gameMessages:   make(chan game.Message),
+		errs:           make(chan error),
 	}
 	l.socketCfg = socket.Config{
 		Debug: cfg.Debug,
