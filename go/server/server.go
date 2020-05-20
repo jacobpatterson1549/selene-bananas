@@ -46,6 +46,7 @@ type (
 
 	templateData struct {
 		ApplicationName string
+		Description     string
 	}
 )
 
@@ -53,6 +54,7 @@ type (
 func (cfg Config) NewServer() (Server, error) {
 	data := templateData{
 		ApplicationName: cfg.AppName,
+		Description:     "a tile-based word-forming game",
 	}
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	serveMux := new(http.ServeMux)
