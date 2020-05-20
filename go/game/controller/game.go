@@ -110,7 +110,7 @@ func (cfg Config) validate(id game.ID) error {
 		return fmt.Errorf("positive number of player starting tile count required")
 	case cfg.IdlePeriod <= 0:
 		return fmt.Errorf("positive idle period required")
-	case cfg.ShufflePlayersFunc == nil:
+	case cfg.ShuffleUnusedTilesFunc == nil:
 		return fmt.Errorf("function to shuffle tiles required")
 	case cfg.ShufflePlayersFunc == nil:
 		return fmt.Errorf("function to shuffle player draw order required")
