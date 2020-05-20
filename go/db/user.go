@@ -1,7 +1,7 @@
 package db
 
 import (
-	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -25,10 +25,10 @@ func NewUser(u Username, p string) (User, error) {
 	username := u
 	password := password(p)
 	if !username.isValid() {
-		return user, errors.New(username.helpText())
+		return user, fmt.Errorf(username.helpText())
 	}
 	if !password.isValid() {
-		return user, errors.New(password.helpText())
+		return user, fmt.Errorf(password.helpText())
 	}
 	user = User{
 		Username: username,

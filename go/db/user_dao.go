@@ -1,7 +1,6 @@
 package db
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 )
@@ -92,7 +91,7 @@ func (ud userDao) Read(u User) (User, error) {
 func (ud userDao) UpdatePassword(u User, newPassword string) error {
 	p := password(newPassword)
 	if !p.isValid() { // TODO: this is odd place to do validation.  Maybe other places are incorrect
-		return errors.New(p.helpText())
+		return fmt.Errorf(p.helpText())
 	}
 	hashedPassword, err := ud.ph.hashPassword(p)
 	if err != nil {
