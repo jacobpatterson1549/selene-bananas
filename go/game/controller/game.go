@@ -127,7 +127,7 @@ func (g *Game) initializeUnusedTiles() error {
 		if err != nil {
 			return fmt.Errorf("creating tile: %w", err)
 		}
-		g.unusedTiles[i] = t
+		g.unusedTiles[i] = *t
 	}
 	if g.shuffleUnusedTilesFunc != nil {
 		g.shuffleUnusedTilesFunc(g.unusedTiles)

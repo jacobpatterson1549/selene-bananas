@@ -23,12 +23,12 @@ type (
 )
 
 // New creates a new Tile, throwing an error if the letter is not uppercase in the A-Z range
-func New(id ID, r rune) (Tile, error) {
+func New(id ID, r rune) (*Tile, error) {
 	ch, err := newLetter(r)
 	if err != nil {
-		return Tile{}, err
+		return nil, err
 	}
-	return Tile{
+	return &Tile{
 		ID: id,
 		Ch: ch,
 	}, nil
