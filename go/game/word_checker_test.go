@@ -100,3 +100,13 @@ func TestCheck(t *testing.T) {
 		}
 	}
 }
+
+func TestNewWordCheckerNilReader(t *testing.T) {
+	got, err := NewWordChecker(nil)
+	switch {
+	case err == nil:
+		t.Error("expected error, but got none")
+	case got != nil:
+		t.Errorf("expected nil, got %v", got)
+	}
+}
