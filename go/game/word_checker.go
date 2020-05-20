@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"strings"
+	"unicode"
 )
 
 type (
@@ -30,7 +31,7 @@ func NewWordChecker(r io.Reader) WordChecker {
 
 // Check determines whether or not the word is valid
 func (wc WordChecker) Check(word string) bool {
-	lowerWord := strings.ToLower(word) // TODO: use package unicode for all word stuff
+	lowerWord := strings.ToLower(word)
 	_, ok := wc.words[lowerWord]
 	return ok
 }
@@ -43,13 +44,13 @@ func scanLowerWords(data []byte, atEOF bool) (advance int, token []byte, err err
 	for end < len(data) {
 		r := rune(data[end])
 		switch {
-		case isSpace(r):
+		case unicode.IsSpace(r):
 			if start < end {
 				return end + 1, data[start:end], nil
 			}
 			end++
 			start = end
-		case isLower(r):
+		case unicode.IsLower(r):
 			end++
 		default: // uppercase/symbol
 			end++
@@ -57,7 +58,7 @@ func scanLowerWords(data []byte, atEOF bool) (advance int, token []byte, err err
 			for end < len(data) {
 				r := rune(data[end])
 				end++
-				if isSpace(r) {
+				if unicode.IsSpace(r) {
 					start = end
 					break
 				}
@@ -65,7 +66,7 @@ func scanLowerWords(data []byte, atEOF bool) (advance int, token []byte, err err
 		}
 	}
 	if atEOF && len(data) > start {
-		if end > 0 && !isLower(rune(data[end-1])) {
+		if end > 0 && !unicode.IsLower(rune(data[end-1])) {
 			return len(data), nil, nil
 		}
 		// If we're at EOF, we have a final, non-empty, non-terminated word. Return it.
@@ -73,16 +74,4 @@ func scanLowerWords(data []byte, atEOF bool) (advance int, token []byte, err err
 	}
 	// Request more data.
 	return start, nil, nil
-}
-
-func isLower(r rune) bool {
-	return 'a' <= r && r <= 'z'
-}
-
-func isSpace(r rune) bool {
-	switch r {
-	case '\t', '\n', '\v', '\f', '\r', ' ':
-		return true
-	}
-	return false
 }
