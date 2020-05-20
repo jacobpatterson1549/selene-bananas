@@ -35,11 +35,13 @@ func TestWords(t *testing.T) {
 	}
 	for i, test := range wordsTests {
 		r := strings.NewReader(test.wordsToRead)
-		wc := NewWordChecker(r)
-		got := wc.words
-		if test.want == nil && len(got) != 0 ||
-			(test.want != nil && !reflect.DeepEqual(test.want, got)) {
-			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
+		wc, err := NewWordChecker(r)
+		switch {
+		case err != nil:
+			t.Errorf("unexpected error: %v", err)
+		case test.want == nil && len(wc.words) != 0 ||
+			(test.want != nil && !reflect.DeepEqual(test.want, wc.words)):
+			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, wc.words)
 		}
 	}
 }
@@ -50,7 +52,10 @@ func TestWordsReal(t *testing.T) {
 	if err != nil {
 		t.Skipf("could not open wordsFile %v", err)
 	}
-	wc := NewWordChecker(f)
+	wc, err := NewWordChecker(f)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	want := 40067
 	got := len(wc.words)
 	if want != got {
@@ -84,7 +89,10 @@ func TestCheck(t *testing.T) {
 		},
 	}
 	r := strings.NewReader("apple bat car")
-	wc := NewWordChecker(r)
+	wc, err := NewWordChecker(r)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	for i, test := range checkTests {
 		got := wc.Check(test.word)
 		if test.want != got {

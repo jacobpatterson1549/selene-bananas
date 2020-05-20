@@ -8,7 +8,9 @@ import (
 )
 
 func TestInitializeUnusedTiles_correctAmount(t *testing.T) {
-	g := Game{}
+	g := Game{
+		tileLetters: defaultTileLetters,
+	}
 	g.initializeUnusedTiles()
 	want := 144
 	got := len(g.unusedTiles)
@@ -18,7 +20,9 @@ func TestInitializeUnusedTiles_correctAmount(t *testing.T) {
 }
 
 func TestInitializeUnusedTiles_allLetters(t *testing.T) {
-	g := Game{}
+	g := Game{
+		tileLetters: defaultTileLetters,
+	}
 	g.initializeUnusedTiles()
 	var e struct{}
 	m := make(map[rune]struct{}, 26)
@@ -46,6 +50,7 @@ func TestInitializeUnusedTiles_shuffled(t *testing.T) {
 	}
 	for _, test := range createTilesShuffledTests {
 		g := Game{
+			tileLetters: "AZ",
 			shuffleUnusedTilesFunc: func(tiles []tile.Tile) {
 				sort.Slice(tiles, func(i, j int) bool {
 					lessThan := tiles[i].Ch < tiles[j].Ch
