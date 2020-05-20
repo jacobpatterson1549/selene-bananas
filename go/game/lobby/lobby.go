@@ -57,7 +57,10 @@ type (
 )
 
 // NewLobby creates a new game lobby
-func (cfg Config) NewLobby() Lobby {
+func (cfg Config) NewLobby() (*Lobby, error) {
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
 	u := new(websocket.Upgrader)
 	u.Error = func(w http.ResponseWriter, r *http.Request, status int, reason error) {
 		log.Println(reason)
@@ -76,7 +79,19 @@ func (cfg Config) NewLobby() Lobby {
 		socketMessages: make(chan game.Message),
 		gameMessages:   make(chan game.Message),
 	}
-	return l
+	return &l, nil
+}
+
+func (cfg Config) validate() error {
+	switch {
+	case cfg.Log == nil:
+		return fmt.Errorf("log required")
+	case cfg.MaxGames <= 0:
+		return fmt.Errorf("must allow at least one game")
+	case cfg.MaxSockets <= 0:
+		return fmt.Errorf("must allow at least one socket")
+	}
+	return nil
 }
 
 // AddUser adds a user to the lobby, it opens a new websocket (player) for the username
@@ -86,10 +101,13 @@ func (l *Lobby) AddUser(playerName game.PlayerName, w http.ResponseWriter, r *ht
 	if err != nil {
 		return fmt.Errorf("upgrading to websocket connection: %w", err)
 	}
-	s := l.socketCfg.NewSocket(conn, playerName)
+	s, err := l.socketCfg.NewSocket(conn, playerName)
+	if err != nil {
+		return fmt.Errorf("creating socket: %w", err)
+	}
 	ps := playerSocket{
 		PlayerName: playerName,
-		Socket:     s,
+		Socket:     *s,
 	}
 	l.addPlayers <- ps
 	return nil
@@ -156,7 +174,11 @@ func (l *Lobby) createGame(m game.Message) {
 		}
 		id++
 	}
-	g := l.gameCfg.NewGame(id)
+	g, err := l.gameCfg.NewGame(id)
+	if err != nil {
+		l.sendSocketErrorMessage(m, err.Error())
+		return
+	}
 	done := make(chan struct{}, 2)
 	writeMessages := make(chan game.Message)
 	g.Run(done, writeMessages, l.gameMessages)

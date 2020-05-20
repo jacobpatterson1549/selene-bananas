@@ -20,12 +20,12 @@ type (
 		id                     game.ID
 		createdAt              string
 		status                 game.Status
-		players                map[game.PlayerName]*player
 		userDao                db.UserDao
-		unusedTiles            []tile.Tile
+		players                map[game.PlayerName]*player
 		maxPlayers             int
 		numNewTiles            int
 		tileLetters            string
+		unusedTiles            []tile.Tile
 		words                  game.WordChecker
 		idlePeriod             time.Duration
 		shuffleUnusedTilesFunc func(tiles []tile.Tile)
@@ -66,32 +66,60 @@ const (
 )
 
 // NewGame creates a new game and runs it
-func (cfg Config) NewGame(id game.ID) Game {
+func (cfg Config) NewGame(id game.ID) (*Game, error) {
+	if err := cfg.validate(id); err != nil {
+		return nil, err
+	}
+	tileLetters := cfg.TileLetters
+	if len(tileLetters) == 0 {
+		tileLetters = defaultTileLetters
+	}
 	g := Game{
 		debug:                  cfg.Debug,
 		log:                    cfg.Log,
 		id:                     id,
 		createdAt:              time.Now().Format(time.UnixDate),
 		status:                 game.NotStarted,
-		tileLetters:            cfg.TileLetters,
-		words:                  cfg.Words,
-		idlePeriod:             cfg.IdlePeriod,
-		players:                make(map[game.PlayerName]*player),
 		userDao:                cfg.UserDao,
 		maxPlayers:             cfg.MaxPlayers,
 		numNewTiles:            cfg.NumNewTiles,
+		tileLetters:            tileLetters,
+		words:                  cfg.Words,
+		idlePeriod:             cfg.IdlePeriod,
+		players:                make(map[game.PlayerName]*player),
 		shuffleUnusedTilesFunc: cfg.ShuffleUnusedTilesFunc,
 		shufflePlayersFunc:     cfg.ShufflePlayersFunc,
 	}
-	g.initializeUnusedTiles()
-	return g
+	if err := g.initializeUnusedTiles(); err != nil {
+		return nil, err
+	}
+	return &g, nil
+}
+
+func (cfg Config) validate(id game.ID) error {
+	switch {
+	case cfg.Log == nil:
+		return fmt.Errorf("log required")
+	case id <= 0:
+		return fmt.Errorf("positive id required")
+	case cfg.UserDao == nil:
+		return fmt.Errorf("user dao required")
+	case cfg.MaxPlayers <= 0:
+		return fmt.Errorf("positive max player count required")
+	case cfg.NumNewTiles <= 0:
+		return fmt.Errorf("positive number of player starting tile count required")
+	case cfg.IdlePeriod <= 0:
+		return fmt.Errorf("positive idle period required")
+	case cfg.ShufflePlayersFunc == nil:
+		return fmt.Errorf("function to shuffle tiles required")
+	case cfg.ShufflePlayersFunc == nil:
+		return fmt.Errorf("function to shuffle player draw order required")
+	}
+	return nil
 }
 
 // initialize unusedTiles from tileLetters or defaultTileLetters and shuffles them
 func (g *Game) initializeUnusedTiles() error {
-	if len(g.tileLetters) == 0 {
-		g.tileLetters = defaultTileLetters
-	}
 	g.unusedTiles = make([]tile.Tile, len(g.tileLetters))
 	for i, ch := range g.tileLetters {
 		id := tile.ID(i + 1)

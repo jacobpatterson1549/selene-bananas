@@ -12,6 +12,18 @@ import (
 )
 
 type (
+	// Server runs the site
+	Server struct {
+		data              interface{}
+		addr              string
+		log               *log.Logger
+		handler           http.Handler
+		staticFileHandler http.Handler
+		tokenizer         Tokenizer
+		userDao           db.UserDao
+		lobby             *lobby.Lobby
+	}
+
 	// Config contains fields which describe the server
 	Config struct {
 		// AppName is the display name of the application
@@ -23,45 +35,32 @@ type (
 		// Tokenizer is used to generate and parse session tokens
 		Tokenizer Tokenizer
 		// UserDao is used to track different users
-		UserDao  db.UserDao
+		UserDao db.UserDao
 		// LobbyCfg is used to create a game lobby
 		LobbyCfg lobby.Config
-	}
-
-	// Server can be run to serve the site
-	Server interface {
-		// Run starts the server
-		Run() error
-	}
-
-	server struct {
-		data              templateData
-		addr              string
-		log               *log.Logger
-		handler           http.Handler
-		staticFileHandler http.Handler
-		tokenizer         Tokenizer
-		userDao           db.UserDao
-		lobby             lobby.Lobby
-	}
-
-	templateData struct {
-		ApplicationName string
-		Description     string
 	}
 )
 
 // NewServer creates a Server from the Config
-func (cfg Config) NewServer() (Server, error) {
-	data := templateData{
+func (cfg Config) NewServer() (*Server, error) {
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
+	data := struct {
+		ApplicationName string
+		Description     string
+	}{
 		ApplicationName: cfg.AppName,
 		Description:     "a tile-based word-forming game",
 	}
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	serveMux := new(http.ServeMux)
 	staticFileHandler := http.FileServer(http.Dir("./static"))
-	lobby := cfg.LobbyCfg.NewLobby()
-	s := server{
+	lobby, err := cfg.LobbyCfg.NewLobby()
+	if err != nil {
+		return nil, err
+	}
+	s := Server{
 		data:              data,
 		addr:              addr,
 		log:               cfg.Log,
@@ -73,10 +72,27 @@ func (cfg Config) NewServer() (Server, error) {
 	}
 	serveMux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
 	serveMux.HandleFunc("/", s.httpMethodHandler)
-	return s, nil
+	return &s, nil
 }
 
-func (s server) Run() error {
+func (cfg Config) validate() error {
+	switch {
+	case len(cfg.AppName) == 0:
+		return fmt.Errorf("application name required")
+	case len(cfg.Port) == 0:
+		return fmt.Errorf("port number required")
+	case cfg.Log == nil:
+		return fmt.Errorf("log required")
+	case cfg.Tokenizer == nil:
+		return fmt.Errorf("tokenizer required")
+	case cfg.UserDao == nil:
+		return fmt.Errorf("user dao required")
+	}
+	return nil
+}
+
+// Run starts the server
+func (s Server) Run() error {
 	httpServer := &http.Server{
 		Addr:    s.addr,
 		Handler: s.handler,
@@ -92,7 +108,7 @@ func (s server) Run() error {
 	return nil
 }
 
-func (s server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
+func (s Server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	switch r.Method {
 	case "GET":
@@ -109,7 +125,7 @@ func (s server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
+func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	switch r.URL.Path {
 	case "/":
 		err := s.handleTemplate(w, r)
@@ -141,7 +157,7 @@ func (s server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (s server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
+func (s Server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 	var tokenUsername db.Username
 	var err error
 	switch r.URL.Path {
@@ -169,7 +185,7 @@ func (s server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 	return err
 }
 
-func (s server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
+func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 	t := template.New("main.html")
 	templateFileGlobs := []string{
 		"html/*.html",
@@ -188,7 +204,7 @@ func httpError(w http.ResponseWriter, statusCode int) {
 	http.Error(w, http.StatusText(statusCode), statusCode)
 }
 
-func (s server) addAuthorization(w http.ResponseWriter, u db.User) error {
+func (s Server) addAuthorization(w http.ResponseWriter, u db.User) error {
 	token, err := s.tokenizer.Create(u)
 	if err != nil {
 		return err
@@ -200,7 +216,7 @@ func (s server) addAuthorization(w http.ResponseWriter, u db.User) error {
 	return nil
 }
 
-func (s server) checkAuthorization(r *http.Request) (db.Username, error) {
+func (s Server) checkAuthorization(r *http.Request) (db.Username, error) {
 	authorization := r.Header.Get("Authorization")
 	if len(authorization) < 7 || authorization[:7] != "Bearer " {
 		return "", fmt.Errorf("invalid authorization header: %v", authorization)

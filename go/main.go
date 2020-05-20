@@ -10,13 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jacobpatterson1549/selene-bananas/go/db"
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/controller"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/socket"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
-
-	"github.com/jacobpatterson1549/selene-bananas/go/db"
 	"github.com/jacobpatterson1549/selene-bananas/go/server"
 	_ "github.com/lib/pq"
 )
@@ -148,7 +147,10 @@ func gameConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao) (*
 	if err != nil {
 		return nil, err
 	}
-	wc := game.NewWordChecker(wordsFile)
+	wc, err := game.NewWordChecker(wordsFile)
+	if err != nil {
+		return nil, err
+	}
 	shuffleUnusedTilesFunc := func(tiles []tile.Tile) {
 		rand.Shuffle(len(tiles), func(i, j int) {
 			tiles[i], tiles[j] = tiles[j], tiles[i]
@@ -164,9 +166,9 @@ func gameConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao) (*
 		Log:                    log,
 		UserDao:                ud,
 		MaxPlayers:             8,
-		NumNewTiles:            4,
+		NumNewTiles:            21,
 		TileLetters:            "",
-		Words:                  wc,
+		Words:                  *wc,
 		IdlePeriod:             60 * time.Minute,
 		ShuffleUnusedTilesFunc: shuffleUnusedTilesFunc,
 		ShufflePlayersFunc:     shufflePlayersFunc,

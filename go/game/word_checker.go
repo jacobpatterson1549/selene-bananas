@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"bufio"
 	"io"
 	"strings"
@@ -15,7 +16,10 @@ type (
 )
 
 // NewWordChecker consumes the lower case words in the reader to use for checking and creates a new WordChecker
-func NewWordChecker(r io.Reader) WordChecker {
+func NewWordChecker(r io.Reader) (*WordChecker, error) {
+	if r == nil {
+		return nil, fmt.Errorf("reader required")
+	}
 	words := make(map[string]struct{})
 	scanner := bufio.NewScanner(r)
 	scanner.Split(scanLowerWords)
@@ -24,9 +28,10 @@ func NewWordChecker(r io.Reader) WordChecker {
 		rawWord := scanner.Text()
 		words[rawWord] = e
 	}
-	return WordChecker{
+	wc := WordChecker{
 		words: words,
 	}
+	return &wc, nil
 }
 
 // Check determines whether or not the word is valid

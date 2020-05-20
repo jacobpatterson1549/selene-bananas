@@ -29,7 +29,7 @@ type (
 	Config struct {
 		// Debug is a flag that causes the socket to log the types non-ping/pong messages that are read/written
 		Debug bool
-		Log *log.Logger
+		Log   *log.Logger
 		// PongPeriod is the amount of time that between messages that can bass before the connection is invalid
 		PongPeriod time.Duration
 		// PingPeriod is the amount of time between sending ping messages to the connection to keep it active
@@ -44,8 +44,11 @@ type (
 )
 
 // NewSocket creates a socket
-func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) Socket {
-	return Socket{
+func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) (*Socket, error) {
+	if err := cfg.validate(conn, playerName); err != nil {
+		return nil, err
+	}
+	s := Socket{
 		debug:          cfg.Debug,
 		log:            cfg.Log,
 		conn:           conn,
@@ -55,6 +58,29 @@ func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) So
 		idlePeriod:     cfg.IdlePeriod,
 		httpPingPeriod: cfg.HTTPPingPeriod,
 	}
+	return &s, nil
+}
+
+func (cfg Config) validate(conn *websocket.Conn, playerName game.PlayerName) error {
+	switch {
+	case cfg.Log == nil:
+		return fmt.Errorf("log required")
+	case conn == nil:
+		return fmt.Errorf("websocket connection required")
+	case len(playerName) == 0:
+		return fmt.Errorf("player name required")
+	case cfg.PongPeriod <= 0:
+		return fmt.Errorf("positive pong period required")
+	case cfg.PingPeriod <= 0:
+		return fmt.Errorf("positive ping period required")
+	case cfg.IdlePeriod <= 0:
+		return fmt.Errorf("positive idle period required")
+	case cfg.HTTPPingPeriod <= 0:
+		return fmt.Errorf("positive http ping period required")
+	case cfg.PingPeriod >= cfg.PongPeriod:
+		return fmt.Errorf("ping period must be less than pong period")
+	}
+	return nil
 }
 
 // Run writes Socket messages to the messages channel and reads incoming messages on a separate goroutine

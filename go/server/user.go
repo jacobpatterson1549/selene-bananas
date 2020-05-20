@@ -12,7 +12,7 @@ type (
 	userChangeFn func(r *http.Request) error
 )
 
-func (s server) handleUserCreate(w http.ResponseWriter, r *http.Request) error {
+func (s Server) handleUserCreate(w http.ResponseWriter, r *http.Request) error {
 	err := r.ParseForm()
 	if err != nil {
 		return fmt.Errorf("parsing form: %w", err)
@@ -30,7 +30,7 @@ func (s server) handleUserCreate(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (s server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
+func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	err := r.ParseForm()
 	if err != nil {
 		return fmt.Errorf("parsing form: %w", err)
@@ -50,7 +50,7 @@ func (s server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	return s.addAuthorization(w, u2)
 }
 
-func (s server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, username db.Username) error {
+func (s Server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, username db.Username) error {
 	playerName := game.PlayerName(username)
 	err := s.lobby.AddUser(playerName, w, r)
 	if err != nil {
@@ -59,7 +59,7 @@ func (s server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, user
 	return nil
 }
 
-func (s server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request, username db.Username) error {
+func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request, username db.Username) error {
 	password := r.FormValue("password")
 	newPassword := r.FormValue("password_confirm")
 	u, err := db.NewUser(username, password)
@@ -75,7 +75,7 @@ func (s server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request,
 	return nil
 }
 
-func (s server) handleUserDelete(w http.ResponseWriter, r *http.Request, username db.Username) error {
+func (s Server) handleUserDelete(w http.ResponseWriter, r *http.Request, username db.Username) error {
 	password := r.FormValue("password")
 	u, err := db.NewUser(username, password)
 	if err != nil {
