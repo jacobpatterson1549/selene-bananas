@@ -5,12 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
-	"math/rand"
 	"net/http"
-	"os"
-	"time"
-
-	"github.com/jacobpatterson1549/selene-bananas/go/game"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/db"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/lobby"
@@ -19,12 +14,12 @@ import (
 type (
 	// Config contains fields which describe the server
 	Config struct {
-		AppName       string
-		Port          string
-		Database      db.Database
-		Log           *log.Logger
-		WordsFileName string
-		DebugGame     bool
+		AppName   string
+		Port      string
+		Log       *log.Logger
+		Tokenizer Tokenizer
+		UserDao   db.UserDao
+		LobbyCfg  lobby.Config
 	}
 
 	// Server can be run to serve the site
@@ -39,9 +34,9 @@ type (
 		log               *log.Logger
 		handler           http.Handler
 		staticFileHandler http.Handler
-		lobby             lobby.Lobby
-		userDao           db.UserDao
 		tokenizer         Tokenizer
+		userDao           db.UserDao
+		lobby             lobby.Lobby
 	}
 
 	templateData struct {
@@ -59,41 +54,16 @@ func (cfg Config) NewServer() (Server, error) {
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	serveMux := new(http.ServeMux)
 	staticFileHandler := http.FileServer(http.Dir("./static"))
-	rand := rand.New(rand.NewSource(time.Now().Unix()))
-	tokenizer, err := newTokenizer(rand)
-	if err != nil {
-		cfg.Log.Fatal(err)
-	}
-	userDao := db.NewUserDao(cfg.Database)
-	err = userDao.Setup()
-	if err != nil {
-		cfg.Log.Fatal(err)
-	}
-	wordsFile, err := os.Open(cfg.WordsFileName)
-	if err != nil {
-		cfg.Log.Fatal(err)
-	}
-	wc := game.NewWordChecker(wordsFile)
-	lobbyCfg := lobby.Config{
-		Debug:   cfg.DebugGame,
-		Log:     cfg.Log,
-		Rand:    rand,
-		UserDao: userDao,
-		Words:   wc,
-	}
-	lobby, err := lobbyCfg.NewLobby()
-	if err != nil {
-		cfg.Log.Fatal(err)
-	}
+	lobby := cfg.LobbyCfg.NewLobby()
 	s := server{
 		data:              data,
 		addr:              addr,
 		log:               cfg.Log,
 		handler:           serveMux,
 		staticFileHandler: staticFileHandler,
+		tokenizer:         cfg.Tokenizer,
+		userDao:           cfg.UserDao,
 		lobby:             lobby,
-		userDao:           userDao,
-		tokenizer:         tokenizer,
 	}
 	serveMux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
 	serveMux.HandleFunc("/", s.httpMethodHandler)

@@ -5,8 +5,16 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/jacobpatterson1549/selene-bananas/go/game"
+	"github.com/jacobpatterson1549/selene-bananas/go/game/controller"
+	"github.com/jacobpatterson1549/selene-bananas/go/game/lobby"
+	"github.com/jacobpatterson1549/selene-bananas/go/game/socket"
+	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/db"
 	"github.com/jacobpatterson1549/selene-bananas/go/server"
@@ -30,35 +38,27 @@ type mainFlags struct {
 }
 
 func main() {
-	fs, mainFlags := initFlags(os.Args[0])
+	fs, m := initFlags(os.Args[0])
 	flag.CommandLine = fs
 	flag.Parse()
 
 	var buf bytes.Buffer
-	log := log.New(&buf, mainFlags.applicationName+" ", log.LstdFlags)
+	log := log.New(&buf, m.applicationName+" ", log.LstdFlags)
 	log.SetOutput(os.Stdout)
 
-	db, err := db.NewPostgresDatabase(mainFlags.databaseURL)
+	cfg, err := serverConfig(m, log)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("configuring server: %v", err)
 	}
 
-	cfg := server.Config{
-		AppName:       mainFlags.applicationName,
-		Port:          mainFlags.serverPort,
-		Database:      db,
-		Log:           log,
-		WordsFileName: mainFlags.wordsFile,
-		DebugGame:     mainFlags.debugGame,
-	}
 	server, err := cfg.NewServer()
 	if err != nil {
-		log.Fatal("creating server:", err)
+		log.Fatalf("creating server: %v", err)
 	}
 
 	err = server.Run()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("running server: %v", err)
 	}
 }
 
@@ -74,10 +74,10 @@ func flagUsage(fs *flag.FlagSet) {
 	fs.PrintDefaults()
 }
 
-func initFlags(programName string) (*flag.FlagSet, *mainFlags) {
+func initFlags(programName string) (*flag.FlagSet, mainFlags) {
 	fs := flag.NewFlagSet(programName, flag.ExitOnError)
 	fs.Usage = func() { flagUsage(fs) }
-	mainFlags := new(mainFlags)
+	var m mainFlags
 	envOrDefault := func(envKey, defaultValue string) string {
 		if envValue, ok := os.LookupEnv(envKey); ok {
 			return envValue
@@ -88,10 +88,94 @@ func initFlags(programName string) (*flag.FlagSet, *mainFlags) {
 		_, ok := os.LookupEnv(environmentVariableDebugGame)
 		return ok
 	}
-	fs.StringVar(&mainFlags.applicationName, "app-name", envOrDefault(environmentVariableApplicationName, programName), "The name of the application.")
-	fs.StringVar(&mainFlags.databaseURL, "data-source", os.Getenv(environmentVariableDatabaseURL), "The data source to the PostgreSQL database (connection URI).")
-	fs.StringVar(&mainFlags.serverPort, "port", os.Getenv(environmentVariableServerPort), "The port number to run the server on.")
-	fs.StringVar(&mainFlags.wordsFile, "words-file", envOrDefault(environmentVariableWordsFile, "/usr/share/dict/american-english-small"), "The list of valid lower-case words that can be used.")
-	fs.BoolVar(&mainFlags.debugGame, "debug-game", defaultDebugGame(), "Logs game message types in the console if present.")
-	return fs, mainFlags
+	fs.StringVar(&m.applicationName, "app-name", envOrDefault(environmentVariableApplicationName, programName), "The name of the application.")
+	fs.StringVar(&m.databaseURL, "data-source", os.Getenv(environmentVariableDatabaseURL), "The data source to the PostgreSQL database (connection URI).")
+	fs.StringVar(&m.serverPort, "port", os.Getenv(environmentVariableServerPort), "The port number to run the server on.")
+	fs.StringVar(&m.wordsFile, "words-file", envOrDefault(environmentVariableWordsFile, "/usr/share/dict/american-english-small"), "The list of valid lower-case words that can be used.")
+	fs.BoolVar(&m.debugGame, "debug-game", defaultDebugGame(), "Logs game message types in the console if present.")
+	return fs, m
+}
+
+func serverConfig(m mainFlags, log *log.Logger) (*server.Config, error) {
+	rand := rand.New(rand.NewSource(time.Now().Unix()))
+	tokenizer, err := server.NewTokenizer(rand)
+	if err != nil {
+		return nil, err
+	}
+	d, err := db.NewPostgresDatabase(m.databaseURL)
+	if err != nil {
+		return nil, err
+	}
+	ud := db.NewUserDao(d)
+	err = ud.Setup()
+	if err != nil {
+		return nil, err
+	}
+	lobbyCfg, err := lobbyConfig(m, log, rand, ud)
+	if err != nil {
+		return nil, err
+	}
+	cfg := server.Config{
+		AppName:   m.applicationName,
+		Port:      m.serverPort,
+		Log:       log,
+		Tokenizer: tokenizer,
+		UserDao:   ud,
+		LobbyCfg:  *lobbyCfg,
+	}
+	return &cfg, nil
+}
+
+func lobbyConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao) (*lobby.Config, error) {
+	gameCfg, err := gameConfig(m, log, rand, ud)
+	socketCfg := socketConfig(m, log)
+	if err != nil {
+		return nil, err
+	}
+	cfg := lobby.Config{
+		Debug:      m.debugGame,
+		Log:        log,
+		MaxGames:   4,
+		MaxSockets: 32,
+		GameCfg:    *gameCfg,
+		SocketCfg:  socketCfg,
+	}
+	return &cfg, nil
+}
+
+func gameConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao) (*controller.Config, error) {
+	wordsFile, err := os.Open(m.wordsFile)
+	if err != nil {
+		return nil, err
+	}
+	wc := game.NewWordChecker(wordsFile)
+	shuffleUnusedTilesFunc := func(tiles []tile.Tile) {
+		rand.Shuffle(len(tiles), func(i, j int) {
+			tiles[i], tiles[j] = tiles[j], tiles[i]
+		})
+	}
+	shufflePlayersFunc := func(sockets []game.PlayerName) {
+		rand.Shuffle(len(sockets), func(i, j int) {
+			sockets[i], sockets[j] = sockets[j], sockets[i]
+		})
+	}
+	cfg := controller.Config{
+		Debug:                  m.debugGame,
+		Log:                    log,
+		UserDao:                ud,
+		MaxPlayers:             8,
+		NumNewTiles:            21,
+		Words:                  wc,
+		ShuffleUnusedTilesFunc: shuffleUnusedTilesFunc,
+		ShufflePlayersFunc:     shufflePlayersFunc,
+	}
+	return &cfg, nil
+}
+
+func socketConfig(m mainFlags, log *log.Logger) socket.Config {
+	cfg := socket.Config{
+		Debug: m.debugGame,
+		Log:   log,
+	}
+	return cfg
 }

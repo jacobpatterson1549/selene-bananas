@@ -35,11 +35,15 @@ const (
 	tokenValidDurationSec int64 = 365 * 24 * 60 * 60 // 1 year
 )
 
-func newTokenizer(rand *rand.Rand) (Tokenizer, error) {
-	return newTokenizer0(rand, func() int64 { return time.Now().Unix() })
+// NewTokenizer creates a Tokenizer that users the random number generator to generate tokens
+func NewTokenizer(rand *rand.Rand) (Tokenizer, error) {
+	ess := func() int64 {
+		return time.Now().Unix()
+	}
+	return newTokenizer(rand, ess)
 }
 
-func newTokenizer0(rand *rand.Rand, ess epochSecondsSupplier) (Tokenizer, error) {
+func newTokenizer(rand *rand.Rand, ess epochSecondsSupplier) (Tokenizer, error) {
 	key := make([]byte, 64)
 	_, err := rand.Read(key)
 	if err != nil {

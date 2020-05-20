@@ -3,16 +3,13 @@ package lobby
 import (
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"sort"
 
 	"github.com/gorilla/websocket"
-	"github.com/jacobpatterson1549/selene-bananas/go/db"
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/controller"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/socket"
-	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
 )
 
 type (
@@ -21,10 +18,10 @@ type (
 		debug          bool
 		log            *log.Logger
 		upgrader       *websocket.Upgrader
-		rand           *rand.Rand
+		maxGames       int
+		maxSockets     int
 		socketCfg      socket.Config
 		gameCfg        controller.Config
-		maxGames       int
 		sockets        map[game.PlayerName]messageHandler
 		games          map[game.ID]messageHandler
 		addPlayers     chan playerSocket
@@ -34,11 +31,12 @@ type (
 
 	// Config contiains the properties to create a lobby
 	Config struct {
-		Debug   bool
-		Log     *log.Logger
-		Rand    *rand.Rand
-		UserDao db.UserDao
-		Words   game.WordChecker
+		Debug      bool
+		Log        *log.Logger
+		MaxGames   int
+		MaxSockets int
+		GameCfg    controller.Config
+		SocketCfg  socket.Config
 	}
 
 	playerSocket struct {
@@ -53,48 +51,26 @@ type (
 )
 
 // NewLobby creates a new game lobby
-func (cfg Config) NewLobby() (Lobby, error) {
+func (cfg Config) NewLobby() Lobby {
 	u := new(websocket.Upgrader)
 	u.Error = func(w http.ResponseWriter, r *http.Request, status int, reason error) {
 		log.Println(reason)
 	}
-	maxGames := 4
-	maxSockets := 32
 	l := Lobby{
 		debug:          cfg.Debug,
 		log:            cfg.Log,
 		upgrader:       u,
-		rand:           cfg.Rand,
-		maxGames:       maxGames,
-		sockets:        make(map[game.PlayerName]messageHandler, maxSockets),
-		games:          make(map[game.ID]messageHandler, maxGames),
+		maxGames:       cfg.MaxGames,
+		maxSockets:     cfg.MaxSockets,
+		gameCfg:        cfg.GameCfg,
+		socketCfg:      cfg.SocketCfg,
+		sockets:        make(map[game.PlayerName]messageHandler, cfg.MaxSockets),
+		games:          make(map[game.ID]messageHandler, cfg.MaxGames),
 		addPlayers:     make(chan playerSocket),
 		socketMessages: make(chan game.Message),
 		gameMessages:   make(chan game.Message),
 	}
-	l.socketCfg = socket.Config{
-		Debug: cfg.Debug,
-		Log:   l.log,
-	}
-	l.gameCfg = controller.Config{
-		Debug:       cfg.Debug,
-		Log:         l.log,
-		UserDao:     cfg.UserDao,
-		Words:       cfg.Words,
-		MaxPlayers:  8,
-		NumNewTiles: 21,
-		ShuffleUnusedTilesFunc: func(tiles []tile.Tile) {
-			l.rand.Shuffle(len(tiles), func(i, j int) {
-				tiles[i], tiles[j] = tiles[j], tiles[i]
-			})
-		},
-		ShufflePlayersFunc: func(sockets []game.PlayerName) {
-			l.rand.Shuffle(len(sockets), func(i, j int) {
-				sockets[i], sockets[j] = sockets[j], sockets[i]
-			})
-		},
-	}
-	return l, nil
+	return l
 }
 
 // AddUser adds a user to the lobby, it opens a new websocket (player) for the username
