@@ -3,26 +3,36 @@ package game
 import (
 	"bufio"
 	"io"
+	"strings"
 )
 
 type (
-	// WordsSupplier can be used to retrieve words.
-	WordsSupplier struct {
-		io.Reader
+	// WordChecker can be used to check if words are valid
+	WordChecker struct {
+		words map[string]struct{}
 	}
 )
 
-// Words gets distinct, lowercase, words that are separated by spaces or newlines.
-func (ws WordsSupplier) Words() map[string]struct{} {
+// NewWordChecker consumes the lower case words in the reader to use for checking and creates a new WordChecker
+func NewWordChecker(r io.Reader) WordChecker {
 	words := make(map[string]struct{})
-	scanner := bufio.NewScanner(ws)
+	scanner := bufio.NewScanner(r)
 	scanner.Split(scanLowerWords)
 	var e struct{}
 	for scanner.Scan() {
 		rawWord := scanner.Text()
 		words[rawWord] = e
 	}
-	return words
+	return WordChecker{
+		words: words,
+	}
+}
+
+// Check determines whether or not the word is valid
+func (wc WordChecker) Check(word string) bool {
+	lowerWord := strings.ToLower(word) // TODO: use package unicode for all word stuff
+	_, ok := wc.words[lowerWord]
+	return ok
 }
 
 // scanLowercaseWords is a bufio.SplitFunc that returns the first only-lowercase word

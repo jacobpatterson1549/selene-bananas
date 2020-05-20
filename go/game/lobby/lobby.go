@@ -38,6 +38,7 @@ type (
 		Log     *log.Logger
 		Rand    *rand.Rand
 		UserDao db.UserDao
+		Words   game.WordChecker
 	}
 
 	playerSocket struct {
@@ -52,7 +53,7 @@ type (
 )
 
 // NewLobby creates a new game lobby
-func (cfg Config) NewLobby(ws game.WordsSupplier) (Lobby, error) {
+func (cfg Config) NewLobby() (Lobby, error) {
 	u := new(websocket.Upgrader)
 	u.Error = func(w http.ResponseWriter, r *http.Request, status int, reason error) {
 		log.Println(reason)
@@ -75,12 +76,11 @@ func (cfg Config) NewLobby(ws game.WordsSupplier) (Lobby, error) {
 		Debug: cfg.Debug,
 		Log:   l.log,
 	}
-	words := ws.Words()
 	l.gameCfg = controller.Config{
 		Debug:       cfg.Debug,
 		Log:         l.log,
 		UserDao:     cfg.UserDao,
-		Words:       words,
+		Words:       cfg.Words,
 		MaxPlayers:  8,
 		NumNewTiles: 21,
 		ShuffleUnusedTilesFunc: func(tiles []tile.Tile) {

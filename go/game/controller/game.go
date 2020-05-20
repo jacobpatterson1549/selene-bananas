@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/db"
@@ -27,7 +26,7 @@ type (
 		maxPlayers  int
 		numNewTiles int
 		tileLetters string
-		words       map[string]struct{}
+		words       game.WordChecker
 		// the shuffle functions shuffles the slices my mutating them
 		shuffleUnusedTilesFunc func(tiles []tile.Tile)
 		shufflePlayersFunc     func(playerNames []game.PlayerName)
@@ -41,7 +40,7 @@ type (
 		MaxPlayers  int
 		NumNewTiles int
 		TileLetters string
-		Words       map[string]struct{}
+		Words       game.WordChecker
 		// the shuffle functions shuffles the slices my mutating them
 		ShuffleUnusedTilesFunc func(tiles []tile.Tile)
 		ShufflePlayersFunc     func(playerNames []game.PlayerName)
@@ -264,8 +263,7 @@ func (g *Game) finish(finishingPlayerName game.PlayerName, out chan<- game.Messa
 	usedWords := p.UsedTileWords()
 	var invalidWords []string
 	for _, w := range usedWords {
-		lowerW := strings.ToLower(w) // TODO: this is innefficient, words are lowercase, tiles are uppercase...
-		if _, ok := g.words[lowerW]; !ok {
+		if !g.words.Check(w) {
 			invalidWords = append(invalidWords, w)
 		}
 	}

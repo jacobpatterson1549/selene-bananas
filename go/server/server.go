@@ -69,20 +69,19 @@ func (cfg Config) NewServer() (Server, error) {
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}
+	wordsFile, err := os.Open(cfg.WordsFileName)
+	if err != nil {
+		cfg.Log.Fatal(err)
+	}
+	wc := game.NewWordChecker(wordsFile)
 	lobbyCfg := lobby.Config{
 		Debug:   cfg.DebugGame,
 		Log:     cfg.Log,
 		Rand:    rand,
 		UserDao: userDao,
+		Words:   wc,
 	}
-	wordsFile, err := os.Open(cfg.WordsFileName)
-	if err != nil {
-		cfg.Log.Fatal(err)
-	}
-	ws := game.WordsSupplier{
-		Reader: wordsFile,
-	}
-	lobby, err := lobbyCfg.NewLobby(ws)
+	lobby, err := lobbyCfg.NewLobby()
 	if err != nil {
 		cfg.Log.Fatal(err)
 	}

@@ -35,8 +35,8 @@ func TestWords(t *testing.T) {
 	}
 	for i, test := range wordsTests {
 		r := strings.NewReader(test.wordsToRead)
-		ws := WordsSupplier{r}
-		got := ws.Words()
+		wc := NewWordChecker(r)
+		got := wc.words
 		if test.want == nil && len(got) != 0 ||
 			(test.want != nil && !reflect.DeepEqual(test.want, got)) {
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
@@ -50,12 +50,45 @@ func TestWordsReal(t *testing.T) {
 	if err != nil {
 		t.Skipf("could not open wordsFile %v", err)
 	}
-	ws := WordsSupplier{f}
-	words := ws.Words()
+	wc := NewWordChecker(f)
 	want := 40067
-	got := len(words)
+	got := len(wc.words)
 	if want != got {
 		note := "NOTE: this might be flaky, but it ensures that a large number of words can be loaded."
 		t.Errorf("wanted %v words, got %v\n%v", want, got, note)
+	}
+}
+
+func TestCheck(t *testing.T) {
+	checkTests := []struct {
+		word string
+		want bool
+	}{
+		{},
+		{
+			word: "bat",
+			want: true,
+		},
+		{
+			word: "BAT",
+			want: true,
+		},
+		{
+			word: "BAT ",
+		},
+		{
+			word: "'BAT'",
+		},
+		{
+			word: "care",
+		},
+	}
+	r := strings.NewReader("apple bat car")
+	wc := NewWordChecker(r)
+	for i, test := range checkTests {
+		got := wc.Check(test.word)
+		if test.want != got {
+			t.Errorf("Test %v: wanted %v, but got %v for word %v - valid words are %v", i, test.want, got, test.word, wc.words)
+		}
 	}
 }
