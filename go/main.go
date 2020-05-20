@@ -101,6 +101,9 @@ func serverConfig(m mainFlags, log *log.Logger) (*server.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(m.databaseURL) == 0 {
+		return nil, fmt.Errorf("missing data-source uri")
+	}
 	d, err := db.NewPostgresDatabase(m.databaseURL)
 	if err != nil {
 		return nil, err
