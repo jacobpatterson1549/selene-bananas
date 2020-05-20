@@ -85,7 +85,7 @@ func TestRead(t *testing.T) {
 	}
 }
 
-func TestCreateRead_time(t *testing.T) {
+func TestCreateReadWithTime(t *testing.T) {
 	readTests := []struct {
 		creationTime int64 // not before
 		readTime     int64 // not equal or after

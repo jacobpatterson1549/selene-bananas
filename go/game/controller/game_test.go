@@ -7,7 +7,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
 )
 
-func TestInitializeUnusedTiles_correctAmount(t *testing.T) {
+func TestInitializeUnusedTilesCorrectAmount(t *testing.T) {
 	g := Game{
 		tileLetters: defaultTileLetters,
 	}
@@ -19,7 +19,7 @@ func TestInitializeUnusedTiles_correctAmount(t *testing.T) {
 	}
 }
 
-func TestInitializeUnusedTiles_allLetters(t *testing.T) {
+func TestInitializeUnusedTilesAllLetters(t *testing.T) {
 	g := Game{
 		tileLetters: defaultTileLetters,
 	}
@@ -40,7 +40,7 @@ func TestInitializeUnusedTiles_allLetters(t *testing.T) {
 	}
 }
 
-func TestInitializeUnusedTiles_shuffled(t *testing.T) {
+func TestInitializeUnusedTilesShuffled(t *testing.T) {
 	createTilesShuffledTests := []struct {
 		want      rune
 		inReverse string
@@ -69,7 +69,7 @@ func TestInitializeUnusedTiles_shuffled(t *testing.T) {
 	}
 }
 
-func TestInitializeUnusedTiles_uniqueIds(t *testing.T) {
+func TestInitializeUnusedTilesUniqueIds(t *testing.T) {
 	g := Game{}
 	g.initializeUnusedTiles()
 	var e struct{}
@@ -82,7 +82,7 @@ func TestInitializeUnusedTiles_uniqueIds(t *testing.T) {
 	}
 }
 
-func TestInitializeUnusedTiles_custom(t *testing.T) {
+func TestInitializeUnusedTilesCustom(t *testing.T) {
 	tileLetters := "SELENE"
 	g := Game{tileLetters: tileLetters}
 	g.initializeUnusedTiles()

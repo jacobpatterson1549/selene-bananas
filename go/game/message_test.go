@@ -69,7 +69,7 @@ func TestMessageJSON(t *testing.T) {
 	}
 }
 
-func TestMessageMarshal_omitInternals(t *testing.T) {
+func TestMessageMarshalOmitsInternals(t *testing.T) {
 	m := Message{PlayerName: "selene", GameInfoChan: make(chan Info, 0)}
 	want := []byte(`{"type":0}`)
 	got, err := json.Marshal(m)
