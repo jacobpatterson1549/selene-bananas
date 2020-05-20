@@ -27,10 +27,9 @@ type (
 
 	// Config contains commonly shared Socket properties
 	Config struct {
-		// Debug is a flag that causes the socket to log the types all non ping/pong messages that are read/written
+		// Debug is a flag that causes the socket to log the types non-ping/pong messages that are read/written
 		Debug bool
-		// Log 
-		Log   *log.Logger
+		Log *log.Logger
 		// PongPeriod is the amount of time that between messages that can bass before the connection is invalid
 		PongPeriod time.Duration
 		// PingPeriod is the amount of time between sending ping messages to the connection to keep it active

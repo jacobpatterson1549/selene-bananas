@@ -14,12 +14,18 @@ import (
 type (
 	// Config contains fields which describe the server
 	Config struct {
-		AppName   string
-		Port      string
-		Log       *log.Logger
+		// AppName is the display name of the application
+		AppName string
+		// Port is the port number to run the server on
+		Port string
+		// Log is used fot log errors and other information
+		Log *log.Logger
+		// Tokenizer is used to generate and parse session tokens
 		Tokenizer Tokenizer
-		UserDao   db.UserDao
-		LobbyCfg  lobby.Config
+		// UserDao is used to track different users
+		UserDao  db.UserDao
+		// LobbyCfg is used to create a game lobby
+		LobbyCfg lobby.Config
 	}
 
 	// Server can be run to serve the site

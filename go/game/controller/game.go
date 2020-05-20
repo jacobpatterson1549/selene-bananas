@@ -15,37 +15,49 @@ import (
 type (
 	// Game contains the logic to play a tile-base word-forming game between users
 	Game struct {
-		debug       bool
-		log         *log.Logger
-		id          game.ID
-		createdAt   string
-		status      game.Status
-		players     map[game.PlayerName]*player
-		userDao     db.UserDao
-		unusedTiles []tile.Tile
-		maxPlayers  int
-		numNewTiles int
-		tileLetters string
-		words       game.WordChecker
-		idlePeriod  time.Duration
-		// the shuffle functions shuffles the slices my mutating them
+		debug                  bool
+		log                    *log.Logger
+		id                     game.ID
+		createdAt              string
+		status                 game.Status
+		players                map[game.PlayerName]*player
+		userDao                db.UserDao
+		unusedTiles            []tile.Tile
+		maxPlayers             int
+		numNewTiles            int
+		tileLetters            string
+		words                  game.WordChecker
+		idlePeriod             time.Duration
 		shuffleUnusedTilesFunc func(tiles []tile.Tile)
 		shufflePlayersFunc     func(playerNames []game.PlayerName)
 	}
 
 	// Config contiains the properties to create similar games
 	Config struct {
-		Debug       bool
-		Log         *log.Logger
-		UserDao     db.UserDao
-		MaxPlayers  int
+		// Debug is a flag that causes the game to log the types messages that are read
+		Debug bool
+		// Log is used fot log errors and other information
+		Log *log.Logger
+		// UserDao is used to increment the points for players when the game is finished
+		UserDao db.UserDao
+		// MaxPlayers is the maximum number of players that can be part of the game
+		MaxPlayers int
+		// NumNewTiles is the number of new tiles each player starts the game with
 		NumNewTiles int
+		// TileLetters is a string of all the upper case letters that can be used in the game
+		// If not specified, the default 144 letters will be used.
+		// If a letter should occur on multiple tiles, it sh be present multiple times.
+		// For example, the TileLetters "AABCCC" will be used to initialize a game with two As, 1 B, and 3 Cs.
 		TileLetters string
-		Words       game.WordChecker
-		IdlePeriod  time.Duration
-		// the shuffle functions shuffles the slices my mutating them
+		// Words is the WordChecker used to validate players' words when they try to finish the game
+		Words game.WordChecker
+		// IdlePeroid is the amount of time that can pass between non-BoardRefresh messages before the game is idle and will delete itself
+		IdlePeriod time.Duration
+		// ShuffleUnusedTilesFunc is used to shuffle unused tiles when initializing the game and after tiles are swapped
 		ShuffleUnusedTilesFunc func(tiles []tile.Tile)
-		ShufflePlayersFunc     func(playerNames []game.PlayerName)
+		// ShufflePlayersFunc is used to shuffle the order of players when giving tiles after a snag
+		// The snagging player should always get a new tile.  Other players will get a tile, if possible.
+		ShufflePlayersFunc func(playerNames []game.PlayerName)
 	}
 )
 

@@ -31,12 +31,18 @@ type (
 
 	// Config contiains the properties to create a lobby
 	Config struct {
-		Debug      bool
-		Log        *log.Logger
-		MaxGames   int
+		// Debug is a flag that causes the lobby to log the types messages that are read
+		Debug bool
+		// Log is used fot log errors and other information
+		Log *log.Logger
+		// MaxGames is the maximum number of games the lobby supports
+		MaxGames int
+		// MaxSockets is the maximum number of sockets the lobby supports
 		MaxSockets int
-		GameCfg    controller.Config
-		SocketCfg  socket.Config
+		// GameCfg is used to create new games
+		GameCfg controller.Config
+		// SocketCfg is used to create new sockets
+		SocketCfg socket.Config
 	}
 
 	playerSocket struct {
