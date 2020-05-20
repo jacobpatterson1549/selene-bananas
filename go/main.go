@@ -164,8 +164,10 @@ func gameConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao) (*
 		Log:                    log,
 		UserDao:                ud,
 		MaxPlayers:             8,
-		NumNewTiles:            21,
+		NumNewTiles:            4,
+		TileLetters:            "",
 		Words:                  wc,
+		IdlePeriod:             60 * time.Minute,
 		ShuffleUnusedTilesFunc: shuffleUnusedTilesFunc,
 		ShufflePlayersFunc:     shufflePlayersFunc,
 	}
@@ -174,8 +176,12 @@ func gameConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao) (*
 
 func socketConfig(m mainFlags, log *log.Logger) socket.Config {
 	cfg := socket.Config{
-		Debug: m.debugGame,
-		Log:   log,
+		Debug:          m.debugGame,
+		Log:            log,
+		PongPeriod:     20 * time.Second,
+		PingPeriod:     15 * time.Second,
+		IdlePeriod:     15 * time.Minute,
+		HTTPPingPeriod: 10 * time.Minute,
 	}
 	return cfg
 }

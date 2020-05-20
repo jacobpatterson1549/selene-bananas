@@ -27,6 +27,7 @@ type (
 		numNewTiles int
 		tileLetters string
 		words       game.WordChecker
+		idlePeriod  time.Duration
 		// the shuffle functions shuffles the slices my mutating them
 		shuffleUnusedTilesFunc func(tiles []tile.Tile)
 		shufflePlayersFunc     func(playerNames []game.PlayerName)
@@ -41,6 +42,7 @@ type (
 		NumNewTiles int
 		TileLetters string
 		Words       game.WordChecker
+		IdlePeriod  time.Duration
 		// the shuffle functions shuffles the slices my mutating them
 		ShuffleUnusedTilesFunc func(tiles []tile.Tile)
 		ShufflePlayersFunc     func(playerNames []game.PlayerName)
@@ -48,9 +50,7 @@ type (
 )
 
 const (
-	// TODO: make these  environment arguments
 	defaultTileLetters = "AAAAAAAAAAAAABBBCCCDDDDDDEEEEEEEEEEEEEEEEEEFFFGGGGHHHIIIIIIIIIIIIJJKKLLLLLMMMNNNNNNNNOOOOOOOOOOOPPPQQRRRRRRRRRSSSSSSTTTTTTTTTUUUUUUVVVWWWXXYYYZZ"
-	idlePeriod         = 60 * time.Minute // will be 2x from creation
 )
 
 // NewGame creates a new game and runs it
@@ -61,12 +61,13 @@ func (cfg Config) NewGame(id game.ID) Game {
 		id:                     id,
 		createdAt:              time.Now().Format(time.UnixDate),
 		status:                 game.NotStarted,
+		tileLetters:            cfg.TileLetters,
 		words:                  cfg.Words,
+		idlePeriod:             cfg.IdlePeriod,
 		players:                make(map[game.PlayerName]*player),
 		userDao:                cfg.UserDao,
 		maxPlayers:             cfg.MaxPlayers,
 		numNewTiles:            cfg.NumNewTiles,
-		tileLetters:            cfg.TileLetters,
 		shuffleUnusedTilesFunc: cfg.ShuffleUnusedTilesFunc,
 		shufflePlayersFunc:     cfg.ShufflePlayersFunc,
 	}
@@ -96,7 +97,7 @@ func (g *Game) initializeUnusedTiles() error {
 
 // Run runs the game
 func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game.Message) {
-	idleTicker := time.NewTicker(idlePeriod)
+	idleTicker := time.NewTicker(g.idlePeriod)
 	active := false
 	messageHandlers := map[game.MessageType]func(game.Message, chan<- game.Message) error{
 		game.Join:         g.handleGameJoin,

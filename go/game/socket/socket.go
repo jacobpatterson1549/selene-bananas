@@ -13,36 +13,48 @@ import (
 type (
 	// Socket reads and writes messages to the browsers
 	Socket struct {
-		debug      bool
-		log        *log.Logger
-		conn       *websocket.Conn
-		playerName game.PlayerName
-		gameID     game.ID // mutable
-		active     bool
+		debug          bool
+		log            *log.Logger
+		conn           *websocket.Conn
+		playerName     game.PlayerName
+		gameID         game.ID // mutable
+		active         bool
+		pongPeriod     time.Duration
+		pingPeriod     time.Duration
+		idlePeriod     time.Duration
+		httpPingPeriod time.Duration
 	}
 
 	// Config contains commonly shared Socket properties
 	Config struct {
+		// Debug is a flag that causes the socket to log the types all non ping/pong messages that are read/written
 		Debug bool
+		// Log 
 		Log   *log.Logger
+		// PongPeriod is the amount of time that between messages that can bass before the connection is invalid
+		PongPeriod time.Duration
+		// PingPeriod is the amount of time between sending ping messages to the connection to keep it active
+		// Should be less than pongPeriod
+		PingPeriod time.Duration
+		// IdlePeroid is the amount of time that can pass between handling messages that are not pings before the connection is idle and will be disconnected
+		IdlePeriod time.Duration
+		// HTTPPingPeriod is the amount of time between sending requests for the connection to send a http ping on a different socket
+		// Heroku servers shut down if 30 minutes passess between HTTP requests
+		HTTPPingPeriod time.Duration
 	}
-)
-
-// TODO: put some of these parameters as env arguments
-const (
-	pongPeriod     = 20 * time.Second
-	pingPeriod     = (pongPeriod * 80) / 100 // should be less than pongPeriod
-	idlePeriod     = 15 * time.Minute        // will be 2x from creation
-	httpPingPeriod = 10 * time.Minute        // should be less than 30 minutes to keep heroku alive
 )
 
 // NewSocket creates a socket
 func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) Socket {
 	return Socket{
-		debug:      cfg.Debug,
-		log:        cfg.Log,
-		conn:       conn,
-		playerName: playerName,
+		debug:          cfg.Debug,
+		log:            cfg.Log,
+		conn:           conn,
+		playerName:     playerName,
+		pongPeriod:     cfg.PongPeriod,
+		pingPeriod:     cfg.PingPeriod,
+		idlePeriod:     cfg.IdlePeriod,
+		httpPingPeriod: cfg.HTTPPingPeriod,
 	}
 }
 
@@ -85,9 +97,9 @@ func (s *Socket) readMessages(done <-chan struct{}, messages chan<- game.Message
 // writeMessages sends messages added to the messages channel to the connected socket
 // messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel
 func (s *Socket) writeMessages(done <-chan struct{}) chan<- game.Message {
-	pingTicker := time.NewTicker(pingPeriod)
-	httpPingTicker := time.NewTicker(httpPingPeriod)
-	idleTicker := time.NewTicker(idlePeriod)
+	pingTicker := time.NewTicker(s.pingPeriod)
+	httpPingTicker := time.NewTicker(s.httpPingPeriod)
+	idleTicker := time.NewTicker(s.idlePeriod)
 	messages := make(chan game.Message)
 	go func() {
 		defer func() {
@@ -184,11 +196,11 @@ func (s *Socket) writePing() error {
 }
 
 func (s *Socket) refreshReadDeadline(appData string) error {
-	return s.refreshDeadline(s.conn.SetReadDeadline, pongPeriod)
+	return s.refreshDeadline(s.conn.SetReadDeadline, s.pongPeriod)
 }
 
 func (s *Socket) refreshWriteDeadline() error {
-	return s.refreshDeadline(s.conn.SetWriteDeadline, pingPeriod)
+	return s.refreshDeadline(s.conn.SetWriteDeadline, s.pingPeriod)
 }
 
 func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
