@@ -6,6 +6,49 @@ import (
 	"testing"
 )
 
+func TestNewLetter(t *testing.T) {
+	newLetterTests := []struct {
+		ch      rune
+		want    letter
+		wantErr bool
+	}{
+		{
+			ch:   'A',
+			want: 'A',
+		},
+		{
+			ch:   'Z',
+			want: 'Z',
+		},
+		{
+			ch:   'L',
+			want: 'L',
+		},
+		{
+			ch:      'a',
+			wantErr: true,
+		},
+		{
+			ch:      '_',
+			wantErr: true,
+		},
+		{
+			wantErr: true,
+		},
+	}
+	for i, test := range newLetterTests {
+		got, err := newLetter(test.ch)
+		switch {
+		case err != nil:
+			if !test.wantErr {
+				t.Errorf("Test %v: unexpected error: %v", i, err)
+			}
+		case test.want != got:
+			t.Errorf("Test %v: wanted %v, got %v", i, test.want, got)
+		}
+	}
+}
+
 func TestLetterString(t *testing.T) {
 	l := letter('X')
 	want := "X"
