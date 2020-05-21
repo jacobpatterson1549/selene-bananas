@@ -168,8 +168,13 @@ func (l *Lobby) Run(done <-chan struct{}) {
 }
 
 func (l *Lobby) createGame(m game.Message) {
-	if len(l.games) == l.maxGames {
-		l.sendSocketErrorMessage(m, fmt.Sprintf("the maximum number of games have already been created (%v)", l.maxGames))
+	if len(l.games) >= l.maxGames {
+		m = game.Message{
+			Type:       game.SocketWarning,
+			PlayerName: m.PlayerName,
+			Info:       fmt.Sprintf("the maximum number of games have already been created (%v)", l.maxGames),
+		}
+		l.sendSocketMessage(m)
 		return
 	}
 	var id game.ID = 1
