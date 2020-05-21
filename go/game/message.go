@@ -40,8 +40,7 @@ const (
 	SocketInfo     MessageType = 14
 	SocketError    MessageType = 15
 	SocketHTTPPing MessageType = 17
-	ChatRecv       MessageType = 18
-	ChatSend       MessageType = 19 // TODO: combine with ChatRecv
+	Chat           MessageType = 18
 	GetInfos       MessageType = 20
 	SocketWarning  MessageType = 21
 )

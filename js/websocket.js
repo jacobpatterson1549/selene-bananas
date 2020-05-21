@@ -104,13 +104,13 @@ var websocket = {
                     log.info(message.info);
                 }
                 break;
-            case 15: // socketError
+            case 15: // game.SocketError
                 log.error(message.info);
                 break;
-            case 21: // socketWarning
+            case 21: // game.SocketWarning
                 log.warning(message.info);
                 break;
-            case 17: // socketHTTPPing
+            case 17: // game.SocketHTTPPing
                 var pingFormElement = document.getElementById("ping-form");
                 var pingEvent = {
                     preventDefault: () => { },
@@ -118,7 +118,7 @@ var websocket = {
                 }
                 pingFormElement.onsubmit(pingEvent);
                 break;
-            case 19: // gameChatSend
+            case 18: // game.Chat
                 log.chat(message.info);
                 break;
             default:

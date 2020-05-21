@@ -148,7 +148,7 @@ func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game
 		game.TilesMoved:   g.handleGameTilesMoved,
 		game.BoardRefresh: g.handleBoardRefresh,
 		game.Infos:        g.handleGameInfos,
-		game.ChatRecv:     g.handleGameChatRecv,
+		game.Chat:         g.handleGameChat,
 	}
 	go func() {
 		for {
@@ -502,11 +502,11 @@ func (g *Game) handleGameInfos(m game.Message, out chan<- game.Message) error {
 	return nil
 }
 
-func (g *Game) handleGameChatRecv(m game.Message, out chan<- game.Message) error {
+func (g *Game) handleGameChat(m game.Message, out chan<- game.Message) error {
 	info := fmt.Sprintf("%v : %v", m.PlayerName, m.Info)
 	for n := range g.players {
 		out <- game.Message{
-			Type:       game.ChatSend,
+			Type:       game.Chat,
 			PlayerName: n,
 			Info:       info,
 		}

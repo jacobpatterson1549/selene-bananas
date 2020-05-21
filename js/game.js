@@ -161,6 +161,6 @@ var game = {
         var gameChatElement = document.querySelector("input#game-chat");
         var message = gameChatElement.value;
         gameChatElement.value = "";
-        websocket.send({ type: 18, info: message }) // gameChatRecv
+        websocket.send({ type: 18, info: message }) // game.Chat
     },
 };
