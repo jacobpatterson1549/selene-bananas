@@ -175,7 +175,7 @@ func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game
 					g.log.Printf("game error: %v", err)
 					var mt game.MessageType
 					switch err.(type) {
-					case *gameWarning:
+					case gameWarning:
 						mt = game.SocketWarning
 					default:
 						mt = game.SocketError
