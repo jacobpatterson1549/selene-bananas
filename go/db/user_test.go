@@ -45,3 +45,43 @@ func TestIsValid(t *testing.T) {
 		}
 	}
 }
+
+func TestNewUser(t *testing.T) {
+	newUserTests := []struct {
+		username string
+		password string
+		wantErr  bool
+	}{
+		{
+			wantErr: true,
+		},
+		{
+			username: "selene",
+			wantErr:  true,
+		},
+		{
+			password: "top_s3cr3t!",
+			wantErr:  true,
+		},
+		{
+			username: "selene",
+			password: "top_s3cr3t!",
+		},
+	}
+	for i, test := range newUserTests {
+		u, err := NewUser(test.username, test.password)
+		switch {
+		case err != nil:
+			switch {
+			case !test.wantErr:
+				t.Errorf("Test %v: unexpected error: %v", i, err)
+			case u != nil:
+				t.Errorf("Test %v: expected nil user when error returned", i)
+			}
+		case test.username != string(u.Username):
+			t.Errorf("Test %v: wanted user's username to be %v, but was %v", i, test.username, u.Username)
+		case test.password != string(u.password):
+			t.Errorf("Test %v: wanted user's password to be %v, but was %v", i, test.password, u.password)
+		}
+	}
+}
