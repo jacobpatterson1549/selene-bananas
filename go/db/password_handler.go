@@ -7,17 +7,15 @@ import (
 )
 
 type (
-	passwordHandler interface {
-		hashPassword(p password) (string, error)
-		isCorrect(hashedPassword, p password) (bool, error)
-	}
-
-	bcryptPasswordHandler struct{}
-	hashedPassword        []byte
+	hashedPassword []byte
 )
 
+func (p password) bytes() []byte {
+	return []byte(p)
+}
+
 func (p password) hash() (hashedPassword, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(p), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword(p.bytes(), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("hashing password: %w", err)
 	}
@@ -25,7 +23,7 @@ func (p password) hash() (hashedPassword, error) {
 }
 
 func (p password) isCorrect(hp hashedPassword) (bool, error) {
-	err := bcrypt.CompareHashAndPassword(hp, []byte(p))
+	err := bcrypt.CompareHashAndPassword(hp, p.bytes())
 	switch {
 	case err == bcrypt.ErrMismatchedHashAndPassword:
 		return false, nil

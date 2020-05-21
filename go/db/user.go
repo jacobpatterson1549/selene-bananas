@@ -13,10 +13,9 @@ type (
 		Points   int
 	}
 
-	// Username uniquely identifies a user
 	username string
 
-	password string // TODO: investigate storing as []byte
+	password string
 )
 
 // NewUser creates a new user with the specified name and password.
