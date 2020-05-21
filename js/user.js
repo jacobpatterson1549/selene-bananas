@@ -94,7 +94,7 @@ var user = {
                     .then(this._logout);
                 break;
             case "/ping":
-                successPromise = () => { return Promise.resolve(); };
+                successPromise = () => Promise.resolve();
                 break;
             default:
                 content.setErrorMessage("Unknown action: " + url);
