@@ -97,7 +97,7 @@ var game = {
             }
         }
         if (silent == null || !silent) {
-            log.info("adding unused tiles: " + tileStrings);
+            log.info("adding unused tile" + (tileStrings.length == 1 ? "" : "s") + ": " + tileStrings);
         }
         canvas.redraw();
         this._setTabActive();
