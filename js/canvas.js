@@ -102,9 +102,6 @@ var canvas = {
     },
 
     _drawTile: function (x, y, tile, fromSelection) {
-        if (tile == null) {
-            console.log("oh no");
-        }
         if (fromSelection) {
             if (this._selection.tileIds[tile.id] == null) {
                 return;
