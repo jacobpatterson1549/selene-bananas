@@ -19,7 +19,6 @@ type (
 	jwtTokenizer struct {
 		method     jwt.SigningMethod
 		key        interface{}
-		userTokens map[string]string // TODO: ensure each user has only one token
 		ess        epochSecondsSupplier
 	}
 
@@ -40,10 +39,6 @@ func NewTokenizer(rand *rand.Rand) (Tokenizer, error) {
 	ess := func() int64 {
 		return time.Now().Unix()
 	}
-	return newTokenizer(rand, ess)
-}
-
-func newTokenizer(rand *rand.Rand, ess epochSecondsSupplier) (Tokenizer, error) {
 	key := make([]byte, 64)
 	_, err := rand.Read(key)
 	if err != nil {
