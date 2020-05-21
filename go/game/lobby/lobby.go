@@ -48,6 +48,7 @@ type (
 	playerSocket struct {
 		game.PlayerName
 		socket.Socket
+		result chan<- error
 	}
 
 	messageHandler struct {
@@ -62,9 +63,6 @@ func (cfg Config) NewLobby() (*Lobby, error) {
 		return nil, err
 	}
 	u := new(websocket.Upgrader)
-	u.Error = func(w http.ResponseWriter, r *http.Request, status int, reason error) {
-		log.Println(reason)
-	}
 	l := Lobby{
 		debug:          cfg.Debug,
 		log:            cfg.Log,
@@ -105,11 +103,18 @@ func (l *Lobby) AddUser(playerName game.PlayerName, w http.ResponseWriter, r *ht
 	if err != nil {
 		return fmt.Errorf("creating socket: %w", err)
 	}
+	result := make(chan error)
 	ps := playerSocket{
 		PlayerName: playerName,
 		Socket:     *s,
+		result:     result,
 	}
 	l.addPlayers <- ps
+	if err = <-result; err != nil {
+		data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, err.Error())
+		conn.WriteMessage(websocket.CloseMessage, data)
+		conn.Close()
+	}
 	return nil
 }
 
@@ -228,6 +233,10 @@ func (l *Lobby) handleGameInfos(m game.Message) {
 
 // addSocket adds the playerSocket to the socket messageHandlers and returns the merged inbound message and error channels
 func (l *Lobby) addSocket(ps playerSocket) {
+	if len(l.sockets) >= l.maxSockets {
+		ps.result <- fmt.Errorf("lobby full")
+		return
+	}
 	done := make(chan struct{}, 2)
 	writeMessages := ps.Socket.Run(done, l.socketMessages)
 	mh := messageHandler{
@@ -239,6 +248,7 @@ func (l *Lobby) addSocket(ps playerSocket) {
 		l.removeSocket(ps.PlayerName)
 	}
 	l.sockets[ps.PlayerName] = mh
+	ps.result <- nil
 }
 
 // removeSocket removes a socket from the messageHandlers

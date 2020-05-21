@@ -23,6 +23,9 @@ var websocket = {
                 reject();
             };
             this._websocket.onclose = event => {
+                if (event.reason) {
+                    log.warning("connection closed: " + event.reason);
+                }
                 this._close(false);
             };
             this._websocket.onmessage = this.onMessage;
