@@ -1,18 +1,18 @@
 var user = {
 
     _login: function (jwt) {
-        content.setJWT(jwt)
+        content.setJWT(jwt);
         var parts = jwt.split(".");
         var claims = parts[1];
         var jwtUsernameClaims = atob(claims);
-        var user = JSON.parse(jwtUsernameClaims);
+        var userJwt = JSON.parse(jwtUsernameClaims);
         var usernameElements = document.querySelectorAll("input.username");
         for (var i = 0; i < usernameElements.length; i++) {
-            usernameElements[i].value = user.sub; // the jwt subscriber
+            usernameElements[i].value = userJwt.sub; // the jwt subscriber
             usernameElements[i].setAttribute("readonly", "readonly");
         }
         var pointsElement = document.querySelector("input.points");
-        pointsElement.value = user.points;
+        pointsElement.value = userJwt.points;
         var lobbyTab = document.getElementById("tab-4");
         lobbyTab.checked = true;
         content.setLoggedIn(true);
@@ -32,7 +32,7 @@ var user = {
     _storePassword: function (form) {
         if (window.PasswordCredential) {
             var c = new PasswordCredential(form);
-            return navigator.credentials.store(c)
+            return navigator.credentials.store(c);
         }
         return Promise.resolve();
     },
@@ -102,7 +102,7 @@ var user = {
         }
         var data = {
             method: method,
-            credentials: 'include',
+            credentials: "include",
         };
         var formData = new FormData(form);
         switch (method) {
@@ -124,7 +124,7 @@ var user = {
                 if (response.status >= 400) {
                     return Promise.reject(response.status + " " + response.statusText);
                 } else {
-                    content.setErrorMessage('');
+                    content.setErrorMessage("");
                     return successPromise(response)
                         .then(() => {
                             return Promise.resolve();

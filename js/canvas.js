@@ -34,7 +34,7 @@ var canvas = {
         this._drawUnusedTiles(false);
         this._draw.ctx.fillText("Game Area:", 0, this._draw.usedMinY - this._draw.textOffset);
         this._draw.ctx.strokeRect(this._draw.usedMinX, this._draw.usedMinY,
-            this._draw.numCols * this._draw.tileLength, this._draw.numRows * this._draw.tileLength)
+            this._draw.numCols * this._draw.tileLength, this._draw.numRows * this._draw.tileLength);
         this._drawUsedTiles(false);
         if (this._selection.moveState == this._moveState_rect) {
             this._drawSelectionRectangle();
@@ -225,7 +225,7 @@ var canvas = {
             && this._draw.unusedMinY <= maxY && minY < this._draw.unusedMinY + this._draw.tileLength) {
             selectedUnusedTileIds = this._getSelectedUnusedTileIds(minX, maxX, minY, maxY);
         }
-        var selectedUsedTileIds = {}
+        var selectedUsedTileIds = {};
         if (this._draw.usedMinX <= maxX && minX < this._draw.usedMinX + this._draw.numCols * this._draw.tileLength
             && this._draw.usedMinY <= maxY && minY < this._draw.usedMinY + this._draw.numRows * this._draw.tileLength) {
             selectedUsedTileIds = this._getSelectedUsedTileIds(minX, maxX, minY, maxY);
@@ -280,7 +280,7 @@ var canvas = {
         for (i = 0; i < tilePositions.length; i++) {
             tp = tilePositions[i];
             if (game.usedTileLocs[tp.x] != null && game.usedTileLocs[tp.x][tp.y] != null) {
-                var oldTile = game.usedTileLocs[tp.x][tp.y]
+                var oldTile = game.usedTileLocs[tp.x][tp.y];
                 if (this._selection.tileIds[oldTile.id] == null) {
                     tilePositions = [];
                     return;
@@ -414,11 +414,11 @@ var canvas = {
         this._draw.ctx = canvasElement.getContext("2d");
         this._draw.width = canvasElement.width;
         this._draw.height = canvasElement.height;
-        this._draw.ctx.font = this._draw.tileLength + 'px serif';
+        this._draw.ctx.font = this._draw.tileLength + "px serif";
         this._draw.ctx.lineWidth = 1;
         var padding = 5;
         this._draw.unusedMinX = padding;
-        this._draw.unusedMinY = this._draw.tileLength
+        this._draw.unusedMinY = this._draw.tileLength;
         this._draw.usedMinX = padding;
         this._draw.usedMinY = this._draw.tileLength * 4;
         var usedMaxX = this._draw.width - padding;
@@ -427,6 +427,6 @@ var canvas = {
         this._draw.numCols = Math.floor((usedMaxX - this._draw.usedMinX) / this._draw.tileLength);
         canvasElement.addEventListener("mousedown", this._onMouseDown);
         canvasElement.addEventListener("mouseup", this._onMouseUp);
-        canvasElement.addEventListener("mousemove", this._onMouseMove)
+        canvasElement.addEventListener("mousemove", this._onMouseMove);
     },
 };

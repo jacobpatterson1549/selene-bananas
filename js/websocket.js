@@ -10,7 +10,7 @@ var websocket = {
         var url = form.action;
         url = url.replace(/^http/, "ws");
         var jwt = content.getJWT();
-        url += "?access_token=" + jwt
+        url += "?access_token=" + jwt;
         return new Promise((resolve, reject) => {
             this._websocket = new WebSocket(url);
             this._websocket.onopen = event => {
@@ -33,7 +33,7 @@ var websocket = {
     },
 
     close: function () {
-        this._close(true)
+        this._close(true);
     },
 
     _close: function (expected) {
@@ -122,7 +122,7 @@ var websocket = {
                 log.chat(message.info);
                 break;
             default:
-                log.error('unknown message type received - message:' + event.data);
+                log.error("unknown message type received - message:" + event.data);
                 break;
         }
     },

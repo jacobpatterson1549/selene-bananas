@@ -86,12 +86,12 @@ var game = {
     },
 
     addUnusedTiles: function (unusedTiles, silent) {
-        var tileStrings = []
+        var tileStrings = [];
         if (unusedTiles != null) {
             tileStrings.length = unusedTiles.length;
             for (var i = 0; i < unusedTiles.length; i++) {
                 var t = unusedTiles[i];
-                tileStrings[i] = " '" + t.ch + "'";
+                tileStrings[i] = " \"" + t.ch + "\"";
                 this.unusedTiles[t.id] = t;
                 this.unusedTileIds.push(t.id);
             }
@@ -107,21 +107,21 @@ var game = {
         var stateElement = document.querySelector("input#game-status");
         switch (status) {
             case 3: // gameNotStarted
-                stateElement.value = "Not Started"
+                stateElement.value = "Not Started";
                 this._setButtonDisabled("game-snag", true);
                 this._setButtonDisabled("game-swap", true);
                 this._setButtonDisabled("game-start", false);
                 this._setButtonDisabled("game-finish", true);
                 break;
             case 1: // gameInProgress
-                stateElement.value = "In Progress"
+                stateElement.value = "In Progress";
                 this._setButtonDisabled("game-snag", false);
                 this._setButtonDisabled("game-swap", false);
                 this._setButtonDisabled("game-start", true);
                 this._setButtonDisabled("game-finish", true);
                 break;
             case 2: // gameFinished
-                stateElement.value = "Finished"
+                stateElement.value = "Finished";
                 this._setButtonDisabled("game-snag", true);
                 this._setButtonDisabled("game-swap", true);
                 this._setButtonDisabled("game-start", true);
@@ -161,6 +161,6 @@ var game = {
         var gameChatElement = document.querySelector("input#game-chat");
         var message = gameChatElement.value;
         gameChatElement.value = "";
-        websocket.send({ type: 18, info: message }) // game.Chat
+        websocket.send({ type: 18, info: message }); // game.Chat
     },
 };
