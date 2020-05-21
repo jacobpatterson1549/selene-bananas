@@ -2,6 +2,11 @@ form label {
     display: inline-block;
 }
 
+ul.icons>li>svg {
+    height: 1em;
+    margin-right: .25em;
+}
+
 .tabs {
     display: block;
     position: relative;
@@ -58,7 +63,7 @@ form label {
 }
 
 #has-game-infos:not(:checked)+div {
-    display:none;
+    display: none;
 }
 
 #has-game:not(:checked)+div {
@@ -79,18 +84,17 @@ form label {
 }
 
 #log-scroll>.error {
-    color:red;
+    color: red;
 }
 
 #log-scroll>.chat {
-    color:green;
+    color: green;
 }
 
 #log-scroll>.warning {
-    color:orange;
+    color: orange;
 }
 
 #game-canvas {
-    border: 1px dotted black; 
+    border: 1px dotted black;
 }
-

@@ -190,6 +190,7 @@ func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 	templateFileGlobs := []string{
 		"html/*.html",
 		"html/**/*.html",
+		"svg/*.svg",
 	}
 	for _, g := range templateFileGlobs {
 		_, err := t.ParseGlob(g)
