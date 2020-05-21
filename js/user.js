@@ -154,5 +154,3 @@ var user = {
         }
     }
 };
-
-user.init();

@@ -8,7 +8,22 @@
         <meta name="Description" content="{{.Description}}">
         <meta property="og:title" content="{{.ApplicationName}}">
         <meta property="og:description" content="{{.Description}}">
-        <style type="text/css">{{template "main.css"}}</style>
+        <style type="text/css">
+            {{template "main.css"}}
+        </style>
+        <script type="text/javascript">
+            {{template "canvas.js"}}
+            {{template "content.js"}}
+            {{template "game.js"}}
+            {{template "lobby.js"}}
+            {{template "log.js"}}
+            {{template "user.js"}}
+            {{template "websocket.js"}}
+            window.onload = () => {
+                user.init();
+                canvas.init();
+            };
+        </script>
     </head>
     <body>
         <header>

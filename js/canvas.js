@@ -436,5 +436,3 @@ var canvas = {
         canvasElement.addEventListener("mousemove", this._onMouseMove)
     },
 };
-
-canvas.init();
