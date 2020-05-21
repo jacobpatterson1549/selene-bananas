@@ -53,8 +53,9 @@ var user = {
                     content.setErrorMessage("already logged in");
                     return;
                 }
-                successPromise = this._storePassword(form)
-                    .then(this._logout);
+                successPromise = () =>
+                    this._storePassword(form)
+                        .then(this._logout);
                 break;
             case "/user_delete":
                 var result = window.confirm("Are you sure? All accumulated points will be lost");
