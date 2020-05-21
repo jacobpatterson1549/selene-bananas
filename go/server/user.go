@@ -23,7 +23,7 @@ func (s Server) handleUserCreate(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	err = s.userDao.Create(u)
+	err = s.userDao.Create(*u)
 	if err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	u2, err := s.userDao.Read(u)
+	u2, err := s.userDao.Read(*u)
 	if err != nil {
 		s.log.Printf("login failure: %v", err)
 		http.Error(w, "incorrect username/password", http.StatusUnauthorized)
@@ -66,7 +66,7 @@ func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request,
 	if err != nil {
 		return err
 	}
-	err = s.userDao.UpdatePassword(u, newPassword)
+	err = s.userDao.UpdatePassword(*u, newPassword)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func (s Server) handleUserDelete(w http.ResponseWriter, r *http.Request, usernam
 	if err != nil {
 		return err
 	}
-	err = s.userDao.Delete(u)
+	err = s.userDao.Delete(*u)
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,7 @@ import (
 
 func TestIsValidUsername(t *testing.T) {
 	isValidTests := []struct {
-		username username
+		username string
 		want     bool
 	}{
 		{"", false}, // too short (< 1)
@@ -17,16 +17,17 @@ func TestIsValidUsername(t *testing.T) {
 		{"abcdefghijklmnopqrstuvwxyzabcdefg", false}, // 33
 	}
 	for i, test := range isValidTests {
-		got := test.username.isValid()
+		_, err := newUsername(test.username)
+		got := err == nil
 		if test.want != got {
-			t.Errorf("Test %v: wanted username.isValid() for '%v' to be %v, but got %v", i, test.username, test.want, got)
+			t.Errorf("Test %v: wanted username to be valid for '%v' to be %v, but got %v", i, test.username, test.want, got)
 		}
 	}
 }
 
 func TestIsValid(t *testing.T) {
 	isValidTests := []struct {
-		password password
+		password string
 		want     bool
 	}{
 		{"", false},
@@ -37,9 +38,10 @@ func TestIsValid(t *testing.T) {
 		{"abcdefghijklmnopqrstuvwxyzabcdefg", true}, // 33
 	}
 	for i, test := range isValidTests {
-		got := test.password.isValid()
+		_, err := newPassword(test.password)
+		got := err == nil
 		if test.want != got {
-			t.Errorf("Test %v: wanted password.isValid() for '%v' to be %v, but got %v", i, test.password, test.want, got)
+			t.Errorf("Test %v: wanted password to be valid for '%v' to be %v, but got %v", i, test.password, test.want, got)
 		}
 	}
 }

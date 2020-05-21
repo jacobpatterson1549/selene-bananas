@@ -2,7 +2,7 @@ package db
 
 import (
 	"fmt"
-	"strings"
+	"unicode"
 )
 
 type (
@@ -19,48 +19,44 @@ type (
 )
 
 // NewUser creates a new user with the specified name and password.
-func NewUser(u, p string) (User, error) {
-	var user User
-	username := username(u)
-	password := password(p)
-	if !username.isValid() {
-		return user, fmt.Errorf(username.helpText())
+func NewUser(u, p string) (*User, error) {
+	username, err := newUsername(u)
+	if err != nil {
+		return nil, err
 	}
-	if !password.isValid() {
-		return user, fmt.Errorf(password.helpText())
+	password, err := newPassword(p)
+	if err != nil {
+		return nil, err
 	}
-	user = User{
-		Username: username,
-		password: password,
+	user := User{
+		Username: *username,
+		password: *password,
 	}
-	return user, nil
+	return &user, nil
 }
 
-func (u username) isValid() bool {
+func newUsername(u string) (*username, error) {
 	switch {
 	case len(u) < 1:
-		return false
+		return nil, fmt.Errorf("username required")
 	case len(u) > 32:
-		return false
+		return nil, fmt.Errorf("username must be less than 32 characters long")
 	default:
-		validRunes := "abcdefghijklmnopqrstuvwxyz"
-		for i := 0; i < len(u); i++ {
-			if strings.IndexByte(validRunes, u[i]) < 0 {
-				return false
+		for _, r := range u {
+			if !unicode.IsLower(r) {
+				return nil, fmt.Errorf("username must be made of only lowercase letters")
 			}
 		}
 	}
-	return true
+	username := username(u)
+	return &username, nil
 }
 
-func (username) helpText() string {
-	return "username must be made of only lowercase letters and be less than 32 characters long"
-}
-
-func (p password) isValid() bool {
-	return len(p) >= 8
-}
-
-func (password) helpText() string {
-	return "password must be at least 8 characters long"
+func newPassword(p string) (*password, error) {
+	switch {
+	case len(p) < 8:
+		return nil, fmt.Errorf("password must be at least 8 characters long")
+	}
+	password := password(p)
+	return &password, nil
 }

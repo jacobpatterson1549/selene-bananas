@@ -87,10 +87,10 @@ func (ud userDao) Read(u User) (User, error) {
 	return u2, nil
 }
 
-func (ud userDao) UpdatePassword(u User, newPassword string) error {
-	p := password(newPassword)
-	if !p.isValid() { // TODO: this is odd place to do validation.  Maybe other places are incorrect
-		return fmt.Errorf(p.helpText())
+func (ud userDao) UpdatePassword(u User, newP string) error {
+	p, err := newPassword(newP)
+	if err != nil {
+		return err
 	}
 	hashedPassword, err := p.hash()
 	if err != nil {
