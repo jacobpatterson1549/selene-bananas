@@ -55,20 +55,18 @@ func (cfg Config) NewServer() (*Server, error) {
 	}
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	serveMux := new(http.ServeMux)
-	staticFileHandler := http.FileServer(http.Dir("./static"))
 	lobby, err := cfg.LobbyCfg.NewLobby()
 	if err != nil {
 		return nil, err
 	}
 	s := Server{
-		data:              data,
-		addr:              addr,
-		log:               cfg.Log,
-		handler:           serveMux,
-		staticFileHandler: staticFileHandler,
-		tokenizer:         cfg.Tokenizer,
-		userDao:           cfg.UserDao,
-		lobby:             lobby,
+		data:      data,
+		addr:      addr,
+		log:       cfg.Log,
+		handler:   serveMux,
+		tokenizer: cfg.Tokenizer,
+		userDao:   cfg.UserDao,
+		lobby:     lobby,
 	}
 	serveMux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
 	serveMux.HandleFunc("/", s.httpMethodHandler)
@@ -132,6 +130,8 @@ func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return fmt.Errorf("rendering template: %w", err)
 		}
+	case "/favicon.ico", "/robots.txt":
+		http.ServeFile(w, r, "static"+r.URL.Path)
 	case "/user_join_lobby":
 		err := r.ParseForm()
 		if err != nil {
@@ -152,7 +152,7 @@ func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 			return nil
 		}
 	default:
-		s.staticFileHandler.ServeHTTP(w, r)
+		httpError(w, http.StatusNotFound)
 	}
 	return nil
 }
@@ -191,6 +191,7 @@ func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 		"html/*.html",
 		"html/**/*.html",
 		"svg/*.svg",
+		"static/main.css",
 	}
 	for _, g := range templateFileGlobs {
 		_, err := t.ParseGlob(g)
