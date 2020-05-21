@@ -20,7 +20,7 @@ type (
 		GameStatus    Status          `json:"gameStatus,omitempty"`
 		GamePlayers   []string        `json:"gamePlayers,omitempty"`
 		PlayerName    PlayerName      `json:"-"`
-		GameInfoChan  chan<- Info     `json:"-"` // TODO: get rid of this. maybe make game have a special info channel that lobby can listen to.
+		GameInfoChan  chan<- Info     `json:"-"`
 	}
 )
 
