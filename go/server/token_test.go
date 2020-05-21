@@ -28,7 +28,7 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-func TestRead(t *testing.T) {
+func TestReadUsername(t *testing.T) {
 	readTests := []struct {
 		user                  db.User
 		creationSigningMethod jwt.SigningMethod
@@ -73,7 +73,7 @@ func TestRead(t *testing.T) {
 			key:    []byte("secret"),
 			ess:    epochSecondsSupplier,
 		}
-		got, err := readTokenizer.Read(tokenString)
+		got, err := readTokenizer.ReadUsername(tokenString)
 		switch {
 		case err != nil:
 			if !test.wantErr {
@@ -155,7 +155,7 @@ func TestCreateReadWithTime(t *testing.T) {
 			t.Errorf("Test %v: unexpected error: %v", i, err)
 			continue
 		}
-		_, got := tokenizer.Read(tokenString)
+		_, got := tokenizer.ReadUsername(tokenString)
 		gotErr := got != nil
 		if test.wantErr != gotErr {
 			t.Errorf("Test %v: wanted error: %v, but got %v (%v)", i, test.wantErr, gotErr, got)

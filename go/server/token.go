@@ -13,14 +13,14 @@ type (
 	// Tokenizer creates and reads tokens from http traffic.
 	Tokenizer interface {
 		Create(u db.User) (string, error)
-		Read(tokenString string) (string, error) // TODO: rename to GetUsername
+		ReadUsername(tokenString string) (string, error)
 	}
 
 	jwtTokenizer struct {
-		method            jwt.SigningMethod
-		key               interface{}
-		usersTokenStrings map[string]string // TODO: rename to userTokens
-		ess               epochSecondsSupplier
+		method     jwt.SigningMethod
+		key        interface{}
+		userTokens map[string]string // TODO: ensure each user has only one token
+		ess        epochSecondsSupplier
 	}
 
 	jwtUserClaims struct {
@@ -57,6 +57,7 @@ func newTokenizer(rand *rand.Rand, ess epochSecondsSupplier) (Tokenizer, error) 
 	return t, nil
 }
 
+// Create converts a user to a token string
 func (j jwtTokenizer) Create(u db.User) (string, error) {
 	now := j.ess()
 	expiresAt := now + tokenValidDurationSec
@@ -72,7 +73,8 @@ func (j jwtTokenizer) Create(u db.User) (string, error) {
 	return token.SignedString(j.key)
 }
 
-func (j jwtTokenizer) Read(tokenString string) (string, error) {
+// Read extracts the username from the token string
+func (j jwtTokenizer) ReadUsername(tokenString string) (string, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &jwtUserClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if t.Method != j.method {
 			return nil, fmt.Errorf("incorrect authorization signing method")

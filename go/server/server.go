@@ -138,14 +138,14 @@ func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 			return fmt.Errorf("parsing form: %w", err)
 		}
 		tokenString := r.FormValue("access_token")
-		tokenUsername, err := s.tokenizer.Read(tokenString)
+		tokenUsername, err := s.tokenizer.ReadUsername(tokenString)
 		if err != nil {
 			httpError(w, http.StatusUnauthorized)
 			return nil
 		}
 		return s.handleUserJoinLobby(w, r, tokenUsername)
 	case "/user_logout", "/ping":
-		_, err := s.checkAuthorization(r)
+		_, err := s.readTokenUsername(r)
 		if err != nil {
 			s.log.Print(err)
 			httpError(w, http.StatusForbidden)
@@ -163,7 +163,7 @@ func (s Server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 	switch r.URL.Path {
 	case "/user_create", "/user_login":
 	default:
-		tokenUsername, err = s.checkAuthorization(r)
+		tokenUsername, err = s.readTokenUsername(r)
 		if err != nil {
 			s.log.Print(err)
 			httpError(w, http.StatusForbidden)
@@ -216,13 +216,13 @@ func (s Server) addAuthorization(w http.ResponseWriter, u db.User) error {
 	return nil
 }
 
-func (s Server) checkAuthorization(r *http.Request) (string, error) { // TODO: rename to getUsername
+func (s Server) readTokenUsername(r *http.Request) (string, error) {
 	authorization := r.Header.Get("Authorization")
 	if len(authorization) < 7 || authorization[:7] != "Bearer " {
 		return "", fmt.Errorf("invalid authorization header: %v", authorization)
 	}
 	tokenString := authorization[7:]
-	tokenUsername, err := s.tokenizer.Read(tokenString)
+	tokenUsername, err := s.tokenizer.ReadUsername(tokenString)
 	if err != nil {
 		return "", err
 	}
