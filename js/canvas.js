@@ -71,18 +71,15 @@ var canvas = {
         // unused tile check
         if (this._draw.unusedMinX <= x && x < this._draw.unusedMinX + game.unusedTileIds.length * this._draw.tileLength
             && this._draw.unusedMinY <= y && y < this._draw.unusedMinY + this._draw.tileLength) {
-            var idx = Math.floor(x / this._draw.tileLength);
+            var idx = Math.floor((x - this._draw.unusedMinX)  / this._draw.tileLength);
             var id = game.unusedTileIds[idx];
             var tile = game.unusedTiles[id];
-            if (tile == null) {
-                console.log("logic error: the browser ui thinks there is a tile at [x,y]=" + x + "," + "y"
-                    + "but the tile storage variable says there is none");
-                return null;
+            if (tile != null) {
+                return { tile: tile, isUsed: false };
             }
-            return { tile: tile, isUsed: false };
         }
         // used tile check
-        if (this._draw.usedMinX <= x && x < this._draw.usedMinX + this._draw.numCols * this._draw.tileLength
+        else if (this._draw.usedMinX <= x && x < this._draw.usedMinX + this._draw.numCols * this._draw.tileLength
             && this._draw.usedMinY <= y && y < this._draw.usedMinY + this._draw.numRows * this._draw.tileLength) {
             var c = Math.floor((x - this._draw.usedMinX) / this._draw.tileLength);
             var r = Math.floor((y - this._draw.usedMinY) / this._draw.tileLength);
