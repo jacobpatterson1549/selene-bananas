@@ -22,8 +22,10 @@ var user = {
     _logout: function () {
         content.setLoggedIn(false);
         game.leave();
-        var firstUsernameElement = document.querySelector("input.username");
-        firstUsernameElement.setAttribute("readonly", false);
+        var usernameElements = document.querySelectorAll("input.username");
+        for (var i = 0; i < usernameElements.length; i++) {
+            usernameElements[i].removeAttribute("readonly");
+        }
         var loginTab = document.getElementById("tab-1");
         loginTab.checked = true;
         return Promise.resolve();
