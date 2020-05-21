@@ -30,7 +30,7 @@ type (
 		// Debug is a flag that causes the socket to log the types non-ping/pong messages that are read/written
 		Debug bool
 		// Log is used to log errors and other information
-		Log   *log.Logger
+		Log *log.Logger
 		// PongPeriod is the amount of time that between messages that can bass before the connection is invalid
 		PongPeriod time.Duration
 		// PingPeriod is the amount of time between sending ping messages to the connection to keep it active
@@ -86,7 +86,7 @@ func (cfg Config) validate(conn *websocket.Conn, playerName game.PlayerName) err
 
 // Run writes Socket messages to the messages channel and reads incoming messages on a separate goroutine
 func (s *Socket) Run(done <-chan struct{}, messages chan<- game.Message) chan<- game.Message {
-	go s.readMessages(done, messages)
+	s.readMessages(done, messages)
 	return s.writeMessages(done)
 }
 
