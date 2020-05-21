@@ -13,13 +13,13 @@ type (
 	// Tokenizer creates and reads tokens from http traffic.
 	Tokenizer interface {
 		Create(u db.User) (string, error)
-		Read(tokenString string) (db.Username, error)
+		Read(tokenString string) (string, error) // TODO: rename to GetUsername
 	}
 
 	jwtTokenizer struct {
 		method            jwt.SigningMethod
 		key               interface{}
-		usersTokenStrings map[db.Username]string
+		usersTokenStrings map[string]string // TODO: rename to userTokens
 		ess               epochSecondsSupplier
 	}
 
@@ -72,7 +72,7 @@ func (j jwtTokenizer) Create(u db.User) (string, error) {
 	return token.SignedString(j.key)
 }
 
-func (j jwtTokenizer) Read(tokenString string) (db.Username, error) {
+func (j jwtTokenizer) Read(tokenString string) (string, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &jwtUserClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if t.Method != j.method {
 			return nil, fmt.Errorf("incorrect authorization signing method")
@@ -86,5 +86,5 @@ func (j jwtTokenizer) Read(tokenString string) (db.Username, error) {
 	if !ok {
 		return "", fmt.Errorf("wanted *jwtUserClaims, but got %T", token.Claims)
 	}
-	return db.Username(jwtUserClaims.Subject), nil
+	return jwtUserClaims.Subject, nil
 }

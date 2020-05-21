@@ -17,17 +17,16 @@ type (
 		// UpdatePassword sets the password of a user
 		UpdatePassword(u User, newPassword string) error
 		// UpdatePassword increments the points for multiple users
-		UpdatePointsIncrement(usernames []Username, f UserPointsIncrementFunc) error
+		UpdatePointsIncrement(usernames []string, f UserPointsIncrementFunc) error
 		// DeleteUser removes a user
 		Delete(u User) error
 	}
 
 	// UserPointsIncrementFunc is used to determine how much to increment the points for a username
-	UserPointsIncrementFunc func(u Username) int
+	UserPointsIncrementFunc func(username string) int
 
 	userDao struct {
 		db           Database
-		ph           passwordHandler
 		readFileFunc func(filename string) ([]byte, error)
 	}
 )
@@ -36,7 +35,6 @@ type (
 func NewUserDao(db Database) UserDao {
 	return userDao{
 		db:           db,
-		ph:           bcryptPasswordHandler{},
 		readFileFunc: ioutil.ReadFile,
 	}
 }
@@ -54,7 +52,7 @@ func (ud userDao) Setup() error {
 }
 
 func (ud userDao) Create(u User) error {
-	hashedPassword, err := ud.ph.hashPassword(u.password)
+	hashedPassword, err := u.password.hash()
 	if err != nil {
 		return err
 	}
@@ -78,7 +76,8 @@ func (ud userDao) Read(u User) (User, error) {
 	if err != nil {
 		return u2, fmt.Errorf("reading user: %w", err)
 	}
-	isCorrect, err := ud.ph.isCorrect(u2.password, u.password)
+	hp := hashedPassword(u2.password)
+	isCorrect, err := u.password.isCorrect(hp)
 	switch {
 	case err != nil:
 		return u3, err
@@ -93,7 +92,7 @@ func (ud userDao) UpdatePassword(u User, newPassword string) error {
 	if !p.isValid() { // TODO: this is odd place to do validation.  Maybe other places are incorrect
 		return fmt.Errorf(p.helpText())
 	}
-	hashedPassword, err := ud.ph.hashPassword(p)
+	hashedPassword, err := p.hash()
 	if err != nil {
 		return err
 	}
@@ -108,7 +107,7 @@ func (ud userDao) UpdatePassword(u User, newPassword string) error {
 	return sqlFunction.expectSingleRowAffected(result)
 }
 
-func (ud userDao) UpdatePointsIncrement(usernames []Username, f UserPointsIncrementFunc) error {
+func (ud userDao) UpdatePointsIncrement(usernames []string, f UserPointsIncrementFunc) error {
 	queries := make([]sqlQuery, len(usernames))
 	for i, u := range usernames {
 		pointsDelta := f(u)

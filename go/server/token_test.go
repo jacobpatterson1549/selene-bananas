@@ -33,7 +33,7 @@ func TestRead(t *testing.T) {
 		user                  db.User
 		creationSigningMethod jwt.SigningMethod
 		readSigningMethod     jwt.SigningMethod
-		want                  db.Username
+		want                  string
 		wantErr               bool
 	}{
 		{

@@ -6,7 +6,7 @@ import (
 
 func TestIsValidUsername(t *testing.T) {
 	isValidTests := []struct {
-		username Username
+		username username
 		want     bool
 	}{
 		{"", false}, // too short (< 1)

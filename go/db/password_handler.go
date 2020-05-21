@@ -13,18 +13,19 @@ type (
 	}
 
 	bcryptPasswordHandler struct{}
+	hashedPassword        []byte
 )
 
-func (bcryptPasswordHandler) hashPassword(p password) (string, error) {
+func (p password) hash() (hashedPassword, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(p), bcrypt.DefaultCost)
 	if err != nil {
-		return "", fmt.Errorf("hashing password: %w", err)
+		return nil, fmt.Errorf("hashing password: %w", err)
 	}
-	return string(hashedPassword), nil
+	return hashedPassword, nil
 }
 
-func (bcryptPasswordHandler) isCorrect(hashedPassword, p password) (bool, error) {
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(p))
+func (p password) isCorrect(hp hashedPassword) (bool, error) {
+	err := bcrypt.CompareHashAndPassword(hp, []byte(p))
 	switch {
 	case err == bcrypt.ErrMismatchedHashAndPassword:
 		return false, nil

@@ -158,7 +158,7 @@ func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s Server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
-	var tokenUsername db.Username
+	var tokenUsername string
 	var err error
 	switch r.URL.Path {
 	case "/user_create", "/user_login":
@@ -216,7 +216,7 @@ func (s Server) addAuthorization(w http.ResponseWriter, u db.User) error {
 	return nil
 }
 
-func (s Server) checkAuthorization(r *http.Request) (db.Username, error) {
+func (s Server) checkAuthorization(r *http.Request) (string, error) { // TODO: rename to getUsername
 	authorization := r.Header.Get("Authorization")
 	if len(authorization) < 7 || authorization[:7] != "Bearer " {
 		return "", fmt.Errorf("invalid authorization header: %v", authorization)

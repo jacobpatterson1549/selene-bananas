@@ -19,7 +19,7 @@ func (s Server) handleUserCreate(w http.ResponseWriter, r *http.Request) error {
 	}
 	username := r.FormValue("username")
 	password := r.FormValue("password_confirm")
-	u, err := db.NewUser(db.Username(username), password)
+	u, err := db.NewUser(username, password)
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	}
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	u, err := db.NewUser(db.Username(username), password)
+	u, err := db.NewUser(username, password)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 	return s.addAuthorization(w, u2)
 }
 
-func (s Server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, username db.Username) error {
+func (s Server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, username string) error {
 	playerName := game.PlayerName(username)
 	err := s.lobby.AddUser(playerName, w, r)
 	if err != nil {
@@ -59,7 +59,7 @@ func (s Server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, user
 	return nil
 }
 
-func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request, username db.Username) error {
+func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request, username string) error {
 	password := r.FormValue("password")
 	newPassword := r.FormValue("password_confirm")
 	u, err := db.NewUser(username, password)
@@ -75,7 +75,7 @@ func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request,
 	return nil
 }
 
-func (s Server) handleUserDelete(w http.ResponseWriter, r *http.Request, username db.Username) error {
+func (s Server) handleUserDelete(w http.ResponseWriter, r *http.Request, username string) error {
 	password := r.FormValue("password")
 	u, err := db.NewUser(username, password)
 	if err != nil {

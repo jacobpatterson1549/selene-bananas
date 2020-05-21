@@ -516,13 +516,13 @@ func (g *Game) handleGameChat(m game.Message, out chan<- game.Message) error {
 }
 
 func (g *Game) updateUserPoints(winningPlayerName game.PlayerName) error {
-	users := make([]db.Username, len(g.players))
+	users := make([]string, len(g.players))
 	i := 0
 	for n := range g.players {
-		users[i] = db.Username(n)
+		users[i] = string(n)
 		i++
 	}
-	userPointsIncrementFunc := func(u db.Username) int {
+	userPointsIncrementFunc := func(u string) int {
 		if string(u) == string(winningPlayerName) {
 			p := g.players[winningPlayerName]
 			return int(p.winPoints)
