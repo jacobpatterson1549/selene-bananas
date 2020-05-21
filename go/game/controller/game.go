@@ -36,7 +36,7 @@ type (
 	Config struct {
 		// Debug is a flag that causes the game to log the types messages that are read
 		Debug bool
-		// Log is used fot log errors and other information
+		// Log is used to log errors and other information
 		Log *log.Logger
 		// UserDao is used to increment the points for players when the game is finished
 		UserDao db.UserDao

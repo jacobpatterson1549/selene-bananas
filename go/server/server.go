@@ -30,7 +30,7 @@ type (
 		AppName string
 		// Port is the port number to run the server on
 		Port string
-		// Log is used fot log errors and other information
+		// Log is used to log errors and other information
 		Log *log.Logger
 		// Tokenizer is used to generate and parse session tokens
 		Tokenizer Tokenizer

@@ -33,7 +33,7 @@ type (
 	Config struct {
 		// Debug is a flag that causes the lobby to log the types messages that are read
 		Debug bool
-		// Log is used fot log errors and other information
+		// Log is used to log errors and other information
 		Log *log.Logger
 		// MaxGames is the maximum number of games the lobby supports
 		MaxGames int
