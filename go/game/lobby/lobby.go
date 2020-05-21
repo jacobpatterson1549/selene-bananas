@@ -94,7 +94,6 @@ func (cfg Config) validate() error {
 
 // AddUser adds a user to the lobby, it opens a new websocket (player) for the username
 func (l *Lobby) AddUser(playerName game.PlayerName, w http.ResponseWriter, r *http.Request) error {
-	// TODO: lock to ensure there are not too many players
 	conn, err := l.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return fmt.Errorf("upgrading to websocket connection: %w", err)
