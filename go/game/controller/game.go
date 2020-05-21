@@ -114,6 +114,8 @@ func (cfg Config) validate(id game.ID) error {
 		return fmt.Errorf("function to shuffle tiles required")
 	case cfg.ShufflePlayersFunc == nil:
 		return fmt.Errorf("function to shuffle player draw order required")
+	case (len(cfg.TileLetters) != 0 && len(cfg.TileLetters) < cfg.NumNewTiles) || len(defaultTileLetters) < cfg.NumNewTiles:
+		return fmt.Errorf("not enough tiles for a single player to join the game")
 	}
 	return nil
 }
@@ -206,8 +208,7 @@ func (g *Game) handleGameJoin(m game.Message, out chan<- game.Message) error {
 		return gameWarning("no room for another player in game")
 	}
 	if len(g.unusedTiles) < g.numNewTiles {
-		// TODO: better handling of canJoinGame -> should there be a channel for this? should kick player...
-		return gameWarning("deleting game because it can not start: there are not enough tiles")
+		return gameWarning("not enough tiles to join the game")
 	}
 	newTiles := g.unusedTiles[:g.numNewTiles]
 	g.unusedTiles = g.unusedTiles[g.numNewTiles:]
