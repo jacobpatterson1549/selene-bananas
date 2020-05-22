@@ -7,7 +7,7 @@ test:
 	go test ./... -v
 
 install: test
-	go build -o main go/main.go
+	go build -o main go/*.go
 
 serve: install
 	export $(shell grep -v '^#' .env | xargs) && ./main
