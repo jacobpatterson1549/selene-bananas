@@ -17,7 +17,14 @@
         <input type="submit" value="Send">
     </fieldset>
 </form>
-<canvas id="game-canvas" width="500" height="500"></canvas>
+<div id="game">
+    <input type="radio" name="canvas" class="move-state none" checked>
+    <input type="radio" name="canvas" class="move-state swap">
+    <input type="radio" name="canvas" class="move-state rect">
+    <input type="radio" name="canvas" class="move-state drag">
+    <input type="radio" name="canvas" class="move-state grab">
+    <canvas  width="500" height="500"></canvas>
+</div>
 <div>
     <button type="button" id="game-snag" onclick="game.snagTile()" disabled title="Get a new tile when you have run out of tiles.  All other players also get a tile.">Snag</button>
     <button type="button" id="game-start" onclick="game.start()" disabled title="Starts the game for everyone.">Start</button>

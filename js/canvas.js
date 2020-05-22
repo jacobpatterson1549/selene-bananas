@@ -12,6 +12,29 @@ var canvas = {
         startY: 0,
         endX: 0,
         endY: 0,
+
+        setMoveState: function(moveState) {
+            this.moveState = moveState;
+            var query;
+            switch (moveState) {
+                case 0: // _moveState_none
+                    query = "#game>input.move-state.none";
+                    break;
+                case 1: // _moveState_swap
+                    query = "#game>input.move-state.swap";
+                    break;
+                case 2: // _moveState_rect
+                    query = "#game>input.move-state.rect";
+                    break;
+                case 3: // _moveState_drag
+                    query = "#game>input.move-state.drag";
+                    break;
+                default:
+                    return;
+            }
+            var moveStateInputElement = document.querySelector(query);
+            moveStateInputElement.checked = true
+        },
     },
     _draw: {
         width: 0,
@@ -140,7 +163,7 @@ var canvas = {
         var tileId;
         if (this._selection.moveState == this._moveState_swap) {
             if (selectedTile == null) {
-                this._selection.moveState = this._moveState_none;
+                this._selection.setMoveState(this._moveState_none);
                 log.info("swap cancelled");
                 return;
             }
@@ -155,18 +178,18 @@ var canvas = {
                     this._selection.tileIds = {};
                     this._selection.tileIds[selectedTile.tile.id] = true;
                 }
-                this._selection.moveState = this._moveState_drag;
+                this._selection.setMoveState(this._moveState_drag);
             } else {
                 this._selection.tileIds = {};
-                this._selection._moveState = this._moveState_none;
+                this._selection.setMoveState(this._moveState_none);
                 this.redraw();
             }
         } else if (selectedTile != null) {
             tileId = selectedTile.tile.id;
             this._selection.tileIds[tileId] = true;
-            this._selection.moveState = this._moveState_drag;
+            this._selection.setMoveState(this._moveState_drag);
         } else {
-            this._selection.moveState = this._moveState_rect;
+            this._selection.setMoveState(this._moveState_rect);
         }
     },
 
@@ -182,12 +205,12 @@ var canvas = {
         this._selection.endY = offsetY;
         switch (this._selection.moveState) {
             case this._moveState_swap:
-                this._selection.moveState = this._moveState_none;
+                this._selection.setMoveState(this._moveState_none);
                 this._swap();
                 break;
             case this._moveState_rect:
                 this._selection.tileIds = this._getSelectedTileIds();
-                this._selection.moveState = this._moveState_none;
+                this._selection.setMoveState(this._moveState_none);
                 this._selection.startX = this._selection.endX = 0;
                 this._selection.startY = this._selection.endY = 0;
                 this.redraw();
@@ -195,7 +218,7 @@ var canvas = {
             case this._moveState_drag:
                 this._moveSelectedTiles();
                 this._selection.tileIds = {};
-                this._selection.moveState = this._moveState_none;
+                this._selection.setMoveState(this._moveState_none);
                 this.redraw();
                 break
         }
@@ -382,7 +405,7 @@ var canvas = {
     },
 
     startSwap: function () {
-        this._selection.moveState = this._moveState_swap;
+        this._selection.setMoveState(this._moveState_swap);
         this._selection.tileIds = {};
         this.redraw();
     },
@@ -412,7 +435,7 @@ var canvas = {
     },
 
     init: function () {
-        var canvasElement = document.getElementById("game-canvas");
+        var canvasElement = document.querySelector("#game>canvas");
         this._draw.ctx = canvasElement.getContext("2d");
         this._draw.width = canvasElement.width;
         this._draw.height = canvasElement.height;

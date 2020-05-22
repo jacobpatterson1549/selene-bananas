@@ -95,6 +95,26 @@ ul.icons>li>svg {
     color: orange;
 }
 
-#game-canvas {
+#game>input.move-state {
+    display: none;
+}
+
+#game>input:checked.move-state.none~canvas {
+    cursor: default;
+}
+
+#game>input:checked.move-state.swap~canvas {
+    cursor: progress;
+}
+
+#game>input:checked.move-state.rect~canvas {
+    cursor: crosshair;
+}
+
+#game>input:checked.move-state.drag~canvas {
+    cursor: grabbing;
+}
+
+#game>canvas {
     border: 1px dotted black;
 }
