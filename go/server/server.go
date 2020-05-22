@@ -145,7 +145,7 @@ func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 			return nil
 		}
 		return s.handleUserJoinLobby(w, r, tokenUsername)
-	case "/user_logout", "/ping":
+	case "/ping":
 		_, err := s.readTokenUsername(r)
 		if err != nil {
 			s.log.Print(err)

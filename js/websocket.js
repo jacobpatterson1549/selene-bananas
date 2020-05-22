@@ -51,7 +51,7 @@ var websocket = {
         this._websocket = null;
         if (!expected) {
             log.error("lobby closed");
-            user._logout();
+            user.logout();
         }
     },
 

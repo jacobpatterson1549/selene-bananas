@@ -19,7 +19,7 @@ var user = {
         return Promise.resolve();
     },
 
-    _logout: function () {
+    logout: function () {
         content.setLoggedIn(false);
         game.leave();
         var usernameElements = document.querySelectorAll("input.username");
@@ -57,7 +57,7 @@ var user = {
                 }
                 successPromise = () =>
                     this._storePassword(form)
-                        .then(this._logout);
+                        .then(this.logout);
                 break;
             case "/user_delete":
                 var result = window.confirm("Are you sure? All accumulated points will be lost");
@@ -68,7 +68,7 @@ var user = {
                     content.setErrorMessage("not logged in");
                     return;
                 }
-                successPromise = this._logout;
+                successPromise = this.logout;
                 break;
             case "/user_login":
                 if (content.isLoggedIn()) {
@@ -80,20 +80,13 @@ var user = {
                         .then(() => response.text())
                         .then(this._login);
                 break;
-            case "/user_logout":
-                if (!content.isLoggedIn()) {
-                    content.setErrorMessage("not logged in");
-                    return;
-                }
-                successPromise = this._logout;
-                break;
             case "/user_update_password":
                 if (!content.isLoggedIn()) {
                     content.setErrorMessage("not logged in");
                     return;
                 }
                 successPromise = () => this._storePassword(form)
-                    .then(this._logout);
+                    .then(this.logout);
                 break;
             case "/ping":
                 successPromise = () => Promise.resolve();
