@@ -27,9 +27,11 @@ var canvas = {
     },
 
     redraw: function () {
+        this._draw.ctx.clearRect(0, 0, this._draw.width, this._draw.height);
+        this._draw.ctx.fillStyle = "white";
+        this._draw.ctx.fillRect(0, 0, this._draw.width, this._draw.height);
         this._draw.ctx.strokeStyle = "black";
         this._draw.ctx.fillStyle = "black";
-        this._draw.ctx.clearRect(0, 0, this._draw.width, this._draw.height);
         this._draw.ctx.fillText("Unused Tiles:", 0, this._draw.unusedMinY - this._draw.textOffset);
         this._drawUnusedTiles(false);
         this._draw.ctx.fillText("Game Area:", 0, this._draw.usedMinY - this._draw.textOffset);
