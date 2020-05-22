@@ -12,7 +12,7 @@ COPY . /app
 
 RUN go test ./...
 
-RUN CGO_ENABLED=0 go build -o /app/selene_bananas go/main.go
+RUN CGO_ENABLED=0 go build -o /app/selene_bananas go/*.go
 
 FROM alpine:3.11
 
