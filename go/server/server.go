@@ -140,6 +140,7 @@ func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 		tokenString := r.FormValue("access_token")
 		tokenUsername, err := s.tokenizer.ReadUsername(tokenString)
 		if err != nil {
+			s.log.Printf("reading username from token: %v", err)
 			httpError(w, http.StatusUnauthorized)
 			return nil
 		}
