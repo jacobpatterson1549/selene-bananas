@@ -10,9 +10,10 @@ import (
 
 func TestCreate(t *testing.T) {
 	tokenizer := jwtTokenizer{
-		method: jwt.SigningMethodHS256,
-		key:    []byte("secret"),
-		ess:    func() int64 { return 0 },
+		method:   jwt.SigningMethodHS256,
+		key:      []byte("secret"),
+		ess:      func() int64 { return 0 },
+		validSec: 365 * 24 * 60 * 60,
 	}
 	u := db.User{
 		Username: "selene",
@@ -86,6 +87,7 @@ func TestReadUsername(t *testing.T) {
 }
 
 func TestCreateReadWithTime(t *testing.T) {
+	const validSecs int64 = 1000
 	readTests := []struct {
 		creationTime int64 // not before
 		readTime     int64 // not equal or after
@@ -108,18 +110,18 @@ func TestCreateReadWithTime(t *testing.T) {
 		},
 		{
 			creationTime: 100,
-			readTime:     99 + tokenValidDurationSec,
+			readTime:     99 + validSecs,
 			wantErr:      false,
 		},
 		// not working: https://github.com/dgrijalva/jwt-go/issues/340
 		// {
 		// 	creationTime: 100,
-		// 	readTime:     100 + tokenValidDurationSec,
+		// 	readTime:     100 + validSecs,
 		// 	wantErr:      true,
 		// },
 		{
 			creationTime: 100,
-			readTime:     101 + tokenValidDurationSec,
+			readTime:     101 + validSecs,
 			wantErr:      true,
 		},
 	}
@@ -138,9 +140,10 @@ func TestCreateReadWithTime(t *testing.T) {
 		}
 		var tokenizer Tokenizer
 		tokenizer = jwtTokenizer{
-			method: jwt.SigningMethodHS256,
-			key:    []byte("secret"),
-			ess:    epochSecondsSupplier,
+			method:   jwt.SigningMethodHS256,
+			key:      []byte("secret"),
+			ess:      epochSecondsSupplier,
+			validSec: validSecs,
 		}
 		jwt.TimeFunc = func() time.Time {
 			now := epochSecondsSupplier()

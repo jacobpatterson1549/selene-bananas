@@ -16,10 +16,19 @@ type (
 		ReadUsername(tokenString string) (string, error)
 	}
 
+	// TokenizerConfig contains fields which describe a Tokenizer
+	TokenizerConfig struct {
+		// Rand is used to generate token keys
+		Rand *rand.Rand
+		// ValidSec is the length of time the token is valid from the issuing time, in seconds
+		ValidSec int64
+	}
+
 	jwtTokenizer struct {
-		method     jwt.SigningMethod
-		key        interface{}
-		ess        epochSecondsSupplier
+		method   jwt.SigningMethod
+		key      interface{}
+		ess      epochSecondsSupplier
+		validSec int64
 	}
 
 	jwtUserClaims struct {
@@ -30,24 +39,21 @@ type (
 	epochSecondsSupplier func() int64
 )
 
-const (
-	tokenValidDurationSec int64 = 365 * 24 * 60 * 60 // 1 year
-)
-
 // NewTokenizer creates a Tokenizer that users the random number generator to generate tokens
-func NewTokenizer(rand *rand.Rand) (Tokenizer, error) {
+func (cfg TokenizerConfig) NewTokenizer() (Tokenizer, error) {
 	ess := func() int64 {
 		return time.Now().Unix()
 	}
 	key := make([]byte, 64)
-	_, err := rand.Read(key)
+	_, err := cfg.Rand.Read(key)
 	if err != nil {
 		return nil, fmt.Errorf("generating Tokenizer key: %w", err)
 	}
 	t := jwtTokenizer{
-		method: jwt.SigningMethodHS256,
-		key:    key,
-		ess:    ess,
+		method:   jwt.SigningMethodHS256,
+		key:      key,
+		ess:      ess,
+		validSec: cfg.ValidSec,
 	}
 	return t, nil
 }
@@ -55,7 +61,7 @@ func NewTokenizer(rand *rand.Rand) (Tokenizer, error) {
 // Create converts a user to a token string
 func (j jwtTokenizer) Create(u db.User) (string, error) {
 	now := j.ess()
-	expiresAt := now + tokenValidDurationSec
+	expiresAt := now + j.validSec
 	claims := &jwtUserClaims{
 		u.Points,
 		jwt.StandardClaims{

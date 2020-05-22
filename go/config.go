@@ -19,7 +19,8 @@ import (
 
 func serverConfig(m mainFlags, log *log.Logger) (*server.Config, error) {
 	rand := rand.New(rand.NewSource(time.Now().Unix()))
-	tokenizer, err := server.NewTokenizer(rand)
+	tokenizerCfg := tokenizerConfig(rand)
+	tokenizer, err := tokenizerCfg.NewTokenizer()
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +49,15 @@ func serverConfig(m mainFlags, log *log.Logger) (*server.Config, error) {
 		LobbyCfg:  *lobbyCfg,
 	}
 	return &cfg, nil
+}
+
+func tokenizerConfig(rand *rand.Rand) server.TokenizerConfig {
+	var tokenValidDurationSec int64 = 365 * 24 * 60 * 60 // 1 year
+	cfg := server.TokenizerConfig{
+		Rand:     rand,
+		ValidSec: tokenValidDurationSec,
+	}
+	return cfg
 }
 
 func lobbyConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao) (*lobby.Config, error) {
