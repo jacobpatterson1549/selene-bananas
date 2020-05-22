@@ -39,7 +39,11 @@ func flagUsage(fs *flag.FlagSet) {
 	fs.PrintDefaults()
 }
 
-func initFlags(programName string) (*flag.FlagSet, *mainFlags) {
+// newMainFlags creates a new, populated mainFlags structure
+// Fields are populated from command line arguments.
+// If fields are not specified on the command line, environment variable values are used before defaulting to other defaults.
+func newMainFlags(osArgs []string) mainFlags {
+	programName, programArgs := osArgs[0], osArgs[1:]
 	fs := flag.NewFlagSet(programName, flag.ExitOnError)
 	fs.Usage = func() { flagUsage(fs) }
 	var m mainFlags
@@ -49,14 +53,15 @@ func initFlags(programName string) (*flag.FlagSet, *mainFlags) {
 		}
 		return defaultValue
 	}
-	defaultDebugGame := func() bool {
+	envPresent := func(envKey string) bool {
 		_, ok := os.LookupEnv(environmentVariableDebugGame)
 		return ok
 	}
 	fs.StringVar(&m.applicationName, "app-name", envOrDefault(environmentVariableApplicationName, programName), "The name of the application.")
-	fs.StringVar(&m.databaseURL, "data-source", os.Getenv(environmentVariableDatabaseURL), "The data source to the PostgreSQL database (connection URI).")
-	fs.StringVar(&m.serverPort, "port", os.Getenv(environmentVariableServerPort), "The port number to run the server on.")
+	fs.StringVar(&m.databaseURL, "data-source", envOrDefault(environmentVariableDatabaseURL, ""), "The data source to the PostgreSQL database (connection URI).")
+	fs.StringVar(&m.serverPort, "port", envOrDefault(environmentVariableServerPort, ""), "The port number to run the server on.")
 	fs.StringVar(&m.wordsFile, "words-file", envOrDefault(environmentVariableWordsFile, "/usr/share/dict/american-english-small"), "The list of valid lower-case words that can be used.")
-	fs.BoolVar(&m.debugGame, "debug-game", defaultDebugGame(), "Logs game message types in the console if present.")
-	return fs, &m
+	fs.BoolVar(&m.debugGame, "debug-game", envPresent(environmentVariableDebugGame), "Logs game message types in the console if present.")
+	fs.Parse(programArgs)
+	return m
 }

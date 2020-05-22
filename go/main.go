@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"flag"
 	"log"
 	"os"
 
@@ -10,15 +9,13 @@ import (
 )
 
 func main() {
-	fs, m := initFlags(os.Args[0])
-	flag.CommandLine = fs
-	flag.Parse()
+	m := newMainFlags(os.Args)
 
 	var buf bytes.Buffer
 	log := log.New(&buf, m.applicationName+" ", log.LstdFlags)
 	log.SetOutput(os.Stdout)
 
-	cfg, err := serverConfig(*m, log)
+	cfg, err := serverConfig(m, log)
 	if err != nil {
 		log.Fatalf("configuring server: %v", err)
 	}
