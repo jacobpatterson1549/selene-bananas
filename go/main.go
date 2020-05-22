@@ -45,7 +45,7 @@ func main() {
 	log := log.New(&buf, m.applicationName+" ", log.LstdFlags)
 	log.SetOutput(os.Stdout)
 
-	cfg, err := serverConfig(m, log)
+	cfg, err := serverConfig(*m, log)
 	if err != nil {
 		log.Fatalf("configuring server: %v", err)
 	}
@@ -75,7 +75,7 @@ func flagUsage(fs *flag.FlagSet) {
 	fs.PrintDefaults()
 }
 
-func initFlags(programName string) (*flag.FlagSet, mainFlags) {
+func initFlags(programName string) (*flag.FlagSet, *mainFlags) {
 	fs := flag.NewFlagSet(programName, flag.ExitOnError)
 	fs.Usage = func() { flagUsage(fs) }
 	var m mainFlags
@@ -94,7 +94,7 @@ func initFlags(programName string) (*flag.FlagSet, mainFlags) {
 	fs.StringVar(&m.serverPort, "port", os.Getenv(environmentVariableServerPort), "The port number to run the server on.")
 	fs.StringVar(&m.wordsFile, "words-file", envOrDefault(environmentVariableWordsFile, "/usr/share/dict/american-english-small"), "The list of valid lower-case words that can be used.")
 	fs.BoolVar(&m.debugGame, "debug-game", defaultDebugGame(), "Logs game message types in the console if present.")
-	return fs, m
+	return fs, &m
 }
 
 func serverConfig(m mainFlags, log *log.Logger) (*server.Config, error) {
