@@ -105,28 +105,31 @@ var game = {
 
     setStatus: function (status, tilesLeft) {
         var stateElement = document.querySelector("input#game-status");
-        switch (status) {
-            case 3: // gameNotStarted
-                stateElement.value = "Not Started";
-                this._setButtonDisabled("game-snag", true);
-                this._setButtonDisabled("game-swap", true);
-                this._setButtonDisabled("game-start", false);
-                this._setButtonDisabled("game-finish", true);
-                break;
-            case 1: // gameInProgress
-                stateElement.value = "In Progress";
-                this._setButtonDisabled("game-snag", false);
-                this._setButtonDisabled("game-swap", false);
-                this._setButtonDisabled("game-start", true);
-                this._setButtonDisabled("game-finish", true);
-                break;
-            case 2: // gameFinished
-                stateElement.value = "Finished";
-                this._setButtonDisabled("game-snag", true);
-                this._setButtonDisabled("game-swap", true);
-                this._setButtonDisabled("game-start", true);
-                this._setButtonDisabled("game-finish", true);
-                break;
+        if (status) {
+            switch (status) {
+                case 3: // gameNotStarted
+                    stateElement.value = "Not Started";
+                    this._setButtonDisabled("game-snag", true);
+                    this._setButtonDisabled("game-swap", true);
+                    this._setButtonDisabled("game-start", false);
+                    this._setButtonDisabled("game-finish", true);
+                    break;
+                case 1: // gameInProgress
+                    stateElement.value = "In Progress";
+                    this._setButtonDisabled("game-snag", false);
+                    this._setButtonDisabled("game-swap", false);
+                    this._setButtonDisabled("game-start", true);
+                    this._setButtonDisabled("game-finish", true);
+                    break;
+                case 2: // gameFinished
+                    stateElement.value = "Finished";
+                    this._setButtonDisabled("game-snag", true);
+                    this._setButtonDisabled("game-swap", true);
+                    this._setButtonDisabled("game-start", true);
+                    this._setButtonDisabled("game-finish", true);
+                    break;
+            }
+            game._setInProgress(status == 1); // gameInProgress
         }
         if (tilesLeft != null) {
             this._setTilesLeft(tilesLeft);
@@ -163,4 +166,14 @@ var game = {
         gameChatElement.value = "";
         websocket.send({ type: 18, info: message }); // game.Chat
     },
+
+    isInProgress: function () {
+        var inProgressElement = document.querySelector("#game>input.in-progress");
+        return inProgressElement.checked;
+    },
+
+    _setInProgress: function (checked) {
+        var inProgressElement = document.querySelector("#game>input.in-progress");
+        inProgressElement.checked = checked;
+    }
 };

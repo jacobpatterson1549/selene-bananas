@@ -157,6 +157,9 @@ var canvas = {
     },
 
     _onMouseDown: function (event) {
+        if (!game.isInProgress()) {
+            return;
+        }
         canvas._mouseDown(event.offsetX, event.offsetY);
     },
 
@@ -198,6 +201,9 @@ var canvas = {
     },
 
     _onMouseUp: function (event) {
+        if (!game.isInProgress()) {
+            return;
+        }
         canvas._mouseUp(event.offsetX, event.offsetY);
     },
 
@@ -230,6 +236,9 @@ var canvas = {
     },
 
     _onMouseMove: function (event) {
+        if (!game.isInProgress()) {
+            return;
+        }
         canvas._mouseMove(event.offsetX, event.offsetY);
     },
 

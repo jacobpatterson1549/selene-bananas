@@ -95,7 +95,7 @@ ul.icons>li>svg {
     color: orange;
 }
 
-#game>input.move-state {
+#game>input[type="radio"] {
     display: none;
 }
 
