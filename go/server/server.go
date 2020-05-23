@@ -145,13 +145,21 @@ func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 			httpError(w, http.StatusUnauthorized)
 			return nil
 		}
-		return s.handleUserJoinLobby(w, r, tokenUsername)
+		err = s.handleUserJoinLobby(w, r, tokenUsername)
+		if err != nil {
+			return err
+		}
 	case "/ping":
 		_, err := s.readTokenUsername(r)
 		if err != nil {
 			s.log.Print(err)
 			httpError(w, http.StatusForbidden)
 			return nil
+		}
+	case "/monitor":
+		err := s.handleMonitor(w, r)
+		if err != nil {
+			return err
 		}
 	default:
 		httpError(w, http.StatusNotFound)
