@@ -1,3 +1,4 @@
+// Package controller handles the logic to run the game
 package controller
 
 import (

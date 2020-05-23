@@ -1,3 +1,4 @@
+// Package socket handles communication with a player using a websocket connection
 package socket
 
 import (

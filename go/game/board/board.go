@@ -1,3 +1,4 @@
+// Package board stores the tiles for a game and handles queries to read and update tiles
 package board
 
 import (

@@ -1,3 +1,4 @@
+// Package db interacts with storing user attributes so they can be retrieved after the server restarts
 package db
 
 import (

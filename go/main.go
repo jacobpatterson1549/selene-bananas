@@ -1,3 +1,4 @@
+// Package main starts the server after configuring it from supplied or standard arguments
 package main
 
 import (

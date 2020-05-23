@@ -1,3 +1,4 @@
+// Package tile contains structures that players interact with on game boards
 package tile
 
 type (

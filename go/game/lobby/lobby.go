@@ -1,3 +1,4 @@
+// Package lobby handles players connecting to games and communication between games and players
 package lobby
 
 import (
