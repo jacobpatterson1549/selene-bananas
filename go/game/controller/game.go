@@ -65,6 +65,8 @@ type (
 )
 
 const (
+	gameWarningNotInProgress gameWarning = "game has not started or is finished"
+	// defaultTileLetters is the default if not specified
 	defaultTileLetters = "AAAAAAAAAAAAABBBCCCDDDDDDEEEEEEEEEEEEEEEEEEFFFGGGGHHHIIIIIIIIIIIIJJKKLLLLLMMMNNNNNNNNOOOOOOOOOOOPPPQQRRRRRRRRRSSSSSSTTTTTTTTTUUUUUUVVVWWWXXYYYZZ"
 )
 
@@ -275,7 +277,7 @@ func (g *Game) handleGameStatusChange(m game.Message, out chan<- game.Message) e
 
 func (g *Game) start(m game.Message, out chan<- game.Message) error {
 	if m.GameStatus != game.InProgress {
-		return gameWarning("game already started or is finished")
+		return gameWarning("can only set game status to started")
 	}
 	g.status = game.InProgress
 	info := fmt.Sprintf("%v started the game", m.PlayerName)
@@ -342,7 +344,7 @@ func (g *Game) finish(m game.Message, out chan<- game.Message) error {
 func (g *Game) handleGameSnag(m game.Message, out chan<- game.Message) error {
 	switch {
 	case g.status != game.InProgress:
-		return gameWarning("game has not started or is finished")
+		return gameWarningNotInProgress
 	case len(g.unusedTiles) == 0:
 		return gameWarning("no tiles left to snag, use what you have to finish")
 	}
@@ -401,7 +403,7 @@ func (g *Game) handleGameSnag(m game.Message, out chan<- game.Message) error {
 func (g *Game) handleGameSwap(m game.Message, out chan<- game.Message) error {
 	switch {
 	case g.status != game.InProgress:
-		return gameWarning("game has not started or is finished")
+		return gameWarningNotInProgress
 	case len(m.Tiles) != 1:
 		return gameWarning("no tile specified for swap")
 	case len(g.unusedTiles) == 0:
@@ -449,7 +451,7 @@ func (g *Game) handleGameSwap(m game.Message, out chan<- game.Message) error {
 func (g *Game) handleGameTilesMoved(m game.Message, out chan<- game.Message) error {
 	switch {
 	case g.status != game.InProgress:
-		return gameWarning("game has not started or is finished")
+		return gameWarningNotInProgress
 	}
 	p := g.players[m.PlayerName]
 	return p.MoveTiles(m.TilePositions)
