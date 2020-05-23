@@ -201,13 +201,15 @@ func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game
 }
 
 func (g *Game) handleGameJoin(m game.Message, out chan<- game.Message) error {
-	if _, ok := g.players[m.PlayerName]; ok {
+	_, ok := g.players[m.PlayerName]
+	switch {
+	case ok:
 		return g.handleBoardRefresh(m, out)
-	}
-	if len(g.players) >= g.maxPlayers {
+	case g.status != game.NotStarted:
+		return gameWarning("cannot join game that has been started")
+	case len(g.players) >= g.maxPlayers:
 		return gameWarning("no room for another player in game")
-	}
-	if len(g.unusedTiles) < g.numNewTiles {
+	case len(g.unusedTiles) < g.numNewTiles:
 		return gameWarning("not enough tiles to join the game")
 	}
 	newTiles := g.unusedTiles[:g.numNewTiles]
@@ -261,22 +263,19 @@ func (g *Game) handleGameDelete(m game.Message, out chan<- game.Message) error {
 func (g *Game) handleGameStatusChange(m game.Message, out chan<- game.Message) error {
 	switch g.status {
 	case game.NotStarted:
-		if m.GameStatus != game.InProgress {
-			return gameWarning("game already started or is finished")
-		}
-		return g.start(m.PlayerName, out)
+		return g.start(m, out)
 	case game.InProgress:
-		if m.GameStatus != game.Finished {
-			return gameWarning("can only attempt to set game that is in progress to finished")
-		}
-		return g.finish(m.PlayerName, out)
+		return g.finish(m, out)
 	}
 	return fmt.Errorf("cannot change game state from %v", g.status)
 }
 
-func (g *Game) start(startingPlayerName game.PlayerName, out chan<- game.Message) error {
+func (g *Game) start(m game.Message, out chan<- game.Message) error {
+	if m.GameStatus != game.InProgress {
+		return gameWarning("game already started or is finished")
+	}
 	g.status = game.InProgress
-	info := fmt.Sprintf("%v started the game", startingPlayerName)
+	info := fmt.Sprintf("%v started the game", m.PlayerName)
 	for n := range g.players {
 		out <- game.Message{
 			Type:       game.SocketInfo,
@@ -289,16 +288,17 @@ func (g *Game) start(startingPlayerName game.PlayerName, out chan<- game.Message
 	return nil
 }
 
-func (g *Game) finish(finishingPlayerName game.PlayerName, out chan<- game.Message) error {
-	p := g.players[finishingPlayerName]
-	if len(g.unusedTiles) != 0 {
+func (g *Game) finish(m game.Message, out chan<- game.Message) error {
+	p := g.players[m.PlayerName]
+	switch {
+	case m.GameStatus != game.Finished:
+		return gameWarning("can only attempt to set game that is in progress to finished")
+	case len(g.unusedTiles) != 0:
 		return gameWarning("snag first")
-	}
-	if len(p.UnusedTiles) != 0 {
+	case len(p.UnusedTiles) != 0:
 		p.decrementWinPoints()
 		return gameWarning("not all tiles used, possible win points decremented")
-	}
-	if !p.HasSingleUsedGroup() {
+	case !p.HasSingleUsedGroup():
 		p.decrementWinPoints()
 		return gameWarning("not all used tiles form a single group, possible win points decremented")
 	}
@@ -316,11 +316,11 @@ func (g *Game) finish(finishingPlayerName game.PlayerName, out chan<- game.Messa
 	g.status = game.Finished
 	info := fmt.Sprintf(
 		"WINNER! - %v won, creating %v words, getting %v points.  Other players each get 1 point",
-		finishingPlayerName,
+		m.PlayerName,
 		len(usedWords),
 		p.winPoints,
 	)
-	err := g.updateUserPoints(finishingPlayerName)
+	err := g.updateUserPoints(m.PlayerName)
 	if err != nil {
 		info = err.Error()
 	}
@@ -337,10 +337,10 @@ func (g *Game) finish(finishingPlayerName game.PlayerName, out chan<- game.Messa
 }
 
 func (g *Game) handleGameSnag(m game.Message, out chan<- game.Message) error {
-	if g.status != game.InProgress {
+	switch {
+	case g.status != game.InProgress:
 		return gameWarning("game has not started or is finished")
-	}
-	if len(g.unusedTiles) == 0 {
+	case len(g.unusedTiles) == 0:
 		return gameWarning("no tiles left to snag, use what you have to finish")
 	}
 	snagPlayerMessages := make(map[game.PlayerName]game.Message, len(g.players))
@@ -396,13 +396,12 @@ func (g *Game) handleGameSnag(m game.Message, out chan<- game.Message) error {
 }
 
 func (g *Game) handleGameSwap(m game.Message, out chan<- game.Message) error {
-	if g.status != game.InProgress {
+	switch {
+	case g.status != game.InProgress:
 		return gameWarning("game has not started or is finished")
-	}
-	if len(m.Tiles) != 1 {
+	case len(m.Tiles) != 1:
 		return gameWarning("no tile specified for swap")
-	}
-	if len(g.unusedTiles) == 0 {
+	case len(g.unusedTiles) == 0:
 		return gameWarning("no tiles left to swap, user what you have to finish")
 	}
 	t := m.Tiles[0]
@@ -445,6 +444,10 @@ func (g *Game) handleGameSwap(m game.Message, out chan<- game.Message) error {
 }
 
 func (g *Game) handleGameTilesMoved(m game.Message, out chan<- game.Message) error {
+	switch {
+	case g.status != game.InProgress:
+		return gameWarning("game has not started or is finished")
+	}
 	p := g.players[m.PlayerName]
 	return p.MoveTiles(m.TilePositions)
 }
