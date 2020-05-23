@@ -8,10 +8,9 @@ import (
 )
 
 func TestWords(t *testing.T) {
-	var e struct{}
 	wordsTests := []struct {
 		wordsToRead string
-		want        map[string]struct{}
+		wantWords   []string
 	}{
 		{},
 		{
@@ -19,29 +18,29 @@ func TestWords(t *testing.T) {
 		},
 		{
 			wordsToRead: "a bad cat",
-			want: map[string]struct{}{
-				"a":   e,
-				"bad": e,
-				"cat": e,
-			},
+			wantWords:   []string{"a", "bad", "cat"},
 		},
 		{
 			wordsToRead: "A man, a plan, a canal, panama!",
-			want:        map[string]struct{}{"a": e},
+			wantWords:   []string{"a"},
 		},
 		{
 			wordsToRead: "Abc 'words' they're top-secret not.",
 		},
 	}
 	for i, test := range wordsTests {
+		want := make(map[string]struct{}, len(test.wantWords))
+		for _, w := range test.wantWords {
+			want[w] = struct{}{}
+		}
 		r := strings.NewReader(test.wordsToRead)
 		wc, err := NewWordChecker(r)
 		switch {
 		case err != nil:
 			t.Errorf("unexpected error: %v", err)
-		case test.want == nil && len(wc.words) != 0 ||
-			(test.want != nil && !reflect.DeepEqual(test.want, wc.words)):
-			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, wc.words)
+		case (want == nil && len(wc.words) != 0) ||
+			(want != nil && !reflect.DeepEqual(want, wc.words)):
+			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, want, wc.words)
 		}
 	}
 }

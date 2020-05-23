@@ -1,8 +1,8 @@
 package game
 
 import (
-	"fmt"
 	"bufio"
+	"fmt"
 	"io"
 	"strings"
 	"unicode"
@@ -45,30 +45,24 @@ func (wc WordChecker) Check(word string) bool {
 // derived from bufio.ScanWords, but simplified to only handle ascii
 func scanLowerWords(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	start, end := 0, 0
+	skipUntilSpace := false
 	// Scan until the next all lowercase word is found
 	for end < len(data) {
 		r := rune(data[end])
 		end++
 		switch {
 		case unicode.IsSpace(r):
-			if start+1 < end {
-				return end, data[start:end-1], nil
+			if !skipUntilSpace && start+1 < end {
+				return end, data[start : end-1], nil
 			}
 			start = end
-		case !unicode.IsLower(r): // uppercase/symbol
-			// skip until next space found
-			for end < len(data) {
-				r := rune(data[end])
-				end++
-				if unicode.IsSpace(r) {
-					start = end
-					break
-				}
-			}
+			skipUntilSpace = false
+		case !unicode.IsLower(r) && !skipUntilSpace: // uppercase/symbol
+			skipUntilSpace = true
 		}
 	}
 	if atEOF && len(data) > start {
-		if end > 0 && !unicode.IsLower(rune(data[end-1])) {
+		if skipUntilSpace {
 			return len(data), nil, nil
 		}
 		// If we're at EOF, we have a final, non-empty, non-terminated word. Return it.
