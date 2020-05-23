@@ -48,17 +48,14 @@ func scanLowerWords(data []byte, atEOF bool) (advance int, token []byte, err err
 	// Scan until the next all lowercase word is found
 	for end < len(data) {
 		r := rune(data[end])
+		end++
 		switch {
 		case unicode.IsSpace(r):
-			if start < end {
-				return end + 1, data[start:end], nil
+			if start+1 < end {
+				return end, data[start:end-1], nil
 			}
-			end++
 			start = end
-		case unicode.IsLower(r):
-			end++
-		default: // uppercase/symbol
-			end++
+		case !unicode.IsLower(r): // uppercase/symbol
 			// skip until next space found
 			for end < len(data) {
 				r := rune(data[end])
