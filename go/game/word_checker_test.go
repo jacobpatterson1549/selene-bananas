@@ -46,7 +46,7 @@ func TestWords(t *testing.T) {
 }
 
 func TestWordsReal(t *testing.T) {
-	t.Skip("skipping integration test") // !!! Disables integration test with large file !!!
+	//t.Skip("skipping integration test") // !!! Disables integration test with large file !!!
 	wordsFile := "/usr/share/dict/american-english-small"
 	f, err := os.Open(wordsFile)
 	if err != nil {
