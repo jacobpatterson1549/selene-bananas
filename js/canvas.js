@@ -4,6 +4,7 @@ var canvas = {
     _moveState_swap: 1,
     _moveState_rect: 2,
     _moveState_drag: 3,
+    _moveState_grab: 4,
     _selection: {
         moveState: 0, // this._moveState_none,
         tileIds: {},
@@ -28,6 +29,9 @@ var canvas = {
                     break;
                 case 3: // _moveState_drag
                     query = "#game>input.move-state.drag";
+                    break;
+                case 4: // _moveState_grab
+                    query = "#game>input.move-state.grab";
                     break;
                 default:
                     return;
@@ -198,7 +202,8 @@ var canvas = {
     },
 
     _mouseUp: function (offsetX, offsetY) {
-        if (this._selection.moveState == this._moveState_none) {
+        if (this._selection.moveState == this._moveState_none ||
+            this._selection.moveState == this._moveState_grab) {
             return;
         }
         this._selection.endX = offsetX;
@@ -235,7 +240,17 @@ var canvas = {
                 this._selection.endX = offsetX;
                 this._selection.endY = offsetY;
                 this.redraw();
-                break;
+                return;
+        }
+        var selectedTile = canvas._getTileSelection(offsetX, offsetY);
+        if (selectedTile == null) {
+            if (this._selection.moveState == this._moveState_grab) {
+                this._selection.setMoveState(this._moveState_none);
+            }
+        } else {
+            if (this._selection.moveState == this._moveState_none) {
+                this._selection.setMoveState(this._moveState_grab);
+            }
         }
     },
 
