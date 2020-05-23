@@ -18,8 +18,11 @@ import (
 )
 
 func serverConfig(m mainFlags, log *log.Logger) (*server.Config, error) {
-	rand := rand.New(rand.NewSource(time.Now().Unix()))
-	tokenizerCfg := tokenizerConfig(rand)
+	timeFunc := func() int64 {
+		return time.Now().Unix()
+	}
+	rand := rand.New(rand.NewSource(timeFunc()))
+	tokenizerCfg := tokenizerConfig(rand, timeFunc)
 	tokenizer, err := tokenizerCfg.NewTokenizer()
 	if err != nil {
 		return nil, err
@@ -36,7 +39,7 @@ func serverConfig(m mainFlags, log *log.Logger) (*server.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	lobbyCfg, err := lobbyConfig(m, log, rand, ud)
+	lobbyCfg, err := lobbyConfig(m, log, rand, ud, timeFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -51,18 +54,19 @@ func serverConfig(m mainFlags, log *log.Logger) (*server.Config, error) {
 	return &cfg, nil
 }
 
-func tokenizerConfig(rand *rand.Rand) server.TokenizerConfig {
+func tokenizerConfig(rand *rand.Rand, timeFunc func() int64) server.TokenizerConfig {
 	var tokenValidDurationSec int64 = 365 * 24 * 60 * 60 // 1 year
 	cfg := server.TokenizerConfig{
 		Rand:     rand,
+		TimeFunc: timeFunc,
 		ValidSec: tokenValidDurationSec,
 	}
 	return cfg
 }
 
-func lobbyConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao) (*lobby.Config, error) {
-	gameCfg, err := gameConfig(m, log, rand, ud)
-	socketCfg := socketConfig(m, log)
+func lobbyConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao, timeFunc func() int64) (*lobby.Config, error) {
+	gameCfg, err := gameConfig(m, log, rand, ud, timeFunc)
+	socketCfg := socketConfig(m, log, timeFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +81,7 @@ func lobbyConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao) (
 	return &cfg, nil
 }
 
-func gameConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao) (*controller.Config, error) {
+func gameConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao, timeFunc func() int64) (*controller.Config, error) {
 	wordsFile, err := os.Open(m.wordsFile)
 	if err != nil {
 		return nil, err
@@ -99,6 +103,7 @@ func gameConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao) (*
 	cfg := controller.Config{
 		Debug:                  m.debugGame,
 		Log:                    log,
+		TimeFunc:               timeFunc,
 		UserDao:                ud,
 		MaxPlayers:             8,
 		NumNewTiles:            21,
@@ -111,10 +116,11 @@ func gameConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao) (*
 	return &cfg, nil
 }
 
-func socketConfig(m mainFlags, log *log.Logger) socket.Config {
+func socketConfig(m mainFlags, log *log.Logger, timeFunc func() int64) socket.Config {
 	cfg := socket.Config{
 		Debug:          m.debugGame,
 		Log:            log,
+		TimeFunc:       timeFunc,
 		PongPeriod:     20 * time.Second,
 		PingPeriod:     15 * time.Second,
 		IdlePeriod:     15 * time.Minute,

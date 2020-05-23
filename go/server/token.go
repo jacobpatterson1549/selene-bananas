@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"math/rand"
-	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jacobpatterson1549/selene-bananas/go/db"
@@ -20,6 +19,9 @@ type (
 	TokenizerConfig struct {
 		// Rand is used to generate token keys
 		Rand *rand.Rand
+		// TimeFunc is a function which should supply the current time since the unix epoch.
+		// Used to set the the length of time the token is valid
+		TimeFunc func() int64
 		// ValidSec is the length of time the token is valid from the issuing time, in seconds
 		ValidSec int64
 	}
@@ -27,7 +29,7 @@ type (
 	jwtTokenizer struct {
 		method   jwt.SigningMethod
 		key      interface{}
-		ess      epochSecondsSupplier
+		timeFunc func() int64
 		validSec int64
 	}
 
@@ -35,15 +37,10 @@ type (
 		Points             int `json:"points"`
 		jwt.StandardClaims     // username stored in Subject ("sub") field
 	}
-
-	epochSecondsSupplier func() int64
 )
 
 // NewTokenizer creates a Tokenizer that users the random number generator to generate tokens
 func (cfg TokenizerConfig) NewTokenizer() (Tokenizer, error) {
-	ess := func() int64 {
-		return time.Now().Unix()
-	}
 	key := make([]byte, 64)
 	_, err := cfg.Rand.Read(key)
 	if err != nil {
@@ -52,7 +49,7 @@ func (cfg TokenizerConfig) NewTokenizer() (Tokenizer, error) {
 	t := jwtTokenizer{
 		method:   jwt.SigningMethodHS256,
 		key:      key,
-		ess:      ess,
+		timeFunc: cfg.TimeFunc,
 		validSec: cfg.ValidSec,
 	}
 	return t, nil
@@ -60,7 +57,7 @@ func (cfg TokenizerConfig) NewTokenizer() (Tokenizer, error) {
 
 // Create converts a user to a token string
 func (j jwtTokenizer) Create(u db.User) (string, error) {
-	now := j.ess()
+	now := j.timeFunc()
 	expiresAt := now + j.validSec
 	claims := &jwtUserClaims{
 		u.Points,

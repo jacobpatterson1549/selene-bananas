@@ -18,7 +18,7 @@ type (
 		debug                  bool
 		log                    *log.Logger
 		id                     game.ID
-		createdAt              string
+		createdAt              int64
 		status                 game.Status
 		userDao                db.UserDao
 		players                map[game.PlayerName]*player
@@ -38,6 +38,9 @@ type (
 		Debug bool
 		// Log is used to log errors and other information
 		Log *log.Logger
+		// TimeFunc is a function which should supply the current time since the unix epoch.
+		// Used for the created at timestamp
+		TimeFunc func() int64
 		// UserDao is used to increment the points for players when the game is finished
 		UserDao db.UserDao
 		// MaxPlayers is the maximum number of players that can be part of the game
@@ -78,7 +81,7 @@ func (cfg Config) NewGame(id game.ID) (*Game, error) {
 		debug:                  cfg.Debug,
 		log:                    cfg.Log,
 		id:                     id,
-		createdAt:              time.Now().Format(time.UnixDate),
+		createdAt:              cfg.TimeFunc(),
 		status:                 game.NotStarted,
 		userDao:                cfg.UserDao,
 		maxPlayers:             cfg.MaxPlayers,

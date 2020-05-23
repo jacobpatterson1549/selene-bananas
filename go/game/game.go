@@ -6,11 +6,17 @@ type (
 
 	// Info contains information about a game
 	Info struct {
-		ID        ID       `json:"id"`
-		Status    Status   `json:"status"`
-		Players   []string `json:"players"`
-		CanJoin   bool     `json:"canJoin"`
-		CreatedAt string   `json:"createdAt"`
+		// ID is unique among the other games that currently exist.
+		ID ID `json:"id"`
+		// Status is the state of the game.
+		Status Status `json:"status"`
+		// Players is a list of the names of players in the game.
+		Players []string `json:"players"`
+		// CanJoin is a flag that indicates whether or not a player can join the game.
+		// Players can only join games that are not started or that they  were previously a part of,
+		CanJoin bool `json:"canJoin"`
+		// Created at is the time since the unix expoch in seconds.
+		CreatedAt int64 `json:"createdAt"`
 	}
 
 	// ID is the id of a game

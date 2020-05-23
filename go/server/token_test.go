@@ -12,7 +12,7 @@ func TestCreate(t *testing.T) {
 	tokenizer := jwtTokenizer{
 		method:   jwt.SigningMethodHS256,
 		key:      []byte("secret"),
-		ess:      func() int64 { return 0 },
+		timeFunc: func() int64 { return 0 },
 		validSec: 365 * 24 * 60 * 60,
 	}
 	u := db.User{
@@ -60,9 +60,9 @@ func TestReadUsername(t *testing.T) {
 	epochSecondsSupplier := func() int64 { return 0 }
 	for i, test := range readTests {
 		creationTokenizer := jwtTokenizer{
-			method: test.creationSigningMethod,
-			key:    []byte("secret"),
-			ess:    epochSecondsSupplier,
+			method:   test.creationSigningMethod,
+			key:      []byte("secret"),
+			timeFunc: epochSecondsSupplier,
 		}
 		tokenString, err := creationTokenizer.Create(test.user)
 		if err != nil {
@@ -70,9 +70,9 @@ func TestReadUsername(t *testing.T) {
 			continue
 		}
 		readTokenizer := jwtTokenizer{
-			method: test.readSigningMethod,
-			key:    []byte("secret"),
-			ess:    epochSecondsSupplier,
+			method:   test.readSigningMethod,
+			key:      []byte("secret"),
+			timeFunc: epochSecondsSupplier,
 		}
 		got, err := readTokenizer.ReadUsername(tokenString)
 		switch {
@@ -142,7 +142,7 @@ func TestCreateReadWithTime(t *testing.T) {
 		tokenizer = jwtTokenizer{
 			method:   jwt.SigningMethodHS256,
 			key:      []byte("secret"),
-			ess:      epochSecondsSupplier,
+			timeFunc: epochSecondsSupplier,
 			validSec: validSecs,
 		}
 		jwt.TimeFunc = func() time.Time {

@@ -16,6 +16,7 @@ type (
 		debug          bool
 		log            *log.Logger
 		conn           *websocket.Conn
+		timeFunc       func() int64
 		playerName     game.PlayerName
 		gameID         game.ID // mutable
 		active         bool
@@ -31,6 +32,9 @@ type (
 		Debug bool
 		// Log is used to log errors and other information
 		Log *log.Logger
+		// TimeFunc is a function which should supply the current time since the unix epoch.
+		// Used to set ping/pong deadlines
+		TimeFunc func() int64
 		// PongPeriod is the amount of time that between messages that can bass before the connection is invalid
 		PongPeriod time.Duration
 		// PingPeriod is the amount of time between sending ping messages to the connection to keep it active
@@ -53,6 +57,7 @@ func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) (*
 		debug:          cfg.Debug,
 		log:            cfg.Log,
 		conn:           conn,
+		timeFunc:       cfg.TimeFunc,
 		playerName:     playerName,
 		pongPeriod:     cfg.PongPeriod,
 		pingPeriod:     cfg.PingPeriod,
@@ -230,7 +235,10 @@ func (s *Socket) refreshWriteDeadline() error {
 }
 
 func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
-	if err := refreshDeadlineFunc(time.Now().Add(period)); err != nil {
+	now := s.timeFunc()
+	nowTime := time.Unix(now, 0)
+	deadline := nowTime.Add(period)
+	if err := refreshDeadlineFunc(deadline); err != nil {
 		err := fmt.Errorf("error refreshing ping/pong deadline: %w", err)
 		s.log.Print(err)
 		return err
