@@ -144,6 +144,7 @@ func (g *Game) initializeUnusedTiles() error {
 }
 
 // Run runs the game
+// The game runs until a message is received on the "done"< channel.
 func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game.Message) {
 	idleTicker := time.NewTicker(g.idlePeriod)
 	active := false

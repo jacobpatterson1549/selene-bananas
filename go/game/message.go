@@ -8,7 +8,7 @@ type (
 	// MessageType represents what the purpose of a message is
 	MessageType int
 
-	// Message contains information to or from a player for a game/lobby
+	// Message contains information to or from a socket for a game/lobby
 	Message struct {
 		Type          MessageType     `json:"type"`
 		Info          string          `json:"info,omitempty"`

@@ -125,7 +125,8 @@ func (l *Lobby) RemoveUser(playerName game.PlayerName) {
 	}
 }
 
-// Run runs the lobby
+// Run runs the lobby.
+// The Lobby runs until amessage is received on the "done"< channel.
 func (l *Lobby) Run(done <-chan struct{}) {
 	go func() {
 		defer func() {

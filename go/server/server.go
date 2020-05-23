@@ -90,6 +90,7 @@ func (cfg Config) validate() error {
 }
 
 // Run starts the server
+// The server runs until it receives a shutdown signal.  This function blocks.
 func (s Server) Run() error {
 	httpServer := &http.Server{
 		Addr:    s.addr,

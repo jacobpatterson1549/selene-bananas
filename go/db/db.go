@@ -8,7 +8,7 @@ import (
 )
 
 type (
-	// Database contains methods to create, read, update, and delete date
+	// Database contains methods to create, read, update, and delete data
 	Database interface {
 		queryRow(query string, args ...interface{}) row
 		exec(query string, args ...interface{}) (sql.Result, error)

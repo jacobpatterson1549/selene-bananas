@@ -90,7 +90,10 @@ func (cfg Config) validate(conn *websocket.Conn, playerName game.PlayerName) err
 	return nil
 }
 
-// Run writes Socket messages to the messages channel and reads incoming messages on a separate goroutine
+// Run writes Socket messages to the messages channel and reads incoming messages on separate goroutines
+// The Socket runs until the connection fails for an unexpected reason or a message is received on the "done"< channel.
+// Messages the socket receives are sent to the provided channel.
+// Messages the socket sends are consumed from the returned channel.
 func (s *Socket) Run(done <-chan struct{}, messages chan<- game.Message) chan<- game.Message {
 	s.readMessages(done, messages)
 	return s.writeMessages(done)
