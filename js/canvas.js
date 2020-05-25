@@ -14,7 +14,7 @@ var canvas = {
         endX: 0,
         endY: 0,
 
-        setMoveState: function(moveState) {
+        setMoveState: function (moveState) {
             this.moveState = moveState;
             var query;
             switch (moveState) {
@@ -51,6 +51,10 @@ var canvas = {
         usedMinY: 0,
         numRows: 0,
         numCols: 0,
+    },
+    _touchMove: { // need to store all move locations, as touch end events have no touches
+        x: 0,
+        y: 0,
     },
 
     redraw: function () {
@@ -100,7 +104,7 @@ var canvas = {
         // unused tile check
         if (this._draw.unusedMinX <= x && x < this._draw.unusedMinX + game.unusedTileIds.length * this._draw.tileLength
             && this._draw.unusedMinY <= y && y < this._draw.unusedMinY + this._draw.tileLength) {
-            var idx = Math.floor((x - this._draw.unusedMinX)  / this._draw.tileLength);
+            var idx = Math.floor((x - this._draw.unusedMinX) / this._draw.tileLength);
             var id = game.unusedTileIds[idx];
             var tile = game.unusedTiles[id];
             if (tile != null) {
@@ -157,13 +161,18 @@ var canvas = {
     },
 
     _onMouseDown: function (event) {
+        canvas._boardMoveStart(event.offsetX, event.offsetY);
+    },
+
+    _onTouchStart: function (event) {
+        canvas._setTouchMoveXY(event);
+        canvas._boardMoveStart(canvas._touchMove.x, canvas._touchMove.y);
+    },
+
+    _boardMoveStart: function (offsetX, offsetY) {
         if (!game.isInProgress()) {
             return;
         }
-        canvas._mouseDown(event.offsetX, event.offsetY);
-    },
-
-    _mouseDown: function (offsetX, offsetY) {
         this._selection.startX = this._selection.endX = offsetX;
         this._selection.startY = this._selection.endY = offsetY;
         var selectedTile = canvas._getTileSelection(offsetX, offsetY);
@@ -201,13 +210,17 @@ var canvas = {
     },
 
     _onMouseUp: function (event) {
+        canvas._boardMoveEnd(event.offsetX, event.offsetY);
+    },
+
+    _onTouchEnd: function () { // the event has no touches, use last touchMove
+        canvas._boardMoveEnd(canvas._touchMove.x, canvas._touchMove.y);
+    },
+
+    _boardMoveEnd: function (offsetX, offsetY) {
         if (!game.isInProgress()) {
             return;
         }
-        canvas._mouseUp(event.offsetX, event.offsetY);
-    },
-
-    _mouseUp: function (offsetX, offsetY) {
         if (this._selection.moveState == this._moveState_none ||
             this._selection.moveState == this._moveState_grab) {
             return;
@@ -236,13 +249,18 @@ var canvas = {
     },
 
     _onMouseMove: function (event) {
+        canvas._boardMoveDrag(event.offsetX, event.offsetY);
+    },
+
+    _onTouchMove: function (event) {
+        canvas._setTouchMoveXY(event);
+        canvas._boardMoveDrag(canvas._touchMove.x, canvas._touchMove.y);
+    },
+
+    _boardMoveDrag: function (offsetX, offsetY) {
         if (!game.isInProgress()) {
             return;
         }
-        canvas._mouseMove(event.offsetX, event.offsetY);
-    },
-
-    _mouseMove: function (offsetX, offsetY) {
         switch (this._selection.moveState) {
             case this._moveState_drag:
             case this._moveState_rect:
@@ -261,6 +279,18 @@ var canvas = {
                 this._selection.setMoveState(this._moveState_grab);
             }
         }
+    },
+
+    _setTouchMoveXY: function (touchEvent) {
+        touchEvent.preventDefault();
+        if (touchEvent.touches.length == 0) {
+            return;
+        }
+        var touch = touchEvent.touches[0];
+        var canvasRect = touchEvent.target.getBoundingClientRect();
+        var x = touch.pageX - canvasRect.left;
+        var y = touch.pageY - canvasRect.top;
+        [canvas._touchMove.x, canvas._touchMove.y] = [x, y];
     },
 
     _getSelectedTileIds: function () {
@@ -477,5 +507,8 @@ var canvas = {
         canvasElement.addEventListener("mousedown", this._onMouseDown);
         canvasElement.addEventListener("mouseup", this._onMouseUp);
         canvasElement.addEventListener("mousemove", this._onMouseMove);
+        canvasElement.addEventListener("touchstart", this._onTouchStart);
+        canvasElement.addEventListener("touchend", this._onTouchEnd);
+        canvasElement.addEventListener("touchmove", this._onTouchMove);
     },
 };
