@@ -66,7 +66,6 @@ var websocket = {
         var message = JSON.parse(event.data);
         switch (message.type) {
             case 3: // game.Leave
-            case 4: // game.Delete
                 game.leave();
                 if (message.info) {
                     log.info(message.info);

@@ -2,6 +2,7 @@
 package lobby
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -25,7 +26,7 @@ type (
 		gameCfg        controller.Config
 		sockets        map[game.PlayerName]messageHandler
 		games          map[game.ID]messageHandler
-		addPlayers     chan playerSocket
+		addSockets     chan playerSocket
 		socketMessages chan game.Message
 		gameMessages   chan game.Message
 	}
@@ -48,13 +49,14 @@ type (
 
 	playerSocket struct {
 		game.PlayerName
-		socket.Socket
+		http.ResponseWriter
+		*http.Request
 		result chan<- error
 	}
 
 	messageHandler struct {
-		done          chan<- struct{}
 		writeMessages chan<- game.Message
+		context.CancelFunc
 	}
 )
 
@@ -74,7 +76,7 @@ func (cfg Config) NewLobby() (*Lobby, error) {
 		socketCfg:      cfg.SocketCfg,
 		sockets:        make(map[game.PlayerName]messageHandler, cfg.MaxSockets),
 		games:          make(map[game.ID]messageHandler, cfg.MaxGames),
-		addPlayers:     make(chan playerSocket),
+		addSockets:     make(chan playerSocket),
 		socketMessages: make(chan game.Message),
 		gameMessages:   make(chan game.Message),
 	}
@@ -95,25 +97,16 @@ func (cfg Config) validate() error {
 
 // AddUser adds a user to the lobby, it opens a new websocket (player) for the username
 func (l *Lobby) AddUser(playerName game.PlayerName, w http.ResponseWriter, r *http.Request) error {
-	conn, err := l.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return fmt.Errorf("upgrading to websocket connection: %w", err)
-	}
-	s, err := l.socketCfg.NewSocket(conn, playerName)
-	if err != nil {
-		return fmt.Errorf("creating socket: %w", err)
-	}
 	result := make(chan error)
 	ps := playerSocket{
-		PlayerName: playerName,
-		Socket:     *s,
-		result:     result,
+		PlayerName:     playerName,
+		ResponseWriter: w,
+		Request:        r,
+		result:         result,
 	}
-	l.addPlayers <- ps
-	if err = <-result; err != nil {
-		data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, err.Error())
-		conn.WriteMessage(websocket.CloseMessage, data)
-		conn.Close()
+	l.addSockets <- ps
+	if err := <-result; err != nil {
+		return err // TODO: test this with numPlayers = 1 -> should show an errorMessage on ui
 	}
 	return nil
 }
@@ -126,31 +119,22 @@ func (l *Lobby) RemoveUser(playerName game.PlayerName) {
 }
 
 // Run runs the lobby.
-// The Lobby runs until a message is received on the "done"< channel.
-func (l *Lobby) Run(done <-chan struct{}) {
+// The Lobby runs until the context's done channel is closed.
+func (l *Lobby) Run(ctx context.Context) {
 	go func() {
-		defer func() {
-			for _, gmh := range l.games {
-				gmh.done <- struct{}{}
-			}
-			for _, smh := range l.sockets {
-				smh.done <- struct{}{} // readMessages
-				smh.done <- struct{}{} // writeMessages
-			}
-		}()
 		for {
 			select {
-			case <-done:
+			case <-ctx.Done():
 				return
-			case ps := <-l.addPlayers:
-				l.addSocket(ps)
+			case ps := <-l.addSockets:
+				l.addSocket(ctx, ps)
 			case m := <-l.socketMessages:
 				if l.debug {
 					l.log.Printf("lobby reading socket message with type %v", m.Type)
 				}
 				switch m.Type {
 				case game.Create:
-					l.createGame(m)
+					l.createGame(ctx, m)
 				case game.Infos:
 					l.handleGameInfos(m)
 				case game.PlayerDelete:
@@ -168,7 +152,9 @@ func (l *Lobby) Run(done <-chan struct{}) {
 	}()
 }
 
-func (l *Lobby) createGame(m game.Message) {
+// createGame creates and adds the a game to the lobby if there is room.
+// The player sending the message also joins it.
+func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 	if len(l.games) >= l.maxGames {
 		m = game.Message{
 			Type:       game.SocketWarning,
@@ -190,18 +176,33 @@ func (l *Lobby) createGame(m game.Message) {
 		l.sendSocketErrorMessage(m, err.Error())
 		return
 	}
-	done := make(chan struct{}, 2)
+	ctx, cancelFunc := context.WithCancel(ctx)
+	removeGameFunc := func() {
+		l.removeGame(id)
+		cancelFunc()
+	}
 	writeMessages := make(chan game.Message)
-	g.Run(done, writeMessages, l.gameMessages)
+	g.Run(ctx, removeGameFunc, writeMessages, l.gameMessages)
 	gmh := messageHandler{
-		done:          done,
 		writeMessages: writeMessages,
+		CancelFunc:    cancelFunc,
 	}
 	l.games[id] = gmh
 	writeMessages <- game.Message{
 		Type:       game.Join,
 		PlayerName: m.PlayerName,
 	}
+}
+
+// removeGame removes a game from the messageHandlers
+func (l *Lobby) removeGame(id game.ID) {
+	mh, ok := l.games[id]
+	if !ok {
+		l.log.Printf("no game to remove with id %v", id)
+		return
+	}
+	delete(l.games, id)
+	mh.CancelFunc()
 }
 
 func (l *Lobby) handleGameInfos(m game.Message) {
@@ -237,17 +238,31 @@ func (l *Lobby) handleGameInfos(m game.Message) {
 	}
 }
 
-// addSocket adds the playerSocket to the socket messageHandlers and returns the merged inbound message and error channels
-func (l *Lobby) addSocket(ps playerSocket) {
+// addSocket creates and adds the playerSocket to the socket messageHandlers and returns the merged inbound message and error channels
+func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 	if len(l.sockets) >= l.maxSockets {
 		ps.result <- fmt.Errorf("lobby full")
 		return
 	}
-	done := make(chan struct{}, 2)
-	writeMessages := ps.Socket.Run(done, l.socketMessages)
+	conn, err := l.upgrader.Upgrade(ps.ResponseWriter, ps.Request, nil)
+	if err != nil {
+		ps.result <- fmt.Errorf("upgrading to websocket connection: %w", err)
+		return
+	}
+	s, err := l.socketCfg.NewSocket(conn, ps.PlayerName)
+	if err != nil {
+		ps.result <- fmt.Errorf("creating socket: %w", err)
+		return
+	}
+	socketCtx, cancelFunc := context.WithCancel(ctx)
+	removeSocketFunc := func() {
+		l.removeSocket(ps.PlayerName)
+		cancelFunc()
+	}
+	writeMessages := s.Run(socketCtx, removeSocketFunc, l.socketMessages)
 	mh := messageHandler{
-		done:          done,
 		writeMessages: writeMessages,
+		CancelFunc:    cancelFunc,
 	}
 	if _, ok := l.sockets[ps.PlayerName]; ok {
 		l.log.Printf("message handler for %v already exists, replacing", ps.PlayerName)
@@ -265,8 +280,7 @@ func (l *Lobby) removeSocket(pn game.PlayerName) {
 		return
 	}
 	delete(l.sockets, pn)
-	mh.done <- struct{}{} // readMessages
-	mh.done <- struct{}{} // writeMessages
+	mh.CancelFunc()
 }
 
 // sends a message to the game with the id specified in the message's GameID field
@@ -280,10 +294,6 @@ func (l *Lobby) sendGameMessage(m game.Message) {
 }
 
 func (l *Lobby) sendSocketMessage(m game.Message) {
-	if m.Type == game.Delete && m.GameID != 0 {
-		delete(l.games, m.GameID)
-		return
-	}
 	smh, ok := l.sockets[m.PlayerName]
 	if !ok {
 		l.log.Printf("no socket for player named '%v' to send message to: %v", m.PlayerName, m)

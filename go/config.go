@@ -50,6 +50,7 @@ func serverConfig(m mainFlags, log *log.Logger) (*server.Config, error) {
 		Tokenizer: tokenizer,
 		UserDao:   ud,
 		LobbyCfg:  *lobbyCfg,
+		StopDur:   time.Second,
 	}
 	return &cfg, nil
 }

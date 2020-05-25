@@ -3,8 +3,11 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	_ "github.com/lib/pq"
 )
@@ -26,8 +29,16 @@ func main() {
 		log.Fatalf("creating server: %v", err)
 	}
 
-	err = server.Run()
-	if err != nil {
+	
+	done := make(chan os.Signal, 2)
+	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
+	ctx := context.Background()
+	if err := server.Run(ctx); err != nil {
 		log.Fatalf("running server: %v", err)
+	}
+
+	<-done
+	if err := server.Stop(ctx); err != nil {
+		log.Fatalf("stopping server: %v", err)
 	}
 }

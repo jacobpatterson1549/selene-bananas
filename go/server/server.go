@@ -2,10 +2,12 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/db"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/lobby"
@@ -22,6 +24,9 @@ type (
 		tokenizer         Tokenizer
 		userDao           db.UserDao
 		lobby             *lobby.Lobby
+		httpServer        *http.Server
+		// StopDur is the maximum duration the server should take to shutdown gracefully
+		stopDur time.Duration
 	}
 
 	// Config contains fields which describe the server
@@ -38,6 +43,8 @@ type (
 		UserDao db.UserDao
 		// LobbyCfg is used to create a game lobby
 		LobbyCfg lobby.Config
+		// StopDur is the maximum duration the server should take to shutdown gracefully
+		StopDur time.Duration
 	}
 )
 
@@ -67,6 +74,7 @@ func (cfg Config) NewServer() (*Server, error) {
 		tokenizer: cfg.Tokenizer,
 		userDao:   cfg.UserDao,
 		lobby:     lobby,
+		stopDur:   cfg.StopDur,
 	}
 	serveMux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
 	serveMux.HandleFunc("/", s.httpMethodHandler)
@@ -85,25 +93,39 @@ func (cfg Config) validate() error {
 		return fmt.Errorf("tokenizer required")
 	case cfg.UserDao == nil:
 		return fmt.Errorf("user dao required")
+	case cfg.StopDur <= 0:
+		return fmt.Errorf("shop timeout duration required")
 	}
 	return nil
 }
 
 // Run starts the server
-// The server runs until it receives a shutdown signal.  This function blocks.
-func (s Server) Run() error {
-	httpServer := &http.Server{
+// The server runs until it receives a shutdown signal.
+func (s *Server) Run(ctx context.Context) error {
+	if s.httpServer != nil {
+		return fmt.Errorf("server already run")
+	}
+	s.httpServer = &http.Server{
 		Addr:    s.addr,
 		Handler: s.handler,
 	}
-	done := make(chan struct{})
-	s.lobby.Run(done)
-	s.log.Println("starting server - locally running at http://127.0.0.1" + httpServer.Addr)
-	err := httpServer.ListenAndServe() // BLOCKS
-	done <- struct{}{}
-	if err != http.ErrServerClosed {
-		return fmt.Errorf("server stopped unexpectedly: %w", err)
+	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
+	s.httpServer.RegisterOnShutdown(lobbyCancelFunc)
+	s.lobby.Run(lobbyCtx)
+	s.log.Println("server started successfully, locally running at http://127.0.0.1" + s.addr)
+	go s.httpServer.ListenAndServe()
+	return nil
+}
+
+// Stop asks the server to shutdown and waits for the shutdown to complete.
+// An error is returned if the server if the context times out.
+func (s *Server) Stop(ctx context.Context) error {
+	ctx, cancelFunc := context.WithTimeout(ctx, s.stopDur)
+	defer cancelFunc()
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		return err
 	}
+	s.log.Println("server stopped successfully")
 	return nil
 }
 
@@ -124,7 +146,7 @@ func (s Server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
+func (s *Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	switch r.URL.Path {
 	case "/":
 		err := s.handleTemplate(w, r)

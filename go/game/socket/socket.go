@@ -2,6 +2,7 @@
 package socket
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -94,28 +95,28 @@ func (cfg Config) validate(conn *websocket.Conn, playerName game.PlayerName) err
 // The Socket runs until the connection fails for an unexpected reason or a message is received on the "done"< channel.
 // Messages the socket receives are sent to the provided channel.
 // Messages the socket sends are consumed from the returned channel.
-func (s *Socket) Run(done <-chan struct{}, messages chan<- game.Message) chan<- game.Message {
-	s.readMessages(done, messages)
-	return s.writeMessages(done)
+func (s *Socket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, messages chan<- game.Message) chan<- game.Message {
+	readCtx, readCancelFunc := context.WithCancel(ctx)
+	writeCtx, writeCancelFunc := context.WithCancel(ctx)
+	s.readMessages(readCtx, removeSocketFunc, writeCancelFunc, messages)
+	return s.writeMessages(writeCtx, readCancelFunc)
 }
 
 // readMessages receives messages from the connected socket and writes the to the messages channel
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel
-func (s *Socket) readMessages(done <-chan struct{}, messages chan<- game.Message) {
+func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancelFunc context.CancelFunc, messages chan<- game.Message) {
 	go func() {
 		defer func() {
+			removeSocketFunc()
+			writeCancelFunc()
 			s.conn.Close()
-			messages <- game.Message{
-				Type:       game.PlayerDelete,
-				PlayerName: s.playerName,
-			}
 		}()
 		s.conn.SetPongHandler(s.refreshReadDeadline)
 		var m game.Message
 		for {
 			err := s.readMessage(&m)
 			select {
-			case <-done:
+			case <-ctx.Done():
 				return
 			default:
 				if err != nil {
@@ -131,7 +132,7 @@ func (s *Socket) readMessages(done <-chan struct{}, messages chan<- game.Message
 
 // writeMessages sends messages added to the messages channel to the connected socket
 // messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel
-func (s *Socket) writeMessages(done <-chan struct{}) chan<- game.Message {
+func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.CancelFunc) chan<- game.Message {
 	pingTicker := time.NewTicker(s.pingPeriod)
 	httpPingTicker := time.NewTicker(s.httpPingPeriod)
 	idleTicker := time.NewTicker(s.idlePeriod)
@@ -141,12 +142,14 @@ func (s *Socket) writeMessages(done <-chan struct{}) chan<- game.Message {
 			pingTicker.Stop()
 			httpPingTicker.Stop()
 			idleTicker.Stop()
+			readCancelFunc()
 			close(messages)
+
 		}()
 		var err error
 		for {
 			select {
-			case <-done:
+			case <-ctx.Done():
 				return
 			case m := <-messages:
 				err = s.writeMessage(m)

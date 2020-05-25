@@ -2,6 +2,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sort"
@@ -144,8 +145,8 @@ func (g *Game) initializeUnusedTiles() error {
 }
 
 // Run runs the game
-// The game runs until a message is received on the "done"< channel.
-func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game.Message) {
+// The game runs until the context is closed.
+func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-chan game.Message, out chan<- game.Message) {
 	idleTicker := time.NewTicker(g.idlePeriod)
 	active := false
 	messageHandlers := map[game.MessageType]func(game.Message, chan<- game.Message) error{
@@ -160,9 +161,10 @@ func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game
 		game.Chat:         g.handleGameChat,
 	}
 	go func() {
+		defer removeGameFunc()
 		for {
 			select {
-			case <-done:
+			case <-ctx.Done():
 				return
 			case m := <-in:
 				if g.debug {
@@ -175,10 +177,15 @@ func (g *Game) Run(done <-chan struct{}, in <-chan game.Message, out chan<- game
 				} else if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join && m.Type != game.Infos {
 					err = fmt.Errorf("game does not have player named '%v'", m.PlayerName)
 				} else {
-					if m.Type != game.BoardRefresh {
+					err = mh(m, out)
+					switch m.Type {
+					case game.BoardRefresh:
+						// NOOP
+					case game.Delete:
+						return
+					default:
 						active = true
 					}
-					err = mh(m, out)
 				}
 				if err != nil {
 					g.log.Printf("game error: %v", err)
@@ -253,13 +260,9 @@ func (g *Game) handleGameJoin(m game.Message, out chan<- game.Message) error {
 }
 
 func (g *Game) handleGameDelete(m game.Message, out chan<- game.Message) error {
-	out <- game.Message{
-		Type:   game.Delete,
-		GameID: g.id,
-	}
 	for n := range g.players {
 		out <- game.Message{
-			Type:       game.Delete,
+			Type:       game.Leave,
 			PlayerName: n,
 			Info:       "game deleted",
 		}
