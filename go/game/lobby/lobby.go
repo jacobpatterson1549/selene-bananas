@@ -106,7 +106,7 @@ func (l *Lobby) AddUser(playerName game.PlayerName, w http.ResponseWriter, r *ht
 	}
 	l.addSockets <- ps
 	if err := <-result; err != nil {
-		return err // TODO: test this with numPlayers = 1 -> should show an errorMessage on ui
+		return err
 	}
 	return nil
 }
@@ -240,18 +240,26 @@ func (l *Lobby) handleGameInfos(m game.Message) {
 
 // addSocket creates and adds the playerSocket to the socket messageHandlers and returns the merged inbound message and error channels
 func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
+	conn, err := l.upgrader.Upgrade(ps.ResponseWriter, ps.Request, nil)
+	closeConnFunc := func(reason string) {
+		if conn != nil {
+			data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
+			conn.WriteMessage(websocket.CloseMessage, data)
+			conn.Close()
+		}
+		ps.result <- fmt.Errorf(reason)
+	}
 	if len(l.sockets) >= l.maxSockets {
-		ps.result <- fmt.Errorf("lobby full")
+		closeConnFunc(fmt.Sprintf("lobby full"))
 		return
 	}
-	conn, err := l.upgrader.Upgrade(ps.ResponseWriter, ps.Request, nil)
 	if err != nil {
-		ps.result <- fmt.Errorf("upgrading to websocket connection: %w", err)
+		closeConnFunc(fmt.Sprintf("upgrading to websocket connection: %w", err))
 		return
 	}
 	s, err := l.socketCfg.NewSocket(conn, ps.PlayerName)
 	if err != nil {
-		ps.result <- fmt.Errorf("creating socket: %w", err)
+		closeConnFunc(fmt.Sprintf("creating socket: %w", err))
 		return
 	}
 	socketCtx, cancelFunc := context.WithCancel(ctx)

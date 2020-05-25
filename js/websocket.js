@@ -19,24 +19,27 @@ var websocket = {
                 resolve();
             };
             this._websocket.onerror = event => {
-                log.error("websocket error - check browser console");
-                reject();
+                log.error("lobby closed");
+                user.logout();
+                reject("websocket error - check browser console");
             };
             this._websocket.onclose = event => {
                 if (event.reason) {
-                    log.warning("connection closed: " + event.reason);
+                    log.warning("left lobby: " + event.reason);
+                } else {
+                    log.error("lobby shut down");
                 }
-                this._close(false);
+                this._close();
             };
             this._websocket.onmessage = this.onMessage;
         });
     },
 
     close: function () {
-        this._close(true);
+        this._close();
     },
 
-    _close: function (expected) {
+    _close: function () {
         if (this._websocket == null) {
             return;
         }
@@ -49,10 +52,6 @@ var websocket = {
         this._websocket.onclose = null;
         this._websocket.close();
         this._websocket = null;
-        if (!expected) {
-            log.error("lobby closed");
-            user.logout();
-        }
     },
 
     send: function (message) {

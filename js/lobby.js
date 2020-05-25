@@ -2,9 +2,13 @@ var lobby = {
 
     getGameInfos: function (event) {
         event.preventDefault();
-        websocket.connect(event).then(() => {
-            websocket.send({ type: 11 }); // gameInfo
-        });
+        websocket.connect(event)
+            .then(() => {
+                websocket.send({ type: 11 }); // gameInfo
+            })
+            .catch(err => {
+                log.error(err);
+            });
     },
 
     setGameInfos: function (gameInfos) {
