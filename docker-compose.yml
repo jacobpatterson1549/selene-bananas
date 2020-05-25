@@ -1,4 +1,4 @@
-version: "2"
+version: "2.3"
 services:
   db:
     image: postgres:11.5-alpine
@@ -6,8 +6,12 @@ services:
     env_file: ./.env
     ports:
       - "${POSTGRES_PORT}:5432" # port 5432 on container maps to POSTGRES_PORT on the docker host
-    # volumes:
-    #   - ./.pgdata:/var/lib/postgresql/data # save data to local .pgdata directory
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      timeout: 1s
+      interval: 1s
+      retries: 3
+      start_period: 5s
   web:
     build: .
     container_name: "selene-bananas-web"
@@ -18,4 +22,5 @@ services:
       - PORT=8000
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB}?sslmode=disable
     depends_on:
-      - db
+      db:
+        condition: service_healthy
