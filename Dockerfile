@@ -11,8 +11,6 @@ RUN go mod download
 
 COPY go /app/go
 
-RUN go test ./...
-
 RUN CGO_ENABLED=0 go build -o /app/selene-bananas go/*.go
 
 FROM alpine:3.11
