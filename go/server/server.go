@@ -22,7 +22,7 @@ type (
 		handler           http.Handler
 		staticFileHandler http.Handler
 		tokenizer         Tokenizer
-		userDao           db.UserDao
+		userDao           *db.UserDao
 		lobby             *lobby.Lobby
 		httpServer        *http.Server
 		// StopDur is the maximum duration the server should take to shutdown gracefully
@@ -40,7 +40,7 @@ type (
 		// Tokenizer is used to generate and parse session tokens
 		Tokenizer Tokenizer
 		// UserDao is used to track different users
-		UserDao db.UserDao
+		UserDao *db.UserDao
 		// LobbyCfg is used to create a game lobby
 		LobbyCfg lobby.Config
 		// StopDur is the maximum duration the server should take to shutdown gracefully

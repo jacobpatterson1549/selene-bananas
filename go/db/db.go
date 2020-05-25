@@ -2,6 +2,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -10,9 +11,9 @@ import (
 type (
 	// Database contains methods to create, read, update, and delete data
 	Database interface {
-		queryRow(query string, args ...interface{}) row
-		exec(query string, args ...interface{}) (sql.Result, error)
-		begin() (transaction, error)
+		queryRow(ctx context.Context, query string, args ...interface{}) row
+		exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+		begin(ctx context.Context) (transaction, error)
 	}
 
 	sqlDatabase struct {
@@ -24,7 +25,7 @@ type (
 	}
 
 	transaction interface {
-		Exec(query string, args ...interface{}) (sql.Result, error)
+		ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 		Commit() error
 		Rollback() error
 	}
@@ -59,16 +60,16 @@ func NewPostgresDatabase(databaseURL string) (Database, error) {
 	return sqlDatabase{db: sqlDb}, nil
 }
 
-func (s sqlDatabase) queryRow(query string, args ...interface{}) row {
+func (s sqlDatabase) queryRow(ctx context.Context, query string, args ...interface{}) row {
 	return s.db.QueryRow(query, args...)
 }
 
-func (s sqlDatabase) exec(query string, args ...interface{}) (sql.Result, error) {
+func (s sqlDatabase) exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	return s.db.Exec(query, args...)
 }
 
-func (s sqlDatabase) begin() (transaction, error) {
-	return s.db.Begin()
+func (s sqlDatabase) begin(ctx context.Context) (transaction, error) {
+	return s.db.BeginTx(ctx, nil)
 }
 
 func (f execSQLFunction) expectSingleRowAffected(r sql.Result) error {
@@ -82,13 +83,13 @@ func (f execSQLFunction) expectSingleRowAffected(r sql.Result) error {
 	return nil
 }
 
-func execTransaction(d Database, queries []sqlQuery) error {
-	tx, err := d.begin()
+func execTransaction(ctx context.Context, d Database, queries []sqlQuery) error {
+	tx, err := d.begin(ctx)
 	if err != nil {
 		return fmt.Errorf("beginning transaction: %w", err)
 	}
 	for i, q := range queries {
-		result, err := tx.Exec(q.sql(), q.args()...)
+		result, err := tx.ExecContext(ctx, q.sql(), q.args()...)
 		if e, ok := q.(execSQLFunction); ok {
 			err = e.expectSingleRowAffected(result)
 		}

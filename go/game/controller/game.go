@@ -22,7 +22,7 @@ type (
 		id                     game.ID
 		createdAt              int64
 		status                 game.Status
-		userDao                db.UserDao
+		userDao                *db.UserDao
 		players                map[game.PlayerName]*player
 		maxPlayers             int
 		numNewTiles            int
@@ -44,7 +44,7 @@ type (
 		// Used for the created at timestamp
 		TimeFunc func() int64
 		// UserDao is used to increment the points for players when the game is finished
-		UserDao db.UserDao
+		UserDao *db.UserDao
 		// MaxPlayers is the maximum number of players that can be part of the game
 		MaxPlayers int
 		// NumNewTiles is the number of new tiles each player starts the game with
@@ -542,7 +542,8 @@ func (g *Game) updateUserPoints(winningPlayerName game.PlayerName) error {
 		}
 		return 1
 	}
-	return g.userDao.UpdatePointsIncrement(users, userPointsIncrementFunc)
+	ctx := context.TODO() // TODO: use a different context
+	return g.userDao.UpdatePointsIncrement(ctx, users, userPointsIncrementFunc)
 }
 
 func (g Game) playerNames() []string {

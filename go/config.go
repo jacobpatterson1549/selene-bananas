@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math/rand"
@@ -17,7 +18,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func serverConfig(m mainFlags, log *log.Logger) (*server.Config, error) {
+func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Config, error) {
 	timeFunc := func() int64 {
 		return time.Now().Unix()
 	}
@@ -34,8 +35,12 @@ func serverConfig(m mainFlags, log *log.Logger) (*server.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	ud := db.NewUserDao(d)
-	err = ud.Setup()
+	userDaoCfg := userDaoConfig(d)
+	ud, err := userDaoCfg.NewUserDao()
+	if err != nil {
+		return nil, err
+	}
+	err = ud.Setup(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +70,15 @@ func tokenizerConfig(rand *rand.Rand, timeFunc func() int64) server.TokenizerCon
 	return cfg
 }
 
-func lobbyConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao, timeFunc func() int64) (*lobby.Config, error) {
+func userDaoConfig(d db.Database) db.UserDaoConfig {
+	cfg := db.UserDaoConfig{
+		DB:          d,
+		QueryPeriod: 5 * time.Second,
+	}
+	return cfg
+}
+
+func lobbyConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud *db.UserDao, timeFunc func() int64) (*lobby.Config, error) {
 	gameCfg, err := gameConfig(m, log, rand, ud, timeFunc)
 	socketCfg := socketConfig(m, log, timeFunc)
 	if err != nil {
@@ -82,7 +95,7 @@ func lobbyConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao, t
 	return &cfg, nil
 }
 
-func gameConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud db.UserDao, timeFunc func() int64) (*controller.Config, error) {
+func gameConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud *db.UserDao, timeFunc func() int64) (*controller.Config, error) {
 	wordsFile, err := os.Open(m.wordsFile)
 	if err != nil {
 		return nil, err

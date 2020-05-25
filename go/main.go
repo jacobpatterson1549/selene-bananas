@@ -13,13 +13,15 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	m := newMainFlags(os.Args, os.LookupEnv)
 
 	var buf bytes.Buffer
 	log := log.New(&buf, m.applicationName+" ", log.LstdFlags)
 	log.SetOutput(os.Stdout)
 
-	cfg, err := serverConfig(m, log)
+	cfg, err := serverConfig(ctx, m, log)
 	if err != nil {
 		log.Fatalf("configuring server: %v", err)
 	}
@@ -29,10 +31,8 @@ func main() {
 		log.Fatalf("creating server: %v", err)
 	}
 
-	
 	done := make(chan os.Signal, 2)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
-	ctx := context.Background()
 	if err := server.Run(ctx); err != nil {
 		log.Fatalf("running server: %v", err)
 	}
