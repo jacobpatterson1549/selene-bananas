@@ -222,7 +222,7 @@ func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 	templateFileGlobs := []string{
 		"html/*.html",
 		"html/**/*.html",
-		"svg/*.svg",
+		"static/fa/*.svg",
 		"static/main.css",
 		"js/*.js",
 	}

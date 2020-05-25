@@ -1,4 +1,3 @@
-
 # Ignore everything
 *
 
@@ -10,4 +9,3 @@
 !js
 !sql
 !static
-!svg

@@ -18,7 +18,7 @@ New dependencies are automatically added to [go.mod](go.mod) when the project is
 * [Gorilla Websockets](https://github.com/gorilla/websocket) are used for bidirectional communication between users and the server
 * [jwt-go](https://github.com/dgrijalva/jwt-go) is used for stateless web sessions
 * [crypto](https://github.com/golang/crypto) is used to  encrypt passwords with the Bcrypt one-way function
-* [Font-Awesome](https://github.com/FortAwesome/Font-Awesome) provides the "copyright", "github," and, "linkedin" icons on the about page, which are hosted locally but copied from version [5.13.0](https://github.com/FortAwesome/Font-Awesome/releases/tag/5.13.0)
+* [Font-Awesome](https://github.com/FortAwesome/Font-Awesome) provides the "copyright", "github," and, "linkedin" icons on the about page; they were copied from version [5.13.0](https://github.com/FortAwesome/Font-Awesome/releases/tag/5.13.0) to [static/fa](static/fa).
 
 ## Build/Run
 
