@@ -149,7 +149,7 @@ func (g *Game) initializeUnusedTiles() error {
 func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-chan game.Message, out chan<- game.Message) {
 	idleTicker := time.NewTicker(g.idlePeriod)
 	active := false
-	messageHandlers := map[game.MessageType]func(game.Message, chan<- game.Message) error{
+	messageHandlers := map[game.MessageType]func(context.Context, game.Message, chan<- game.Message) error{
 		game.Join:         g.handleGameJoin,
 		game.Delete:       g.handleGameDelete,
 		game.StatusChange: g.handleGameStatusChange,
@@ -177,7 +177,7 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 				} else if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join && m.Type != game.Infos {
 					err = fmt.Errorf("game does not have player named '%v'", m.PlayerName)
 				} else {
-					err = mh(m, out)
+					err = mh(ctx, m, out)
 					switch m.Type {
 					case game.BoardRefresh:
 						// NOOP
@@ -206,7 +206,7 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 				if !active {
 					var m game.Message
 					g.log.Printf("deleted game %v due to inactivity", g.id)
-					g.handleGameDelete(m, out)
+					g.handleGameDelete(ctx, m, out)
 				}
 				active = false
 			}
@@ -214,11 +214,11 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 	}()
 }
 
-func (g *Game) handleGameJoin(m game.Message, out chan<- game.Message) error {
+func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	_, ok := g.players[m.PlayerName]
 	switch {
 	case ok:
-		return g.handleBoardRefresh(m, out)
+		return g.handleBoardRefresh(ctx, m, out)
 	case g.status != game.NotStarted:
 		return gameWarning("cannot join game that has been started")
 	case len(g.players) >= g.maxPlayers:
@@ -259,7 +259,7 @@ func (g *Game) handleGameJoin(m game.Message, out chan<- game.Message) error {
 	return nil
 }
 
-func (g *Game) handleGameDelete(m game.Message, out chan<- game.Message) error {
+func (g *Game) handleGameDelete(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	for n := range g.players {
 		out <- game.Message{
 			Type:       game.Leave,
@@ -270,17 +270,17 @@ func (g *Game) handleGameDelete(m game.Message, out chan<- game.Message) error {
 	return nil
 }
 
-func (g *Game) handleGameStatusChange(m game.Message, out chan<- game.Message) error {
+func (g *Game) handleGameStatusChange(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	switch g.status {
 	case game.NotStarted:
-		return g.start(m, out)
+		return g.handleGameStart(ctx, m, out)
 	case game.InProgress:
-		return g.finish(m, out)
+		return g.handleGameFinish(ctx, m, out)
 	}
 	return fmt.Errorf("cannot change game state from %v", g.status)
 }
 
-func (g *Game) start(m game.Message, out chan<- game.Message) error {
+func (g *Game) handleGameStart(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	if m.GameStatus != game.InProgress {
 		return gameWarning("can only set game status to started")
 	}
@@ -298,7 +298,7 @@ func (g *Game) start(m game.Message, out chan<- game.Message) error {
 	return nil
 }
 
-func (g *Game) finish(m game.Message, out chan<- game.Message) error {
+func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	p := g.players[m.PlayerName]
 	switch {
 	case m.GameStatus != game.Finished:
@@ -330,7 +330,7 @@ func (g *Game) finish(m game.Message, out chan<- game.Message) error {
 		len(usedWords),
 		p.winPoints,
 	)
-	err := g.updateUserPoints(m.PlayerName)
+	err := g.updateUserPoints(ctx, m.PlayerName)
 	if err != nil {
 		info = err.Error()
 	}
@@ -346,7 +346,7 @@ func (g *Game) finish(m game.Message, out chan<- game.Message) error {
 	return nil
 }
 
-func (g *Game) handleGameSnag(m game.Message, out chan<- game.Message) error {
+func (g *Game) handleGameSnag(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	switch {
 	case g.status != game.InProgress:
 		return gameWarningNotInProgress
@@ -405,7 +405,7 @@ func (g *Game) handleGameSnag(m game.Message, out chan<- game.Message) error {
 	return nil
 }
 
-func (g *Game) handleGameSwap(m game.Message, out chan<- game.Message) error {
+func (g *Game) handleGameSwap(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	switch {
 	case g.status != game.InProgress:
 		return gameWarningNotInProgress
@@ -453,7 +453,7 @@ func (g *Game) handleGameSwap(m game.Message, out chan<- game.Message) error {
 	return nil
 }
 
-func (g *Game) handleGameTilesMoved(m game.Message, out chan<- game.Message) error {
+func (g *Game) handleGameTilesMoved(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	switch {
 	case g.status != game.InProgress:
 		return gameWarningNotInProgress
@@ -462,7 +462,7 @@ func (g *Game) handleGameTilesMoved(m game.Message, out chan<- game.Message) err
 	return p.MoveTiles(m.TilePositions)
 }
 
-func (g *Game) handleBoardRefresh(m game.Message, out chan<- game.Message) error {
+func (g *Game) handleBoardRefresh(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	p := g.players[m.PlayerName]
 	unusedTiles := make([]tile.Tile, len(p.UnusedTiles))
 	for i, id := range p.UnusedTileIDs {
@@ -498,7 +498,7 @@ func (g *Game) handleBoardRefresh(m game.Message, out chan<- game.Message) error
 	return nil
 }
 
-func (g *Game) handleGameInfos(m game.Message, out chan<- game.Message) error {
+func (g *Game) handleGameInfos(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	var canJoin bool
 	switch g.status {
 	case game.NotStarted:
@@ -516,7 +516,7 @@ func (g *Game) handleGameInfos(m game.Message, out chan<- game.Message) error {
 	return nil
 }
 
-func (g *Game) handleGameChat(m game.Message, out chan<- game.Message) error {
+func (g *Game) handleGameChat(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	info := fmt.Sprintf("%v : %v", m.PlayerName, m.Info)
 	for n := range g.players {
 		out <- game.Message{
@@ -528,7 +528,7 @@ func (g *Game) handleGameChat(m game.Message, out chan<- game.Message) error {
 	return nil
 }
 
-func (g *Game) updateUserPoints(winningPlayerName game.PlayerName) error {
+func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName game.PlayerName) error {
 	users := make([]string, len(g.players))
 	i := 0
 	for n := range g.players {
@@ -542,7 +542,6 @@ func (g *Game) updateUserPoints(winningPlayerName game.PlayerName) error {
 		}
 		return 1
 	}
-	ctx := context.TODO() // TODO: use a different context
 	return g.userDao.UpdatePointsIncrement(ctx, users, userPointsIncrementFunc)
 }
 
