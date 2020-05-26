@@ -96,3 +96,11 @@ func TestUnmarshalLetter(t *testing.T) {
 		}
 	}
 }
+
+func TestUnmarshalLetterDirectError(t *testing.T) {
+	var l letter
+	err := l.UnmarshalJSON([]byte(`X`))
+	if err == nil {
+		t.Errorf("expected error when unmarshalling unquoted letter")
+	}
+}
