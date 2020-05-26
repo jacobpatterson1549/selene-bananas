@@ -78,7 +78,7 @@ var canvas = {
             this._drawUnusedTiles(true);
             this._drawUsedTiles(true);
         }
-        if(this._overlayText.length > 0) {
+        if (this._overlayText.length > 0) {
             this._draw.ctx.fillText(
                 this._overlayText,
                 this._draw.usedMinX + 2 * this._draw.tileLength,
@@ -518,8 +518,8 @@ var canvas = {
         canvasElement.addEventListener("mousedown", this._onMouseDown);
         canvasElement.addEventListener("mouseup", this._onMouseUp);
         canvasElement.addEventListener("mousemove", this._onMouseMove);
-        canvasElement.addEventListener("touchstart", this._onTouchStart);
+        canvasElement.addEventListener("touchstart", this._onTouchStart, { passive: false });
         canvasElement.addEventListener("touchend", this._onTouchEnd);
-        canvasElement.addEventListener("touchmove", this._onTouchMove);
+        canvasElement.addEventListener("touchmove", this._onTouchMove, { passive: false });
     },
 };
