@@ -56,6 +56,7 @@ var canvas = {
         x: 0,
         y: 0,
     },
+    _overlayText: "",
 
     redraw: function () {
         this._draw.ctx.clearRect(0, 0, this._draw.width, this._draw.height);
@@ -77,6 +78,16 @@ var canvas = {
             this._drawUnusedTiles(true);
             this._drawUsedTiles(true);
         }
+        if(this._overlayText.length > 0) {
+            this._draw.ctx.fillText(
+                this._overlayText,
+                this._draw.usedMinX + 2 * this._draw.tileLength,
+                this._draw.usedMinY + 3 * this._draw.tileLength - this._draw.textOffset); // y
+        }
+    },
+
+    setOverlayText(overlayText) {
+        this._overlayText = overlayText;
     },
 
     _drawUnusedTiles: function (fromSelection) {

@@ -109,6 +109,7 @@ var game = {
             switch (status) {
                 case 3: // gameNotStarted
                     stateElement.value = "Not Started";
+                    canvas.setOverlayText(stateElement.value);
                     this._setButtonDisabled("game-snag", true);
                     this._setButtonDisabled("game-swap", true);
                     this._setButtonDisabled("game-start", false);
@@ -116,6 +117,8 @@ var game = {
                     break;
                 case 1: // gameInProgress
                     stateElement.value = "In Progress";
+                    canvas.setOverlayText("");
+                    canvas.redraw();
                     this._setButtonDisabled("game-snag", false);
                     this._setButtonDisabled("game-swap", false);
                     this._setButtonDisabled("game-start", true);
