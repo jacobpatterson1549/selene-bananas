@@ -146,8 +146,7 @@ func (g *Game) initializeUnusedTiles() error {
 	return nil
 }
 
-// Run runs the game
-// The game runs until the context is closed.
+// Run runs the game until the context is closed.
 func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-chan game.Message, out chan<- game.Message) {
 	idleTicker := time.NewTicker(g.idlePeriod)
 	active := false
@@ -162,28 +161,26 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 		game.Infos:        g.handleGameInfos,
 		game.Chat:         g.handleGameChat,
 	}
-	go func() {
-		defer removeGameFunc()
-		for {
-			select {
-			case <-ctx.Done():
+	defer removeGameFunc()
+	for { // BLOCKS
+		select {
+		case <-ctx.Done():
+			return
+		case m := <-in:
+			g.handleMessage(ctx, m, out, &active, messageHandlers)
+			if m.Type == game.Delete {
 				return
-			case m := <-in:
-				g.handleMessage(ctx, m, out, &active, messageHandlers)
-				if m.Type == game.Delete {
-					return
-				}
-			case <-idleTicker.C:
-				var m game.Message
-				if !active {
-					g.log.Printf("deleted game %v due to inactivity", g.id)
-					g.handleGameDelete(ctx, m, out)
-					return
-				}
-				active = false
 			}
+		case <-idleTicker.C:
+			var m game.Message
+			if !active {
+				g.log.Printf("deleted game %v due to inactivity", g.id)
+				g.handleGameDelete(ctx, m, out)
+				return
+			}
+			active = false
 		}
-	}()
+	}
 }
 
 func (g *Game) handleMessage(ctx context.Context, m game.Message, out chan<- game.Message, active *bool, messageHandlers map[game.MessageType]messageHandler) {

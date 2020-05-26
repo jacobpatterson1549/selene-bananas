@@ -118,23 +118,20 @@ func (l *Lobby) RemoveUser(playerName game.PlayerName) {
 	}
 }
 
-// Run runs the lobby.
-// The Lobby runs until the context's done channel is closed.
+// Run runs the lobby until the context is closed.
 func (l *Lobby) Run(ctx context.Context) {
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case ps := <-l.addSockets:
-				l.addSocket(ctx, ps)
-			case m := <-l.socketMessages:
-				l.handleSocketMessage(ctx, m)
-			case m := <-l.gameMessages:
-				l.handleGameMessage(ctx, m)
-			}
+	for { // BLOCKS
+		select {
+		case <-ctx.Done():
+			return
+		case ps := <-l.addSockets:
+			l.addSocket(ctx, ps)
+		case m := <-l.socketMessages:
+			l.handleSocketMessage(ctx, m)
+		case m := <-l.gameMessages:
+			l.handleGameMessage(ctx, m)
 		}
-	}()
+	}
 }
 
 func (l *Lobby) handleSocketMessage(ctx context.Context, m game.Message) {
@@ -190,7 +187,7 @@ func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 		cancelFunc()
 	}
 	writeMessages := make(chan game.Message)
-	g.Run(ctx, removeGameFunc, writeMessages, l.gameMessages)
+	go g.Run(ctx, removeGameFunc, writeMessages, l.gameMessages)
 	gmh := messageHandler{
 		writeMessages: writeMessages,
 		CancelFunc:    cancelFunc,

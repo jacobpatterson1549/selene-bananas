@@ -98,36 +98,34 @@ func (cfg Config) validate(conn *websocket.Conn, playerName game.PlayerName) err
 func (s *Socket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, messages chan<- game.Message) chan<- game.Message {
 	readCtx, readCancelFunc := context.WithCancel(ctx)
 	writeCtx, writeCancelFunc := context.WithCancel(ctx)
-	s.readMessages(readCtx, removeSocketFunc, writeCancelFunc, messages)
+	go s.readMessages(readCtx, removeSocketFunc, writeCancelFunc, messages)
 	return s.writeMessages(writeCtx, readCancelFunc)
 }
 
 // readMessages receives messages from the connected socket and writes the to the messages channel
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel
 func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancelFunc context.CancelFunc, messages chan<- game.Message) {
-	go func() {
-		defer func() {
-			removeSocketFunc()
-			writeCancelFunc()
-			s.conn.Close()
-		}()
-		s.conn.SetPongHandler(s.refreshReadDeadline)
-		var m game.Message
-		for {
-			err := s.readMessage(&m)
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				if err != nil {
-					s.log.Printf("reading socket messages stopped for %v: %v", s.playerName, err)
-					return
-				}
-			}
-			messages <- m
-			s.active = true
-		}
+	defer func() {
+		removeSocketFunc()
+		writeCancelFunc()
+		s.conn.Close()
 	}()
+	s.conn.SetPongHandler(s.refreshReadDeadline)
+	var m game.Message
+	for { // BLOCKS
+		err := s.readMessage(&m)
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if err != nil {
+				s.log.Printf("reading socket messages stopped for %v: %v", s.playerName, err)
+				return
+			}
+		}
+		messages <- m
+		s.active = true
+	}
 }
 
 // writeMessages sends messages added to the messages channel to the connected socket
@@ -147,7 +145,7 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 
 		}()
 		var err error
-		for {
+		for { // BLOCKS [goroutine]
 			select {
 			case <-ctx.Done():
 				return
@@ -177,6 +175,8 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 	}()
 	return messages
 }
+
+
 
 func (s *Socket) readMessage(m *game.Message) error {
 	err := s.conn.ReadJSON(m)

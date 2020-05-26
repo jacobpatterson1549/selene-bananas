@@ -99,8 +99,7 @@ func (cfg Config) validate() error {
 	return nil
 }
 
-// Run starts the server
-// The server runs until it receives a shutdown signal.
+// Run runs the server until it receives a shutdown signal.
 func (s *Server) Run(ctx context.Context) error {
 	if s.httpServer != nil {
 		return fmt.Errorf("server already run")
@@ -111,7 +110,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
 	s.httpServer.RegisterOnShutdown(lobbyCancelFunc)
-	s.lobby.Run(lobbyCtx)
+	go s.lobby.Run(lobbyCtx)
 	s.log.Println("server started successfully, locally running at http://127.0.0.1" + s.addr)
 	go s.httpServer.ListenAndServe()
 	return nil
