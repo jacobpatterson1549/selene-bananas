@@ -20,7 +20,7 @@ WORKDIR /app
 COPY --from=0 /app/selene-bananas /usr/share/dict/american-english-small  /app/
 
 COPY . /app/
-# COPY sql static html js /app/ # TODO: only copy these folders as folders
+# COPY sql static html js /app/ # TODO: only copy these folders as folders, while excluding go/*, go.mod, go.sum
 # RUN ls /app -l
 
 CMD /app/selene-bananas -words-file=/app/american-english-small
