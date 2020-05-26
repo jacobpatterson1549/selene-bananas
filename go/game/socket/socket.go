@@ -142,7 +142,7 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 
 	}()
 	var err error
-	for { // BLOCKS
+	for { // BLOCKS;	``
 		select {
 		case <-ctx.Done():
 			return
@@ -156,10 +156,7 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 			})
 		case <-idleTicker.C:
 			if !s.active {
-				s.writeMessage(game.Message{
-					Type: game.SocketWarning,
-					Info: "closing socket due to inactivity",
-				})
+				CloseConn(s.conn, "closing socket due to inactivity")
 				return
 			}
 			s.active = false
@@ -244,4 +241,11 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 		return err
 	}
 	return nil
+}
+
+// CloseConn closes the websocket connection without reporting any errors
+func CloseConn(conn *websocket.Conn, reason string) {
+	defer conn.Close()
+	data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
+	conn.WriteMessage(websocket.CloseMessage, data)
 }

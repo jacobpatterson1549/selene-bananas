@@ -248,9 +248,7 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 	conn, err := l.upgrader.Upgrade(ps.ResponseWriter, ps.Request, nil)
 	closeConnFunc := func(reason string) {
 		if conn != nil {
-			data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
-			conn.WriteMessage(websocket.CloseMessage, data)
-			conn.Close()
+			socket.CloseConn(conn, reason)
 		}
 		ps.result <- fmt.Errorf(reason)
 	}
