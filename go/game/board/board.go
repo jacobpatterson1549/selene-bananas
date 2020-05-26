@@ -278,20 +278,25 @@ func (b *Board) addSeenTileIds(x, y int, t tile.Tile, seenTileIds map[tile.ID]st
 	for dx := -1; dx <= 1; dx++ { // check neighboring columns
 		for dy := -1; dy <= 1; dy++ { // check neighboring rows
 			if (dx != 0 || dy != 0) && dx*dy == 0 { // one delta is not zero, the other is
-				if yTiles, ok := b.UsedTileLocs[tile.X(int(x)+dx)]; ok { // x+dx is valid
-					if t2, ok := yTiles[tile.Y(int(y)+dy)]; ok { // y+dy is valid
-						if _, ok := seenTileIds[t2.ID]; !ok { // tile not yet seen
-							b.addSeenTileIds(int(x)+dx, int(y)+dy, t2, seenTileIds) // recursive call
-						}
-					}
-				}
+				b.addSurroundingSeenTileID(x + dx, y + dy, seenTileIds)
+			}
+		}
+	}
+}
+
+// addSurroundingSeenTileID calls addSeenTilesIds for the tile at the location, if it exists
+func (b *Board) addSurroundingSeenTileID(x, y int, seenTileIds map[tile.ID]struct{}) {
+	if yTiles, ok := b.UsedTileLocs[tile.X(x)]; ok { // x is valid
+		if t2, ok := yTiles[tile.Y(y)]; ok { // y is valid
+			if _, ok := seenTileIds[t2.ID]; !ok { // tile not yet seen
+				b.addSeenTileIds(x, y, t2, seenTileIds) // recursive call
 			}
 		}
 	}
 }
 
 // hasTile returns true if the board has any unused or used tiles with the same id.
-func (b *Board) hasTile(t tile.Tile) bool {
+func (b Board) hasTile(t tile.Tile) bool {
 	if _, ok := b.UnusedTiles[t.ID]; ok {
 		return true
 	}
