@@ -272,7 +272,8 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 		l.removeSocket(ps.PlayerName)
 		cancelFunc()
 	}
-	writeMessages := s.Run(socketCtx, removeSocketFunc, l.socketMessages)
+	writeMessages := make(chan game.Message)
+	go s.Run(socketCtx, removeSocketFunc, l.socketMessages, writeMessages)
 	mh := messageHandler{
 		writeMessages: writeMessages,
 		CancelFunc:    cancelFunc,

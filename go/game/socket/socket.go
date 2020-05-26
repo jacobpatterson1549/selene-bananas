@@ -95,11 +95,11 @@ func (cfg Config) validate(conn *websocket.Conn, playerName game.PlayerName) err
 // The Socket runs until the connection fails for an unexpected reason or a message is received on the "done"< channel.
 // Messages the socket receives are sent to the provided channel.
 // Messages the socket sends are consumed from the returned channel.
-func (s *Socket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, messages chan<- game.Message) chan<- game.Message {
+func (s *Socket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, readMessages chan<- game.Message, writeMessages <-chan game.Message) {
 	readCtx, readCancelFunc := context.WithCancel(ctx)
 	writeCtx, writeCancelFunc := context.WithCancel(ctx)
-	go s.readMessages(readCtx, removeSocketFunc, writeCancelFunc, messages)
-	return s.writeMessages(writeCtx, readCancelFunc)
+	go s.readMessages(readCtx, removeSocketFunc, writeCancelFunc, readMessages)
+	s.writeMessages(writeCtx, readCancelFunc, writeMessages)
 }
 
 // readMessages receives messages from the connected socket and writes the to the messages channel
@@ -130,53 +130,46 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 
 // writeMessages sends messages added to the messages channel to the connected socket
 // messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel
-func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.CancelFunc) chan<- game.Message {
+func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.CancelFunc, messages <-chan game.Message) {
 	pingTicker := time.NewTicker(s.pingPeriod)
 	httpPingTicker := time.NewTicker(s.httpPingPeriod)
 	idleTicker := time.NewTicker(s.idlePeriod)
-	messages := make(chan game.Message)
-	go func() {
-		defer func() {
-			pingTicker.Stop()
-			httpPingTicker.Stop()
-			idleTicker.Stop()
-			readCancelFunc()
-			close(messages)
+	defer func() {
+		pingTicker.Stop()
+		httpPingTicker.Stop()
+		idleTicker.Stop()
+		readCancelFunc()
 
-		}()
-		var err error
-		for { // BLOCKS [goroutine]
-			select {
-			case <-ctx.Done():
-				return
-			case m := <-messages:
-				err = s.writeMessage(m)
-			case <-pingTicker.C:
-				err = s.writePing()
-			case <-httpPingTicker.C:
-				err = s.writeMessage(game.Message{
-					Type: game.SocketHTTPPing,
-				})
-			case <-idleTicker.C:
-				if !s.active {
-					s.writeMessage(game.Message{
-						Type: game.SocketWarning,
-						Info: "closing socket due to inactivity",
-					})
-					return
-				}
-				s.active = false
-			}
-			if err != nil {
-				s.log.Printf("writing socket messages stopped for %v: %v", s.playerName, err)
-				return
-			}
-		}
 	}()
-	return messages
+	var err error
+	for { // BLOCKS
+		select {
+		case <-ctx.Done():
+			return
+		case m := <-messages:
+			err = s.writeMessage(m)
+		case <-pingTicker.C:
+			err = s.writePing()
+		case <-httpPingTicker.C:
+			err = s.writeMessage(game.Message{
+				Type: game.SocketHTTPPing,
+			})
+		case <-idleTicker.C:
+			if !s.active {
+				s.writeMessage(game.Message{
+					Type: game.SocketWarning,
+					Info: "closing socket due to inactivity",
+				})
+				return
+			}
+			s.active = false
+		}
+		if err != nil {
+			s.log.Printf("writing socket messages stopped for %v: %v", s.playerName, err)
+			return
+		}
+	}
 }
-
-
 
 func (s *Socket) readMessage(m *game.Message) error {
 	err := s.conn.ReadJSON(m)
