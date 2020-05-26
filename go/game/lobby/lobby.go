@@ -129,27 +129,35 @@ func (l *Lobby) Run(ctx context.Context) {
 			case ps := <-l.addSockets:
 				l.addSocket(ctx, ps)
 			case m := <-l.socketMessages:
-				if l.debug {
-					l.log.Printf("lobby reading socket message with type %v", m.Type)
-				}
-				switch m.Type {
-				case game.Create:
-					l.createGame(ctx, m)
-				case game.Infos:
-					l.handleGameInfos(m)
-				case game.PlayerDelete:
-					delete(l.sockets, m.PlayerName)
-				default:
-					l.sendGameMessage(m)
-				}
+				l.handleSocketMessage(ctx, m)
 			case m := <-l.gameMessages:
-				if l.debug {
-					l.log.Printf("lobby reading game message with type %v", m.Type)
-				}
-				l.sendSocketMessage(m)
+				l.handleGameMessage(ctx, m)
 			}
 		}
 	}()
+}
+
+func (l *Lobby) handleSocketMessage(ctx context.Context, m game.Message) {
+	if l.debug {
+		l.log.Printf("lobby reading socket message with type %v", m.Type)
+	}
+	switch m.Type {
+	case game.Create:
+		l.createGame(ctx, m)
+	case game.Infos:
+		l.handleGameInfos(m)
+	case game.PlayerDelete:
+		delete(l.sockets, m.PlayerName)
+	default:
+		l.sendGameMessage(m)
+	}
+}
+
+func (l *Lobby) handleGameMessage(ctx context.Context, m game.Message) {
+	if l.debug {
+		l.log.Printf("lobby reading game message with type %v", m.Type)
+	}
+	l.sendSocketMessage(m)
 }
 
 // createGame creates and adds the a game to the lobby if there is room.

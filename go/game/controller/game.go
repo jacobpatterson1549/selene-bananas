@@ -64,6 +64,8 @@ type (
 		// The snagging player should always get a new tile.  Other players will get a tile, if possible.
 		ShufflePlayersFunc func(playerNames []game.PlayerName)
 	}
+
+	messageHandler func(context.Context, game.Message, chan<- game.Message) error
 )
 
 const (
@@ -149,7 +151,7 @@ func (g *Game) initializeUnusedTiles() error {
 func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-chan game.Message, out chan<- game.Message) {
 	idleTicker := time.NewTicker(g.idlePeriod)
 	active := false
-	messageHandlers := map[game.MessageType]func(context.Context, game.Message, chan<- game.Message) error{
+	messageHandlers := map[game.MessageType]messageHandler{
 		game.Join:         g.handleGameJoin,
 		game.Delete:       g.handleGameDelete,
 		game.StatusChange: g.handleGameStatusChange,
@@ -167,51 +169,54 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 			case <-ctx.Done():
 				return
 			case m := <-in:
-				if g.debug {
-					g.log.Printf("game reading message with type %v", m.Type)
-				}
-				var err error
-				mh, ok := messageHandlers[m.Type]
-				if !ok {
-					err = fmt.Errorf("game does not know how to handle MessageType %v", m.Type)
-				} else if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join && m.Type != game.Infos {
-					err = fmt.Errorf("game does not have player named '%v'", m.PlayerName)
-				} else {
-					err = mh(ctx, m, out)
-					switch m.Type {
-					case game.BoardRefresh:
-						// NOOP
-					case game.Delete:
-						return
-					default:
-						active = true
-					}
-				}
-				if err != nil {
-					g.log.Printf("game error: %v", err)
-					var mt game.MessageType
-					switch err.(type) {
-					case gameWarning:
-						mt = game.SocketWarning
-					default:
-						mt = game.SocketError
-					}
-					out <- game.Message{
-						Type:       mt,
-						PlayerName: m.PlayerName,
-						Info:       err.Error(),
-					}
+				g.handleMessage(ctx, m, out, &active, messageHandlers)
+				if m.Type == game.Delete {
+					return
 				}
 			case <-idleTicker.C:
+				var m game.Message
 				if !active {
-					var m game.Message
 					g.log.Printf("deleted game %v due to inactivity", g.id)
 					g.handleGameDelete(ctx, m, out)
+					return
 				}
 				active = false
 			}
 		}
 	}()
+}
+
+func (g *Game) handleMessage(ctx context.Context, m game.Message, out chan<- game.Message, active *bool, messageHandlers map[game.MessageType]messageHandler) {
+	if g.debug {
+		g.log.Printf("game reading message with type %v", m.Type)
+	}
+	var err error
+	mh, ok := messageHandlers[m.Type]
+	if !ok {
+		err = fmt.Errorf("game does not know how to handle MessageType %v", m.Type)
+	} else if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join && m.Type != game.Infos {
+		err = fmt.Errorf("game does not have player named '%v'", m.PlayerName)
+	} else {
+		err = mh(ctx, m, out)
+		if m.Type != game.BoardRefresh {
+			*active = true
+		}
+	}
+	if err != nil {
+		g.log.Printf("game error: %v", err)
+		var mt game.MessageType
+		switch err.(type) {
+		case gameWarning:
+			mt = game.SocketWarning
+		default:
+			mt = game.SocketError
+		}
+		out <- game.Message{
+			Type:       mt,
+			PlayerName: m.PlayerName,
+			Info:       err.Error(),
+		}
+	}
 }
 
 func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- game.Message) error {
