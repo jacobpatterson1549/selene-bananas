@@ -16,7 +16,7 @@ type (
 		// CanJoin is a flag that indicates whether or not a player can join the game.
 		// Players can only join games that are not started or that they  were previously a part of,
 		CanJoin bool `json:"canJoin"`
-		// Created at is the time since the unix expoch in seconds.
+		// CreatedAt is the game's creation time in seconds since the unix epoch.
 		CreatedAt int64 `json:"createdAt"`
 	}
 
