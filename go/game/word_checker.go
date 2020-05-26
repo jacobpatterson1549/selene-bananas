@@ -52,7 +52,7 @@ func scanLowerWords(data []byte, atEOF bool) (advance int, token []byte, err err
 		end++
 		switch {
 		case unicode.IsSpace(r):
-			if !skipUntilSpace && end - start > 1 {
+			if !skipUntilSpace && end-start > 1 {
 				return end, data[start : end-1], nil
 			}
 			start = end
