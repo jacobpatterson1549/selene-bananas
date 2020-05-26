@@ -200,8 +200,9 @@ func (b Board) usedTileWordsX() []string {
 	return b.usedTileWordsZ(usedTilesYx, func(tp tile.Position) int { return int(tp.X) })
 }
 
-// usedTileWords computes all the words formed by used tiles in the direction specified by the ord function.
-func (b Board) usedTileWordsZ(tiles map[int]map[int]tile.Tile, ord func(tp tile.Position) int) []string {
+// keyedUsedWords aggregates the words in the direction specified by ord into a map of words foreach row in the tiles
+// the total number of words is also returned
+func (b Board) keyedUsedWords(tiles map[int]map[int]tile.Tile, ord func(tp tile.Position) int) (map[int][]string, int) {
 	keyedUsedWords := make(map[int][]string, len(tiles))
 	wordCount := 0
 	for z, zTiles := range tiles {
@@ -231,6 +232,12 @@ func (b Board) usedTileWordsZ(tiles map[int]map[int]tile.Tile, ord func(tp tile.
 		keyedUsedWords[z] = zWords
 		wordCount += len(zWords)
 	}
+	return keyedUsedWords, wordCount
+}
+
+// usedTileWords computes all the words formed by used tiles in the direction specified by the ord function.
+func (b Board) usedTileWordsZ(tiles map[int]map[int]tile.Tile, ord func(tp tile.Position) int) []string {
+	keyedUsedWords, wordCount := b.keyedUsedWords(tiles, ord)
 	//sort the keyedUsedWords by the keys (z)
 	keys := make([]int, len(keyedUsedWords))
 	i := 0
