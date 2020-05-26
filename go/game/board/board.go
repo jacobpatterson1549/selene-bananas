@@ -116,27 +116,44 @@ func (b *Board) MoveTiles(tilePositions []tile.Position) error {
 // CanMoveTiles determines if the player's tiles can be moved to/in the used area
 // without overlapping any other tiles
 func (b *Board) CanMoveTiles(tilePositions []tile.Position) bool {
+	desiredUsedTileLocs, movedTileIDs, ok := b.desiredUsedTileLocs(tilePositions)
+	if !ok {
+		return false
+	}
+	return b.canLeaveUsedTiles(desiredUsedTileLocs, movedTileIDs)
+}
+
+// desiredUsedTileLocs creates a set of desired move locations, tile IDs, and an ok value from tilePositions.
+// The returned ok value will be false if the board does not have any of the tiles specified by the tilePositions,
+// if a tile is moved more than once, or if multiple tiles move to the same position.
+func (b Board) desiredUsedTileLocs(tilePositions []tile.Position) (map[tile.X]map[tile.Y]struct{}, map[tile.ID]struct{}, bool) {
 	desiredUsedTileLocs := make(map[tile.X]map[tile.Y]struct{}, len(b.UsedTileLocs))
 	var e struct{}
-	movedTileIds := make(map[tile.ID]struct{}, len(tilePositions))
+	movedTileIDs := make(map[tile.ID]struct{}, len(tilePositions))
 	for _, tp := range tilePositions {
 		if !b.hasTile(tp.Tile) {
-			return false
+			return nil, nil, false
 		}
-		if _, ok := movedTileIds[tp.Tile.ID]; ok {
-			return false
+		if _, ok := movedTileIDs[tp.Tile.ID]; ok {
+			return nil, nil, false
 		}
-		movedTileIds[tp.Tile.ID] = e
+		movedTileIDs[tp.Tile.ID] = e
 		if _, ok := desiredUsedTileLocs[tp.X]; !ok {
 			desiredUsedTileLocs[tp.X] = make(map[tile.Y]struct{}, 1)
 		}
 		if _, ok := desiredUsedTileLocs[tp.X][tp.Y]; ok {
-			return false
+			return nil, nil, false
 		}
 		desiredUsedTileLocs[tp.X][tp.Y] = e
 	}
+	return desiredUsedTileLocs, movedTileIDs, true
+}
+
+// canLeaveUsedTiles determines if all of the used tiles on the board that are not in the movedTilesIDs set
+// will not be replaced by any of the tilePositions in desiredUsedTileLocs.
+func (b Board) canLeaveUsedTiles(desiredUsedTileLocs map[tile.X]map[tile.Y]struct{}, movedTileIDs map[tile.ID]struct{}) bool {
 	for t2ID, tp2 := range b.UsedTiles {
-		if _, ok := movedTileIds[t2ID]; !ok {
+		if _, ok := movedTileIDs[t2ID]; !ok {
 			if desiredUsedTileLocsY, ok := desiredUsedTileLocs[tp2.X]; ok {
 				if _, ok := desiredUsedTileLocsY[tp2.Y]; ok {
 					return false
