@@ -245,7 +245,7 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 
 // CloseConn closes the websocket connection without reporting any errors
 func CloseConn(conn *websocket.Conn, reason string) {
-	defer conn.Close()
 	data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
 	conn.WriteMessage(websocket.CloseMessage, data)
+	conn.Close()
 }
