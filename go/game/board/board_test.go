@@ -246,3 +246,152 @@ func TestMoveTilesSwap(t *testing.T) {
 		t.Errorf("wanted %v, got %v", want, got)
 	}
 }
+
+// boardsEqualForTesting is a test function that determines if boards are equal by allowing the nils in fields for the wanted board,
+// but only if the other board has that field with a zero length value
+func boardsEqualForTesting(want, got Board) bool {
+	return (reflect.DeepEqual(want.UnusedTiles, got.UnusedTiles) || (want.UnusedTiles == nil && len(got.UnusedTiles) == 0)) ||
+		(reflect.DeepEqual(want.UnusedTileIDs, got.UnusedTileIDs) || (want.UnusedTileIDs == nil && len(got.UnusedTileIDs) == 0)) ||
+		(reflect.DeepEqual(want.UsedTiles, got.UsedTiles) || (want.UsedTiles == nil && len(got.UsedTiles) == 0)) ||
+		(reflect.DeepEqual(want.UsedTileLocs, got.UsedTileLocs) || (want.UsedTileLocs == nil && len(got.UsedTileLocs) == 0))
+}
+
+func TestMoveTiles(t *testing.T) {
+	moveTilesErrTests := []struct {
+		tilePositions []tile.Position
+		board         Board
+		wantErr       bool
+		want          Board
+	}{
+		{
+			tilePositions: []tile.Position{{Tile: tile.Tile{ID: 1}}},
+			wantErr:       true, // hasTile == false
+		},
+		{
+			tilePositions: []tile.Position{
+				{Tile: tile.Tile{ID: 1}},
+				{Tile: tile.Tile{ID: 1}},
+			},
+			board: Board{
+				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}},
+				UnusedTileIDs: []tile.ID{1},
+			},
+			wantErr: true, // tile moved twice
+		},
+		{
+			tilePositions: []tile.Position{
+				{Tile: tile.Tile{ID: 1}},
+				{Tile: tile.Tile{ID: 2}},
+			},
+			board: Board{
+				UnusedTiles: map[tile.ID]tile.Tile{
+					1: {ID: 1},
+					2: {ID: 2},
+				},
+				UnusedTileIDs: []tile.ID{1, 2},
+			},
+			wantErr: true, // tiles move to same position
+		},
+		{
+			tilePositions: []tile.Position{{Tile: tile.Tile{ID: 1}, X: 2, Y: 3}},
+			board: Board{
+				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}},
+				UnusedTileIDs: []tile.ID{1},
+				UsedTiles:     map[tile.ID]tile.Position{4: {Tile: tile.Tile{ID: 4}, X: 2, Y: 3}},
+				UsedTileLocs:  map[tile.X]map[tile.Y]tile.Tile{2: {3: {ID: 4}}},
+			},
+			wantErr: true, // tile already at desired location
+		},
+		{
+			tilePositions: []tile.Position{{Tile: tile.Tile{ID: 1}, X: 2, Y: 3}},
+			board: Board{
+				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}},
+				UnusedTileIDs: []tile.ID{1},
+				UsedTiles:     map[tile.ID]tile.Position{2: {Tile: tile.Tile{ID: 2}, X: 2, Y: 4}},
+				UsedTileLocs:  map[tile.X]map[tile.Y]tile.Tile{2: {4: {ID: 2}}},
+			},
+			want: Board{
+				UsedTiles: map[tile.ID]tile.Position{
+					1: {Tile: tile.Tile{ID: 1}, X: 2, Y: 3},
+					2: {Tile: tile.Tile{ID: 1}, X: 2, Y: 4},
+				},
+				UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{
+					2: {
+						3: {ID: 1},
+						4: {ID: 2},
+					},
+				},
+			},
+		},
+	}
+	for i, test := range moveTilesErrTests {
+		err := test.board.MoveTiles(test.tilePositions)
+		switch {
+		case err != nil:
+			if !test.wantErr {
+				t.Errorf("Test %v: unexpected error: %v", i, err)
+			}
+		}
+	}
+}
+
+func TestRemoveTile(t *testing.T) {
+	removeTileTests := []struct {
+		removeID tile.ID
+		board    Board
+		wantErr  bool
+		want     Board
+	}{
+		{
+			wantErr: true,
+		},
+		{
+			removeID: 1,
+			board: Board{
+				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}},
+				UnusedTileIDs: []tile.ID{1},
+			},
+		},
+		{
+			removeID: 2,
+			board: Board{
+				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}},
+				UnusedTileIDs: []tile.ID{1},
+				UsedTiles:     map[tile.ID]tile.Position{2: {Tile: tile.Tile{ID: 2}, X: 8, Y: 9}},
+				UsedTileLocs:  map[tile.X]map[tile.Y]tile.Tile{8: {9: {ID: 2}}},
+			},
+			want: Board{
+				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}},
+				UnusedTileIDs: []tile.ID{1},
+			},
+		},
+		{
+			removeID: 3,
+			board: Board{
+				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}, 5: {ID: 5}, 3: {ID: 3}},
+				UnusedTileIDs: []tile.ID{1, 3, 5},
+			},
+			want: Board{
+				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}, 5: {ID: 5}},
+				UnusedTileIDs: []tile.ID{1, 5},
+			},
+		},
+	}
+	for i, test := range removeTileTests {
+		tile := tile.Tile{
+			ID: test.removeID,
+		}
+		err := test.board.RemoveTile(tile)
+		switch {
+		case err != nil:
+			if !test.wantErr {
+				t.Errorf("Test %v: unexpected error: %v", i, err)
+			}
+		case !(reflect.DeepEqual(test.want.UnusedTiles, test.board.UnusedTiles) || (test.want.UnusedTiles == nil && len(test.board.UnusedTiles) == 0)),
+			!(reflect.DeepEqual(test.want.UnusedTileIDs, test.board.UnusedTileIDs) || (test.want.UnusedTileIDs == nil && len(test.board.UnusedTileIDs) == 0)),
+			!(reflect.DeepEqual(test.want.UsedTiles, test.board.UsedTiles) || (test.want.UsedTiles == nil && len(test.board.UsedTiles) == 0)),
+			!(reflect.DeepEqual(test.want.UsedTileLocs, test.board.UsedTileLocs) || (test.want.UsedTileLocs == nil && len(test.board.UsedTileLocs) == 0)):
+			t.Errorf("Test %v: board not in desired state after tile removal\nwanted %v\ngot    %v", i, test.want, test.board)
+		}
+	}
+}

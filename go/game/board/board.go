@@ -115,7 +115,7 @@ func (b *Board) MoveTiles(tilePositions []tile.Position) error {
 
 // CanMoveTiles determines if the player's tiles can be moved to/in the used area
 // without overlapping any other tiles
-func (b *Board) CanMoveTiles(tilePositions []tile.Position) bool {
+func (b Board) CanMoveTiles(tilePositions []tile.Position) bool {
 	desiredUsedTileLocs, movedTileIDs, ok := b.desiredUsedTileLocs(tilePositions)
 	if !ok {
 		return false
@@ -173,7 +173,7 @@ func (b *Board) HasSingleUsedGroup() bool {
 	seenTileIds := make(map[tile.ID]struct{})
 	for x, yTiles := range b.UsedTileLocs {
 		for y, t := range yTiles {
-			b.addSeenTileIds(int(x), int(y), t, seenTileIds)
+			b.addSeenTileIDs(int(x), int(y), t, seenTileIds)
 			break // only check one tile's surrounding tilePositions
 		}
 		break
@@ -272,13 +272,13 @@ func (b Board) usedTileWordsZ(tiles map[int]map[int]tile.Tile, ord func(tp tile.
 	return usedWords
 }
 
-// addSeenTileIds  does a depth-first search for surrounding tiles, modifying the seenTileIds map.
-func (b *Board) addSeenTileIds(x, y int, t tile.Tile, seenTileIds map[tile.ID]struct{}) {
+// addSeenTileIds does a depth-first search for surrounding tiles, modifying the seenTileIds map.
+func (b Board) addSeenTileIDs(x, y int, t tile.Tile, seenTileIds map[tile.ID]struct{}) {
 	seenTileIds[t.ID] = struct{}{}
 	for dx := -1; dx <= 1; dx++ { // check neighboring columns
 		for dy := -1; dy <= 1; dy++ { // check neighboring rows
 			if (dx != 0 || dy != 0) && dx*dy == 0 { // one delta is not zero, the other is
-				b.addSurroundingSeenTileID(x + dx, y + dy, seenTileIds)
+				b.addSurroundingSeenTileID(x+dx, y+dy, seenTileIds)
 			}
 		}
 	}
@@ -289,7 +289,7 @@ func (b *Board) addSurroundingSeenTileID(x, y int, seenTileIds map[tile.ID]struc
 	if yTiles, ok := b.UsedTileLocs[tile.X(x)]; ok { // x is valid
 		if t2, ok := yTiles[tile.Y(y)]; ok { // y is valid
 			if _, ok := seenTileIds[t2.ID]; !ok { // tile not yet seen
-				b.addSeenTileIds(x, y, t2, seenTileIds) // recursive call
+				b.addSeenTileIDs(x, y, t2, seenTileIds) // recursive call
 			}
 		}
 	}
