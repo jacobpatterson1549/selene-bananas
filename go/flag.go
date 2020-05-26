@@ -38,17 +38,11 @@ func usage(fs *flag.FlagSet) {
 	fs.PrintDefaults()
 }
 
-// newMainFlags creates a new, populated mainFlags structure
-// Fields are populated from command line arguments.
-// If fields are not specified on the command line, environment variable values are used before defaulting to other defaults.
-func newMainFlags(osArgs []string, osLookupEnvFunc func(string) (string, bool)) mainFlags {
-	if len(osArgs) == 0 {
-		osArgs = []string{""}
-	}
-	programName, programArgs := osArgs[0], osArgs[1:]
+// newFlagSet creates a flagSet that populates the specified mainFlags.
+func (m *mainFlags) newFlagSet(programName string, osLookupEnvFunc func(string) (string, bool)) *flag.FlagSet {
 	fs := flag.NewFlagSet(programName, flag.ExitOnError)
 	fs.Usage = func() { usage(fs) }
-	var m mainFlags
+
 	envOrDefault := func(key, defaultValue string) string {
 		if envValue, ok := osLookupEnvFunc(key); ok {
 			return envValue
@@ -64,6 +58,19 @@ func newMainFlags(osArgs []string, osLookupEnvFunc func(string) (string, bool)) 
 	fs.StringVar(&m.serverPort, "port", envOrDefault(environmentVariableServerPort, ""), "The port number to run the server on.")
 	fs.StringVar(&m.wordsFile, "words-file", envOrDefault(environmentVariableWordsFile, ""), "The list of valid lower-case words that can be used.")
 	fs.BoolVar(&m.debugGame, "debug-game", envPresent(environmentVariableDebugGame), "Logs game message types in the console if present.")
+	return fs
+}
+
+// newMainFlags creates a new, populated mainFlags structure
+// Fields are populated from command line arguments.
+// If fields are not specified on the command line, environment variable values are used before defaulting to other defaults.
+func newMainFlags(osArgs []string, osLookupEnvFunc func(string) (string, bool)) mainFlags {
+	if len(osArgs) == 0 {
+		osArgs = []string{""}
+	}
+	programName, programArgs := osArgs[0], osArgs[1:]
+	var m mainFlags
+	fs := m.newFlagSet(programName, osLookupEnvFunc)
 	fs.Parse(programArgs)
 	return m
 }

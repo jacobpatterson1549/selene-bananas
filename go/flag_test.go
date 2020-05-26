@@ -1,6 +1,11 @@
 package main
 
-import "testing"
+import (
+	"bytes"
+	"flag"
+	"strings"
+	"testing"
+)
 
 func TestNewMainFlags(t *testing.T) {
 	newMainFlagsTests := []struct {
@@ -90,5 +95,30 @@ func TestNewMainFlags(t *testing.T) {
 		if test.want != got {
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
 		}
+	}
+}
+
+func TestUsage(t *testing.T) {
+	programName := "mockProgramName"
+	osLookupEnvFunc := func(key string) (string, bool) {
+		return "", false
+	}
+	var m mainFlags
+	fs := m.newFlagSet(programName, osLookupEnvFunc)
+	var b bytes.Buffer
+	fs.SetOutput(&b)
+	fs.Init(programName, flag.ContinueOnError) // override ErrorHandling
+	err := fs.Parse([]string{"-h"})
+	if err != flag.ErrHelp {
+		t.Errorf("wanted ErrHelp, got %v", err)
+	}
+	got := b.String()
+	numCommas := strings.Count(got, ",")
+	wantEnvVarCount := numCommas + 1
+	wantLineCount := 3 + wantEnvVarCount*2 // 3 initial lines, 2 lines per env var
+	gotLineCount := strings.Count(got, "\n")
+	note := "NOTE: this might be flaky, but it helps ensure that each environment variable is in the usage text"
+	if wantLineCount != gotLineCount {
+		t.Errorf("wanted usage to have %v lines, but got %v. %v, got:\n%v", wantLineCount, gotLineCount, note, got)
 	}
 }
