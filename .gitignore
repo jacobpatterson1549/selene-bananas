@@ -1,4 +1,6 @@
 # binaries created by make
+wasm_exec.js
+main.wasm
 main
 
 # environment variables
@@ -9,7 +11,7 @@ main
 
 # Visual Studio Code files
 .vscode
-go/__debug_bin
+go/cmd/server/__debug_bin
 
 # SonarQube static analysis
 .scannerwork
