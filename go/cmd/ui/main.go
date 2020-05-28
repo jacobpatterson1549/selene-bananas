@@ -1,12 +1,11 @@
-// +build js, wasm
+// +build js
+
 package main
 
 import (
-	"fmt"
-	"syscall/js"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui"
 )
 
 func main() {
-	fmt.Println("Hello, WebAssembly!") // TODO
-	js.Global().Call("alert", "Hello, JavaScript")
+	ui.Init()
 }
