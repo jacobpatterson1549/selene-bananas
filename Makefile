@@ -3,7 +3,8 @@
 all: install
 
 test:
-	go test ./... -v
+	GOOS=js GOARCH=wasm gopherjs test github.com/jacobpatterson1549/selene-bananas/go/ui/...
+	go test ./... --cover
 
 gopherjs:
 	GOPHERJS_GOROOT=$(shell go1.12.16 env GOROOT) \
