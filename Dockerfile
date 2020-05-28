@@ -14,12 +14,11 @@ RUN go mod download
 
 COPY go /app/go
 
-RUN GOOS=js \
-    GOARCH=wasm \
-        go build \
+RUN gopherjs build \
+            --minify \
             -o /app/main.wasm \
             /app/go/cmd/ui/main.go; \
-    CGO_ENABLED=0 \
+    CGO_ENABLED=0 \ 
         go build \
             -o /app/main \
             /app/go/cmd/server/*.go;
