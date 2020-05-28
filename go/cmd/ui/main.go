@@ -1,10 +1,12 @@
+// +build js, wasm
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"syscall/js"
+)
 
 func main() {
 	fmt.Println("Hello, WebAssembly!") // TODO
-
-	blocker := make(chan int, 0)
-	<-blocker
+	js.Global().Call("alert", "Hello, JavaScript")
 }

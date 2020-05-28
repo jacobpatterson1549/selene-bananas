@@ -1,6 +1,6 @@
 # binaries created by make
-wasm_exec.js
-main.wasm
+main.js
+main.js.map
 main
 
 # environment variables

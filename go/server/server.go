@@ -154,8 +154,6 @@ func (s *Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 		}
 	case "/favicon.ico", "/robots.txt":
 		http.ServeFile(w, r, "static"+r.URL.Path)
-	case "/main.wasm":
-		http.ServeFile(w, r, "."+r.URL.Path)
 	case "/user_join_lobby":
 		err := r.ParseForm()
 		if err != nil {
@@ -226,8 +224,8 @@ func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 		"static/fa/*.svg",
 		"static/main.css",
 		"js/*.js",
-		"wasm_exec.js",
-		"static/run_wasm.js",
+		"main.js",
+		"main.js.map",
 	}
 	for _, g := range templateFileGlobs {
 		_, err := t.ParseGlob(g)

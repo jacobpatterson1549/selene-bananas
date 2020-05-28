@@ -1,21 +1,17 @@
-.PHONY: all test install serve clean
+.PHONY: all test gopherjs install serve clean
 
 all: install
 
 test:
 	go test ./... -v
 
-wasm:
-	ln -fs \
-		$(shell go env GOROOT)/misc/wasm/wasm_exec.js \
-		wasm_exec.js
-	GOOS=js \
-	GOARCH=wasm \
-	go build \
-		-o main.wasm \
+gopherjs:
+	GOPHERJS_GOROOT=$(shell go1.12.16 env GOROOT) \
+	gopherjs build \
+		-o main.js \
 		go/cmd/ui/*.go
 
-install: test wasm
+install: test gopherjs
 	go build \
 		-o main \
 		go/cmd/server/*.go
@@ -27,6 +23,6 @@ serve: install
 clean:
 	rm -f \
 		go/cmd/server/__debug_bin \
-		wasm_exec.js \
-		main.wasm \
+		main.js \
+		main.js.map \
 		main
