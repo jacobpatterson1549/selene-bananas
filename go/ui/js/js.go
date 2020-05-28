@@ -4,12 +4,13 @@
 package js
 
 import (
-	syscall_js "syscall/js"
+	"syscall/js"
+	"time"
 )
 
-var document syscall_js.Value = syscall_js.Global().Get("document")
+var document js.Value = js.Global().Get("document")
 
-func getElementById(id string) syscall_js.Value {
+func getElementById(id string) js.Value {
 	return document.Call("getElementById", id)
 }
 
@@ -44,4 +45,28 @@ func GetValue(id string) string {
 func SetValue(id, value string) {
 	element := getElementById(id)
 	element.Set("value", value)
+}
+
+// DormatDate formats a datetime to HH:MM:SS.
+func FormatDate(time time.Time) string {
+	return time.Format("15:04:05")
+}
+
+// AddLog adds a log message with the specified class
+func AddLog(class, text string) {
+	logItemTemplate := getElementById("log-item")
+	logItemTemplateContent := logItemTemplate.Get("content")
+	clone := logItemTemplateContent.Call("cloneNode", true)
+	cloneChildren := clone.Get("children")
+	logItemElement := cloneChildren.Index(0)
+	time := FormatDate(time.Now())
+	textContent := time + " : " + text
+	logItemElement.Set("textContent", textContent)
+	logItemElement.Set("className", class)
+	logScrollElement := getElementById("log-scroll")
+	logScrollElement.Call("appendChild", logItemElement)
+	scrollHeight := logScrollElement.Get("scrollHeight")
+	clientHeight := logScrollElement.Get("clientHeight")
+	scrollTop := scrollHeight.Int() - clientHeight.Int()
+	logScrollElement.Set("scrollTop", scrollTop)
 }
