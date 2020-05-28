@@ -12,6 +12,7 @@ func TestNewMainFlags(t *testing.T) {
 		osArgs  []string
 		envVars map[string]string
 		want    mainFlags
+		cache   bool // cache is specified
 	}{
 		{
 			osArgs: []string{"name"},
@@ -60,6 +61,7 @@ func TestNewMainFlags(t *testing.T) {
 				"-data-source=3",
 				"-words-file=4",
 				"-debug-game",
+				"-cache-sec=467",
 			},
 			want: mainFlags{
 				applicationName: "1",
@@ -67,7 +69,9 @@ func TestNewMainFlags(t *testing.T) {
 				databaseURL:     "3",
 				wordsFile:       "4",
 				debugGame:       true,
+				cacheSec:        467,
 			},
+			cache: true,
 		},
 		{ // all environment variables
 			envVars: map[string]string{
@@ -76,6 +80,7 @@ func TestNewMainFlags(t *testing.T) {
 				"DATABASE_URL":        "3",
 				"WORDS_FILE":          "4",
 				"DEBUG_GAME_MESSAGES": "",
+				"CACHE_SECONDS":       "113",
 			},
 			want: mainFlags{
 				applicationName: "1",
@@ -83,7 +88,9 @@ func TestNewMainFlags(t *testing.T) {
 				databaseURL:     "3",
 				wordsFile:       "4",
 				debugGame:       true,
+				cacheSec:        113,
 			},
+			cache: true,
 		},
 	}
 	for i, test := range newMainFlagsTests {
@@ -92,6 +99,9 @@ func TestNewMainFlags(t *testing.T) {
 			return v, ok
 		}
 		got := newMainFlags(test.osArgs, osLookupEnvFunc)
+		if !test.cache {
+			test.want.cacheSec = defaultCacheSec
+		}
 		if test.want != got {
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
 		}
@@ -113,8 +123,13 @@ func TestUsage(t *testing.T) {
 		t.Errorf("wanted ErrHelp, got %v", err)
 	}
 	got := b.String()
-	numCommas := strings.Count(got, ",")
-	wantEnvVarCount := numCommas + 1
+	totalCommas := strings.Count(got, ",")
+	b.Reset()
+	fs.PrintDefaults()
+	defaults := b.String()
+	descriptionCommas := strings.Count(defaults, ",")
+	envCommas := totalCommas - descriptionCommas
+	wantEnvVarCount := envCommas + 1       // n+1 vars are joined with n commas
 	wantLineCount := 3 + wantEnvVarCount*2 // 3 initial lines, 2 lines per env var
 	gotLineCount := strings.Count(got, "\n")
 	note := "NOTE: this might be flaky, but it helps ensure that each environment variable is in the usage text"

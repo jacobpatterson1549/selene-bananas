@@ -16,17 +16,16 @@ import (
 type (
 	// Server runs the site
 	Server struct {
-		data              interface{}
-		addr              string
-		log               *log.Logger
-		handler           http.Handler
-		staticFileHandler http.Handler
-		tokenizer         Tokenizer
-		userDao           *db.UserDao
-		lobby             *lobby.Lobby
-		httpServer        *http.Server
-		// StopDur is the maximum duration the server should take to shutdown gracefully
-		stopDur time.Duration
+		data       interface{}
+		addr       string
+		log        *log.Logger
+		handler    http.Handler
+		tokenizer  Tokenizer
+		userDao    *db.UserDao
+		lobby      *lobby.Lobby
+		httpServer *http.Server
+		stopDur    time.Duration
+		cacheSec   int
 	}
 
 	// Config contains fields which describe the server
@@ -45,6 +44,8 @@ type (
 		LobbyCfg lobby.Config
 		// StopDur is the maximum duration the server should take to shutdown gracefully
 		StopDur time.Duration
+		// CachenSec is the number of seconds some files are cached
+		CacheSec int
 	}
 )
 
@@ -75,6 +76,7 @@ func (cfg Config) NewServer() (*Server, error) {
 		userDao:   cfg.UserDao,
 		lobby:     lobby,
 		stopDur:   cfg.StopDur,
+		cacheSec:  cfg.CacheSec,
 	}
 	serveMux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
 	serveMux.HandleFunc("/", s.httpMethodHandler)
@@ -95,6 +97,8 @@ func (cfg Config) validate() error {
 		return fmt.Errorf("user dao required")
 	case cfg.StopDur <= 0:
 		return fmt.Errorf("shop timeout duration required")
+	case cfg.CacheSec < 0:
+		return fmt.Errorf("non-negative cache time required")
 	}
 	return nil
 }
@@ -154,6 +158,9 @@ func (s *Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 		}
 	case "/favicon.ico", "/robots.txt":
 		http.ServeFile(w, r, "static"+r.URL.Path)
+	case "/main.js", "/main.js.map":
+		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
+		http.ServeFile(w, r, "."+r.URL.Path)
 	case "/user_join_lobby":
 		err := r.ParseForm()
 		if err != nil {
@@ -224,8 +231,6 @@ func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 		"static/fa/*.svg",
 		"static/main.css",
 		"js/*.js",
-		"main.js",
-		"main.js.map",
 	}
 	for _, g := range templateFileGlobs {
 		_, err := t.ParseGlob(g)

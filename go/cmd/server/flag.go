@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"strconv"
 	"strings"
 
 	_ "github.com/lib/pq"
@@ -14,6 +15,7 @@ const (
 	environmentVariableDatabaseURL     = "DATABASE_URL"
 	environmentVariableWordsFile       = "WORDS_FILE"
 	environmentVariableDebugGame       = "DEBUG_GAME_MESSAGES"
+	environmentVariableCacheSec        = "CACHE_SECONDS"
 )
 
 type mainFlags struct {
@@ -22,7 +24,12 @@ type mainFlags struct {
 	databaseURL     string
 	wordsFile       string
 	debugGame       bool
+	cacheSec        int
 }
+
+const (
+	defaultCacheSec int = 60 * 60 * 24 * 365 // 1 year
+)
 
 func usage(fs *flag.FlagSet) {
 	envVars := []string{
@@ -31,6 +38,7 @@ func usage(fs *flag.FlagSet) {
 		environmentVariableDatabaseURL,
 		environmentVariableWordsFile,
 		environmentVariableDebugGame,
+		environmentVariableCacheSec,
 	}
 	fmt.Fprintln(fs.Output(), "Starts the server")
 	fmt.Fprintln(fs.Output(), "Reads environment variables when possible:", fmt.Sprintf("[%s]", strings.Join(envVars, ",")))
@@ -49,6 +57,13 @@ func (m *mainFlags) newFlagSet(programName string, osLookupEnvFunc func(string) 
 		}
 		return defaultValue
 	}
+	envOrDefaultInt := func(key string, defaultValue int) int {
+		v1 := envOrDefault(key, string(defaultValue))
+		if v2, err := strconv.Atoi(v1); err == nil {
+			return v2
+		}
+		return defaultValue
+	}
 	envPresent := func(key string) bool {
 		_, ok := osLookupEnvFunc(key)
 		return ok
@@ -58,6 +73,7 @@ func (m *mainFlags) newFlagSet(programName string, osLookupEnvFunc func(string) 
 	fs.StringVar(&m.serverPort, "port", envOrDefault(environmentVariableServerPort, ""), "The port number to run the server on.")
 	fs.StringVar(&m.wordsFile, "words-file", envOrDefault(environmentVariableWordsFile, ""), "The list of valid lower-case words that can be used.")
 	fs.BoolVar(&m.debugGame, "debug-game", envPresent(environmentVariableDebugGame), "Logs game message types in the console if present.")
+	fs.IntVar(&m.cacheSec, "cache-sec", envOrDefaultInt(environmentVariableCacheSec, defaultCacheSec), "The number of seconds static assets are cached, such as javascript files.")
 	return fs
 }
 

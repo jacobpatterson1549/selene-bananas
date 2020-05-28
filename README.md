@@ -33,6 +33,8 @@ PORT=8000 # Server web port
 
 It is recommended to install the [wamerican-small](https://packages.debian.org/buster/wamerican-small) package.  This package provides /usr/share/dict/american-english-small, which is the default location of the word list.  Lowercase words are read from the word list for checking valid words in the game.  This can be overridden by providing the `WORDS_FILE` environment variable.
 
+For development, it is recommended to set `CACHE_SECONDS` to `0` to avoid caching files while they are modified.
+
 ### Database
 
 The app stores user information in a postgresql database.  Every time the app starts, files in the [sql](sql) folder are ran to ensure the table and stored functions are fresh.
