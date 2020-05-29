@@ -4,9 +4,12 @@
 package ui
 
 import (
+	"encoding/json"
 	"syscall/js"
 
+	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/content"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 )
 
@@ -34,7 +37,7 @@ func Init() {
 	})
 	addFunc("content", "isLoggedIn", func(this js.Value, args []js.Value) interface{} {
 		loggedIn := content.IsLoggedIn()
-		return js.ValueOf(loggedIn)
+		return loggedIn
 	})
 	addFunc("content", "setErrorMessage", func(this js.Value, args []js.Value) interface{} {
 		text := args[0].String()
@@ -83,10 +86,66 @@ func Init() {
 		return log.FormatDate(unixSec)
 	})
 	// lobby
+	global.Set("lobby", js.ValueOf(make(map[string]interface{})))
+	addFunc("lobby", "getGameInfos", func(this js.Value, args []js.Value) interface{} {
+		event := args[0]
+		event.Call("preventDefault")
+		websocket := global.Get("websocket")
+		promise := websocket.Call("connect", event)
+		var getGameInfos, logConnectErr js.Func
+		getGameInfos = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			m := js.ValueOf(map[string]interface{}{
+				"type": game.Infos,
+			})
+			websocket.Call("send", m)
+			getGameInfos.Release()
+			logConnectErr.Release()
+			return nil
+		})
+		logConnectErr = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			err := args[0]
+			log := global.Get("log")
+			log.Call("error", "connect error: "+err.String())
+			getGameInfos.Release()
+			logConnectErr.Release()
+			return nil
+		})
+		promise = promise.Call("then", getGameInfos)
+		promise = promise.Call("catch", logConnectErr)
+		return nil
+	})
+	addFunc("lobby", "setGameInfos", func(this js.Value, args []js.Value) interface{} {
+		gameInfosJs := args[0]
+		// TODO avoid unnecessary marshalling
+		var gameInfos []game.Info
+		if gameInfosJs != js.Undefined() {
+			JSON := global.Get("JSON")
+			gameInfosJson := JSON.Call("stringify", gameInfosJs).String()
+			err := json.Unmarshal([]byte(gameInfosJson), &gameInfos)
+			if err != nil {
+				log := global.Get("log")
+				log.Call("error", "unmarshalling gameInfosJsJson: "+err.Error())
+				return nil
+			}
+		}
+		lobby.SetGameInfos(gameInfos)
+		return nil
+	})
+	addFunc("lobby", "leave", func(this js.Value, args []js.Value) interface{} {
+		websocket := global.Get("websocket")
+		websocket.Call("close")
+		game := global.Get("game")
+		game.Call("leave")
+		return nil
+	})
 	// user
+	// global.Set("user", js.ValueOf(make(map[string]interface{})))
 	// websocket
+	// global.Set("websocket", js.ValueOf(make(map[string]interface{})))
 	// canvas
+	// global.Set("canvas", js.ValueOf(make(map[string]interface{})))
 	// game
+	// global.Set("game", js.ValueOf(make(map[string]interface{})))
 
 	var onClose js.Func
 	onClose = js.FuncOf(func(this js.Value, args []js.Value) interface{} {

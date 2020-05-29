@@ -4,8 +4,11 @@
 package js
 
 import (
+	"strings"
 	"syscall/js"
 	"time"
+
+	"github.com/jacobpatterson1549/selene-bananas/go/game"
 )
 
 var document js.Value = js.Global().Get("document")
@@ -28,6 +31,7 @@ func GetChecked(id string) bool {
 }
 
 // SetInnerHTML sets the inner html of the element with the specified id.
+// TODO: audit SetInnerHTML usage
 func SetInnerHTML(id string, innerHTML string) {
 	element := getElementById(id)
 	element.Set("innerHTML", innerHTML)
@@ -69,4 +73,55 @@ func AddLog(class, text string) {
 	clientHeight := logScrollElement.Get("clientHeight")
 	scrollTop := scrollHeight.Int() - clientHeight.Int()
 	logScrollElement.Set("scrollTop", scrollTop)
+}
+
+// SetGameInfos updates the game-infos table with the specified game infos.
+func SetGameInfos(gameInfos []game.Info) {
+	tbodyElement := document.Call("querySelector", "table#game-infos>tbody")
+	tbodyElement.Set("innerHTML", "")
+	if len(gameInfos) == 0 {
+		// TODO: create clone helper function
+		emptyGameInfoTemplate := getElementById("no-game-info-row")
+		emptyGameInfoTemplateContent := emptyGameInfoTemplate.Get("content")
+		emptyGameInfoElement := emptyGameInfoTemplateContent.Call("cloneNode", true)
+		tbodyElement.Call("appendChild", emptyGameInfoElement)
+		return
+	}
+	// println("TODO: setGameInfos (total=" + string(len(gameInfos)) + ")")
+	// println(fmt.Sprintf("gameInfos: %v", gameInfos)) // DELETEME
+	gameInfoTemplate := getElementById("game-info-row")
+	gameInfoTemplateContent := gameInfoTemplate.Get("content")
+	_, timezoneOffsetSeconds := time.Now().Zone()
+	getStatus := func(i game.Info) string {
+		switch i.Status {
+		case game.NotStarted:
+			return "Not Started"
+		case game.InProgress:
+			return "In Progress"
+		case game.Finished:
+			return "Finished"
+		}
+		log := document.Get("log")
+		log.Call("error", "unknown gameStatus: "+string(i.Status))
+		return "?"
+	}
+	for _, gameInfo := range gameInfos {
+		gameInfoElement := gameInfoTemplateContent.Call("cloneNode", true)
+		rowElement := gameInfoElement.Get("children").Index(0)
+		createdAt := gameInfo.CreatedAt + int64(timezoneOffsetSeconds)
+		createdAtTime := time.Unix(createdAt, 0)
+		createdAtTimeText := FormatDate(createdAtTime)
+		rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
+		players := strings.Join(gameInfo.Players, ", ")
+		rowElement.Get("children").Index(1).Set("innerHTML", players)
+		status := getStatus(gameInfo)
+		rowElement.Get("children").Index(2).Set("innerHTML", status)
+		if gameInfo.CanJoin {
+			joinGameButtonTemplate := getElementById("join-game-button")
+			joinGameButtonElement := joinGameButtonTemplate.Get("content").Call("cloneNode", true)
+			joinGameButtonElement.Get("children").Index(0).Set("value", int(gameInfo.ID))
+			rowElement.Get("children").Index(2).Call("appendChild", joinGameButtonElement)
+		}
+		tbodyElement.Call("appendChild", gameInfoElement)
+	}
 }
