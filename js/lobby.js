@@ -22,13 +22,11 @@ var lobby = {
             return;
         }
         var gameInfoTemplate = document.getElementById("game-info-row");
-        var timezoneOffsetMinutes = new Date().getTimezoneOffset();
         for (var i = 0; i < gameInfos.length; i++) {
             var gameInfoElement = gameInfoTemplate.content.cloneNode(true);
             var rowElement = gameInfoElement.children[0];
             var createdAt = gameInfos[i].createdAt;
             var createdAtDate = new Date(createdAt); // utc
-            createdAtDate.setMinutes(createdAtDate.getMinutes() + timezoneOffsetMinutes);
             var createdAtTime = log.formatDate(createdAtDate);
             rowElement.children[0].innerHTML = createdAtTime;
             rowElement.children[1].innerHTML = gameInfos[i].players;
