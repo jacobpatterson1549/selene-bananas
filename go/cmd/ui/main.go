@@ -8,4 +8,8 @@ import (
 
 func main() {
 	ui.Init()
+
+	// TODO: regester a context with the init shutdown
+	done := make(chan struct{})
+	<-done
 }

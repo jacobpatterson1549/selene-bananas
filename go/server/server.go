@@ -156,9 +156,10 @@ func (s *Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return fmt.Errorf("rendering template: %w", err)
 		}
-	case "/favicon.ico", "/robots.txt":
+	case "/favicon.ico", "/robots.txt", "/run_wasm.js":
+		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
 		http.ServeFile(w, r, "static"+r.URL.Path)
-	case "/main.js", "/main.js.map":
+	case "/main.wasm", "/wasm_exec.js":
 		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
 		http.ServeFile(w, r, "."+r.URL.Path)
 	case "/user_join_lobby":

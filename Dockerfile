@@ -2,10 +2,7 @@ FROM golang:1.13-buster
 
 RUN apt-get update; \
     apt-get install -y \
-        wamerican-small=2018.04.16-1; \
-    go get github.com/gopherjs/gopherjs; \
-    go get golang.org/dl/go1.12.16; \
-    go1.12.16 download;
+        wamerican-small=2018.04.16-1;
 
 WORKDIR /app
 
@@ -15,11 +12,11 @@ RUN go mod download
 
 COPY go /app/go
 
-RUN GOOS=js GOARCH=wasm go generate github.com/jacobpatterson1549/selene-bananas/go/ui; \
-    GOPHERJS_GOROOT=/root/sdk/go1.12.16 gopherjs build \
-            -o /app/main.js \
-           go/cmd/ui/main.go;
-RUN CGO_ENABLED=0 \ 
+RUN GOOS=js GOARCH=wasm go \
+        go build \
+            -o /app/main.wasm \
+            /app/go/cmd/ui/main.go; \
+    CGO_ENABLED=0 \ 
         go build \
             -o /app/main \
             /app/go/cmd/server/*.go;
@@ -30,7 +27,8 @@ WORKDIR /app
 
 COPY --from=0 \
     /app/main \
-    /app/main.js \
+    /app/main.wasm \
+    /usr/local/go/misc/wasm/wasm_exec.js \
     /usr/share/dict/american-english-small \
     /app/
 
