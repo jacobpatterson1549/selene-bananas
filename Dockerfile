@@ -13,7 +13,7 @@ RUN go mod download
 
 COPY go /app/go
 
-RUN GOOS=js GOARCH=wasm go \
+RUN GOOS=js GOARCH=wasm \
         go build \
             -o /app/main.wasm \
             /app/go/cmd/ui/main.go; \
