@@ -6,9 +6,10 @@ RUN apt-get update; \
 
 WORKDIR /app
 
+# TODO: move go mod&sum to the go folder
 COPY go.mod go.sum /app/
 
-RUN go mod download
+RUN go mod download 
 
 COPY go /app/go
 
