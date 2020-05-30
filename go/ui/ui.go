@@ -96,7 +96,7 @@ func Init() {
 		var getGameInfos, logConnectErr js.Func
 		getGameInfos = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			m := js.ValueOf(map[string]interface{}{
-				"type": game.Infos,
+				"type": int(game.Infos), // TODO: hack
 			})
 			websocket.Call("send", m)
 			getGameInfos.Release()
