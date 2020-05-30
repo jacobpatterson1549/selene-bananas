@@ -11,6 +11,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/content"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui/user"
 )
 
 // Init initializes the ui by regestering js functions.
@@ -139,7 +140,37 @@ func Init() {
 		return nil
 	})
 	// user
-	// global.Set("user", js.ValueOf(make(map[string]interface{})))
+	global.Set("user", js.ValueOf(make(map[string]interface{})))
+	addFunc("user", "logout", func(this js.Value, args []js.Value) interface{} {
+		user.Logout()
+		return nil
+	})
+	addFunc("user", "request", func(this js.Value, args []js.Value) interface{} {
+		event := args[0]
+		event.Call("preventDefault")
+		form := event.Get("target")
+		method := form.Get("method").String()
+		url := form.Get("action").String()
+		origin := global.Get("location").Get("origin").String()
+		urlSuffixIndex := len(origin)
+		urlSuffix := url[urlSuffixIndex:]
+		formInputs := form.Call("querySelectorAll", `input:not([type="submit"])`)
+		params := make(map[string][]string, formInputs.Length())
+		for i := 0; i < formInputs.Length(); i++ {
+			formInput := formInputs.Index(i)
+			name := formInput.Get("name").String()
+			value := formInput.Get("value").String()
+			params[name] = []string{value}
+		}
+		request := user.Request{
+			Method:    method,
+			URL:       url,
+			URLSuffix: urlSuffix,
+			Params:    params,
+		}
+		go request.Do()
+		return nil
+	})
 	// websocket
 	// global.Set("websocket", js.ValueOf(make(map[string]interface{})))
 	// canvas
@@ -147,14 +178,42 @@ func Init() {
 	// game
 	// global.Set("game", js.ValueOf(make(map[string]interface{})))
 
+	onLoad := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		// user
+		document := global.Get("document")
+		confirmPasswordElements := document.Call("querySelectorAll", "label>input.password2")
+		for i := 0; i < confirmPasswordElements.Length(); i++ {
+			confirmPasswordElement := confirmPasswordElements.Index(i)
+			validatePasswordFunc := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				confirmPasswordLabelElement := confirmPasswordElement.Get("parentElement")
+				parentFormElement := confirmPasswordLabelElement.Get("parentElement")
+				passwordElement := parentFormElement.Call("querySelector", "label>input.password1")
+				validity := ""
+				passwordValue := passwordElement.Get("value").String()
+				confirmValue := confirmPasswordElement.Get("value").String()
+				if passwordValue != confirmValue {
+					validity = "Please enter the same password."
+				}
+				confirmPasswordElement.Call("setCustomValidity", validity)
+				return nil
+			})
+			key := "ValidatePassword" + string(i)
+			funcs[key] = validatePasswordFunc
+			confirmPasswordElement.Set("onchange", validatePasswordFunc)
+		}
+		// canvas
+		global.Get("canvas").Call("init")
+		return nil
+	})
 	var onClose js.Func
 	onClose = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		for _, fn := range funcs {
 			fn.Release()
 		}
 		onClose.Release()
+		onLoad.Release()
 		return nil
 	})
+	global.Set("onload", onLoad)
 	global.Set("onclose", onClose)
-
 }

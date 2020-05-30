@@ -14,12 +14,7 @@
         <script type="text/javascript">
             {{template "canvas.js"}}
             {{template "game.js"}}
-            {{template "user.js"}}
             {{template "websocket.js"}}
-            window.onload = () => {
-                user.init();
-                canvas.init();
-            };
         </script>
         <script defer src="wasm_exec.js"></script>
         <script defer src="run_wasm.js"></script>

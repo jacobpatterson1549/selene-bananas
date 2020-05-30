@@ -125,3 +125,43 @@ func SetGameInfos(gameInfos []game.Info) {
 		tbodyElement.Call("appendChild", gameInfoElement)
 	}
 }
+
+// SetUsernamesReadOnly sets all of the username inputs to readonly with the specified username if it is not empty, otherwise, it removes the readonly attribute.
+func SetUsernamesReadOnly(username string) {
+	usernameElements := document.Call("querySelectorAll", "input.username")
+	for i := 0; i < usernameElements.Length(); i++ {
+		usernameElement := usernameElements.Index(i)
+		switch {
+		case len(username) == 0:
+			usernameElement.Call("removeAttribute", "readonly")
+		default:
+			usernameElement.Set("value", username)
+			usernameElement.Call("setAttribute", "readonly", "readonly")
+		}
+	}
+}
+
+// SetPoints sets the value of the points input
+func SetPoints(points int) {
+	pointsElement := document.Call("querySelector", "input.points")
+	pointsElement.Set("value", points)
+}
+
+// StoreCredentials attempts to save the credentials for the login, if browser wants to
+func StoreCredentials(username, password string) {
+	passwordCredential := document.Get("PasswordCredential")
+	if passwordCredential.Truthy() {
+		c := map[string]string{
+			"id":       username,
+			"password": password,
+		}
+		document.Get("credentials").Call("store", c)
+	}
+}
+
+// Confirm shows a popup asking the user a yes/no question.
+// The true return value implies the "yes" choice.
+func Confirm(message string) bool {
+	result := js.Global().Call("confirm", message)
+	return result.Bool()
+}

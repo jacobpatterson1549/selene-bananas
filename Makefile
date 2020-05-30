@@ -1,11 +1,15 @@
-.PHONY: all test gopherjs install serve clean
+.PHONY: all test-wasm test wasm install serve clean
 
 all: install
 
-test:
+# requires node
+test-wasm:
 	GOOS=js \
-	GOARCH=wasm go \
-		test github.com/jacobpatterson1549/selene-bananas/go/ui/...
+	GOARCH=wasm \
+	go test -exec=$(shell go env GOROOT)/misc/wasm/go_js_wasm_exec \
+		github.com/jacobpatterson1549/selene-bananas/go/ui/... --cover
+
+test: test-wasm
 	go test ./... --cover
 
 wasm:
