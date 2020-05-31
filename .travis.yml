@@ -2,3 +2,7 @@
 language: go
 go:
 - "1.13"
+install:
+  - curl -sSfL https://dl.google.com/go/go1.13.linux-amd64.tar.gz | tar -C ~ -xzf -
+  - export GOROOT=${HOME}/go
+  - export PATH=${GOROOT}/bin:${PATH}
