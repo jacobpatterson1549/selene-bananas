@@ -9,7 +9,7 @@ test-wasm:
 	go test -exec=$(shell go env GOROOT)/misc/wasm/go_js_wasm_exec \
 		github.com/jacobpatterson1549/selene-bananas/go/ui/... --cover
 
-test: test-wasm
+test: #test-wasm
 	go test ./... --cover
 
 wasm:
