@@ -2,6 +2,3 @@
 language: go
 go:
 - "1.13"
-
-before_install:
-- nvm install "10.20.1"
