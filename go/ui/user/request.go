@@ -74,9 +74,10 @@ func (r Request) Do() {
 	}
 	var httpRequest *http.Request
 	var err error
+	// TODO: pass context when making http request
 	switch r.Method {
 	case "get":
-		httpRequest, err = http.NewRequest(r.Method, r.URL, nil)
+		httpRequest, err = http.NewRequest(r.Method, r.URL+"?"+r.Params.Encode(), nil)
 	case "post":
 		httpRequest, err = http.NewRequest(r.Method, r.URL, strings.NewReader(r.Params.Encode()))
 		httpRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -98,8 +99,8 @@ func (r Request) Do() {
 		log.Error("making http request: " + err.Error())
 	case httpResponse.StatusCode >= 400:
 		log.Error(httpResponse.Status)
+		// TODO: logout user on http error?
 	default:
 		rh(r, httpResponse.Body)
 	}
-
 }

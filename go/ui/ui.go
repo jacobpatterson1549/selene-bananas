@@ -11,6 +11,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/content"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui/socket"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/user"
 )
 
@@ -28,7 +29,15 @@ func Init() {
 		}
 		funcs[key] = jsFunc
 	}
-
+	addWebsocketFunc := func(_websocket js.Value, fnName string, fn func(this js.Value, args []js.Value) interface{}) {
+		jsFunc := js.FuncOf(fn)
+		_websocket.Set(fnName, jsFunc)
+		key := "websocket._websocket." + fnName
+		if _, ok := funcs[key]; ok {
+			panic("duplicate function name: " + key)
+		}
+		funcs[key] = jsFunc
+	}
 	// content
 	global.Set("content", js.ValueOf(make(map[string]interface{})))
 	addFunc("content", "setLoggedIn", func(this js.Value, args []js.Value) interface{} {
@@ -172,13 +181,123 @@ func Init() {
 		return nil
 	})
 	// websocket
-	// global.Set("websocket", js.ValueOf(make(map[string]interface{})))
+	global.Set("websocket", js.ValueOf(make(map[string]interface{})))
+	addFunc("websocket", "connect", func(this js.Value, args []js.Value) interface{} {
+		// promise := js.ValueOf("Promise")
+		promise := global.Get("Promise")
+		websocket := this
+		_websocket := this.Get("_websocket")
+		switch _websocket {
+		case js.Undefined(), js.Null():
+		default:
+			var resolvePromise js.Func
+			resolvePromise = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				resolve := args[0]
+				resolve.Invoke()
+				resolvePromise.Release()
+				return nil
+			})
+			return promise.New(resolvePromise)
+		}
+		event := args[0]
+		form := event.Get("target")
+		url := form.Get("action").String()
+		if len(url) >= 4 && url[:4] == "http" {
+			url = "ws" + url[4:]
+		}
+		jwt := content.GetJWT()
+		url = url + "?access_token=" + jwt
+		var newWebsocketPromiseFunc js.Func
+
+		newWebsocketPromiseFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			resolve := args[0]
+			reject := args[1]
+			jsWebsocket := global.Get("WebSocket").New(url)
+			websocket.Set("_websocket", jsWebsocket)
+			addWebsocketFunc(jsWebsocket, "onmessage", func(this js.Value, args []js.Value) interface{} {
+				event := args[0]
+				jsMessage := event.Get("data")
+				messageJSON := jsMessage.String()
+				var message game.Message
+				err := json.Unmarshal([]byte(messageJSON), &message)
+				if err != nil {
+					log := global.Get("log")
+					log.Call("error", "unmarshalling message: "+err.Error())
+					return nil
+				}
+				socket.OnMessage(message)
+				return nil
+			})
+			addWebsocketFunc(jsWebsocket, "onopen", func(this js.Value, args []js.Value) interface{} {
+				socket.OnOpen()
+				resolve.Invoke()
+				return nil
+			})
+			addWebsocketFunc(jsWebsocket, "onclose", func(this js.Value, args []js.Value) interface{} {
+				event := args[0]
+				reason := event.Get("reason")
+				switch {
+				case reason == js.Undefined():
+					log.Error("lobby shut down")
+				default:
+					log.Warning("left lobby: " + reason.String())
+				}
+				socket.OnClose()
+				return nil
+			})
+			addWebsocketFunc(jsWebsocket, "onerror", func(this js.Value, args []js.Value) interface{} {
+				socket.OnError()
+				reject.Invoke("websocket error - check browser console")
+				return nil
+			})
+			newWebsocketPromiseFunc.Release()
+			return nil
+		})
+		return promise.New(newWebsocketPromiseFunc)
+	})
+	// TODO: rename to disconnect
+	addFunc("websocket", "close", func(this js.Value, args []js.Value) interface{} {
+		global.Get("websocket").Call("_close")
+		return nil
+	})
+	addFunc("websocket", "_close", func(this js.Value, args []js.Value) interface{} {
+		_websocket := this.Get("_websocket")
+		switch _websocket {
+		case js.Undefined(), js.Null():
+			return nil
+		}
+		socket.OnClose()
+		eventListeners := []string{"onmessage", "onopen", "onclose", "onerror"}
+		for _, n := range eventListeners {
+			_websocket.Set(n, nil) // TODO: delete with 1.14
+			key := "websocket._websocket." + n
+			funcs[key].Release()
+			delete(funcs, key)
+		}
+		_websocket.Call("close")
+		this.Set("_websocket", nil) // TODO: delete with 1.14
+		return nil
+	})
+	addFunc("websocket", "send", func(this js.Value, args []js.Value) interface{} {
+		_websocket := this.Get("_websocket")
+		switch _websocket {
+		case js.Undefined(), js.Null():
+		default:
+			if _websocket.Get("readyState").Int() == 1 {
+				message := args[0]
+				JSON := global.Get("JSON")
+				messageJSON := JSON.Call("stringify", message).String()
+				_websocket.Call("send", messageJSON)
+			}
+		}
+		return nil
+	})
 	// canvas
 	// global.Set("canvas", js.ValueOf(make(map[string]interface{})))
 	// game
 	// global.Set("game", js.ValueOf(make(map[string]interface{})))
-
-	onLoad := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	// onload
+	go func() { // onload
 		// user
 		document := global.Get("document")
 		confirmPasswordElements := document.Call("querySelectorAll", "label>input.password2")
@@ -203,17 +322,15 @@ func Init() {
 		}
 		// canvas
 		global.Get("canvas").Call("init")
-		return nil
-	})
+	}()
+	// onclose
 	var onClose js.Func
 	onClose = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		for _, fn := range funcs {
 			fn.Release()
 		}
 		onClose.Release()
-		onLoad.Release()
 		return nil
 	})
-	global.Set("onload", onLoad)
 	global.Set("onclose", onClose)
 }
