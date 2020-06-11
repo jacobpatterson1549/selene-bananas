@@ -34,7 +34,7 @@ COPY --from=0 \
     /app/
 
 COPY . /app/
-# COPY sql static html js /app/ # TODO: only copy these folders as folders, while excluding go/*, go.mod, go.sum
+# COPY sql static html /app/ # TODO: only copy these folders as folders, while excluding go/*, go.mod, go.sum
 # RUN ls /app -lh
 
 CMD /app/main \

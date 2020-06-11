@@ -11,6 +11,8 @@ A tile-based word-forming game based on the popular Banagrams game.  https://ban
 
 With WebSockets, users can play a word game together over a network.
 
+Uses WebAssembly to manage browser logic.
+
 ## Dependencies
 
 New dependencies are automatically added to [go.mod](go.mod) when the project is built.

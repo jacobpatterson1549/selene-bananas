@@ -231,7 +231,6 @@ func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 		"html/**/*.html",
 		"static/fa/*.svg",
 		"static/main.css",
-		"js/*.js",
 	}
 	for _, g := range templateFileGlobs {
 		_, err := t.ParseGlob(g)
