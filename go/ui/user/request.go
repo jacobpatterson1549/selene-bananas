@@ -54,7 +54,9 @@ var (
 			js.StoreCredentials(username, password)
 			Logout()
 		},
-		"/ping": func(r Request, body io.ReadCloser) {},
+		"/ping": func(r Request, body io.ReadCloser) {
+			// NOOP
+		},
 	}
 )
 
