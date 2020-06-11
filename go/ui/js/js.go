@@ -4,6 +4,7 @@
 package js
 
 import (
+	"encoding/json"
 	"strings"
 	"syscall/js"
 	"time"
@@ -17,9 +18,19 @@ func getElementById(id string) js.Value {
 	return document.Call("getElementById", id)
 }
 
+func querySelector(query string) js.Value {
+	return document.Call("querySelector", query)
+}
+
 // SetChecked sets the checked property of the element with the specified element id
 func SetChecked(id string, checked bool) {
 	element := getElementById(id)
+	element.Set("checked", checked)
+}
+
+// SetCheckedQuery sets the checked property of the element with the specified element query.
+func SetCheckedQuery(query string, checked bool) {
+	element := querySelector(query)
 	element.Set("checked", checked)
 }
 
@@ -49,6 +60,18 @@ func GetValue(id string) string {
 func SetValue(id, value string) {
 	element := getElementById(id)
 	element.Set("value", value)
+}
+
+// SetValueQuery sets the value of the input element with the specified element query..
+func SetValueQuery(query, value string) {
+	element := querySelector(query)
+	element.Set("value", value)
+}
+
+// SetButtonDisabledQuery sets the button element with the id disabled or enabled.
+func SetButtonDisabled(id string, disabled bool) {
+	element := getElementById(id)
+	element.Set("disabled", disabled)
 }
 
 // DormatDate formats a datetime to HH:MM:SS.
@@ -166,106 +189,38 @@ func Confirm(message string) bool {
 	return result.Bool()
 }
 
-// OnMessage is called when the websocket receives a message.
-// TODO: refactor this to not be in the js package
-func OnMessage(m game.Message) {
-	switch m.Type {
-	case game.Leave:
-		js.Global().Get("game").Call("leave")
-		if len(m.Info) > 0 {
-			js.Global().Get("log").Call("info", js.ValueOf(m.Info))
+// SocketHTTPPing submits the small ping form to keep the server's http handling active.
+func SocketHTTPPing() {
+	pingFormElement := getElementById("ping-form")
+	var preventDefaultFunc js.Func
+	preventDefaultFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		preventDefaultFunc.Release()
+		return nil
+	})
+	pingEvent := map[string]interface{}{
+		"preventDefault": preventDefaultFunc,
+		"target":         pingFormElement,
+	}
+	pingFormElement.Call("onsubmit", js.ValueOf(pingEvent))
+}
+
+// Send delivers a message to the sever.
+// TODO: near-duplicate code in ui.go
+func Send(m game.Message) {
+	_websocket := js.Global().Get("websocket").Get("_websocket")
+	if !_websocket.IsUndefined() && !_websocket.IsNull() && _websocket.Get("readyState").Int() == 1 {
+		messageJSON, err := json.Marshal(m)
+		if err != nil {
+			panic("marshalling socket message to send: " + err.Error())
+			return
 		}
-	case game.BoardRefresh:
-		js.Global().Get("game").Call("replaceGameTiles", getTiles(m), getTilePositions(m), js.ValueOf(false))
-	case game.Infos:
-		gameInfos := make([]interface{}, len(m.GameInfos))
-		for i, gi := range m.GameInfos {
-			gameInfos[i] = js.ValueOf(map[string]interface{}{
-				"id":        js.ValueOf(int(gi.ID)),
-				"status":    js.ValueOf(int(gi.Status)),
-				"players":   getPlayers(gi.Players),
-				"canJoin":   js.ValueOf(gi.CanJoin),
-				"createdAt": js.ValueOf(gi.CreatedAt),
-			})
-		}
-		js.Global().Get("lobby").Call("setGameInfos", js.ValueOf(gameInfos))
-	case game.PlayerDelete:
-		js.Global().Get("lobby").Call("leave")
-		if len(m.Info) > 0 {
-			js.Global().Get("log").Call("info", js.ValueOf(m.Info))
-		}
-	case game.Join, game.SocketInfo:
-		switch {
-		case m.GameStatus != 0, m.TilesLeft != 0, len(m.Tiles) > 0:
-			js.Global().Get("game").Call("setStatus", js.ValueOf(int(m.GameStatus)), js.ValueOf(m.TilesLeft))
-		}
-		if len(m.GamePlayers) > 0 {
-			js.Global().Get("game").Call("setPlayers", getPlayers(m.GamePlayers))
-		}
-		switch {
-		case len(m.TilePositions) > 0:
-			silent := js.ValueOf(m.Type == game.Join)
-			js.Global().Get("game").Call("replaceGameTiles", getTiles(m), getTilePositions(m), silent)
-		case len(m.Tiles) > 0:
-			silent := js.ValueOf(m.Type == game.Join)
-			js.Global().Get("game").Call("addUnusedTiles", getTiles(m), silent)
-		}
-		if len(m.Info) > 0 {
-			js.Global().Get("log").Call("info", js.ValueOf(m.Info))
-		}
-	case game.SocketError:
-		js.Global().Get("log").Call("error", js.ValueOf(m.Info))
-	case game.SocketWarning:
-		js.Global().Get("log").Call("warning", js.ValueOf(m.Info))
-	case game.SocketHTTPPing:
-		pingFormElement := getElementById("ping-form")
-		var preventDefaultFunc js.Func
-		preventDefaultFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			preventDefaultFunc.Release()
-			return nil
-		})
-		pingEvent := map[string]interface{}{
-			"preventDefault": preventDefaultFunc,
-			"target":         pingFormElement,
-		}
-		pingFormElement.Call("onsubmit", js.ValueOf(pingEvent))
-	case game.Chat:
-		js.Global().Get("log").Call("chat", js.ValueOf(m.Info))
-	default:
-		js.Global().Get("log").Call("error", js.ValueOf("unknown message type received"))
+		_websocket.Call("send", js.ValueOf(string(messageJSON)))
 	}
 }
 
-func getTiles(m game.Message) js.Value {
-	tiles := make([]interface{}, len(m.Tiles))
-	for i, t := range m.Tiles {
-		tiles[i] = map[string]interface{}{
-			"id": js.ValueOf(int(t.ID)),
-			"ch": js.ValueOf(t.Ch.String()),
-		}
-	}
-	return js.ValueOf(tiles)
-}
-
-func getTilePositions(m game.Message) js.Value {
-	tilePositions := make([]interface{}, len(m.TilePositions))
-	for i, tp := range m.TilePositions {
-		tilePositions[i] = map[string]interface{}{
-			"tile": js.ValueOf(map[string]interface{}{
-				"id": js.ValueOf(int(tp.Tile.ID)),
-				"ch": js.ValueOf(tp.Tile.Ch.String()),
-			}),
-			"x": js.ValueOf(int(tp.X)),
-			"y": js.ValueOf(int(tp.Y)),
-		}
-	}
-	return js.ValueOf(tilePositions)
-}
-
-func getPlayers(gamePlayers []string) js.Value {
-	players := make([]interface{}, len(gamePlayers))
-	for i, p := range gamePlayers {
-		players[i] = p
-	}
-	return js.ValueOf(players)
+// CloseWebsocket closes the websocket
+// TODO: investigate more un-circular use
+func CloseWebsocket() {
+	websocket := js.Global().Get("websocket")
+	websocket.Call("close")
 }
