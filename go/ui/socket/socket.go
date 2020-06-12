@@ -9,7 +9,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/controller"
-	"github.com/jacobpatterson1549/selene-bananas/go/ui/js"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/user"
@@ -17,14 +17,14 @@ import (
 
 // OnMessage is called when the websocket opens.
 func OnOpen() {
-	js.SetChecked("has-websocket", true)
+	dom.SetChecked("has-websocket", true)
 }
 
 // OnMessage is called when the websocket is closing.
 func OnClose() {
-	js.SetChecked("has-websocket", false)
-	js.SetChecked("has-game", false)
-	js.SetChecked("tab-4", true) // lobby tab
+	dom.SetChecked("has-websocket", false)
+	dom.SetChecked("has-game", false)
+	dom.SetChecked("tab-4", true) // lobby tab
 }
 
 // OnMessage is called when the websocket encounters an unexpected error.
@@ -46,7 +46,7 @@ func OnMessage(m game.Message, g controller.Game) {
 	case game.Infos:
 		lobby.SetGameInfos(m.GameInfos)
 	case game.PlayerDelete:
-		js.CloseWebsocket()
+		dom.CloseWebsocket()
 		g.Leave()
 		if len(m.Info) > 0 {
 			log.Info(m.Info)
@@ -56,11 +56,11 @@ func OnMessage(m game.Message, g controller.Game) {
 			g.SetStatus(m.GameStatus)
 		}
 		if m.TilesLeft != 0 {
-			js.SetValue("game-tiles-left", strconv.Itoa(m.TilesLeft))
+			dom.SetValue("game-tiles-left", strconv.Itoa(m.TilesLeft))
 		}
 		if len(m.GamePlayers) > 0 {
 			players := strings.Join(m.GamePlayers, ",")
-			js.SetValue("game-players", players)
+			dom.SetValue("game-players", players)
 		}
 		switch {
 		case len(m.TilePositions) > 0:
@@ -78,7 +78,7 @@ func OnMessage(m game.Message, g controller.Game) {
 	case game.SocketWarning:
 		log.Warning(m.Info)
 	case game.SocketHTTPPing:
-		js.SocketHTTPPing()
+		dom.SocketHTTPPing()
 	case game.Chat:
 		log.Chat(m.Info)
 	default:

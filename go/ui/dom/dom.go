@@ -1,7 +1,7 @@
 // +build js
 
-// Package js contains the javascript bindings for the site
-package js
+// Package dom contains the javascript bindings for the site
+package dom
 
 import (
 	"encoding/json"

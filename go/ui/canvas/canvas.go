@@ -9,7 +9,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
-	"github.com/jacobpatterson1549/selene-bananas/go/ui/js"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 )
 
@@ -335,7 +335,7 @@ func (c *Canvas) swap() {
 	if err := c.board.RemoveTile(tileSelection.tile); err != nil {
 		log.Error("removing tile while swapping: " + err.Error())
 	}
-	js.Send(game.Message{
+	dom.Send(game.Message{
 		Type: game.Swap,
 		Tiles: []tile.Tile{
 			tileSelection.tile,
@@ -461,7 +461,7 @@ func (c *Canvas) moveSelectedTiles() {
 		return
 	}
 	if len(tilePositions) > 0 {
-		js.Send(game.Message{
+		dom.Send(game.Message{
 			Type:          game.TilesMoved,
 			TilePositions: tilePositions,
 		})
@@ -540,7 +540,7 @@ func (c Canvas) selectionUsedTilePositions(midT tile.Tile, endC, endR int) []til
 func (s *selection) setMoveState(ms moveState) {
 	s.moveState = ms
 	if query, ok := moveStateRadioQueries[ms]; ok {
-		js.SetCheckedQuery(query, true)
+		dom.SetCheckedQuery(query, true)
 	}
 }
 

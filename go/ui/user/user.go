@@ -9,7 +9,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/jacobpatterson1549/selene-bananas/go/ui/js"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 )
 
@@ -22,25 +22,25 @@ type (
 )
 
 func login(token string) {
-	js.SetValue("jwt", token)
+	dom.SetValue("jwt", token)
 	j := jwt(token)
 	u, err := j.getUser()
 	if err != nil {
 		log.Error("getting user from jwt: " + err.Error())
 		return
 	}
-	js.SetUsernamesReadOnly(u.username)
-	js.SetPoints(u.points)
-	js.SetChecked("tab-4", true) // lobby tab
+	dom.SetUsernamesReadOnly(u.username)
+	dom.SetPoints(u.points)
+	dom.SetChecked("tab-4", true) // lobby tab
 	hasLogin(true)
 }
 
 // Logout logs out the user
 func Logout() {
 	hasLogin(false)
-	js.SetChecked("has-game", false)
-	js.SetUsernamesReadOnly("")
-	js.SetChecked("tab-1", true) // login tab
+	dom.SetChecked("has-game", false)
+	dom.SetUsernamesReadOnly("")
+	dom.SetChecked("tab-1", true) // login tab
 }
 
 func (j jwt) getUser() (*user, error) {
@@ -83,10 +83,10 @@ func (j jwt) getUser() (*user, error) {
 
 // hasLogin sets the checked property of the has-login input.
 func hasLogin(loggedIn bool) {
-	js.SetChecked("has-login", loggedIn)
+	dom.SetChecked("has-login", loggedIn)
 }
 
 // JWT gets the value of the jwt input.
 func JWT() string {
-	return js.GetValue("jwt")
+	return dom.GetValue("jwt")
 }

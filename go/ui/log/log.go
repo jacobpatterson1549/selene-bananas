@@ -4,7 +4,7 @@
 package log
 
 import (
-	"github.com/jacobpatterson1549/selene-bananas/go/ui/js"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 )
 
 // Info logs an info-styled message.
@@ -29,12 +29,12 @@ func Chat(text string) {
 
 // Clear clears the log.
 func Clear() {
-	js.SetChecked("has-log", false)
-	js.SetInnerHTML("log-scroll", "")
+	dom.SetChecked("has-log", false)
+	dom.SetInnerHTML("log-scroll", "")
 }
 
 // log writes a log item with the specified class.
 func log(class, text string) {
-	js.SetChecked("has-log", true)
-	js.AddLog(class, text)
+	dom.SetChecked("has-log", true)
+	dom.AddLog(class, text)
 }

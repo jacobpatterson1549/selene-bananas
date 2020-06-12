@@ -10,7 +10,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/canvas"
-	"github.com/jacobpatterson1549/selene-bananas/go/ui/js"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 )
 
@@ -33,7 +33,7 @@ func NewGame(board *board.Board, canvas *canvas.Canvas) Game {
 // Create clears the tiles and asks the server for a new game to join
 func (g *Game) Create() {
 	g.resetTiles()
-	js.Send(game.Message{
+	dom.Send(game.Message{
 		Type: game.Create,
 	})
 }
@@ -41,7 +41,7 @@ func (g *Game) Create() {
 // Join asks the server to join an existing game.
 func (g *Game) Join(id int) {
 	g.resetTiles()
-	js.Send(game.Message{
+	dom.Send(game.Message{
 		Type:   game.Join,
 		GameID: game.ID(id),
 	})
@@ -49,14 +49,14 @@ func (g *Game) Join(id int) {
 
 // Leave changes the view for game by hiding it.
 func (g *Game) Leave() {
-	js.SetChecked("has-game", false)
-	js.SetChecked("tab-4", true) // lobby tab
+	dom.SetChecked("has-game", false)
+	dom.SetChecked("tab-4", true) // lobby tab
 }
 
 // Delete removes everyone from the game and deletes it.
 func (g *Game) Delete() {
-	if js.Confirm("Are you sure? Deleting the game will kick everyone out.") {
-		js.Send(game.Message{
+	if dom.Confirm("Are you sure? Deleting the game will kick everyone out.") {
+		dom.Send(game.Message{
 			Type: game.Delete,
 		})
 	}
@@ -64,7 +64,7 @@ func (g *Game) Delete() {
 
 // Starts triggers the game to start for everyone.
 func (g *Game) Start() {
-	js.Send(game.Message{
+	dom.Send(game.Message{
 		Type:       game.StatusChange,
 		GameStatus: game.InProgress,
 	})
@@ -72,7 +72,7 @@ func (g *Game) Start() {
 
 // Starts triggers the game to finish for everyone by checking the players tiles.
 func (g *Game) Finish() {
-	js.Send(game.Message{
+	dom.Send(game.Message{
 		Type:       game.StatusChange,
 		GameStatus: game.Finished,
 	})
@@ -80,14 +80,14 @@ func (g *Game) Finish() {
 
 // SnagTile asks the game to give everone a new tile.
 func (g *Game) SnagTile() {
-	js.Send(game.Message{
+	dom.Send(game.Message{
 		Type: game.Snag,
 	})
 }
 
 // SendChat sends a chat message.
 func (g *Game) SendChat(message string) {
-	js.Send(game.Message{
+	dom.Send(game.Message{
 		Type: game.Chat,
 		Info: message,
 	})
@@ -154,11 +154,11 @@ func (g *Game) SetStatus(status game.Status) {
 			return
 		}
 	}
-	js.SetValue("game-status", statusText)
-	js.SetButtonDisabled("game-snag", snagDisabled)
-	js.SetButtonDisabled("game-swap", swapDisabled)
-	js.SetButtonDisabled("game-start", startDisabled)
-	js.SetButtonDisabled("game-finish", finishDisabled)
+	dom.SetValue("game-status", statusText)
+	dom.SetButtonDisabled("game-snag", snagDisabled)
+	dom.SetButtonDisabled("game-swap", swapDisabled)
+	dom.SetButtonDisabled("game-start", startDisabled)
+	dom.SetButtonDisabled("game-finish", finishDisabled)
 	g.canvas.GameStatus = status
 }
 
@@ -170,6 +170,6 @@ func (g *Game) resetTiles() {
 }
 
 func setTabActive() {
-	js.SetChecked("has-game", true)
-	js.SetChecked("tab-5", true) // game tab
+	dom.SetChecked("has-game", true)
+	dom.SetChecked("tab-5", true) // game tab
 }

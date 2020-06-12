@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/jacobpatterson1549/selene-bananas/go/ui/js"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 )
 
@@ -29,7 +29,7 @@ var (
 		"/user_create": func(r Request, b io.ReadCloser) {
 			username := r.Params.Get("username")
 			password := r.Params.Get("password")
-			js.StoreCredentials(username, password)
+			dom.StoreCredentials(username, password)
 			Logout()
 		},
 		"/user_delete": func(r Request, body io.ReadCloser) {
@@ -44,13 +44,13 @@ var (
 			}
 			username := r.Params.Get("username")
 			password := r.Params.Get("password")
-			js.StoreCredentials(username, password)
+			dom.StoreCredentials(username, password)
 			login(string(jwt))
 		},
 		"/user_update_password": func(r Request, body io.ReadCloser) {
 			username := r.Params.Get("username")
 			password := r.Params.Get("password_confirm")
-			js.StoreCredentials(username, password)
+			dom.StoreCredentials(username, password)
 			Logout()
 		},
 		"/ping": func(r Request, body io.ReadCloser) {
@@ -64,7 +64,7 @@ var (
 func (r Request) Do() {
 	if r.URLSuffix == "/user_delete" {
 		message := "Are you sure? All accumulated points will be lost"
-		if !js.Confirm(message) {
+		if !dom.Confirm(message) {
 			return
 		}
 	}
@@ -90,7 +90,7 @@ func (r Request) Do() {
 		log.Error("creating request: " + err.Error())
 		return
 	}
-	if js.GetChecked("has-login") {
+	if dom.GetChecked("has-login") {
 		jwt := JWT()
 		httpRequest.Header.Set("Authorization", "Bearer "+jwt)
 	}
