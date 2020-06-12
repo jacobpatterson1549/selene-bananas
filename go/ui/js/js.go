@@ -75,7 +75,7 @@ func SetButtonDisabled(id string, disabled bool) {
 }
 
 // DormatDate formats a datetime to HH:MM:SS.
-func FormatDate(time time.Time) string {
+func FormatTime(time time.Time) string {
 	return time.Format("15:04:05")
 }
 
@@ -86,7 +86,7 @@ func AddLog(class, text string) {
 	clone := logItemTemplateContent.Call("cloneNode", true)
 	cloneChildren := clone.Get("children")
 	logItemElement := cloneChildren.Index(0)
-	time := FormatDate(time.Now())
+	time := FormatTime(time.Now())
 	textContent := time + " : " + text
 	logItemElement.Set("textContent", textContent)
 	logItemElement.Set("className", class)
@@ -131,7 +131,7 @@ func SetGameInfos(gameInfos []game.Info) {
 		rowElement := gameInfoElement.Get("children").Index(0)
 		createdAt := gameInfo.CreatedAt + int64(timezoneOffsetSeconds)
 		createdAtTime := time.Unix(createdAt, 0)
-		createdAtTimeText := FormatDate(createdAtTime)
+		createdAtTimeText := FormatTime(createdAtTime)
 		rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
 		players := strings.Join(gameInfo.Players, ", ")
 		rowElement.Get("children").Index(1).Set("innerHTML", players)

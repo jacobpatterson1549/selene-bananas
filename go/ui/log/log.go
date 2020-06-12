@@ -4,8 +4,6 @@
 package log
 
 import (
-	"time"
-
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/js"
 )
 
@@ -39,11 +37,4 @@ func Clear() {
 func log(class, text string) {
 	js.SetChecked("has-log", true)
 	js.AddLog(class, text)
-}
-
-// FormatDate formats the datetime as HH:MM:SS.
-// TODO: call js.FormatDate directly instead of log.FormatDate
-func FormatDate(utc int) string {
-	unix := time.Unix(int64(utc), 0)
-	return js.FormatDate(unix)
 }
