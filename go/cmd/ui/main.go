@@ -8,6 +8,7 @@ import (
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/ui"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui/lobby"
 )
 
 func main() {
@@ -15,6 +16,7 @@ func main() {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	var wg sync.WaitGroup
 	beforeUnload(cancelFunc, &wg)
+	lobby.Init(ctx, &wg)
 	ui.Init(ctx, &wg)
 	wg.Wait()
 }

@@ -14,6 +14,17 @@ import (
 
 var document js.Value = js.Global().Get("document")
 
+// RegisterFunc sets the function as a field on the parent.
+// The parent object is create if it does not exist.
+func RegisterFunc(parentName, fnName string, fn js.Func) {
+	parent := js.Global().Get(parentName)
+	if parent.IsUndefined() {
+		parent = js.ValueOf(make(map[string]interface{}))
+		js.Global().Set(parentName, parent)
+	}
+	parent.Set(fnName, fn)
+}
+
 func getElementById(id string) js.Value {
 	return document.Call("getElementById", id)
 }
@@ -97,6 +108,30 @@ func AddLog(class, text string) {
 	clientHeight := logScrollElement.Get("clientHeight")
 	scrollTop := scrollHeight.Int() - clientHeight.Int()
 	logScrollElement.Set("scrollTop", scrollTop)
+}
+
+// GetGameInfos requests the game infos, establishing the websocket connection if necessary.
+func GetGameInfos(event js.Value) {
+	event.Call("preventDefault")
+	var getGameInfosFunc, connectErrFunc js.Func
+	getGameInfosFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		Send(game.Message{
+			Type: game.Infos,
+		})
+		getGameInfosFunc.Release()
+		connectErrFunc.Release()
+		return nil
+	})
+	connectErrFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		// connect should handle the error
+		getGameInfosFunc.Release()
+		connectErrFunc.Release()
+		return nil
+	})
+	js.Global().Get("websocket").
+		Call("connect", event).
+		Call("then", getGameInfosFunc).
+		Call("catch", connectErrFunc)
 }
 
 // SetGameInfos updates the game-infos table with the specified game infos.
@@ -220,4 +255,11 @@ func Send(m game.Message) {
 func CloseWebsocket() {
 	websocket := js.Global().Get("websocket")
 	websocket.Call("close")
+}
+
+// LeaveGame leaves the game
+// TODO: investigate more un-curcular use
+func LeaveGame() {
+	game := js.Global().Get("game")
+	game.Call("leave")
 }

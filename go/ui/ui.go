@@ -59,42 +59,6 @@ func Init(ctx context.Context, wg *sync.WaitGroup) {
 		key := "canvasElement." + fnName
 		funcs[key] = jsFunc
 	}
-	// log
-	// lobby
-	global.Set("lobby", js.ValueOf(make(map[string]interface{})))
-	addFunc("lobby", "getGameInfos", func(this js.Value, args []js.Value) interface{} {
-		event := args[0]
-		event.Call("preventDefault")
-		websocket := global.Get("websocket")
-		promise := websocket.Call("connect", event)
-		var getGameInfos, logConnectErr js.Func
-		getGameInfos = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			m := js.ValueOf(map[string]interface{}{
-				"type": int(game.Infos), // TODO: hack
-			})
-			websocket.Call("send", m)
-			getGameInfos.Release()
-			logConnectErr.Release()
-			return nil
-		})
-		logConnectErr = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			err := args[0]
-			log.Error("connect error: " + err.String())
-			getGameInfos.Release()
-			logConnectErr.Release()
-			return nil
-		})
-		promise = promise.Call("then", getGameInfos)
-		promise = promise.Call("catch", logConnectErr)
-		return nil
-	})
-	addFunc("lobby", "leave", func(this js.Value, args []js.Value) interface{} {
-		websocket := global.Get("websocket")
-		websocket.Call("close")
-		game := global.Get("game")
-		game.Call("leave")
-		return nil
-	})
 	// user
 	global.Set("user", js.ValueOf(make(map[string]interface{})))
 	addFunc("user", "logout", func(this js.Value, args []js.Value) interface{} {
