@@ -10,7 +10,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/controller"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
-	"github.com/jacobpatterson1549/selene-bananas/go/ui/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/user"
 )
@@ -44,7 +43,7 @@ func OnMessage(m game.Message, g controller.Game) {
 	case game.BoardRefresh:
 		g.ReplaceGameTiles(m.Tiles, m.TilePositions, false)
 	case game.Infos:
-		lobby.SetGameInfos(m.GameInfos)
+		dom.SetGameInfos(m.GameInfos)
 	case game.PlayerDelete:
 		dom.CloseWebsocket()
 		g.Leave()

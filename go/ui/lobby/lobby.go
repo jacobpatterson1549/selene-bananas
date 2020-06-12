@@ -7,24 +7,17 @@ package lobby
 import (
 	"context"
 	"sync"
-	"syscall/js"
 
-	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 )
 
-// Init regesters lobby functions
-func Init(ctx context.Context, wg *sync.WaitGroup) {
+// InitDom regesters lobby dom functions
+func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	getGameInfosFunc := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		event := args[0]
-		dom.GetGameInfos(event)
-		return nil
-	})
-	leaveFunc := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	getGameInfosFunc := dom.NewJsFuncEvent(dom.GetGameInfos)
+	leaveFunc := dom.NewJsFunc(func() {
 		dom.CloseWebsocket()
 		dom.LeaveGame()
-		return nil
 	})
 	dom.RegisterFunc("lobby", "getGameInfos", getGameInfosFunc)
 	dom.RegisterFunc("lobby", "leave", leaveFunc)
@@ -34,9 +27,4 @@ func Init(ctx context.Context, wg *sync.WaitGroup) {
 		leaveFunc.Release()
 		wg.Done()
 	}()
-}
-
-// SetGameInfos updates the game-infos table with the specified game infos.
-func SetGameInfos(gameInfos []game.Info) {
-	dom.SetGameInfos(gameInfos)
 }

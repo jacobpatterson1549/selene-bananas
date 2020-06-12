@@ -4,8 +4,23 @@
 package log
 
 import (
+	"context"
+	"sync"
+
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 )
+
+// InitDom regesters log dom functions
+func InitDom(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	clearFunc := dom.NewJsFunc(Clear)
+	dom.RegisterFunc("log", "clear", clearFunc)
+	go func() {
+		<-ctx.Done()
+		clearFunc.Release()
+		wg.Done()
+	}()
+}
 
 // Info logs an info-styled message.
 func Info(text string) {

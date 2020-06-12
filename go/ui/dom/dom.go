@@ -14,17 +14,6 @@ import (
 
 var document js.Value = js.Global().Get("document")
 
-// RegisterFunc sets the function as a field on the parent.
-// The parent object is create if it does not exist.
-func RegisterFunc(parentName, fnName string, fn js.Func) {
-	parent := js.Global().Get(parentName)
-	if parent.IsUndefined() {
-		parent = js.ValueOf(make(map[string]interface{}))
-		js.Global().Set(parentName, parent)
-	}
-	parent.Set(fnName, fn)
-}
-
 func getElementById(id string) js.Value {
 	return document.Call("getElementById", id)
 }
@@ -112,7 +101,6 @@ func AddLog(class, text string) {
 
 // GetGameInfos requests the game infos, establishing the websocket connection if necessary.
 func GetGameInfos(event js.Value) {
-	event.Call("preventDefault")
 	var getGameInfosFunc, connectErrFunc js.Func
 	getGameInfosFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		Send(game.Message{
@@ -230,7 +218,7 @@ func SocketHTTPPing() {
 		return nil
 	})
 	pingEvent := map[string]interface{}{
-		"preventDefault": preventDefaultFunc,
+		"preventDefault": preventDefaultFunc, // TODO: is this needed?
 		"target":         pingFormElement,
 	}
 	pingFormElement.Call("onsubmit", js.ValueOf(pingEvent))

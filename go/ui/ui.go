@@ -19,8 +19,8 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/user"
 )
 
-// Init initializes the ui by registering js functions.
-func Init(ctx context.Context, wg *sync.WaitGroup) {
+// InitDom initializes the ui by registering js functions.
+func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	global := js.Global()
 	funcs := make(map[string]js.Func)

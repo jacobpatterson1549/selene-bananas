@@ -1,4 +1,4 @@
-// +build js,wasm
+// +build js
 
 package main
 
@@ -9,6 +9,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/go/ui"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/lobby"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 )
 
 func main() {
@@ -16,8 +17,9 @@ func main() {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	var wg sync.WaitGroup
 	beforeUnload(cancelFunc, &wg)
-	lobby.Init(ctx, &wg)
-	ui.Init(ctx, &wg)
+	log.InitDom(ctx, &wg)
+	lobby.InitDom(ctx, &wg)
+	ui.InitDom(ctx, &wg) // TODO: refactor out
 	wg.Wait()
 }
 
