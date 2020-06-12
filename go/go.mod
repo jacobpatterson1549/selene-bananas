@@ -1,6 +1,6 @@
 // +heroku goVersion go1.14
 
-module github.com/jacobpatterson1549/selene-bananas
+module github.com/jacobpatterson1549/selene-bananas/go
 
 go 1.14
 

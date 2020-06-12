@@ -154,7 +154,7 @@ func (s *Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	case "/":
 		err := s.handleTemplate(w, r)
 		if err != nil {
-			return fmt.Errorf("rendering template: %w", err)
+			return fmt.Errorf("rendering template : %w", err)
 		}
 	case "/favicon.ico", "/robots.txt", "/run_wasm.js":
 		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))

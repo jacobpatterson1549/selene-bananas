@@ -4,32 +4,36 @@ all: install
 
 # requires node
 test-wasm:
-	GOOS=js \
-	GOARCH=wasm \
-	go test -exec=$(shell go env GOROOT)/misc/wasm/go_js_wasm_exec \
-		github.com/jacobpatterson1549/selene-bananas/go/ui/... --cover
+	cd go; \
+		GOOS=js \
+		GOARCH=wasm \
+		go test -exec=$(shell go env GOROOT)/misc/wasm/go_js_wasm_exec \
+			github.com/jacobpatterson1549/selene-bananas/go/ui/... --cover
 
 test: #test-wasm
+	cd go; \
 	go test ./... --cover
 
 wasm:
 	ln -fs \
 		$(shell go env GOROOT)/misc/wasm/wasm_exec.js \
 		wasm_exec.js
-	GOOS=js \
-	GOARCH=wasm \
+	cd go; \
+		GOOS=js \
+		GOARCH=wasm \
 		go build \
-			-o main.wasm \
-			go/cmd/ui/*.go
+			-o ../main.wasm \
+			cmd/ui/*.go
 
 install: test wasm
-	go build \
-		-o main \
-		go/cmd/server/*.go
+	cd go; \
+		go build \
+		-o ../main \
+		cmd/server/*.go
 
 serve: install
 	export $(shell grep -v '^#' .env | xargs) && \
-	./main
+		./main
 
 clean:
 	rm -f \
