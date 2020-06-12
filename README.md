@@ -15,7 +15,7 @@ Uses WebAssembly to manage browser logic.
 
 ## Dependencies
 
-New dependencies are automatically added to [go.mod](go.mod) when the project is built.
+New dependencies are automatically added to [go.mod](go/go.mod) when the project is built.
 * [pq](https://github.com/lib/pq) provides the Postgres driver for storing user passwords and points
 * [Gorilla Websockets](https://github.com/gorilla/websocket) are used for bidirectional communication between users and the server
 * [jwt-go](https://github.com/dgrijalva/jwt-go) is used for stateless web sessions

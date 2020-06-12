@@ -6,9 +6,6 @@ wasm_exec.js
 # environment variables
 .env
 
-# docker database
-.pgdata
-
 # Visual Studio Code files
 .vscode
 go/cmd/server/__debug_bin
