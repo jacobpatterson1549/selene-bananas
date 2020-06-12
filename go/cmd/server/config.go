@@ -20,7 +20,7 @@ import (
 
 func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Config, error) {
 	timeFunc := func() int64 {
-		return time.Now().Unix()
+		return time.Now().UTC().Unix()
 	}
 	rand := rand.New(rand.NewSource(timeFunc()))
 	tokenizerCfg := tokenizerConfig(rand, timeFunc)

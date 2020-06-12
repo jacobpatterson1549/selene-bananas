@@ -74,9 +74,10 @@ func SetButtonDisabled(id string, disabled bool) {
 	element.Set("disabled", disabled)
 }
 
-// DormatDate formats a datetime to HH:MM:SS.
-func FormatTime(time time.Time) string {
-	return time.Format("15:04:05")
+// FormatDate formats a datetime to HH:MM:SS.
+func FormatTime(utcSeconds int64) string {
+	t := time.Unix(utcSeconds, 0) // uses local timezone
+	return t.Format("15:04:05")
 }
 
 // AddLog adds a log message with the specified class
@@ -86,7 +87,7 @@ func AddLog(class, text string) {
 	clone := logItemTemplateContent.Call("cloneNode", true)
 	cloneChildren := clone.Get("children")
 	logItemElement := cloneChildren.Index(0)
-	time := FormatTime(time.Now())
+	time := FormatTime(time.Now().UTC().Unix())
 	textContent := time + " : " + text
 	logItemElement.Set("textContent", textContent)
 	logItemElement.Set("className", class)
@@ -114,7 +115,7 @@ func SetGameInfos(gameInfos []game.Info) {
 	// println(fmt.Sprintf("gameInfos: %v", gameInfos)) // DELETEME
 	gameInfoTemplate := getElementById("game-info-row")
 	gameInfoTemplateContent := gameInfoTemplate.Get("content")
-	_, timezoneOffsetSeconds := time.Now().Zone()
+	// _, timezoneOffsetSeconds := time.Now().Zone()
 	getStatus := func(i game.Info) string {
 		switch i.Status {
 		case game.NotStarted:
@@ -129,9 +130,7 @@ func SetGameInfos(gameInfos []game.Info) {
 	for _, gameInfo := range gameInfos {
 		gameInfoElement := gameInfoTemplateContent.Call("cloneNode", true)
 		rowElement := gameInfoElement.Get("children").Index(0)
-		createdAt := gameInfo.CreatedAt + int64(timezoneOffsetSeconds)
-		createdAtTime := time.Unix(createdAt, 0)
-		createdAtTimeText := FormatTime(createdAtTime)
+		createdAtTimeText := FormatTime(gameInfo.CreatedAt)
 		rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
 		players := strings.Join(gameInfo.Players, ", ")
 		rowElement.Get("children").Index(1).Set("innerHTML", players)
