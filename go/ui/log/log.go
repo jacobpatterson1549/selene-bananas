@@ -1,4 +1,4 @@
-// +build js
+// +build js,wasm
 
 // Package log contains shared logging code
 package log

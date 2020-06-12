@@ -1,4 +1,4 @@
-// +build js
+// +build js,wasm
 
 // Package canvas contains the logic to draw the game
 package canvas

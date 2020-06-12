@@ -1,4 +1,4 @@
-// +build js
+// +build js,wasm
 
 // Package user contains code to view available games and to close the websocket.
 package user

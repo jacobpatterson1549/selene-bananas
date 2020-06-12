@@ -1,4 +1,4 @@
-// +build js
+// +build js,wasm
 
 // Package controller has the ui game logic.
 package controller
