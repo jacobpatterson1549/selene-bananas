@@ -57,37 +57,6 @@ func Init() {
 		funcs[key] = jsFunc
 	}
 	// log
-	global.Set("log", js.ValueOf(make(map[string]interface{})))
-	addFunc("log", "info", func(this js.Value, args []js.Value) interface{} {
-		text := args[0].String()
-		log.Info(text)
-		return nil
-	})
-	addFunc("log", "warning", func(this js.Value, args []js.Value) interface{} {
-		text := args[0].String()
-		log.Warning(text)
-		return nil
-	})
-	addFunc("log", "error", func(this js.Value, args []js.Value) interface{} {
-		text := args[0].String()
-		log.Error(text)
-		return nil
-	})
-	addFunc("log", "chat", func(this js.Value, args []js.Value) interface{} {
-		text := args[0].String()
-		log.Chat(text)
-		return nil
-	})
-	addFunc("log", "clear", func(this js.Value, args []js.Value) interface{} {
-		log.Clear()
-		return nil
-	})
-	addFunc("log", "formatDate", func(this js.Value, args []js.Value) interface{} {
-		date := args[0]
-		utc := date.Call("UTC")
-		unixSec := utc.Int() / 1000
-		return log.FormatDate(unixSec)
-	})
 	// lobby
 	global.Set("lobby", js.ValueOf(make(map[string]interface{})))
 	addFunc("lobby", "getGameInfos", func(this js.Value, args []js.Value) interface{} {
@@ -107,8 +76,7 @@ func Init() {
 		})
 		logConnectErr = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			err := args[0]
-			log := global.Get("log")
-			log.Call("error", "connect error: "+err.String())
+			log.Error("connect error: "+err.String())
 			getGameInfos.Release()
 			logConnectErr.Release()
 			return nil
@@ -306,8 +274,7 @@ func Init() {
 				var message game.Message
 				err := json.Unmarshal([]byte(messageJSON), &message)
 				if err != nil {
-					log := global.Get("log")
-					log.Call("error", "unmarshalling message: "+err.Error())
+					log.Error("unmarshalling message: "+err.Error())
 					return nil
 				}
 				socket.OnMessage(message, g) // TODO: create socket struct with pointer to game

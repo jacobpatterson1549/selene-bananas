@@ -124,8 +124,6 @@ func SetGameInfos(gameInfos []game.Info) {
 		case game.Finished:
 			return "Finished"
 		}
-		log := document.Get("log")
-		log.Call("error", "unknown gameStatus: "+string(i.Status))
 		return "?"
 	}
 	for _, gameInfo := range gameInfos {
