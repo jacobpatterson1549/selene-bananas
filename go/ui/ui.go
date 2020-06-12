@@ -4,8 +4,10 @@
 package ui
 
 import (
+	"context"
 	"encoding/json"
 	"strconv"
+	"sync"
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
@@ -17,8 +19,9 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/user"
 )
 
-// Init initializes the ui by regestering js functions.
-func Init() {
+// Init initializes the ui by registering js functions.
+func Init(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
 	global := js.Global()
 	funcs := make(map[string]js.Func)
 	addFunc := func(parentName, fnName string, fn func(this js.Value, args []js.Value) interface{}) {
@@ -76,7 +79,7 @@ func Init() {
 		})
 		logConnectErr = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			err := args[0]
-			log.Error("connect error: "+err.String())
+			log.Error("connect error: " + err.String())
 			getGameInfos.Release()
 			logConnectErr.Release()
 			return nil
@@ -128,8 +131,8 @@ func Init() {
 	global.Set("canvas", js.ValueOf(make(map[string]interface{})))
 	document := global.Get("document")
 	canvasElement := document.Call("querySelector", "#game>canvas")
-	ctx := canvasElement.Call("getContext", "2d")
-	canvasCtx := canvasContext{ctx}
+	contextElement := canvasElement.Call("getContext", "2d")
+	canvasCtx := canvasContext{contextElement}
 	var board board.Board
 	canvasCfg := canvas.Config{
 		Width:      canvasElement.Get("width").Int(),
@@ -274,7 +277,7 @@ func Init() {
 				var message game.Message
 				err := json.Unmarshal([]byte(messageJSON), &message)
 				if err != nil {
-					log.Error("unmarshalling message: "+err.Error())
+					log.Error("unmarshalling message: " + err.Error())
 					return nil
 				}
 				socket.OnMessage(message, g) // TODO: create socket struct with pointer to game
@@ -366,14 +369,13 @@ func Init() {
 			confirmPasswordElement.Set("onchange", validatePasswordFunc)
 		}
 	}()
-	// onclose
-	var onClose js.Func
-	onClose = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		for _, fn := range funcs {
-			fn.Release()
-		}
-		onClose.Release()
-		return nil
-	})
-	global.Set("onclose", onClose)
+	go releaseOnDone(ctx, wg, funcs)
+}
+
+func releaseOnDone(ctx context.Context, wg *sync.WaitGroup, funcs map[string]js.Func) {
+	<-ctx.Done()
+	for _, fn := range funcs {
+		fn.Release()
+	}
+	wg.Done()
 }
