@@ -9,7 +9,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/jacobpatterson1549/selene-bananas/go/ui/content"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/js"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 )
@@ -23,7 +22,7 @@ type (
 )
 
 func login(token string) {
-	content.SetJWT(token)
+	js.SetValue("jwt", token)
 	j := jwt(token)
 	u, err := j.getUser()
 	if err != nil {
@@ -33,12 +32,12 @@ func login(token string) {
 	js.SetUsernamesReadOnly(u.username)
 	js.SetPoints(u.points)
 	js.SetChecked("tab-4", true) // lobby tab
-	content.SetLoggedIn(true)
+	hasLogin(true)
 }
 
 // Logout logs out the user
 func Logout() {
-	content.SetLoggedIn(false)
+	hasLogin(false)
 	js.SetChecked("has-game", false)
 	js.SetUsernamesReadOnly("")
 	js.SetChecked("tab-1", true) // login tab
@@ -80,4 +79,14 @@ func (j jwt) getUser() (*user, error) {
 	}
 	return &u, nil
 	return &user{}, nil
+}
+
+// hasLogin sets the checked property of the has-login input.
+func hasLogin(loggedIn bool) {
+	js.SetChecked("has-login", loggedIn)
+}
+
+// JWT gets the value of the jwt input.
+func JWT() string {
+	return js.GetValue("jwt")
 }

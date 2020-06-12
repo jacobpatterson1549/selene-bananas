@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/jacobpatterson1549/selene-bananas/go/ui/content"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/js"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 )
@@ -91,8 +90,8 @@ func (r Request) Do() {
 		log.Error("creating request: " + err.Error())
 		return
 	}
-	if content.IsLoggedIn() {
-		jwt := content.GetJWT()
+	if js.GetChecked("has-login") {
+		jwt := JWT()
 		httpRequest.Header.Set("Authorization", "Bearer "+jwt)
 	}
 	httpResponse, err := httpClient.Do(httpRequest)

@@ -11,7 +11,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/canvas"
-	"github.com/jacobpatterson1549/selene-bananas/go/ui/content"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/controller"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/socket"
@@ -57,31 +56,6 @@ func Init() {
 		key := "canvasElement." + fnName
 		funcs[key] = jsFunc
 	}
-	// content
-	global.Set("content", js.ValueOf(make(map[string]interface{})))
-	addFunc("content", "setLoggedIn", func(this js.Value, args []js.Value) interface{} {
-		loggedIn := args[0].Bool()
-		content.SetLoggedIn(loggedIn)
-		return nil
-	})
-	addFunc("content", "isLoggedIn", func(this js.Value, args []js.Value) interface{} {
-		loggedIn := content.IsLoggedIn()
-		return loggedIn
-	})
-	addFunc("content", "setErrorMessage", func(this js.Value, args []js.Value) interface{} {
-		text := args[0].String()
-		content.SetErrorMessage(text)
-		return nil
-	})
-	addFunc("content", "getJWT", func(this js.Value, args []js.Value) interface{} {
-		jwt := content.GetJWT()
-		return js.ValueOf(jwt)
-	})
-	addFunc("content", "setJWT", func(this js.Value, args []js.Value) interface{} {
-		jwt := args[0].String()
-		content.SetJWT(jwt)
-		return nil
-	})
 	// log
 	global.Set("log", js.ValueOf(make(map[string]interface{})))
 	addFunc("log", "info", func(this js.Value, args []js.Value) interface{} {
@@ -316,7 +290,7 @@ func Init() {
 		if len(url) >= 4 && url[:4] == "http" {
 			url = "ws" + url[4:]
 		}
-		jwt := content.GetJWT()
+		jwt := user.JWT()
 		url = url + "?access_token=" + jwt
 		var newWebsocketPromiseFunc js.Func
 
