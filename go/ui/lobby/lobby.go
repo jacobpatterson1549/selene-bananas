@@ -14,7 +14,7 @@ import (
 // InitDom regesters lobby dom functions
 func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	getGameInfosJsFunc := dom.NewJsFuncEvent(dom.GetGameInfos)
+	getGameInfosJsFunc := dom.NewJsEventFunc(dom.GetGameInfos)
 	leaveJsFunc := dom.NewJsFunc(func() {
 		dom.CloseWebsocket()
 		dom.LeaveGame()

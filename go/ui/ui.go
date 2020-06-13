@@ -6,7 +6,6 @@ package ui
 import (
 	"context"
 	"encoding/json"
-	"strconv"
 	"sync"
 	"syscall/js"
 
@@ -90,59 +89,8 @@ func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	canvas := canvasCfg.New(&canvasCtx, &board)
 	canvas.InitDom(ctx, wg, canvasElement)
 	// game
-	global.Set("game", js.ValueOf(make(map[string]interface{})))
 	g := controller.NewGame(&board, &canvas)
-	addFunc("game", "create", func(this js.Value, args []js.Value) interface{} {
-		g.Create()
-		return nil
-	})
-	addFunc("game", "join", func(this js.Value, args []js.Value) interface{} {
-		event := args[0]
-		joinGameButton := event.Get("srcElement")
-		gameIdInput := joinGameButton.Get("previousElementSibling")
-		idText := gameIdInput.Get("value").String()
-		id, err := strconv.Atoi(idText)
-		if err != nil {
-			log.Error("could not get Id of game: " + err.Error())
-			return nil
-		}
-		g.Join(id)
-		return nil
-	})
-	addFunc("game", "leave", func(this js.Value, args []js.Value) interface{} {
-		g.Leave()
-		return nil
-	})
-	addFunc("game", "delete", func(this js.Value, args []js.Value) interface{} {
-		g.Delete()
-		return nil
-	})
-	addFunc("game", "start", func(this js.Value, args []js.Value) interface{} {
-		g.Start()
-		return nil
-	})
-	addFunc("game", "finish", func(this js.Value, args []js.Value) interface{} {
-		g.Finish()
-		return nil
-	})
-	addFunc("game", "snagTile", func(this js.Value, args []js.Value) interface{} {
-		g.SnagTile()
-		return nil
-	})
-	addFunc("game", "swapTile", func(this js.Value, args []js.Value) interface{} {
-		canvas.StartSwap()
-		return nil
-	})
-	addFunc("game", "sendChat", func(this js.Value, args []js.Value) interface{} {
-		// TODO: get element from event (args[0])
-		event := args[0]
-		event.Call("preventDefault")
-		gameChatElement := global.Get("document").Call("querySelector", "input#game-chat")
-		message := gameChatElement.Get("value").String()
-		gameChatElement.Set("value", "")
-		g.SendChat(message)
-		return nil
-	})
+	g.InitDom(ctx, wg)
 	// websocket
 	global.Set("websocket", js.ValueOf(make(map[string]interface{})))
 	addFunc("websocket", "connect", func(this js.Value, args []js.Value) interface{} {

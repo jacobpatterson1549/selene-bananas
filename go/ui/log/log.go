@@ -10,7 +10,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 )
 
-// InitDom regesters log dom functions
+// InitDom regesters log dom functions.
 func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	clearJsFunc := dom.NewJsFunc(Clear)

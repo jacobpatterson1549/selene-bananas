@@ -143,9 +143,11 @@ func (cfg Config) New(ctx Context, board *board.Board) Canvas {
 	return c
 }
 
+// InitDom regesters canvas dom functions.
 func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup, canvasElement js.Value) {
 	wg.Add(1)
 	redrawJsFunc := dom.NewJsFunc(c.Redraw)
+	swapTileJsFunc := dom.NewJsFunc(c.StartSwap)
 	offsetFunc := func(event js.Value) (int, int) {
 		x := event.Get("offsetX").Int()
 		y := event.Get("offsetY").Int()
@@ -173,6 +175,7 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup, canvasElement 
 		c.MoveCursor(c.touchPos.x, c.touchPos.y)
 	}
 	dom.RegisterFunc("canvas", "redraw", redrawJsFunc)
+	dom.RegisterFunc("canvas", "swapTile", swapTileJsFunc)
 	mouseDownJsFunc := dom.RegisterEventListenerFunc(canvasElement, "mousedown", mouseDownFunc)
 	mouseUpJsFunc := dom.RegisterEventListenerFunc(canvasElement, "mouseup", mouseUpFunc)
 	mouseMoveJsFunc := dom.RegisterEventListenerFunc(canvasElement, "mousemove", mouseMoveFunc)
@@ -182,6 +185,7 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup, canvasElement 
 	go func() {
 		<-ctx.Done()
 		redrawJsFunc.Release()
+		swapTileJsFunc.Release()
 		mouseDownJsFunc.Release()
 		mouseUpJsFunc.Release()
 		mouseMoveJsFunc.Release()

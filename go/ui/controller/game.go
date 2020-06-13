@@ -4,7 +4,11 @@
 package controller
 
 import (
+	"context"
+	"strconv"
 	"strings"
+	"sync"
+	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/board"
@@ -28,6 +32,55 @@ func NewGame(board *board.Board, canvas *canvas.Canvas) Game {
 		canvas: canvas,
 	}
 	return g
+}
+
+// InitDom regesters game dom functions.
+func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	createJsFunc := dom.NewJsFunc(g.Create)
+	joinJsFunc := dom.NewJsEventFunc(func(event js.Value) {
+		joinGameButton := event.Get("srcElement")
+		gameIdInput := joinGameButton.Get("previousElementSibling")
+		idText := gameIdInput.Get("value").String()
+		id, err := strconv.Atoi(idText)
+		if err != nil {
+			log.Error("could not get Id of game: " + err.Error())
+			return
+		}
+		g.Join(id)
+	})
+	leaveJsFunc := dom.NewJsFunc(g.Leave)
+	deleteJsFunc := dom.NewJsFunc(g.Delete)
+	startJsFunc := dom.NewJsFunc(g.Start)
+	finishJsFunc := dom.NewJsFunc(g.Finish)
+	snagTileJsFunc := dom.NewJsFunc(g.SnagTile)
+	sendChatJsFunc := dom.NewJsEventFunc(func(event js.Value) {
+		// TODO: use event
+		gameChatElement := js.Global().Get("document").Call("querySelector", "input#game-chat")
+		message := gameChatElement.Get("value").String()
+		gameChatElement.Set("value", "")
+		g.SendChat(message)
+	})
+	dom.RegisterFunc("game", "create", createJsFunc)
+	dom.RegisterFunc("game", "join", joinJsFunc)
+	dom.RegisterFunc("game", "leave", leaveJsFunc)
+	dom.RegisterFunc("game", "delete", deleteJsFunc)
+	dom.RegisterFunc("game", "start", startJsFunc)
+	dom.RegisterFunc("game", "finish", finishJsFunc)
+	dom.RegisterFunc("game", "snagTile", snagTileJsFunc)
+	dom.RegisterFunc("game", "sendChat", sendChatJsFunc)
+	go func() {
+		<-ctx.Done()
+		createJsFunc.Release()
+		joinJsFunc.Release()
+		leaveJsFunc.Release()
+		deleteJsFunc.Release()
+		startJsFunc.Release()
+		finishJsFunc.Release()
+		snagTileJsFunc.Release()
+		sendChatJsFunc.Release()
+		wg.Done()
+	}()
 }
 
 // Create clears the tiles and asks the server for a new game to join
