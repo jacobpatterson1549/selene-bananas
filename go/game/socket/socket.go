@@ -111,8 +111,8 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 		s.conn.Close()
 	}()
 	s.conn.SetPongHandler(s.refreshReadDeadline)
-	var m game.Message
 	for { // BLOCKS
+		var m game.Message
 		err := s.readMessage(&m)
 		select {
 		case <-ctx.Done():
