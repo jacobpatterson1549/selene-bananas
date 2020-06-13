@@ -3,7 +3,6 @@ package socket
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -112,8 +111,7 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 	}()
 	s.conn.SetPongHandler(s.refreshReadDeadline)
 	for { // BLOCKS
-		var m game.Message
-		err := s.readMessage(&m)
+		m, err := s.readMessage()
 		select {
 		case <-ctx.Done():
 			return
@@ -123,7 +121,7 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 				return
 			}
 		}
-		messages <- m
+		messages <- *m
 		s.active = true
 	}
 }
@@ -168,20 +166,14 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 	}
 }
 
-func (s *Socket) readMessage(m *game.Message) error {
-	err := s.conn.ReadJSON(m)
+func (s *Socket) readMessage() (*game.Message, error) {
+	var m game.Message
+	err := s.conn.ReadJSON(&m)
 	if err != nil {
-		if _, ok := err.(*json.UnmarshalTypeError); ok {
-			m = &game.Message{
-				Type: game.SocketError,
-				Info: err.Error(),
-			}
-			return nil
+		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
+			return nil, fmt.Errorf("unexpected socket closure: %v", err)
 		}
-		if _, ok := err.(*websocket.CloseError); !ok || websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
-			return fmt.Errorf("unexpected socket closure: %v", err)
-		}
-		return fmt.Errorf("socket closed")
+		return nil, fmt.Errorf("socket closed")
 	}
 	if s.debug {
 		s.log.Printf("socket reading message with type %v", m.Type)
@@ -190,7 +182,7 @@ func (s *Socket) readMessage(m *game.Message) error {
 	if m.Type != game.Join {
 		m.GameID = s.gameID
 	}
-	return nil
+	return &m, nil
 }
 
 func (s *Socket) writeMessage(m game.Message) error {
