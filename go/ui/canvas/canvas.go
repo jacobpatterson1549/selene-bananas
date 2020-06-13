@@ -4,7 +4,10 @@
 package canvas
 
 import (
+	"context"
 	"strconv"
+	"sync"
+	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/board"
@@ -16,10 +19,11 @@ import (
 type (
 	// Canvas is the object which draws the game
 	Canvas struct {
-		ctx        Context
-		board      *board.Board
-		draw       drawMetrics
-		selection  selection
+		ctx       Context
+		board     *board.Board
+		draw      drawMetrics
+		selection selection
+		touchPos
 		GameStatus game.Status // TODO: delete gameInProgress checkbox input
 	}
 
@@ -71,9 +75,16 @@ type (
 		endY      int
 	}
 
+	// touchPos represents the position of the previous screen touch
+	touchPos struct {
+		x int
+		y int
+	}
+
+	// tileSelection represents a tile that the cursor/touch is on
 	tileSelection struct {
 		tile   tile.Tile
-		isUsed bool
+		isUsed bool // TODO make r/c be a union of index in unused array.  This would help simplify determining the new positions.  Maybe compose in tile.Position?
 		r      int
 		c      int
 	}
@@ -130,6 +141,55 @@ func (cfg Config) New(ctx Context, board *board.Board) Canvas {
 		},
 	}
 	return c
+}
+
+func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup, canvasElement js.Value) {
+	wg.Add(1)
+	redrawJsFunc := dom.NewJsFunc(c.Redraw)
+	offsetFunc := func(event js.Value) (int, int) {
+		x := event.Get("offsetX").Int()
+		y := event.Get("offsetY").Int()
+		return x, y
+	}
+	mouseDownFunc := func(event js.Value) {
+		c.MoveStart(offsetFunc(event))
+	}
+	mouseUpFunc := func(event js.Value) {
+		c.MoveEnd(offsetFunc(event))
+	}
+	mouseMoveFunc := func(event js.Value) {
+		c.MoveCursor(offsetFunc(event))
+	}
+	touchStartFunc := func(event js.Value) {
+		c.touchPos.update(event)
+		c.MoveStart(c.touchPos.x, c.touchPos.y)
+	}
+	touchEndFunc := func(event js.Value) {
+		// the event has no touches, use previous touchPos
+		c.MoveEnd(c.touchPos.x, c.touchPos.y)
+	}
+	touchMoveFunc := func(event js.Value) {
+		c.touchPos.update(event)
+		c.MoveCursor(c.touchPos.x, c.touchPos.y)
+	}
+	dom.RegisterFunc("canvas", "redraw", redrawJsFunc)
+	mouseDownJsFunc := dom.RegisterEventListenerFunc(canvasElement, "mousedown", mouseDownFunc)
+	mouseUpJsFunc := dom.RegisterEventListenerFunc(canvasElement, "mouseup", mouseUpFunc)
+	mouseMoveJsFunc := dom.RegisterEventListenerFunc(canvasElement, "mousemove", mouseMoveFunc)
+	touchStartJsFunc := dom.RegisterEventListenerFunc(canvasElement, "touchstart", touchStartFunc)
+	touchEndJsFunc := dom.RegisterEventListenerFunc(canvasElement, "touchend", touchEndFunc)
+	touchMoveJsFunc := dom.RegisterEventListenerFunc(canvasElement, "touchmove", touchMoveFunc)
+	go func() {
+		<-ctx.Done()
+		redrawJsFunc.Release()
+		mouseDownJsFunc.Release()
+		mouseUpJsFunc.Release()
+		mouseMoveJsFunc.Release()
+		touchStartJsFunc.Release()
+		touchEndJsFunc.Release()
+		touchMoveJsFunc.Release()
+		wg.Done()
+	}()
 }
 
 // Redraw draws the canvas
@@ -564,4 +624,16 @@ func (s selection) inRect(x, y int) bool {
 	}
 	return minX <= x && x < maxX &&
 		minY <= y && y < maxY
+}
+
+func (tp *touchPos) update(event js.Value) {
+	event.Call("preventDefault")
+	touches := event.Get("touches")
+	if touches.Length() == 0 {
+		return
+	}
+	touch := touches.Index(0)
+	canvasRect := event.Get("target").Call("getBoundingClientRect")
+	tp.x = touch.Get("pageX").Int() - canvasRect.Get("left").Int()
+	tp.y = touch.Get("pageY").Int() - canvasRect.Get("top").Int()
 }

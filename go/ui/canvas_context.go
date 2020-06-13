@@ -10,11 +10,6 @@ type (
 	canvasContext struct {
 		ctx js.Value
 	}
-
-	touchLoc struct {
-		x int
-		y int
-	}
 )
 
 func (cc *canvasContext) SetFont(name string) {
@@ -47,16 +42,4 @@ func (cc *canvasContext) FillRect(x, y, width, height int) {
 
 func (cc *canvasContext) StrokeRect(x, y, width, height int) {
 	cc.ctx.Call("strokeRect", x, y, width, height)
-}
-
-func (tm *touchLoc) update(event js.Value) {
-	event.Call("preventDefault")
-	touches := event.Get("touches")
-	if touches.Length() == 0 {
-		return
-	}
-	touch := touches.Index(0)
-	canvasRect := event.Get("target").Call("getBoundingClientRect")
-	tm.x = touch.Get("pageX").Int() - canvasRect.Get("left").Int()
-	tm.y = touch.Get("pageY").Int() - canvasRect.Get("top").Int()
 }

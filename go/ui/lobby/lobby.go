@@ -14,17 +14,17 @@ import (
 // InitDom regesters lobby dom functions
 func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	getGameInfosFunc := dom.NewJsFuncEvent(dom.GetGameInfos)
-	leaveFunc := dom.NewJsFunc(func() {
+	getGameInfosJsFunc := dom.NewJsFuncEvent(dom.GetGameInfos)
+	leaveJsFunc := dom.NewJsFunc(func() {
 		dom.CloseWebsocket()
 		dom.LeaveGame()
 	})
-	dom.RegisterFunc("lobby", "getGameInfos", getGameInfosFunc)
-	dom.RegisterFunc("lobby", "leave", leaveFunc)
+	dom.RegisterFunc("lobby", "getGameInfos", getGameInfosJsFunc)
+	dom.RegisterFunc("lobby", "leave", leaveJsFunc)
 	go func() {
 		<-ctx.Done()
-		getGameInfosFunc.Release()
-		leaveFunc.Release()
+		getGameInfosJsFunc.Release()
+		leaveJsFunc.Release()
 		wg.Done()
 	}()
 }

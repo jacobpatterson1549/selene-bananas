@@ -43,22 +43,6 @@ func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		}
 		funcs[key] = jsFunc
 	}
-	addCanvasListenerFunc := func(canvasElement js.Value, fnName string, fn func(this js.Value, args []js.Value) interface{}) {
-		jsFunc := js.FuncOf(fn)
-		args := []interface{}{
-			fnName,
-			jsFunc,
-		}
-		switch fnName {
-		case "touchstart", "touchmove":
-			args = append(args, map[string]interface{}{
-				"passive": false,
-			})
-		}
-		canvasElement.Call("addEventListener", args...)
-		key := "canvasElement." + fnName
-		funcs[key] = jsFunc
-	}
 	// user
 	global.Set("user", js.ValueOf(make(map[string]interface{})))
 	addFunc("user", "logout", func(this js.Value, args []js.Value) interface{} {
@@ -92,7 +76,6 @@ func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		return nil
 	})
 	// canvas
-	global.Set("canvas", js.ValueOf(make(map[string]interface{})))
 	document := global.Get("document")
 	canvasElement := document.Call("querySelector", "#game>canvas")
 	contextElement := canvasElement.Call("getContext", "2d")
@@ -105,49 +88,7 @@ func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		FontName:   "sans-serif",
 	}
 	canvas := canvasCfg.New(&canvasCtx, &board)
-	addFunc("canvas", "redraw", func(this js.Value, args []js.Value) interface{} {
-		canvas.Redraw()
-		return nil
-	})
-	addCanvasListenerFunc(canvasElement, "mousedown", func(this js.Value, args []js.Value) interface{} {
-		event := args[0]
-		x := event.Get("offsetX").Int()
-		y := event.Get("offsetY").Int()
-		canvas.MoveStart(x, y)
-		return nil
-	})
-	addCanvasListenerFunc(canvasElement, "mouseup", func(this js.Value, args []js.Value) interface{} {
-		event := args[0]
-		x := event.Get("offsetX").Int()
-		y := event.Get("offsetY").Int()
-		canvas.MoveEnd(x, y)
-		return nil
-	})
-	addCanvasListenerFunc(canvasElement, "mousemove", func(this js.Value, args []js.Value) interface{} {
-		event := args[0]
-		x := event.Get("offsetX").Int()
-		y := event.Get("offsetY").Int()
-		canvas.MoveCursor(x, y)
-		return nil
-	})
-	var tl touchLoc
-	addCanvasListenerFunc(canvasElement, "touchstart", func(this js.Value, args []js.Value) interface{} {
-		event := args[0]
-		tl.update(event)
-		canvas.MoveStart(tl.x, tl.y)
-		return nil
-	})
-	addCanvasListenerFunc(canvasElement, "touchend", func(this js.Value, args []js.Value) interface{} {
-		// the event has no touches, use previous touchLoc
-		canvas.MoveEnd(tl.x, tl.y)
-		return nil
-	})
-	addCanvasListenerFunc(canvasElement, "touchmove", func(this js.Value, args []js.Value) interface{} {
-		event := args[0]
-		tl.update(event)
-		canvas.MoveCursor(tl.x, tl.y)
-		return nil
-	})
+	canvas.InitDom(ctx, wg, canvasElement)
 	// game
 	global.Set("game", js.ValueOf(make(map[string]interface{})))
 	g := controller.NewGame(&board, &canvas)

@@ -13,11 +13,11 @@ import (
 // InitDom regesters log dom functions
 func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	clearFunc := dom.NewJsFunc(Clear)
-	dom.RegisterFunc("log", "clear", clearFunc)
+	clearJsFunc := dom.NewJsFunc(Clear)
+	dom.RegisterFunc("log", "clear", clearJsFunc)
 	go func() {
 		<-ctx.Done()
-		clearFunc.Release()
+		clearJsFunc.Release()
 		wg.Done()
 	}()
 }
