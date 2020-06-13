@@ -4,10 +4,13 @@
 package user
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
+	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
@@ -20,6 +23,24 @@ type (
 		points   int
 	}
 )
+
+// InitDom regesters user dom functions.
+func InitDom(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	logoutJsFunc := dom.NewJsFunc(Logout)
+	requestJsFunc := dom.NewJsEventFunc(func(event js.Value) {
+		f := dom.NewForm(event)
+		go request(f)
+	})
+	dom.RegisterFunc("user", "logout", logoutJsFunc)
+	dom.RegisterFunc("user", "request", requestJsFunc)
+	go func() {
+		<-ctx.Done()
+		logoutJsFunc.Release()
+		requestJsFunc.Release()
+		wg.Done()
+	}()
+}
 
 func login(token string) {
 	dom.SetValue("jwt", token)

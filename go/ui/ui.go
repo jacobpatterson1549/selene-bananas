@@ -42,38 +42,7 @@ func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		}
 		funcs[key] = jsFunc
 	}
-	// user
-	global.Set("user", js.ValueOf(make(map[string]interface{})))
-	addFunc("user", "logout", func(this js.Value, args []js.Value) interface{} {
-		user.Logout()
-		return nil
-	})
-	addFunc("user", "request", func(this js.Value, args []js.Value) interface{} {
-		event := args[0]
-		event.Call("preventDefault")
-		form := event.Get("target")
-		method := form.Get("method").String()
-		url := form.Get("action").String()
-		origin := global.Get("location").Get("origin").String()
-		urlSuffixIndex := len(origin)
-		urlSuffix := url[urlSuffixIndex:]
-		formInputs := form.Call("querySelectorAll", `input:not([type="submit"])`)
-		params := make(map[string][]string, formInputs.Length())
-		for i := 0; i < formInputs.Length(); i++ {
-			formInput := formInputs.Index(i)
-			name := formInput.Get("name").String()
-			value := formInput.Get("value").String()
-			params[name] = []string{value}
-		}
-		request := user.Request{
-			Method:    method,
-			URL:       url,
-			URLSuffix: urlSuffix,
-			Params:    params,
-		}
-		go request.Do()
-		return nil
-	})
+	user.InitDom(ctx, wg)
 	// canvas
 	document := global.Get("document")
 	canvasElement := document.Call("querySelector", "#game>canvas")

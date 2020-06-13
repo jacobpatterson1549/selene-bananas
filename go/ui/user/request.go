@@ -6,84 +6,72 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 )
 
-type (
-	// Request contains the fields needed to make a request
-	Request struct {
-		Method    string
-		URL       string
-		URLSuffix string
-		Params    url.Values
-	}
-)
-
 var (
 	httpClient       http.Client // TODO: add Timeout: 5 * time.Second,
-	responseHandlers = map[string]func(r Request, body io.ReadCloser){
-		"/user_create": func(r Request, b io.ReadCloser) {
-			username := r.Params.Get("username")
-			password := r.Params.Get("password")
+	responseHandlers = map[string]func(f dom.Form, body io.ReadCloser){
+		"/user_create": func(f dom.Form, b io.ReadCloser) {
+			username := f.Params.Get("username")
+			password := f.Params.Get("password")
 			dom.StoreCredentials(username, password)
 			Logout()
 		},
-		"/user_delete": func(r Request, body io.ReadCloser) {
+		"/user_delete": func(f dom.Form, body io.ReadCloser) {
 			Logout()
 		},
-		"/user_login": func(r Request, body io.ReadCloser) {
+		"/user_login": func(f dom.Form, body io.ReadCloser) {
 			defer body.Close()
 			jwt, err := ioutil.ReadAll(body)
 			if err != nil {
 				log.Error("reading response body: " + err.Error())
 				return
 			}
-			username := r.Params.Get("username")
-			password := r.Params.Get("password")
+			username := f.Params.Get("username")
+			password := f.Params.Get("password")
 			dom.StoreCredentials(username, password)
 			login(string(jwt))
 		},
-		"/user_update_password": func(r Request, body io.ReadCloser) {
-			username := r.Params.Get("username")
-			password := r.Params.Get("password_confirm")
+		"/user_update_password": func(f dom.Form, body io.ReadCloser) {
+			username := f.Params.Get("username")
+			password := f.Params.Get("password_confirm")
 			dom.StoreCredentials(username, password)
 			Logout()
 		},
-		"/ping": func(r Request, body io.ReadCloser) {
+		"/ping": func(f dom.Form, body io.ReadCloser) {
 			// NOOP
 		},
 	}
 )
 
-// Do makes a request to the server
-// Requests should be made on separate goroutines.
-func (r Request) Do() {
-	if r.URLSuffix == "/user_delete" {
+// Request makes a request to the server using the fields in the form.
+func request(f dom.Form) {
+	if f.URLSuffix == "/user_delete" {
 		message := "Are you sure? All accumulated points will be lost"
 		if !dom.Confirm(message) {
 			return
 		}
 	}
-	rh, ok := responseHandlers[r.URLSuffix]
+	rh, ok := responseHandlers[f.URLSuffix]
 	if !ok {
-		log.Error("Unknown action: " + r.URLSuffix)
+		log.Error("Unknown action: " + f.URLSuffix)
 		return
 	}
 	var httpRequest *http.Request
 	var err error
 	// TODO: pass context when making http request
-	switch r.Method {
+	switch f.Method {
 	case "get":
-		httpRequest, err = http.NewRequest(r.Method, r.URL+"?"+r.Params.Encode(), nil)
+		httpRequest, err = http.NewRequest(f.Method, f.URL+"?"+f.Params.Encode(), nil)
 	case "post":
-		httpRequest, err = http.NewRequest(r.Method, r.URL, strings.NewReader(r.Params.Encode()))
+		httpRequest, err = http.NewRequest(f.Method, f.URL, strings.NewReader(f.Params.Encode()))
 		httpRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	default:
-		log.Error("unknown method: " + r.Method)
+		log.Error("unknown method: " + f.Method)
 		return
 	}
 	if err != nil {
@@ -102,6 +90,6 @@ func (r Request) Do() {
 		log.Error(httpResponse.Status)
 		// TODO: logout user on http error?
 	default:
-		rh(r, httpResponse.Body)
+		rh(f, httpResponse.Body)
 	}
 }

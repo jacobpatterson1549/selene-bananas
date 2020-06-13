@@ -5,11 +5,22 @@ package dom
 
 import (
 	"encoding/json"
+	"net/url"
 	"strings"
 	"syscall/js"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
+)
+
+type (
+	// Form contains the fields needed to make a request to the server.
+	Form struct {
+		Method    string
+		URL       string
+		URLSuffix string
+		Params    url.Values
+	}
 )
 
 var document js.Value = js.Global().Get("document")
@@ -250,4 +261,28 @@ func CloseWebsocket() {
 func LeaveGame() {
 	game := js.Global().Get("game")
 	game.Call("leave")
+}
+
+func NewForm(event js.Value) Form {
+	form := event.Get("target")
+	method := form.Get("method").String()
+	url := form.Get("action").String()
+	origin := js.Global().Get("location").Get("origin").String()
+	urlSuffixIndex := len(origin)
+	urlSuffix := url[urlSuffixIndex:]
+	formInputs := form.Call("querySelectorAll", `input:not([type="submit"])`)
+	params := make(map[string][]string, formInputs.Length())
+	for i := 0; i < formInputs.Length(); i++ {
+		formInput := formInputs.Index(i)
+		name := formInput.Get("name").String()
+		value := formInput.Get("value").String()
+		params[name] = []string{value}
+	}
+	f := Form{
+		Method:    method,
+		URL:       url,
+		URLSuffix: urlSuffix,
+		Params:    params,
+	}
+	return f
 }
