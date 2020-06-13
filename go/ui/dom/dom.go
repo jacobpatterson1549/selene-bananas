@@ -16,6 +16,7 @@ import (
 type (
 	// Form contains the fields needed to make a request to the server.
 	Form struct {
+		v         js.Value
 		Method    string
 		URL       string
 		URLSuffix string
@@ -270,7 +271,7 @@ func NewForm(event js.Value) Form {
 	origin := js.Global().Get("location").Get("origin").String()
 	urlSuffixIndex := len(origin)
 	urlSuffix := url[urlSuffixIndex:]
-	formInputs := form.Call("querySelectorAll", `input:not([type="submit"])`)
+	formInputs := form.Call("querySelectorAll", `input[name]:not([type="submit"])`)
 	params := make(map[string][]string, formInputs.Length())
 	for i := 0; i < formInputs.Length(); i++ {
 		formInput := formInputs.Index(i)
@@ -279,10 +280,20 @@ func NewForm(event js.Value) Form {
 		params[name] = []string{value}
 	}
 	f := Form{
+		v:         form,
 		Method:    method,
 		URL:       url,
 		URLSuffix: urlSuffix,
 		Params:    params,
 	}
 	return f
+}
+
+// Reset clears the named inputs of the form.
+func (f *Form) Reset() {
+	formInputs := f.v.Call("querySelectorAll", `input[name]:not([type="submit"])`)
+	for i := 0; i < formInputs.Length(); i++ {
+		formInput := formInputs.Index(i)
+		formInput.Set("value", "")
+	}
 }

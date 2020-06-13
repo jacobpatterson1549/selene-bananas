@@ -55,10 +55,9 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	finishJsFunc := dom.NewJsFunc(g.Finish)
 	snagTileJsFunc := dom.NewJsFunc(g.SnagTile)
 	sendChatJsFunc := dom.NewJsEventFunc(func(event js.Value) {
-		// TODO: use event
-		gameChatElement := js.Global().Get("document").Call("querySelector", "input#game-chat")
-		message := gameChatElement.Get("value").String()
-		gameChatElement.Set("value", "")
+		f := dom.NewForm(event)
+		message := f.Params.Get("chat")
+		f.Reset()
 		g.SendChat(message)
 	})
 	dom.RegisterFunc("game", "create", createJsFunc)
