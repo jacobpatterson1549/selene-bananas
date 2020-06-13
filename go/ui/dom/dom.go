@@ -230,7 +230,7 @@ func SocketHTTPPing() {
 		return nil
 	})
 	pingEvent := map[string]interface{}{
-		"preventDefault": preventDefaultFunc, // TODO: is this needed?
+		"preventDefault": preventDefaultFunc,
 		"target":         pingFormElement,
 	}
 	pingFormElement.Call("onsubmit", js.ValueOf(pingEvent))
