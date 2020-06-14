@@ -20,7 +20,7 @@ RUN GOOS=js GOARCH=wasm \
     GOOS=js GOARCH=wasm \
         go build \
             -o /app/main.wasm \
-            /app/cmd/ui/main.go; \
+            /app/cmd/ui/*.go; \
     CGO_ENABLED=0 \ 
         go build \
             -o /app/main \
