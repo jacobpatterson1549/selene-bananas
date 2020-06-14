@@ -1,6 +1,6 @@
 // +build js
 
-package ui
+package main
 
 import (
 	"syscall/js"
