@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	_ "github.com/lib/pq"
 )
 
 const (
