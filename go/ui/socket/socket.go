@@ -85,9 +85,7 @@ func (s *Socket) onOpen(errC chan<- error) func() {
 // onMessage is called when the websocket is closing.
 func (s *Socket) onClose(event js.Value) {
 	s.releaseWebSocketJsFuncs()
-	if reason := event.Get("reason"); reason.IsUndefined() {
-		log.Error("lobby shut down")
-	} else {
+	if reason := event.Get("reason"); !reason.IsUndefined() && len(reason.String()) != 0 {
 		log.Warning("left lobby: " + reason.String())
 	}
 	dom.SetChecked("has-websocket", false)
