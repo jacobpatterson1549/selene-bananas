@@ -113,41 +113,15 @@ func (s *Socket) onMessage(event js.Value) {
 	}
 	switch m.Type {
 	case game.Leave:
-		s.Game.Leave()
-		if len(m.Info) > 0 {
-			log.Info(m.Info)
-		}
+		s.handleGameLeave(m)
 	case game.BoardRefresh:
 		s.Game.ReplaceGameTiles(m.Tiles, m.TilePositions, false)
 	case game.Infos:
 		dom.SetGameInfos(m.GameInfos)
 	case game.PlayerDelete:
-		s.Close()
-		if len(m.Info) > 0 {
-			log.Info(m.Info)
-		}
+		s.handlePlayerDelete(m)
 	case game.Join, game.SocketInfo:
-		if m.GameStatus != 0 {
-			s.Game.SetStatus(m.GameStatus)
-		}
-		if m.TilesLeft != 0 {
-			dom.SetValue("game-tiles-left", strconv.Itoa(m.TilesLeft))
-		}
-		if len(m.GamePlayers) > 0 {
-			players := strings.Join(m.GamePlayers, ",")
-			dom.SetValue("game-players", players)
-		}
-		switch {
-		case len(m.TilePositions) > 0:
-			silent := m.Type == game.Join
-			s.Game.ReplaceGameTiles(m.Tiles, m.TilePositions, silent)
-		case len(m.Tiles) > 0:
-			silent := m.Type == game.Join
-			s.Game.AddUnusedTiles(m.Tiles, silent)
-		}
-		if len(m.Info) > 0 {
-			log.Info(m.Info)
-		}
+		s.handleInfo(m)
 	case game.SocketError:
 		log.Error(m.Info)
 	case game.SocketWarning:
@@ -188,4 +162,45 @@ func (s Socket) isOpen() bool {
 	return !s.webSocket.IsUndefined() &&
 		!s.webSocket.IsNull() &&
 		s.webSocket.Get("readyState").Int() == 1
+}
+
+// handleGameLeave leaves the game and logs any info text from the message.
+func (s *Socket) handleGameLeave(m game.Message) {
+	s.Game.Leave()
+	if len(m.Info) > 0 {
+		log.Info(m.Info)
+	}
+}
+
+// handlePlayerDelete closes the socket and logs any info text from the message.
+func (s *Socket) handlePlayerDelete(m game.Message) {
+	s.Close()
+	if len(m.Info) > 0 {
+		log.Info(m.Info)
+	}
+}
+
+// handleInfo contains the logic for handling messages with types Info and GameJoin.
+func (s *Socket) handleInfo(m game.Message) {
+	if m.GameStatus != 0 {
+		s.Game.SetStatus(m.GameStatus)
+	}
+	if m.TilesLeft != 0 {
+		dom.SetValue("game-tiles-left", strconv.Itoa(m.TilesLeft))
+	}
+	if len(m.GamePlayers) > 0 {
+		players := strings.Join(m.GamePlayers, ",")
+		dom.SetValue("game-players", players)
+	}
+	switch {
+	case len(m.TilePositions) > 0:
+		silent := m.Type == game.Join
+		s.Game.ReplaceGameTiles(m.Tiles, m.TilePositions, silent)
+	case len(m.Tiles) > 0:
+		silent := m.Type == game.Join
+		s.Game.AddUnusedTiles(m.Tiles, silent)
+	}
+	if len(m.Info) > 0 {
+		log.Info(m.Info)
+	}
 }
