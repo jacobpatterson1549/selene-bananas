@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	httpClient       http.Client // TODO: add Timeout: 5 * time.Second,
+	httpClient       http.Client // TODO: add Timeout: 5 * time.Second, // TODO: make struct, keep this in the struct
 	responseHandlers = map[string]func(f dom.Form, body io.ReadCloser){
 		"/user_create": func(f dom.Form, b io.ReadCloser) {
 			username := f.Params.Get("username")
