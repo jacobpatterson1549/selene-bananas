@@ -17,7 +17,7 @@ func main() {
 	var wg sync.WaitGroup
 	beforeUnload(cancelFunc, &wg)
 	log.InitDom(ctx, &wg)
-	ui.InitDom(ctx, &wg) // TODO: refactor out
+	ui.InitDom(ctx, &wg) // TODO: refactor out  (maybe make initDom() function in this file that initializes everything)
 	wg.Wait()
 }
 

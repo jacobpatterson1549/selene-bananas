@@ -1,7 +1,6 @@
 // +build js,wasm
 
 // Package lobby contains code to view available games and to close the websocket.
-// TODO: investigate if this is still needed. It is currently just a callthrough to the js package.
 package lobby
 
 import (

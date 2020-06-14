@@ -134,11 +134,8 @@ func SetGameInfos(gameInfos []game.Info) {
 		tbodyElement.Call("appendChild", emptyGameInfoElement)
 		return
 	}
-	// println("TODO: setGameInfos (total=" + string(len(gameInfos)) + ")")
-	// println(fmt.Sprintf("gameInfos: %v", gameInfos)) // DELETEME
 	gameInfoTemplate := getElementById("game-info-row")
 	gameInfoTemplateContent := gameInfoTemplate.Get("content")
-	// _, timezoneOffsetSeconds := time.Now().Zone()
 	getStatus := func(i game.Info) string {
 		switch i.Status {
 		case game.NotStarted:
