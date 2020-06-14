@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall/js"
@@ -32,12 +33,24 @@ func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		f := dom.NewForm(event)
 		go request(f)
 	})
+	updateConfirmPasswordJsFunc := dom.NewJsEventFunc(func(event js.Value) {
+		password1InputElement := event.Get("target")
+		password2InputElement := password1InputElement.
+			Get("parentElement").
+			Get("nextElementSibling").
+			Call("querySelector", ".password2")
+		password1Value := password1InputElement.Get("value").String()
+		passwordRegex := escapePassword(password1Value)
+		password2InputElement.Set("pattern", passwordRegex)
+	})
 	dom.RegisterFunc("user", "logout", logoutJsFunc)
 	dom.RegisterFunc("user", "request", requestJsFunc)
+	dom.RegisterFunc("user", "updateConfirmPattern", updateConfirmPasswordJsFunc)
 	go func() {
 		<-ctx.Done()
 		logoutJsFunc.Release()
 		requestJsFunc.Release()
+		updateConfirmPasswordJsFunc.Release()
 		wg.Done()
 	}()
 }
@@ -110,4 +123,10 @@ func hasLogin(loggedIn bool) {
 // JWT gets the value of the jwt input.
 func JWT() string {
 	return dom.GetValue("jwt")
+}
+
+// escapePassword escapes the password for html dom input pattern matching using Regexp.
+func escapePassword(p string) string {
+	escapeRE := regexp.MustCompile("([" + regexp.QuoteMeta(`\^$*+?.()|[]{}`) + "])")
+	return string(escapeRE.ReplaceAll([]byte(p), []byte(`\$1`)))
 }

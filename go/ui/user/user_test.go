@@ -43,3 +43,12 @@ func TestGetUser(t *testing.T) {
 		}
 	}
 }
+
+func TestEscapePassword(t *testing.T) {
+	init := `ok characters are: ` + "`" + `'"<>%&_:;/, escaped are  \^$*+?.()|[]{} but snowman should be unescaped: ☃`
+	want := `ok characters are: ` + "`" + `'"<>%&_:;/, escaped are  \\\^\$\*\+\?\.\(\)\|\[\]\{\} but snowman should be unescaped: ☃`
+	got := escapePassword(init)
+	if want != got {
+	t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
+	}
+}
