@@ -53,10 +53,3 @@ func NewJsEventFunc(fn func(event js.Value)) js.Func {
 		return nil
 	})
 }
-
-// NewJsStringFunc creates a new javascript function that has no inputs and returns a string.
-func NewJsStringFunc(fn func() string) js.Func {
-	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		return fn()
-	})
-}

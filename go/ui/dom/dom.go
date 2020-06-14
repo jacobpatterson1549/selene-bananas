@@ -4,7 +4,6 @@
 package dom
 
 import (
-	"encoding/json"
 	"net/url"
 	"strings"
 	"syscall/js"
@@ -22,9 +21,21 @@ type (
 		URLSuffix string
 		Params    url.Values
 	}
+
+	// Socket represents a method set of functions to communicate directly with the server
+	// TODO: should user::Request implement this?
+	Socket interface {
+		Send(m game.Message)
+		Close()
+	}
 )
 
-var document js.Value = js.Global().Get("document")
+var (
+	global   js.Value = js.Global() // TODO: add global elsewhere in this package
+	document js.Value = global.Get("document")
+	// WebSocket is the Socket used for game Communication
+	WebSocket Socket // TODO: HACK! (circular dependency)
+)
 
 func getElementById(id string) js.Value {
 	return document.Call("getElementById", id)
@@ -109,29 +120,6 @@ func AddLog(class, text string) {
 	clientHeight := logScrollElement.Get("clientHeight")
 	scrollTop := scrollHeight.Int() - clientHeight.Int()
 	logScrollElement.Set("scrollTop", scrollTop)
-}
-
-// GetGameInfos requests the game infos, establishing the websocket connection if necessary.
-func GetGameInfos(event js.Value) {
-	var getGameInfosFunc, connectErrFunc js.Func
-	getGameInfosFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		Send(game.Message{
-			Type: game.Infos,
-		})
-		getGameInfosFunc.Release()
-		connectErrFunc.Release()
-		return nil
-	})
-	connectErrFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		// connect should handle the error
-		getGameInfosFunc.Release()
-		connectErrFunc.Release()
-		return nil
-	})
-	js.Global().Get("websocket").
-		Call("connect", event).
-		Call("then", getGameInfosFunc).
-		Call("catch", connectErrFunc)
 }
 
 // SetGameInfos updates the game-infos table with the specified game infos.
@@ -236,32 +224,15 @@ func SocketHTTPPing() {
 	pingFormElement.Call("onsubmit", js.ValueOf(pingEvent))
 }
 
+// NewWebSocket creates a new WebSocket with the specified url.
+func NewWebSocket(url string) js.Value {
+	return global.Get("WebSocket").New(url)
+}
+
 // Send delivers a message to the sever.
-// TODO: near-duplicate code in ui.go
+// TODO: rename to SendWebSocketMessage
 func Send(m game.Message) {
-	_websocket := js.Global().Get("websocket").Get("_websocket")
-	if !_websocket.IsUndefined() && !_websocket.IsNull() && _websocket.Get("readyState").Int() == 1 {
-		messageJSON, err := json.Marshal(m)
-		if err != nil {
-			panic("marshalling socket message to send: " + err.Error())
-			return
-		}
-		_websocket.Call("send", js.ValueOf(string(messageJSON)))
-	}
-}
-
-// CloseWebsocket closes the websocket
-// TODO: investigate more un-circular use
-func CloseWebsocket() {
-	websocket := js.Global().Get("websocket")
-	websocket.Call("close")
-}
-
-// LeaveGame leaves the game
-// TODO: investigate more un-curcular use
-func LeaveGame() {
-	game := js.Global().Get("game")
-	game.Call("leave")
+	WebSocket.Send(m)
 }
 
 func NewForm(event js.Value) Form {

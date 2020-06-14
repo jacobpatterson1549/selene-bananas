@@ -8,7 +8,6 @@ import (
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/ui"
-	"github.com/jacobpatterson1549/selene-bananas/go/ui/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 )
 
@@ -18,7 +17,6 @@ func main() {
 	var wg sync.WaitGroup
 	beforeUnload(cancelFunc, &wg)
 	log.InitDom(ctx, &wg)
-	lobby.InitDom(ctx, &wg)
 	ui.InitDom(ctx, &wg) // TODO: refactor out
 	wg.Wait()
 }
