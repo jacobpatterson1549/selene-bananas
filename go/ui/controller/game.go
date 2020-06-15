@@ -145,30 +145,28 @@ func (g *Game) SendChat(message string) {
 	})
 }
 
-// ReplacegameTiles completely replaces the games used and unused tiles
-func (g *Game) ReplaceGameTiles(unusedTiles []tile.Tile, tilePositions []tile.Position, silent bool) {
+// replacegameTiles completely replaces the games used and unused tiles
+func (g *Game) replaceGameTiles(m game.Message) {
 	g.resetTiles()
-	if len(tilePositions) > 0 {
-		for _, tp := range tilePositions {
-			g.board.UsedTiles[tp.Tile.ID] = tp
-			if _, ok := g.board.UsedTileLocs[tp.X]; !ok {
-				g.board.UsedTileLocs[tp.X] = make(map[tile.Y]tile.Tile)
-			}
-			g.board.UsedTileLocs[tp.X][tp.Y] = tp.Tile
+	for _, tp := range m.TilePositions {
+		g.board.UsedTiles[tp.Tile.ID] = tp
+		if _, ok := g.board.UsedTileLocs[tp.X]; !ok {
+			g.board.UsedTileLocs[tp.X] = make(map[tile.Y]tile.Tile)
 		}
+		g.board.UsedTileLocs[tp.X][tp.Y] = tp.Tile
 	}
-	g.AddUnusedTiles(unusedTiles, silent)
+	g.addUnusedTiles(m)
 }
 
-// AddUnusedTilesappends new tiles onto the game
-func (g *Game) AddUnusedTiles(unusedTiles []tile.Tile, silent bool) {
-	tileStrings := make([]string, len(unusedTiles))
-	for i, t := range unusedTiles {
+// addUnusedTilesappends new tiles onto the game
+func (g *Game) addUnusedTiles(m game.Message) {
+	tileStrings := make([]string, len(m.Tiles))
+	for i, t := range m.Tiles {
 		tileStrings[i] = `"` + t.Ch.String() + `"`
 		g.board.UnusedTiles[t.ID] = t
 		g.board.UnusedTileIDs = append(g.board.UnusedTileIDs, t.ID) // TODO: inefficient, use copy to increase capacity
 	}
-	if !silent {
+	if m.Type == game.Join {
 		message := "adding unused tile"
 		if len(tileStrings) == 1 {
 			message += "s"
@@ -180,38 +178,71 @@ func (g *Game) AddUnusedTiles(unusedTiles []tile.Tile, silent bool) {
 	setTabActive()
 }
 
-// SetStatus updates the game for the specified status.
-func (g *Game) SetStatus(status game.Status) {
+// UpdateInfo updates the game for the specified message.
+func (g *Game) UpdateInfo(m game.Message) {
+	g.updateStatus(m)
+	g.updateTilesLeft(m)
+	g.updatePlayers(m)
+	switch {
+	case len(m.TilePositions) > 0:
+		g.replaceGameTiles(m)
+	case len(m.Tiles) > 0:
+		g.addUnusedTiles(m)
+	}
+}
+
+// updateStatus sets the statusText and enables or disables the snag, swap, start, and finish buttons.
+func (g *Game) updateStatus(m game.Message) {
 	var statusText string
 	var snagDisabled, swapDisabled, startDisabled, finishDisabled bool
-	if status > 0 {
-		switch status {
-		case game.NotStarted:
-			statusText = "Not Started"
-			snagDisabled = true
-			swapDisabled = true
-			finishDisabled = true
-		case game.InProgress:
-			statusText = "In Progress"
-			g.canvas.Redraw()
-			startDisabled = true
-			finishDisabled = true
-		case game.Finished:
-			statusText = "Finished"
-			snagDisabled = true
-			swapDisabled = true
-			startDisabled = true
-			finishDisabled = true
-		default:
-			return
-		}
+	switch m.GameStatus {
+	case game.NotStarted:
+		statusText = "Not Started"
+		snagDisabled = true
+		swapDisabled = true
+		finishDisabled = true
+	case game.InProgress:
+		statusText = "In Progress"
+		g.canvas.Redraw()
+		startDisabled = true
+		finishDisabled = m.TilesLeft > 0
+	case game.Finished:
+		statusText = "Finished"
+		snagDisabled = true
+		swapDisabled = true
+		startDisabled = true
+		finishDisabled = true
+	default:
+		return
 	}
 	dom.SetValue("game-status", statusText)
 	dom.SetButtonDisabled("game-snag", snagDisabled)
 	dom.SetButtonDisabled("game-swap", swapDisabled)
 	dom.SetButtonDisabled("game-start", startDisabled)
 	dom.SetButtonDisabled("game-finish", finishDisabled)
-	g.canvas.GameStatus = status
+	g.canvas.GameStatus = m.GameStatus
+}
+
+// updateTilesLeft updates the TilesLeft label.  Other labels are updated if there are no tiles left.
+func (g *Game) updateTilesLeft(m game.Message) {
+	dom.SetValue("game-tiles-left", strconv.Itoa(m.TilesLeft))
+	if m.TilesLeft == 0 {
+		dom.SetButtonDisabled("game-snag", true)
+		dom.SetButtonDisabled("game-swap", true)
+		// enable the finish button if the game is not being started or is already finished
+		switch m.GameStatus {
+		case game.NotStarted, game.Finished:
+		default:
+			dom.SetButtonDisabled("game-finish", false)
+		}
+	}
+}
+
+func (g *Game) updatePlayers(m game.Message) {
+	if len(m.GamePlayers) > 0 {
+		players := strings.Join(m.GamePlayers, ",")
+		dom.SetValue("game-players", players)
+	}
 }
 
 func (g *Game) resetTiles() {

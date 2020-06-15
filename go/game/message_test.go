@@ -38,10 +38,6 @@ func TestMessageJSON(t *testing.T) {
 			j: `{"type":9,"tilePositions":[{"tile":{"id":8,"ch":"R"},"x":4,"y":46}]}`,
 		},
 		{
-			m: Message{Type: BoardRefresh, TilePositions: []tile.Position{{Tile: tile.Tile{ID: 8, Ch: 'R'}, X: 3, Y: 47}}},
-			j: `{"type":10,"tilePositions":[{"tile":{"id":8,"ch":"R"},"x":3,"y":47}]}`,
-		},
-		{
 			m: Message{Type: Infos, GameInfos: []Info{{ID: 7, Status: Finished, Players: []string{"fred", "barney"}, CanJoin: true, CreatedAt: 1257894000}}},
 			j: `{"type":11,"gameInfos":[{"id":7,"status":2,"players":["fred","barney"],"canJoin":true,"createdAt":1257894000}]}`,
 		},

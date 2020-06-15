@@ -27,7 +27,7 @@ type (
 	PlayerName string
 )
 
-// not using iota because gameStates hardcoded in ui javascript
+// not using iota because gameStates hardcoded in ui javascript // TODO: use iota+1 now that javascript is gone
 const (
 	InProgress Status = 1
 	Finished   Status = 2

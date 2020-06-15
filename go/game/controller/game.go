@@ -157,7 +157,6 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 		game.Snag:         g.handleGameSnag,
 		game.Swap:         g.handleGameSwap,
 		game.TilesMoved:   g.handleGameTilesMoved,
-		game.BoardRefresh: g.handleBoardRefresh,
 		game.Infos:        g.handleGameInfos,
 		game.Chat:         g.handleGameChat,
 	}
@@ -195,9 +194,7 @@ func (g *Game) handleMessage(ctx context.Context, m game.Message, out chan<- gam
 		err = fmt.Errorf("game does not have player named '%v'", m.PlayerName)
 	} else {
 		err = mh(ctx, m, out)
-		if m.Type != game.BoardRefresh {
-			*active = true
-		}
+		*active = true
 	}
 	if err != nil {
 		g.log.Printf("game error: %v", err)
@@ -250,7 +247,7 @@ func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- ga
 	for n := range g.players {
 		if n != m.PlayerName {
 			out <- game.Message{
-				Type:        game.SocketInfo,
+				Type:        game.TilesChange,
 				PlayerName:  n,
 				Info:        fmt.Sprintf("%v joined the game", m.PlayerName),
 				TilesLeft:   len(g.unusedTiles),
@@ -290,7 +287,7 @@ func (g *Game) handleGameStart(ctx context.Context, m game.Message, out chan<- g
 	info := fmt.Sprintf("%v started the game", m.PlayerName)
 	for n := range g.players {
 		out <- game.Message{
-			Type:       game.SocketInfo,
+			Type:       game.StatusChange,
 			PlayerName: n,
 			Info:       info,
 			GameStatus: g.status,
@@ -338,11 +335,10 @@ func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- 
 	}
 	for n := range g.players {
 		out <- game.Message{
-			Type:       game.SocketInfo,
+			Type:       game.StatusChange,
 			PlayerName: n,
 			Info:       info,
 			GameStatus: g.status,
-			TilesLeft:  len(g.unusedTiles),
 		}
 	}
 	return nil
@@ -367,38 +363,29 @@ func (g *Game) handleGameSnag(ctx context.Context, m game.Message, out chan<- ga
 	}
 	g.shufflePlayersFunc(snagPlayerNames[1:])
 	for _, n2 := range snagPlayerNames {
-		var m2 *game.Message
+		m2 := game.Message{
+			Type:       game.TilesChange,
+			PlayerName: n2,
+		}
 		switch {
 		case n2 == m.PlayerName:
-			m2 = &game.Message{
-				Type:       game.SocketInfo,
-				PlayerName: n2,
-				Tiles:      g.unusedTiles[:1],
-				Info:       "snagged a tile",
-			}
+			m2.Tiles = g.unusedTiles[:1]
+			m2.Info = "snagged a tile"
 			if err := g.players[n2].AddTile(g.unusedTiles[0]); err != nil {
 				return err
 			}
 			g.unusedTiles = g.unusedTiles[1:]
 		case len(g.unusedTiles) == 0:
-			m2 = &game.Message{
-				Type:       game.SocketInfo,
-				PlayerName: n2,
-				Info:       fmt.Sprintf("%v snagged a tile", m.PlayerName),
-			}
+			m2.Info = fmt.Sprintf("%v snagged a tile", m.PlayerName)
 		default:
-			m2 = &game.Message{
-				Type:       game.SocketInfo,
-				PlayerName: n2,
-				Info:       fmt.Sprintf("%v snagged a tile, adding a tile to your pile", m.PlayerName),
-				Tiles:      g.unusedTiles[:1],
-			}
+			m2.Info = fmt.Sprintf("%v snagged a tile, adding a tile to your pile", m.PlayerName)
+			m2.Tiles = g.unusedTiles[:1]
 			if err := g.players[n2].AddTile(g.unusedTiles[0]); err != nil {
 				return err
 			}
 			g.unusedTiles = g.unusedTiles[1:]
 		}
-		snagPlayerMessages[n2] = *m2
+		snagPlayerMessages[n2] = m2
 	}
 	for _, m := range snagPlayerMessages {
 		m.TilesLeft = len(g.unusedTiles)
@@ -434,23 +421,19 @@ func (g *Game) handleGameSwap(ctx context.Context, m game.Message, out chan<- ga
 		g.unusedTiles = g.unusedTiles[1:]
 	}
 	for n := range g.players {
+		m2 := game.Message{
+			Type:       game.TilesChange,
+			PlayerName: n,
+			TilesLeft:  len(g.unusedTiles),
+		}
 		switch {
 		case n == m.PlayerName:
-			out <- game.Message{
-				Type:       game.SocketInfo,
-				PlayerName: n,
-				Info:       fmt.Sprintf("swapping %v tile", t.Ch),
-				Tiles:      newTiles,
-				TilesLeft:  len(g.unusedTiles),
-			}
+			m2.Info = fmt.Sprintf("swapping %v tile", t.Ch)
+			m2.Tiles = newTiles
 		default:
-			out <- game.Message{
-				Type:       game.SocketInfo,
-				PlayerName: n,
-				Info:       fmt.Sprintf("%v swapped a tile", m.PlayerName),
-				TilesLeft:  len(g.unusedTiles),
-			}
+			m2.Info = fmt.Sprintf("%v swapped a tile", m.PlayerName)
 		}
+		out <- m2
 	}
 	return nil
 }

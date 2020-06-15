@@ -24,7 +24,7 @@ type (
 	}
 )
 
-// not using iota because MessageTypes are used in javascript
+// not using iota because MessageTypes are used in javascript // TODO: use iota+1 now that javascript is gone
 const (
 	Create         MessageType = 1
 	Join           MessageType = 2
@@ -34,13 +34,12 @@ const (
 	Snag           MessageType = 7
 	Swap           MessageType = 8
 	TilesMoved     MessageType = 9
-	BoardRefresh   MessageType = 10
 	Infos          MessageType = 11
 	PlayerDelete   MessageType = 13
-	SocketInfo     MessageType = 14
 	SocketError    MessageType = 15
 	SocketHTTPPing MessageType = 17
 	Chat           MessageType = 18
 	GetInfos       MessageType = 20
 	SocketWarning  MessageType = 21
+	TilesChange    MessageType = 22
 )
