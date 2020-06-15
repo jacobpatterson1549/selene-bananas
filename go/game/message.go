@@ -47,7 +47,7 @@ const (
 	// Infos is a MessageType that users/servers send to request/report changes in the games in a lobby.
 	Infos
 	// PlayerDelete is a MessageType that gets sent to inform the game that a player's account has been deleted.
-	PlayerDelete // TODO: DELETEME.  Let the game assume the player is inactive
+	PlayerDelete
 	// SocketWarning is a MessageType that servers send to inform users that a request is invalid.
 	SocketWarning
 	// SocketError is a MessageType that servers send to users to report an unexpected state.
@@ -56,6 +56,4 @@ const (
 	SocketHTTPPing
 	// Chat is a MessageType that users send to communicate with ether players through the server.
 	Chat
-	// GetInfos is a MessageType that users/servers send to request/report changes in the games in a lobby.
-	GetInfos // TODO: replace with Infos
 )
