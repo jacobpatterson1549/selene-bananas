@@ -24,22 +24,38 @@ type (
 	}
 )
 
-// not using iota because MessageTypes are used in javascript // TODO: use iota+1 now that javascript is gone
 const (
-	Create         MessageType = 1
-	Join           MessageType = 2
-	Leave          MessageType = 3
-	Delete         MessageType = 4
-	StatusChange   MessageType = 5
-	Snag           MessageType = 7
-	Swap           MessageType = 8
-	TilesMoved     MessageType = 9
-	Infos          MessageType = 11
-	PlayerDelete   MessageType = 13
-	SocketError    MessageType = 15
-	SocketHTTPPing MessageType = 17
-	Chat           MessageType = 18
-	GetInfos       MessageType = 20
-	SocketWarning  MessageType = 21
-	TilesChange    MessageType = 22
+	_ MessageType = iota
+	// Create is a MessageType that users send to open a new game.
+	Create
+	// Join is a MessageType that users send to join a game or the server sends to have the user load a game.
+	Join
+	// Leave is a MessageType that servers send to indicate that a user can to longer be in the current game.
+	Leave
+	// Delete is a MessageType that users send to remove a game from the server.
+	Delete
+	// StatusChange is a MessageType that users and servers send to request or inform of a game status change.
+	StatusChange
+	// TilesChange is a MessageType that the server sends to users to indicate that tiles have been changed for any player.
+	TilesChange
+	// Snag is a MessageType that users send to the server to request a new tile when they have none left to use.
+	Snag
+	// Swap is a MessageType that users send to the server to exchange a tile for three new ones.
+	Swap
+	// TilesMoved is a MessageType that users send to the server whenever they change the state of their boards.
+	TilesMoved
+	// Infos is a MessageType that users/servers send to request/report changes in the games in a lobby.
+	Infos
+	// PlayerDelete is a MessageType that gets sent to inform the game that a player's account has been deleted.
+	PlayerDelete // TODO: DELETEME.  Let the game assume the player is inactive
+	// SocketWarning is a MessageType that servers send to inform users that a request is invalid.
+	SocketWarning
+	// SocketError is a MessageType that servers send to users to report an unexpected state.
+	SocketError
+	// SocketHTTPPing is a MessageType the server sends to the user to request a http request to the site to keep it active.  Some environments shut down after a period of HTTP inactivity has passed.
+	SocketHTTPPing
+	// Chat is a MessageType that users send to communicate with ether players through the server.
+	Chat
+	// GetInfos is a MessageType that users/servers send to request/report changes in the games in a lobby.
+	GetInfos // TODO: replace with Infos
 )
