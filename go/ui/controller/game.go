@@ -163,8 +163,10 @@ func (g *Game) addUnusedTiles(m game.Message) {
 	tileStrings := make([]string, len(m.Tiles))
 	for i, t := range m.Tiles {
 		tileStrings[i] = `"` + t.Ch.String() + `"`
-		g.board.UnusedTiles[t.ID] = t
-		g.board.UnusedTileIDs = append(g.board.UnusedTileIDs, t.ID) // TODO: inefficient, use copy to increase capacity
+		if err := g.board.AddTile(t); err != nil {
+			log.Error("could not add unused tile(s): " + err.Error())
+			return
+		}
 	}
 	if m.Type == game.Join {
 		message := "adding unused tile"
