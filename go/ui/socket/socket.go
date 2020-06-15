@@ -86,7 +86,7 @@ func (s *Socket) getWebSocketURL(f dom.Form) string {
 	default:
 		f.URL.Scheme = "wss"
 	}
-	jwt := s.User.JWT() // TODO: mock for tests
+	jwt := s.User.JWT()
 	f.Params.Add("access_token", jwt)
 	f.URL.RawQuery = f.Params.Encode()
 	return f.URL.String()
