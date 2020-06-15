@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"regexp"
 	"strings"
 	"sync"
@@ -18,20 +19,41 @@ import (
 )
 
 type (
-	jwt  string
-	user struct {
+	// jwt is a java-web token.
+	jwt string
+	// User is a http/login helper.
+	User struct {
+		httpClient *http.Client
+		escapeRE   regexp.Regexp
+	}
+	// userInfo contains a user's username and points.
+	userInfo struct {
 		username string
 		points   int
 	}
 )
 
+// New creates a http/login helper struct.
+func New(httpClient *http.Client) User {
+	escapeRE := regexp.MustCompile("([" + regexp.QuoteMeta(`\^$*+?.()|[]{}`) + "])")
+	u := User{
+		httpClient: httpClient,
+		escapeRE:   *escapeRE,
+	}
+	return u
+}
+
 // InitDom regesters user dom functions.
-func InitDom(ctx context.Context, wg *sync.WaitGroup) {
+func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	logoutJsFunc := dom.NewJsFunc(Logout)
+	logoutJsFunc := dom.NewJsFunc(u.Logout)
 	requestJsFunc := dom.NewJsEventFunc(func(event js.Value) {
-		f := dom.NewForm(event)
-		go request(f)
+		f, err := dom.NewForm(event)
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+		go u.request(*f)
 	})
 	updateConfirmPasswordJsFunc := dom.NewJsEventFunc(func(event js.Value) {
 		password1InputElement := event.Get("target")
@@ -40,7 +62,7 @@ func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 			Get("nextElementSibling").
 			Call("querySelector", ".password2")
 		password1Value := password1InputElement.Get("value").String()
-		passwordRegex := escapePassword(password1Value)
+		passwordRegex := u.escapePassword(password1Value)
 		password2InputElement.Set("pattern", passwordRegex)
 	})
 	dom.RegisterFunc("user", "logout", logoutJsFunc)
@@ -55,29 +77,29 @@ func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	}()
 }
 
-func login(token string) {
+func (u *User) login(token string) {
 	dom.SetValue("jwt", token)
 	j := jwt(token)
-	u, err := j.getUser()
+	ui, err := j.getUser()
 	if err != nil {
 		log.Error("getting user from jwt: " + err.Error())
 		return
 	}
-	dom.SetUsernamesReadOnly(u.username)
-	dom.SetPoints(u.points)
+	dom.SetUsernamesReadOnly(string(ui.username))
+	dom.SetPoints(ui.points)
 	dom.SetChecked("tab-4", true) // lobby tab
-	hasLogin(true)
+	u.hasLogin(true)
 }
 
 // Logout logs out the user
-func Logout() {
-	hasLogin(false)
+func (u *User) Logout() {
+	u.hasLogin(false)
 	dom.SetChecked("has-game", false)
 	dom.SetUsernamesReadOnly("")
 	dom.SetChecked("tab-1", true) // login tab
 }
 
-func (j jwt) getUser() (*user, error) {
+func (j jwt) getUser() (*userInfo, error) {
 	parts := strings.Split(string(j), ".")
 	if len(parts) != 3 {
 		return nil, errors.New("expected 3 jwt parts")
@@ -107,26 +129,24 @@ func (j jwt) getUser() (*user, error) {
 	if !ok {
 		return nil, errors.New("points is not a number")
 	}
-	u := user{
+	u := userInfo{
 		username: username,
 		points:   int(pointsI),
 	}
 	return &u, nil
-	return &user{}, nil
 }
 
 // hasLogin sets the checked property of the has-login input.
-func hasLogin(loggedIn bool) {
+func (u User) hasLogin(loggedIn bool) {
 	dom.SetChecked("has-login", loggedIn)
 }
 
 // JWT gets the value of the jwt input.
-func JWT() string {
+func (u User) JWT() string {
 	return dom.GetValue("jwt")
 }
 
 // escapePassword escapes the password for html dom input pattern matching using Regexp.
-func escapePassword(p string) string {
-	escapeRE := regexp.MustCompile("([" + regexp.QuoteMeta(`\^$*+?.()|[]{}`) + "])")
-	return string(escapeRE.ReplaceAll([]byte(p), []byte(`\$1`)))
+func (u User) escapePassword(p string) string {
+	return string(u.escapeRE.ReplaceAll([]byte(p), []byte(`\$1`)))
 }

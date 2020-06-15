@@ -4,6 +4,7 @@
 package dom
 
 import (
+	"errors"
 	"net/url"
 	"strings"
 	"syscall/js"
@@ -17,8 +18,7 @@ type (
 	Form struct {
 		v         js.Value
 		Method    string
-		URL       string
-		URLSuffix string
+		URL       url.URL
 		Params    url.Values
 	}
 
@@ -232,13 +232,14 @@ func Send(m game.Message) {
 	WebSocket.Send(m)
 }
 
-func NewForm(event js.Value) Form {
+func NewForm(event js.Value) (*Form, error) {
 	form := event.Get("target")
 	method := form.Get("method").String()
-	url := form.Get("action").String()
-	origin := js.Global().Get("location").Get("origin").String()
-	urlSuffixIndex := len(origin)
-	urlSuffix := url[urlSuffixIndex:]
+	action := form.Get("action").String()
+	url, err := url.Parse(action)
+	if err != nil {
+		return nil, errors.New("getting url from form action: " + err.Error())
+	}
 	formInputs := form.Call("querySelectorAll", `input[name]:not([type="submit"])`)
 	params := make(map[string][]string, formInputs.Length())
 	for i := 0; i < formInputs.Length(); i++ {
@@ -248,13 +249,12 @@ func NewForm(event js.Value) Form {
 		params[name] = []string{value}
 	}
 	f := Form{
-		v:         form,
-		Method:    method,
-		URL:       url,
-		URLSuffix: urlSuffix,
-		Params:    params,
+		v:      form,
+		Method: method,
+		URL:    *url,
+		Params: params,
 	}
-	return f
+	return &f, nil
 }
 
 // Reset clears the named inputs of the form.

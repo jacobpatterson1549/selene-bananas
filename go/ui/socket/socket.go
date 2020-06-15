@@ -14,17 +14,26 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/controller"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
-	"github.com/jacobpatterson1549/selene-bananas/go/ui/user"
 )
 
 type (
+	// Socket can be used to easily push and pull messages from the server.
 	Socket struct {
 		webSocket       js.Value
 		Game            *controller.Game
+		User            User
 		onOpenJsFunc    js.Func
 		onCloseJsFunc   js.Func
 		onErrorJsFunc   js.Func
 		onMessageJsFunc js.Func
+	}
+
+	// User is the state of the current user.
+	User interface {
+		// JWT gets the use's Java Web Token.
+		JWT() string
+		// Logout releases the use credentials from the browser.
+		Logout()
 	}
 )
 
@@ -50,13 +59,11 @@ func (s *Socket) Connect(event js.Value) error {
 	if s.isOpen() {
 		return nil
 	}
-	f := dom.NewForm(event)
-	url := f.URL
-	if len(url) >= 4 && url[:4] == "http" {
-		url = "ws" + url[4:]
+	f, err := dom.NewForm(event)
+	if err != nil {
+		return err
 	}
-	jwt := user.JWT()
-	url = url + "?access_token=" + jwt //TODO: write f.encodedParamasUrl() func
+	url := s.getWebSocketURL(*f)
 	s.releaseWebSocketJsFuncs()
 	errC := make(chan error)
 	s.onOpenJsFunc = dom.NewJsFunc(s.onOpen(errC))
@@ -69,6 +76,20 @@ func (s *Socket) Connect(event js.Value) error {
 	s.webSocket.Set("onerror", s.onErrorJsFunc)
 	s.webSocket.Set("onmessage", s.onMessageJsFunc)
 	return <-errC
+}
+
+// getWebSocketURL creates a websocket url from the form, changing it's scheme and adding an access_token.
+func (s *Socket) getWebSocketURL(f dom.Form) string {
+	switch f.URL.Scheme {
+	case "http":
+		f.URL.Scheme = "ws"
+	default:
+		f.URL.Scheme = "wss"
+	}
+	jwt := s.User.JWT() // TODO: mock for tests
+	f.Params.Add("access_token", jwt)
+	f.URL.RawQuery = f.Params.Encode()
+	return f.URL.String()
 }
 
 // onMessage is called when the websocket opens.
@@ -94,7 +115,7 @@ func (s *Socket) onClose(event js.Value) {
 // onMessage is called when the websocket encounters an unexpected error.
 func (s *Socket) onError(errC chan<- error) func() {
 	return func() {
-		user.Logout()
+		s.User.Logout()
 		errC <- errors.New("lobby closed")
 	}
 }
@@ -134,11 +155,12 @@ func (s *Socket) onMessage(event js.Value) {
 // Send delivers a message to the server via it's websocket, panicing if the WebSocket is not open.
 func (s Socket) Send(m game.Message) {
 	if !s.isOpen() {
-		panic("websocket not open")
+		log.Error("websocket not open")
+		return
 	}
 	messageJSON, err := json.Marshal(m)
 	if err != nil {
-		panic("marshalling socket message to send: " + err.Error())
+		log.Error("marshalling socket message to send: " + err.Error())
 		return
 	}
 	s.webSocket.Call("send", js.ValueOf(string(messageJSON)))

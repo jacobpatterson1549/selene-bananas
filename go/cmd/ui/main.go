@@ -4,8 +4,10 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"syscall/js"
+	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/canvas"
@@ -28,7 +30,11 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	// log
 	log.InitDom(ctx, wg)
 	// user
-	user.InitDom(ctx, wg)
+	httpClient := http.Client{
+		Timeout: 5 * time.Second,
+	}
+	u := user.New(&httpClient)
+	u.InitDom(ctx, wg)
 	// canvas
 	document := js.Global().Get("document")
 	canvasElement := document.Call("querySelector", "#game>canvas")
@@ -49,6 +55,7 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	// websocket
 	s := socket.Socket{
 		Game: &g,
+		User: &u,
 	}
 	s.InitDom(ctx, wg)
 	// lobby

@@ -10,7 +10,7 @@ func TestGetUser(t *testing.T) {
 	getUserTests := []struct {
 		jwt     string
 		wantErr bool
-		want    user
+		want    userInfo
 	}{
 		{
 			jwt:     "onlyTWO.parts",
@@ -22,7 +22,7 @@ func TestGetUser(t *testing.T) {
 		},
 		{
 			jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwb2ludHMiOjE4LCJleHAiOjMxNTM2MDAwLCJzdWIiOiJzZWxlbmUifQ.C4w9IKwB3k3Db40R5FYdeqfg66gYCF7l5s821WlLuJY",
-			want: user{
+			want: userInfo{
 				username: "selene",
 				points:   18,
 			},
@@ -47,8 +47,9 @@ func TestGetUser(t *testing.T) {
 func TestEscapePassword(t *testing.T) {
 	init := `ok characters are: ` + "`" + `'"<>%&_:;/, escaped are  \^$*+?.()|[]{} but snowman should be unescaped: ☃`
 	want := `ok characters are: ` + "`" + `'"<>%&_:;/, escaped are  \\\^\$\*\+\?\.\(\)\|\[\]\{\} but snowman should be unescaped: ☃`
-	got := escapePassword(init)
+	u := New(nil)
+	got := u.escapePassword(init)
 	if want != got {
-	t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
+		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
 	}
 }

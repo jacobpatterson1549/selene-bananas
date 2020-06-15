@@ -55,7 +55,11 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	finishJsFunc := dom.NewJsFunc(g.Finish)
 	snagTileJsFunc := dom.NewJsFunc(g.SnagTile)
 	sendChatJsFunc := dom.NewJsEventFunc(func(event js.Value) {
-		f := dom.NewForm(event)
+		f, err := dom.NewForm(event)
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
 		message := f.Params.Get("chat")
 		f.Reset()
 		g.SendChat(message)
