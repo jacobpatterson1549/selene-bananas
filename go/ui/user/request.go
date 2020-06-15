@@ -41,7 +41,7 @@ func (u User) request(f dom.Form) {
 		return
 	case response.StatusCode >= 400:
 		log.Error(response.Status)
-		// TODO: logout user on http error?
+		u.Logout()
 		return
 	case r.handler != nil:
 		r.handler(response.Body)
