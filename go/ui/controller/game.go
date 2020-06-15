@@ -220,7 +220,7 @@ func (g *Game) updateStatus(m game.Message) {
 	dom.SetButtonDisabled("game-swap", swapDisabled)
 	dom.SetButtonDisabled("game-start", startDisabled)
 	dom.SetButtonDisabled("game-finish", finishDisabled)
-	g.canvas.GameStatus = m.GameStatus
+	g.canvas.GameStatus(m.GameStatus)
 }
 
 // updateTilesLeft updates the TilesLeft label.  Other labels are updated if there are no tiles left.

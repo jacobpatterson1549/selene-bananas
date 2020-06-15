@@ -24,7 +24,7 @@ type (
 		draw      drawMetrics
 		selection selection
 		touchPos
-		GameStatus game.Status // TODO: delete gameInProgress checkbox input
+		gameStatus game.Status // TODO: delete gameInProgress checkbox input
 	}
 
 	// Config contains the parameters to create a Canvas
@@ -210,6 +210,10 @@ func (c *Canvas) Redraw() {
 		c.draw.numCols*c.draw.tileLength, c.draw.numRows*c.draw.tileLength)
 	c.drawUsedTiles(false)
 	switch {
+	case c.gameStatus == game.NotStarted:
+		c.ctx.FillText("Not Started",
+			c.draw.usedMinX+2*c.draw.tileLength,
+			c.draw.usedMinY+3*c.draw.tileLength-c.draw.textOffset)
 	case c.selection.moveState == rect:
 		c.drawSelectionRectangle()
 	case len(c.selection.tileIds) > 0:
@@ -218,11 +222,14 @@ func (c *Canvas) Redraw() {
 		c.drawUnusedTiles(true)
 		c.drawUsedTiles(true)
 	}
-	if c.GameStatus == game.NotStarted {
-		c.ctx.FillText("Not Started",
-			c.draw.usedMinX+2*c.draw.tileLength,
-			c.draw.usedMinY+3*c.draw.tileLength-c.draw.textOffset)
-	}
+}
+
+// GameStatus sets the gameStatus for the canvas.  The canvas is redrawn afterwards to clean up drawing artifacts
+func (c *Canvas) GameStatus(s game.Status) {
+	c.gameStatus = s
+	c.selection.setMoveState(none)
+	c.selection.tileIds = map[tile.ID]struct{}{}
+	c.Redraw()
 }
 
 func (c *Canvas) drawUnusedTiles(fromSelection bool) {
@@ -292,7 +299,7 @@ func (c *Canvas) drawSelectionRectangle() {
 
 // MoveStart should be called when a move is started to be made at the specified coordinates.
 func (c *Canvas) MoveStart(x, y int) {
-	if c.GameStatus != game.InProgress {
+	if c.gameStatus != game.InProgress {
 		return
 	}
 	c.selection.startX, c.selection.endX = x, x
@@ -333,7 +340,7 @@ func (c *Canvas) MoveStart(x, y int) {
 
 // MoveCursor should be called whenever the cursor moves, regardless of if a move is being made.
 func (c *Canvas) MoveCursor(x, y int) {
-	if c.GameStatus != game.InProgress {
+	if c.gameStatus != game.InProgress {
 		return
 	}
 	switch c.selection.moveState {
@@ -355,7 +362,7 @@ func (c *Canvas) MoveCursor(x, y int) {
 
 // MoveEnd should be called when a move is done being made at the specified coordinates.
 func (c *Canvas) MoveEnd(x, y int) {
-	if c.GameStatus != game.InProgress {
+	if c.gameStatus != game.InProgress {
 		return
 	}
 	c.selection.endX = x
