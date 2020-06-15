@@ -45,22 +45,21 @@ func TestWords(t *testing.T) {
 	}
 }
 
-func TestWordsReal(t *testing.T) {
-	t.Skip("skipping integration test") // !!! Disables integration test with large file !!!
-	wordsFile := "/usr/share/dict/american-english-small"
+func BenchmarkAmericanEnglishLarge(b *testing.B) {
+	wordsFile := "/usr/share/dict/american-english-large"
 	f, err := os.Open(wordsFile)
 	if err != nil {
-		t.Fatalf("could not open wordsFile %v", err)
+		b.Fatalf("could not open wordsFile: %v", err)
 	}
 	wc, err := NewWordChecker(f)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		b.Fatalf("unexpected error: %v", err)
 	}
-	want := 40067
+	want := 114064
 	got := len(wc.words)
 	if want != got {
 		note := "NOTE: this might be flaky, but it ensures that a large number of words can be loaded."
-		t.Errorf("wanted %v words, got %v\n%v", want, got, note)
+		b.Errorf("wanted %v words, got %v\n%v", want, got, note)
 	}
 }
 
