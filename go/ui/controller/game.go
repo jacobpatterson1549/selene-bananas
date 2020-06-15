@@ -168,7 +168,7 @@ func (g *Game) addUnusedTiles(m game.Message) {
 			return
 		}
 	}
-	if m.Type == game.Join {
+	if m.Type != game.Join {
 		message := "adding unused tile"
 		if len(tileStrings) == 1 {
 			message += "s"
