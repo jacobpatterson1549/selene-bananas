@@ -24,7 +24,7 @@ type (
 		draw      drawMetrics
 		selection selection
 		touchPos
-		gameStatus game.Status // TODO: delete gameInProgress checkbox input
+		gameStatus game.Status
 	}
 
 	// Config contains the parameters to create a Canvas
