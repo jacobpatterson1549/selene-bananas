@@ -36,3 +36,16 @@ const (
 	// Finished is the status of a game that has no tiles left and has a winner that has used all his tiles to form one group of interconnected words.
 	Finished
 )
+
+// String returns the display value for the status.
+func (s Status) String() string {
+	switch s {
+	case NotStarted:
+		return "Not Started"
+	case InProgress:
+		return "In Progress"
+	case Finished:
+		return "Finished"
+	}
+	return "?"
+}

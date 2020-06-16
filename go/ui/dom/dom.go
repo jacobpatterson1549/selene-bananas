@@ -127,17 +127,6 @@ func SetGameInfos(gameInfos []game.Info) {
 		tbodyElement.Call("appendChild", emptyGameInfoElement)
 		return
 	}
-	getStatus := func(i game.Info) string {
-		switch i.Status {
-		case game.NotStarted:
-			return "Not Started"
-		case game.InProgress:
-			return "In Progress"
-		case game.Finished:
-			return "Finished"
-		}
-		return "?"
-	}
 	for _, gameInfo := range gameInfos {
 		gameInfoElement := cloneElementById("game-info-row")
 		rowElement := gameInfoElement.Get("children").Index(0)
@@ -145,7 +134,7 @@ func SetGameInfos(gameInfos []game.Info) {
 		rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
 		players := strings.Join(gameInfo.Players, ", ")
 		rowElement.Get("children").Index(1).Set("innerHTML", players)
-		status := getStatus(gameInfo)
+		status := gameInfo.Status.String()
 		rowElement.Get("children").Index(2).Set("innerHTML", status)
 		if gameInfo.CanJoin {
 			joinGameButtonElement := cloneElementById("join-game-button")
