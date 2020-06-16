@@ -159,7 +159,6 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup, canvasElement 
 	}
 	mouseUpFunc := func(event js.Value) {
 		c.MoveEnd(mousePP.fromMouse(event))
-		println("move end")
 	}
 	mouseMoveFunc := func(event js.Value) {
 		c.MoveCursor(mousePP.fromMouse(event))
@@ -457,7 +456,7 @@ func (c Canvas) calculateSelectedUnusedTiles(minX, maxX, minY, maxY int) map[til
 		maxI = len(c.board.UnusedTileIDs)
 	}
 	tiles := make(map[tile.ID]tileSelection)
-	for i, id := range c.board.UnusedTileIDs[minI:maxI] {
+	for i, id := range c.board.UnusedTileIDs[minI : maxI+1] {
 		t := c.board.UnusedTiles[id]
 		tiles[id] = tileSelection{
 			used:  false,
