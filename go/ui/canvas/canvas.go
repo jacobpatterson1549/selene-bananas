@@ -56,10 +56,8 @@ type (
 		height     int
 		tileLength int
 		textOffset int
-		unusedMinX int
-		unusedMinY int
-		usedMinX   int
-		usedMinY   int
+		unusedMin  pixelPosition
+		usedMin    pixelPosition
 		numRows    int
 		numCols    int
 	}
@@ -132,12 +130,16 @@ func (cfg Config) New(ctx Context, board *board.Board) Canvas {
 			height:     cfg.Height,
 			tileLength: cfg.TileLength,
 			textOffset: textOffset,
-			unusedMinX: unusedMinX,
-			unusedMinY: unusedMinY,
-			usedMinX:   usedMinX,
-			usedMinY:   usedMinY,
-			numRows:    numRows,
-			numCols:    numCols,
+			unusedMin: pixelPosition{
+				x: unusedMinX,
+				y: unusedMinY,
+			},
+			usedMin: pixelPosition{
+				x: usedMinX,
+				y: usedMinY,
+			},
+			numRows: numRows,
+			numCols: numCols,
 		},
 		selection: selection{
 			tiles: make(map[tile.ID]tileSelection),
@@ -202,17 +204,17 @@ func (c *Canvas) Redraw() {
 	c.ctx.FillRect(0, 0, c.draw.width, c.draw.height)
 	c.ctx.SetStrokeColor(mainColor)
 	c.ctx.SetFillColor(mainColor)
-	c.ctx.FillText("Unused Tiles", 0, c.draw.unusedMinY-c.draw.textOffset)
+	c.ctx.FillText("Unused Tiles", 0, c.draw.unusedMin.y-c.draw.textOffset)
 	c.drawUnusedTiles(false)
-	c.ctx.FillText("Game Area:", 0, c.draw.usedMinY-c.draw.textOffset)
-	c.ctx.StrokeRect(c.draw.usedMinX, c.draw.usedMinY,
+	c.ctx.FillText("Game Area:", 0, c.draw.usedMin.y-c.draw.textOffset)
+	c.ctx.StrokeRect(c.draw.usedMin.x, c.draw.usedMin.y,
 		c.draw.numCols*c.draw.tileLength, c.draw.numRows*c.draw.tileLength)
 	c.drawUsedTiles(false)
 	switch {
 	case c.gameStatus == game.NotStarted:
 		c.ctx.FillText("Not Started",
-			c.draw.usedMinX+2*c.draw.tileLength,
-			c.draw.usedMinY+3*c.draw.tileLength-c.draw.textOffset)
+			c.draw.usedMin.x+2*c.draw.tileLength,
+			c.draw.usedMin.y+3*c.draw.tileLength-c.draw.textOffset)
 	case c.selection.moveState == rect:
 		c.drawSelectionRectangle()
 	case len(c.selection.tiles) > 0:
@@ -233,8 +235,8 @@ func (c *Canvas) GameStatus(s game.Status) {
 
 func (c *Canvas) drawUnusedTiles(fromSelection bool) {
 	for i, id := range c.board.UnusedTileIDs {
-		x := c.draw.unusedMinX + i*c.draw.tileLength
-		y := c.draw.unusedMinY
+		x := c.draw.unusedMin.x + i*c.draw.tileLength
+		y := c.draw.unusedMin.y
 		t := c.board.UnusedTiles[id]
 		c.drawTile(x, y, t, fromSelection)
 	}
@@ -243,8 +245,8 @@ func (c *Canvas) drawUnusedTiles(fromSelection bool) {
 func (c *Canvas) drawUsedTiles(fromSelection bool) {
 	for xCol, yUsedTileLocs := range c.board.UsedTileLocs {
 		for yRow, t := range yUsedTileLocs {
-			x := c.draw.usedMinX + int(xCol)*c.draw.tileLength
-			y := c.draw.usedMinY + int(yRow)*c.draw.tileLength
+			x := c.draw.usedMin.x + int(xCol)*c.draw.tileLength
+			y := c.draw.usedMin.y + int(yRow)*c.draw.tileLength
 			c.drawTile(x, y, t, fromSelection)
 		}
 	}
@@ -396,9 +398,9 @@ func (c *Canvas) swap() {
 // getTileSelection returns the tile at the specified coordinates on the canvas or nil if none exists
 func (c Canvas) tileSelection(pp pixelPosition) *tileSelection {
 	switch {
-	case c.draw.unusedMinX <= pp.x && pp.x < c.draw.unusedMinX+len(c.board.UnusedTileIDs)*c.draw.tileLength &&
-		c.draw.unusedMinY <= pp.y && pp.y < c.draw.unusedMinY+c.draw.tileLength:
-		idx := (pp.x - c.draw.unusedMinX) / c.draw.tileLength
+	case c.draw.unusedMin.x <= pp.x && pp.x < c.draw.unusedMin.x+len(c.board.UnusedTileIDs)*c.draw.tileLength &&
+		c.draw.unusedMin.y <= pp.y && pp.y < c.draw.unusedMin.y+c.draw.tileLength:
+		idx := (pp.x - c.draw.unusedMin.x) / c.draw.tileLength
 		id := c.board.UnusedTileIDs[idx]
 		if t, ok := c.board.UnusedTiles[id]; ok {
 			var ts tileSelection
@@ -406,10 +408,10 @@ func (c Canvas) tileSelection(pp pixelPosition) *tileSelection {
 			ts.tile = t
 			return &ts
 		}
-	case c.draw.usedMinX <= pp.x && pp.x < c.draw.usedMinX+c.draw.numCols*c.draw.tileLength &&
-		c.draw.usedMinY <= pp.y && pp.y < c.draw.usedMinY+c.draw.numRows*c.draw.tileLength:
-		col := tile.X((pp.x - c.draw.usedMinX) / c.draw.tileLength)
-		row := tile.Y((pp.y - c.draw.usedMinY) / c.draw.tileLength)
+	case c.draw.usedMin.x <= pp.x && pp.x < c.draw.usedMin.x+c.draw.numCols*c.draw.tileLength &&
+		c.draw.usedMin.y <= pp.y && pp.y < c.draw.usedMin.y+c.draw.numRows*c.draw.tileLength:
+		col := tile.X((pp.x - c.draw.usedMin.x) / c.draw.tileLength)
+		row := tile.Y((pp.y - c.draw.usedMin.y) / c.draw.tileLength)
 		if yUsedTileLocs, ok := c.board.UsedTileLocs[col]; ok {
 			if t, ok := yUsedTileLocs[row]; ok {
 				var ts tileSelection
@@ -441,17 +443,17 @@ func (c Canvas) calculateSelectedTiles() map[tile.ID]tileSelection {
 
 func (c Canvas) calculateSelectedUnusedTiles(minX, maxX, minY, maxY int) map[tile.ID]tileSelection {
 	switch {
-	case maxX < c.draw.unusedMinX,
-		c.draw.unusedMinX+len(c.board.UnusedTileIDs)*c.draw.tileLength <= minX,
-		maxY < c.draw.unusedMinY,
-		c.draw.unusedMinY+c.draw.tileLength <= minY:
+	case maxX < c.draw.unusedMin.x,
+		c.draw.unusedMin.x+len(c.board.UnusedTileIDs)*c.draw.tileLength <= minX,
+		maxY < c.draw.unusedMin.y,
+		c.draw.unusedMin.y+c.draw.tileLength <= minY:
 		return map[tile.ID]tileSelection{}
 	}
-	minI := (minX - c.draw.unusedMinX) / c.draw.tileLength
+	minI := (minX - c.draw.unusedMin.x) / c.draw.tileLength
 	if minI < 0 {
 		minI = 0
 	}
-	maxI := (maxX - c.draw.unusedMinX) / c.draw.tileLength
+	maxI := (maxX - c.draw.unusedMin.x) / c.draw.tileLength
 	if maxI > len(c.board.UnusedTileIDs) {
 		maxI = len(c.board.UnusedTileIDs)
 	}
@@ -469,16 +471,16 @@ func (c Canvas) calculateSelectedUnusedTiles(minX, maxX, minY, maxY int) map[til
 
 func (c Canvas) calculateSelectedUsedTiles(minX, maxX, minY, maxY int) map[tile.ID]tileSelection {
 	switch {
-	case maxX < c.draw.usedMinX,
-		c.draw.usedMinX+c.draw.numCols*c.draw.tileLength <= minX,
-		maxY < c.draw.usedMinY,
-		c.draw.usedMinY+c.draw.numRows*c.draw.tileLength <= minY:
+	case maxX < c.draw.usedMin.x,
+		c.draw.usedMin.x+c.draw.numCols*c.draw.tileLength <= minX,
+		maxY < c.draw.usedMin.y,
+		c.draw.usedMin.y+c.draw.numRows*c.draw.tileLength <= minY:
 		return map[tile.ID]tileSelection{}
 	}
-	minCol := tile.X((minX - c.draw.usedMinX) / c.draw.tileLength)
-	maxCol := tile.X((maxX - c.draw.usedMinX) / c.draw.tileLength)
-	minRow := tile.Y((minY - c.draw.usedMinY) / c.draw.tileLength)
-	maxRow := tile.Y((maxY - c.draw.usedMinY) / c.draw.tileLength)
+	minCol := tile.X((minX - c.draw.usedMin.x) / c.draw.tileLength)
+	maxCol := tile.X((maxX - c.draw.usedMin.x) / c.draw.tileLength)
+	minRow := tile.Y((minY - c.draw.usedMin.y) / c.draw.tileLength)
+	maxRow := tile.Y((maxY - c.draw.usedMin.y) / c.draw.tileLength)
 	tileIds := make(map[tile.ID]tileSelection)
 	for col, yUsedTileLocs := range c.board.UsedTileLocs {
 		if minCol <= col && col <= maxCol {
@@ -521,8 +523,8 @@ func (c Canvas) selectionTilePositions() []tile.Position {
 		return []tile.Position{}
 	}
 	startTS := c.tileSelection(c.selection.start)
-	endC := (c.selection.end.x - c.draw.usedMinX) / c.draw.tileLength
-	endR := (c.selection.end.y - c.draw.usedMinY) / c.draw.tileLength
+	endC := (c.selection.end.x - c.draw.usedMin.x) / c.draw.tileLength
+	endR := (c.selection.end.y - c.draw.usedMin.y) / c.draw.tileLength
 	switch {
 	case startTS == nil:
 		log.Error("no tile position at start position")
