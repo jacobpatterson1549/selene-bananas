@@ -255,7 +255,6 @@ func (c *Canvas) drawUsedTiles(fromSelection bool) {
 func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
 	switch {
 	case fromSelection:
-		// TODO: write test to show that tiles that are not selected should not be drawn if the drawing mode is for selected tiles only.
 		// only draw selected tiles
 		if _, ok := c.selection.tiles[t.ID]; !ok {
 			return
@@ -265,7 +264,7 @@ func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
 		y += c.selection.end.y - c.selection.start.y
 	case c.selection.moveState == drag:
 		// do not draw tiles in selection at their original locations
-		if _, ok := c.selection.tiles[t.ID]; ok { // (TODO: similar test as that above)
+		if _, ok := c.selection.tiles[t.ID]; ok {
 			return
 		}
 	}
