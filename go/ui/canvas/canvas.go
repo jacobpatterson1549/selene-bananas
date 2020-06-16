@@ -67,7 +67,7 @@ type (
 	// selection represents what the cursor has done for the current move
 	selection struct {
 		moveState moveState
-		tileIds   map[tile.ID]struct{}
+		tiles     map[tile.ID]tileSelection
 		isSeen    bool
 		startX    int
 		startY    int
@@ -76,17 +76,20 @@ type (
 	}
 
 	// touchPos represents the position of the previous screen touch
+	// TODO: rename to position, replace all "Loc" with "Pos", move into selection, replace start&end there, compose in tile.Position, compose tile in tile.Position
 	touchPos struct {
 		x int
 		y int
 	}
 
 	// tileSelection represents a tile that the cursor/touch is on
+	// If no negative tilePositions were allowed, a negative X could signify isUsed=false and the Y could be the index, but this would silently be bug-ridden if negative positions were ever allowed.
 	tileSelection struct {
-		tile   tile.Tile
-		isUsed bool // TODO make r/c be a union of index in unused array.  This would help simplify determining the new positions.  Maybe compose in tile.Position?
-		r      int
-		c      int
+		used  bool
+		index int
+		tile  tile.Tile
+		x     tile.X
+		y     tile.Y
 	}
 )
 
@@ -140,7 +143,7 @@ func (cfg Config) New(ctx Context, board *board.Board) Canvas {
 			numCols:    numCols,
 		},
 		selection: selection{
-			tileIds: make(map[tile.ID]struct{}),
+			tiles: make(map[tile.ID]tileSelection),
 		},
 	}
 	return c
@@ -219,7 +222,7 @@ func (c *Canvas) Redraw() {
 			c.draw.usedMinY+3*c.draw.tileLength-c.draw.textOffset)
 	case c.selection.moveState == rect:
 		c.drawSelectionRectangle()
-	case len(c.selection.tileIds) > 0:
+	case len(c.selection.tiles) > 0:
 		c.ctx.SetStrokeColor(dragColor)
 		c.ctx.SetFillColor(dragColor)
 		c.drawUnusedTiles(true)
@@ -231,7 +234,7 @@ func (c *Canvas) Redraw() {
 func (c *Canvas) GameStatus(s game.Status) {
 	c.gameStatus = s
 	c.selection.setMoveState(none)
-	c.selection.tileIds = map[tile.ID]struct{}{}
+	c.selection.tiles = map[tile.ID]tileSelection{}
 	c.Redraw()
 }
 
@@ -259,7 +262,7 @@ func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
 	case fromSelection:
 		// TODO: write test to show that tiles that are not selected should not be drawn if the drawing mode is for selected tiles only.
 		// only draw selected tiles
-		if _, ok := c.selection.tileIds[t.ID]; !ok {
+		if _, ok := c.selection.tiles[t.ID]; !ok {
 			return
 		}
 		// draw tile with change in location
@@ -267,7 +270,7 @@ func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
 		y += c.selection.endY - c.selection.startY
 	case c.selection.moveState == drag:
 		// do not draw tiles in selection at their original locations
-		if _, ok := c.selection.tileIds[t.ID]; ok { // (TODO: similar test as that above)
+		if _, ok := c.selection.tiles[t.ID]; ok { // (TODO: similar test as that above)
 			return
 		}
 	}
@@ -290,34 +293,34 @@ func (c *Canvas) MoveStart(x, y int) {
 	}
 	c.selection.startX, c.selection.endX = x, x
 	c.selection.startY, c.selection.endY = y, y
-	tileSelection := c.tileSelection(x, y)
+	ts := c.tileSelection(x, y)
 	if c.selection.moveState == swap {
 		switch {
-		case tileSelection == nil:
+		case ts == nil:
 			c.selection.setMoveState(none)
 			log.Info("swap cancelled")
 		default:
-			tileId := tileSelection.tile.ID
-			c.selection.tileIds[tileId] = struct{}{}
+			tileId := ts.tile.ID
+			c.selection.tiles[tileId] = *ts
 		}
 		return
 	}
-	hasPreviousSelection := len(c.selection.tileIds) > 0
+	hasPreviousSelection := len(c.selection.tiles) > 0
 	switch {
-	case hasPreviousSelection && tileSelection != nil:
-		tileId := tileSelection.tile.ID
-		if _, ok := c.selection.tileIds[tileId]; !ok {
-			c.selection.tileIds = make(map[tile.ID]struct{})
-			c.selection.tileIds[tileId] = struct{}{} // [same as case 3]
+	case hasPreviousSelection && ts != nil:
+		tileId := ts.tile.ID
+		if _, ok := c.selection.tiles[tileId]; !ok {
+			c.selection.tiles = make(map[tile.ID]tileSelection)
+			c.selection.tiles[tileId] = *ts
 		}
 		c.selection.setMoveState(drag)
 	case hasPreviousSelection:
-		c.selection.tileIds = make(map[tile.ID]struct{})
+		c.selection.tiles = make(map[tile.ID]tileSelection)
 		c.selection.setMoveState(none)
 		c.Redraw()
-	case tileSelection != nil:
-		tileId := tileSelection.tile.ID
-		c.selection.tileIds[tileId] = struct{}{}
+	case ts != nil:
+		tileId := ts.tile.ID
+		c.selection.tiles[tileId] = *ts
 		c.selection.setMoveState(drag)
 	default:
 		c.selection.setMoveState(rect)
@@ -358,14 +361,14 @@ func (c *Canvas) MoveEnd(x, y int) {
 		c.selection.setMoveState(none)
 		c.swap()
 	case rect:
-		c.selection.tileIds = c.calculateSelectedTileIds()
+		c.selection.tiles = c.calculateSelectedTiles()
 		c.selection.setMoveState(none)
 		c.selection.startX, c.selection.endX = 0, 0
 		c.selection.startY, c.selection.endY = 0, 0
 		c.Redraw()
 	case drag:
 		c.moveSelectedTiles()
-		c.selection.tileIds = make(map[tile.ID]struct{})
+		c.selection.tiles = make(map[tile.ID]tileSelection)
 		c.selection.setMoveState(none)
 		c.Redraw()
 	}
@@ -375,27 +378,27 @@ func (c *Canvas) MoveEnd(x, y int) {
 func (c *Canvas) StartSwap() {
 	log.Info("click a tile to swap for three others from the pile")
 	c.selection.setMoveState(swap)
-	c.selection.tileIds = make(map[tile.ID]struct{})
+	c.selection.tiles = make(map[tile.ID]tileSelection)
 	c.Redraw()
 }
 
 // swap trades a tile for some new ones
 func (c *Canvas) swap() {
-	tileSelection := c.tileSelection(c.selection.endX, c.selection.endY)
-	tileWasSelected := func() bool {
-		_, ok := c.selection.tileIds[tileSelection.tile.ID]
+	endTS := c.tileSelection(c.selection.endX, c.selection.endY)
+	endTileWasSelected := func() bool {
+		_, ok := c.selection.tiles[endTS.tile.ID]
 		return ok
 	}
-	if tileSelection == nil || !tileWasSelected() {
+	if endTS == nil || !endTileWasSelected() {
 		log.Info("swap cancelled")
 	}
-	if err := c.board.RemoveTile(tileSelection.tile); err != nil {
+	if err := c.board.RemoveTile(endTS.tile); err != nil {
 		log.Error("removing tile while swapping: " + err.Error())
 	}
 	dom.Send(game.Message{
 		Type: game.Swap,
 		Tiles: []tile.Tile{
-			tileSelection.tile,
+			endTS.tile,
 		},
 	})
 }
@@ -408,50 +411,51 @@ func (c Canvas) tileSelection(x, y int) *tileSelection {
 		idx := (x - c.draw.unusedMinX) / c.draw.tileLength
 		id := c.board.UnusedTileIDs[idx]
 		if t, ok := c.board.UnusedTiles[id]; ok {
-			return &tileSelection{
-				tile: t,
-			}
+			var ts tileSelection
+			ts.index = idx
+			ts.tile = t
+			return &ts
 		}
 	case c.draw.usedMinX <= x && x < c.draw.usedMinX+c.draw.numCols*c.draw.tileLength &&
 		c.draw.usedMinY <= y && y < c.draw.usedMinY+c.draw.numRows*c.draw.tileLength:
-		col := (x - c.draw.usedMinX) / c.draw.tileLength
-		row := (y - c.draw.usedMinY) / c.draw.tileLength
-		if yUsedTileLocs, ok := c.board.UsedTileLocs[tile.X(col)]; ok {
-			if t, ok := yUsedTileLocs[tile.Y(row)]; ok {
-				return &tileSelection{
-					tile:   t,
-					isUsed: true,
-					c:      col,
-					r:      row,
-				}
+		col := tile.X((x - c.draw.usedMinX) / c.draw.tileLength)
+		row := tile.Y((y - c.draw.usedMinY) / c.draw.tileLength)
+		if yUsedTileLocs, ok := c.board.UsedTileLocs[col]; ok {
+			if t, ok := yUsedTileLocs[row]; ok {
+				var ts tileSelection
+				ts.used = true
+				ts.tile = t
+				ts.x = col
+				ts.y = row
+				return &ts
 			}
 		}
 	}
 	return nil
 }
 
-func (c Canvas) calculateSelectedTileIds() map[tile.ID]struct{} {
+func (c Canvas) calculateSelectedTiles() map[tile.ID]tileSelection {
 	minX, maxX := sort(c.selection.startX, c.selection.endX)
 	minY, maxY := sort(c.selection.startY, c.selection.endY)
-	selectedUnusedTileIds := c.calculateSelectedUnusedTileIds(minX, maxX, minY, maxY)
-	selectedUsedTileIds := c.calculateSelectedUsedTileIds(minX, maxX, minY, maxY)
+	selectedUnusedTileIds := c.calculateSelectedUnusedTiles(minX, maxX, minY, maxY)
+	selectedUsedTileIds := c.calculateSelectedUsedTiles(minX, maxX, minY, maxY)
 	switch {
 	case len(selectedUnusedTileIds) == 0:
 		return selectedUsedTileIds
 	case len(selectedUsedTileIds) != 0:
-		return map[tile.ID]struct{}{} // cannot select used and unused tiles
+		return map[tile.ID]tileSelection{} // cannot select used and unused tiles
 	default:
 		return selectedUnusedTileIds
 	}
 }
 
-func (c Canvas) calculateSelectedUnusedTileIds(minX, maxX, minY, maxY int) map[tile.ID]struct{} {
+func (c Canvas) calculateSelectedUnusedTiles(minX, maxX, minY, maxY int) map[tile.ID]tileSelection {
 	switch {
 	case maxX < c.draw.unusedMinX,
 		c.draw.unusedMinX+len(c.board.UnusedTileIDs)*c.draw.tileLength <= minX,
 		maxY < c.draw.unusedMinY,
 		c.draw.unusedMinY+c.draw.tileLength <= minY:
-		return map[tile.ID]struct{}{}
+		return map[tile.ID]tileSelection{}
 	}
 	minI := (minX - c.draw.unusedMinX) / c.draw.tileLength
 	if minI < 0 {
@@ -461,31 +465,42 @@ func (c Canvas) calculateSelectedUnusedTileIds(minX, maxX, minY, maxY int) map[t
 	if maxI > len(c.board.UnusedTileIDs) {
 		maxI = len(c.board.UnusedTileIDs)
 	}
-	tileIds := make(map[tile.ID]struct{})
-	for _, tileId := range c.board.UnusedTileIDs[minI:maxI] {
-		tileIds[tileId] = struct{}{}
+	tiles := make(map[tile.ID]tileSelection)
+	for i, id := range c.board.UnusedTileIDs[minI:maxI] {
+		tiles[id] = tileSelection{
+			used: false,
+			tile: tile.Tile{
+				ID: id,
+			},
+			index: minI + i,
+		}
 	}
-	return tileIds
+	return tiles
 }
 
-func (c Canvas) calculateSelectedUsedTileIds(minX, maxX, minY, maxY int) map[tile.ID]struct{} {
+func (c Canvas) calculateSelectedUsedTiles(minX, maxX, minY, maxY int) map[tile.ID]tileSelection {
 	switch {
 	case maxX < c.draw.usedMinX,
 		c.draw.usedMinX+c.draw.numCols*c.draw.tileLength <= minX,
 		maxY < c.draw.usedMinY,
 		c.draw.usedMinY+c.draw.numRows*c.draw.tileLength <= minY:
-		return map[tile.ID]struct{}{}
+		return map[tile.ID]tileSelection{}
 	}
 	minCol := tile.X((minX - c.draw.usedMinX) / c.draw.tileLength)
 	maxCol := tile.X((maxX - c.draw.usedMinX) / c.draw.tileLength)
 	minRow := tile.Y((minY - c.draw.usedMinY) / c.draw.tileLength)
 	maxRow := tile.Y((maxY - c.draw.usedMinY) / c.draw.tileLength)
-	tileIds := make(map[tile.ID]struct{})
+	tileIds := make(map[tile.ID]tileSelection)
 	for col, yUsedTileLocs := range c.board.UsedTileLocs {
 		if minCol <= col && col <= maxCol {
 			for row, t := range yUsedTileLocs {
 				if minRow <= row && row <= maxRow {
-					tileIds[t.ID] = struct{}{}
+					tileIds[t.ID] = tileSelection{
+						used: true,
+						tile: t,
+						x:    col,
+						y:    row,
+					}
 				}
 			}
 		}
@@ -495,10 +510,12 @@ func (c Canvas) calculateSelectedUsedTileIds(minX, maxX, minY, maxY int) map[til
 
 func (c *Canvas) moveSelectedTiles() {
 	tilePositions := c.selectionTilePositions()
+	// TODO: selectionTilePositions() should return an empty array if any tile positions will overlap new places
+	//       afterwards, make CanMoveTiles private
 	if !c.board.CanMoveTiles(tilePositions) {
 		return
 	}
-	if err := c.board.MoveTiles(tilePositions); err != nil {
+	if err := c.board.MoveTiles(tilePositions); err != nil { // TODO: only do this if len(tilePositions) > 0
 		log.Error("moving tiles to presumably valid locations: " + err.Error())
 		return
 	}
@@ -511,37 +528,35 @@ func (c *Canvas) moveSelectedTiles() {
 }
 
 func (c Canvas) selectionTilePositions() []tile.Position {
-	if len(c.selection.tileIds) == 0 {
+	if len(c.selection.tiles) == 0 {
 		return []tile.Position{}
 	}
 	midTS := c.tileSelection(c.selection.startX, c.selection.startY)
 	endC := (c.selection.endX - c.draw.usedMinX) / c.draw.tileLength
 	endR := (c.selection.endY - c.draw.usedMinY) / c.draw.tileLength
 	switch {
-	case midTS.isUsed:
-		return c.selectionUsedTilePositions(midTS.tile, endC, endR)
+	case midTS == nil:
+		log.Error("no tile position at start position")
+		return []tile.Position{}
+	case midTS.used:
+		midTP := tile.Position{
+			// TODO: selectionUsedTilePositions should only accept 'Position' because only x, y are needed, not tile
+			X: midTS.x,
+			Y: midTS.y,
+		}
+		return c.selectionUsedTilePositions(midTP, endC, endR)
 	default:
-		return c.selectionUnusedTilePositions(midTS.tile, endC, endR)
+		return c.selectionUnusedTilePositions(midTS.index, endC, endR)
 	}
 }
 
-func (c Canvas) selectionUnusedTilePositions(midT tile.Tile, endC, endR int) []tile.Position {
+func (c Canvas) selectionUnusedTilePositions(midIndex int, endC, endR int) []tile.Position {
 	if endR < 0 || c.draw.numRows <= endR {
 		return []tile.Position{}
 	}
-	unusedTileIndex := func(id tile.ID) int { // TODO: make non-anonymous function -> store index when selecting maybe tileIds should be map[id]selection???
-		for i, id2 := range c.board.UnusedTileIDs {
-			if id == id2 {
-				return i
-			}
-		}
-		return -1
-	}
-	midTIdx := unusedTileIndex(midT.ID)
-	tilePositions := make([]tile.Position, 0, len(c.selection.tileIds))
-	for id, _ := range c.selection.tileIds {
-		tileIdx := unusedTileIndex(id)
-		deltaIdx := tileIdx - midTIdx
+	tilePositions := make([]tile.Position, 0, len(c.selection.tiles))
+	for id, ts := range c.selection.tiles {
+		deltaIdx := ts.index - midIndex
 		col := endC + deltaIdx
 		if col < 0 || c.draw.numCols <= col {
 			return []tile.Position{}
@@ -556,22 +571,20 @@ func (c Canvas) selectionUnusedTilePositions(midT tile.Tile, endC, endR int) []t
 	return tilePositions
 }
 
-func (c Canvas) selectionUsedTilePositions(midT tile.Tile, endC, endR int) []tile.Position {
-	tilePositions := make([]tile.Position, 0, len(c.selection.tileIds))
-	midTP := c.board.UsedTiles[midT.ID]
+func (c Canvas) selectionUsedTilePositions(midTP tile.Position, endC, endR int) []tile.Position {
+	tilePositions := make([]tile.Position, 0, len(c.selection.tiles))
 	deltaC := endC - int(midTP.X)
 	deltaR := endR - int(midTP.Y)
-	for id, _ := range c.selection.tileIds {
-		tp := c.board.UsedTiles[id]
-		col := int(tp.X) + deltaC
-		row := int(tp.Y) + deltaR
+	for _, ts := range c.selection.tiles {
+		col := int(ts.x) + deltaC
+		row := int(ts.y) + deltaR
 		switch {
 		case col < 0, c.draw.numCols <= col,
 			row < 0, c.draw.numRows <= row:
 			return []tile.Position{}
 		}
 		tilePositions = append(tilePositions, tile.Position{
-			Tile: tp.Tile,
+			Tile: ts.tile,
 			X:    tile.X(col),
 			Y:    tile.Y(row),
 		})
