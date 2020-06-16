@@ -3,8 +3,10 @@
 package canvas
 
 import (
+	"reflect"
 	"testing"
 
+	"github.com/jacobpatterson1549/selene-bananas/go/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
 )
 
@@ -49,7 +51,7 @@ func TestDrawTile(t *testing.T) {
 		},
 		{ // draw a tile if the user is dragging other tiles (the tile is not in the selection of tiles being dragged)
 			s: selection{
-				tiles: map[tile.ID]tileSelection{},
+				tiles:     map[tile.ID]tileSelection{},
 				moveState: drag,
 			},
 			fromSelection: false,
@@ -87,6 +89,48 @@ func TestDrawTile(t *testing.T) {
 		if test.wantDrawn != gotDrawn {
 			t.Errorf("Test %v: wanted tile to be drawn: %v", i, test.wantDrawn)
 		}
+	}
+}
+
+func TestCalculateSelectedUnusedTiles(t *testing.T) {
+	ta, _ := tile.New(tile.ID(11), 'A')
+	tb, _ := tile.New(tile.ID(22), 'B')
+	tc, _ := tile.New(tile.ID(33), 'C')
+	c := Canvas{
+		draw: drawMetrics{
+			tileLength: 2,
+			unusedMin: pixelPosition{
+				x: 1,
+				y: 8,
+			},
+		},
+		board: &board.Board{
+			UnusedTiles: map[tile.ID]tile.Tile{
+				ta.ID: *ta,
+				tb.ID: *tb,
+				tc.ID: *tc,
+			},
+			UnusedTileIDs: []tile.ID{
+				ta.ID,
+				tb.ID,
+				tc.ID,
+			},
+		},
+	}
+	minX := 4
+	minY := 9
+	maxX := 4
+	maxY := 9
+	want := map[tile.ID]tileSelection{
+		tb.ID: tileSelection{
+			used:  false,
+			tile:  *tb,
+			index: 1,
+		},
+	}
+	got := c.calculateSelectedUnusedTiles(minX, maxX, minY, maxY)
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("not equal\nwanted: %v\ngot:    %v", want, got)
 	}
 }
 

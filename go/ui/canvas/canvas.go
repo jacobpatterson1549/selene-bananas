@@ -452,8 +452,8 @@ func (c Canvas) calculateSelectedUnusedTiles(minX, maxX, minY, maxY int) map[til
 		minI = 0
 	}
 	maxI := (maxX - c.draw.unusedMin.x) / c.draw.tileLength
-	if maxI > len(c.board.UnusedTileIDs) {
-		maxI = len(c.board.UnusedTileIDs)
+	if maxI >= len(c.board.UnusedTileIDs) {
+		maxI = len(c.board.UnusedTileIDs) - 1
 	}
 	tiles := make(map[tile.ID]tileSelection)
 	for i, id := range c.board.UnusedTileIDs[minI : maxI+1] {
