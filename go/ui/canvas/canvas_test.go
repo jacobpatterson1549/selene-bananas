@@ -36,7 +36,7 @@ func TestDrawTile(t *testing.T) {
 		{ // draw a tile if tiles from the selection are being drawn an the tile is in the selection
 			s: selection{
 				tiles: map[tile.ID]tileSelection{
-					drawTileID: tileSelection{},
+					drawTileID: {},
 				},
 			},
 			fromSelection: true,
@@ -60,7 +60,7 @@ func TestDrawTile(t *testing.T) {
 		{ // do NOT draw a tile if the user is dragging it and it's being drawn at the original location (fromSelection=false)
 			s: selection{
 				tiles: map[tile.ID]tileSelection{
-					drawTileID: tileSelection{},
+					drawTileID: {},
 				},
 				moveState: drag,
 			},
@@ -122,7 +122,7 @@ func TestCalculateSelectedUnusedTiles(t *testing.T) {
 	maxX := 4
 	maxY := 9
 	want := map[tile.ID]tileSelection{
-		tb.ID: tileSelection{
+		tb.ID: {
 			used:  false,
 			tile:  *tb,
 			index: 1,
