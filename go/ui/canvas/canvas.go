@@ -96,6 +96,9 @@ const (
 	rect
 	drag
 	grab
+	MainColor       = "black"
+	BackgroundColor = "white"
+	DragColor       = "blue"
 )
 
 var moveStateRadioQueries = map[moveState]string{
@@ -199,10 +202,10 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup, canvasElement 
 // Redraw draws the canvas
 func (c *Canvas) Redraw() {
 	c.ctx.ClearRect(0, 0, c.draw.width, c.draw.height)
-	c.ctx.SetFillColor("white") // TODO constant color names, maybe a color type
+	c.ctx.SetFillColor(BackgroundColor)
 	c.ctx.FillRect(0, 0, c.draw.width, c.draw.height)
-	c.ctx.SetStrokeColor("black")
-	c.ctx.SetFillColor("black")
+	c.ctx.SetStrokeColor(MainColor)
+	c.ctx.SetFillColor(MainColor)
 	c.ctx.FillText("Unused Tiles", 0, c.draw.unusedMinY-c.draw.textOffset)
 	c.drawUnusedTiles(false)
 	c.ctx.FillText("Game Area:", 0, c.draw.usedMinY-c.draw.textOffset)
@@ -217,8 +220,8 @@ func (c *Canvas) Redraw() {
 	case c.selection.moveState == rect:
 		c.drawSelectionRectangle()
 	case len(c.selection.tileIds) > 0:
-		c.ctx.SetStrokeColor("blue")
-		c.ctx.SetFillColor("blue")
+		c.ctx.SetStrokeColor(DragColor)
+		c.ctx.SetFillColor(DragColor)
 		c.drawUnusedTiles(true)
 		c.drawUsedTiles(true)
 	}
