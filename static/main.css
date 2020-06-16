@@ -1,3 +1,15 @@
+.tabs>div>div,
+.tabs>div>input, 
+#has-login:checked+.tabs>div.logout-required,
+#has-login:not(:checked)+.tabs>div.login-required,
+#has-game-infos:not(:checked)+div,
+#has-game:not(:checked)+div,
+#has-websocket:not(:checked)+div,
+#has-log:not(:checked)+div#log,
+#game>input {
+    display: none;
+}
+
 form label {
     display: inline-block;
 }
@@ -34,10 +46,6 @@ ul.icons>li>svg {
     background: #ccc;
 }
 
-.tabs>div>input {
-    display: none;
-}
-
 .tabs>div>input:checked+label {
     background: #bbb;
 }
@@ -45,37 +53,12 @@ ul.icons>li>svg {
 .tabs>div>div {
     position: absolute;
     left: 0;
-    display: none;
     background: #fff;
     margin: 1em;
 }
 
-#has-login:checked+.tabs>div.logout-required {
-    display: none;
-}
-
-#has-login:not(:checked)+.tabs>div.login-required {
-    display: none;
-}
-
 .tabs>div>input:checked+label+div {
     display: block;
-}
-
-#has-game-infos:not(:checked)+div {
-    display: none;
-}
-
-#has-game:not(:checked)+div {
-    display: none;
-}
-
-#has-websocket:not(:checked)+div {
-    display: none;
-}
-
-#has-log:not(:checked)+div#log {
-    display: none;
 }
 
 #log-scroll {
@@ -83,41 +66,15 @@ ul.icons>li>svg {
     overflow: auto;
 }
 
-#log-scroll>.error {
-    color: red;
-}
+#log-scroll>.error   { color: red;    }
+#log-scroll>.chat    { color: green;  }
+#log-scroll>.warning { color: orange; }
 
-#log-scroll>.chat {
-    color: green;
-}
-
-#log-scroll>.warning {
-    color: orange;
-}
-
-#game>input[type="radio"] {
-    display: none;
-}
-
-#game>input:checked.move-state.none~canvas {
-    cursor: default;
-}
-
-#game>input:checked.move-state.swap~canvas {
-    cursor: progress;
-}
-
-#game>input:checked.move-state.rect~canvas {
-    cursor: crosshair;
-}
-
-#game>input:checked.move-state.drag~canvas {
-    cursor: grabbing;
-}
-
-#game>input:checked.move-state.grab~canvas {
-    cursor: pointer;
-}
+#game>input:checked.move-state.none~canvas { cursor: default;   }
+#game>input:checked.move-state.swap~canvas { cursor: progress;  }
+#game>input:checked.move-state.rect~canvas { cursor: crosshair; }
+#game>input:checked.move-state.drag~canvas { cursor: grabbing;  }
+#game>input:checked.move-state.grab~canvas { cursor: pointer;   }
 
 #game>canvas {
     border: 1px dotted black;
