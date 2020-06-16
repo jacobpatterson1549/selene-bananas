@@ -19,11 +19,11 @@ import (
 type (
 	// Canvas is the object which draws the game
 	Canvas struct {
-		ctx       Context
-		board     *board.Board
-		draw      drawMetrics
-		selection selection
-		touchPos
+		ctx        Context
+		board      *board.Board
+		draw       drawMetrics
+		selection  selection
+		touchPos   pixelPosition
 		gameStatus game.Status
 	}
 
@@ -69,15 +69,12 @@ type (
 		moveState moveState
 		tiles     map[tile.ID]tileSelection
 		isSeen    bool
-		startX    int
-		startY    int
-		endX      int
-		endY      int
+		start     pixelPosition
+		end       pixelPosition
 	}
 
-	// touchPos represents the position of the previous screen touch
-	// TODO: rename to position, replace all "Loc" with "Pos", move into selection, replace start&end there, compose in tile.Position, compose tile in tile.Position
-	touchPos struct {
+	// pixelPosition represents a location on the canvas
+	pixelPosition struct {
 		x int
 		y int
 	}
@@ -154,31 +151,27 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup, canvasElement 
 	wg.Add(1)
 	redrawJsFunc := dom.NewJsFunc(c.Redraw)
 	swapTileJsFunc := dom.NewJsFunc(c.StartSwap)
-	offsetFunc := func(event js.Value) (int, int) {
-		x := event.Get("offsetX").Int()
-		y := event.Get("offsetY").Int()
-		return x, y
-	}
+	var mousePP pixelPosition
 	mouseDownFunc := func(event js.Value) {
-		c.MoveStart(offsetFunc(event))
+		c.MoveStart(mousePP.fromMouse(event))
 	}
 	mouseUpFunc := func(event js.Value) {
-		c.MoveEnd(offsetFunc(event))
+		c.MoveEnd(mousePP.fromMouse(event))
+		println("move end")
 	}
 	mouseMoveFunc := func(event js.Value) {
-		c.MoveCursor(offsetFunc(event))
+		c.MoveCursor(mousePP.fromMouse(event))
 	}
+	var touchPP pixelPosition
 	touchStartFunc := func(event js.Value) {
-		c.touchPos.update(event)
-		c.MoveStart(c.touchPos.x, c.touchPos.y)
+		c.MoveStart(touchPP.fromTouch(event))
 	}
 	touchEndFunc := func(event js.Value) {
 		// the event has no touches, use previous touchPos
-		c.MoveEnd(c.touchPos.x, c.touchPos.y)
+		c.MoveEnd(touchPP)
 	}
 	touchMoveFunc := func(event js.Value) {
-		c.touchPos.update(event)
-		c.MoveCursor(c.touchPos.x, c.touchPos.y)
+		c.MoveCursor(touchPP.fromTouch(event))
 	}
 	dom.RegisterFunc("canvas", "redraw", redrawJsFunc)
 	dom.RegisterFunc("canvas", "swapTile", swapTileJsFunc)
@@ -266,8 +259,8 @@ func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
 			return
 		}
 		// draw tile with change in location
-		x += c.selection.endX - c.selection.startX
-		y += c.selection.endY - c.selection.startY
+		x += c.selection.end.x - c.selection.start.x
+		y += c.selection.end.y - c.selection.start.y
 	case c.selection.moveState == drag:
 		// do not draw tiles in selection at their original locations
 		if _, ok := c.selection.tiles[t.ID]; ok { // (TODO: similar test as that above)
@@ -279,21 +272,20 @@ func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
 }
 
 func (c *Canvas) drawSelectionRectangle() {
-	minX, maxX := sort(c.selection.startX, c.selection.endX)
-	minY, maxY := sort(c.selection.startY, c.selection.endY)
+	minX, maxX := sort(c.selection.start.x, c.selection.end.x)
+	minY, maxY := sort(c.selection.start.y, c.selection.end.y)
 	width := maxX - minX
 	height := maxY - minY
 	c.ctx.StrokeRect(minX, minY, width, height)
 }
 
 // MoveStart should be called when a move is started to be made at the specified coordinates.
-func (c *Canvas) MoveStart(x, y int) {
+func (c *Canvas) MoveStart(pp pixelPosition) {
 	if c.gameStatus != game.InProgress {
 		return
 	}
-	c.selection.startX, c.selection.endX = x, x
-	c.selection.startY, c.selection.endY = y, y
-	ts := c.tileSelection(x, y)
+	c.selection.start, c.selection.end = pp, pp
+	ts := c.tileSelection(pp)
 	if c.selection.moveState == swap {
 		switch {
 		case ts == nil:
@@ -328,34 +320,32 @@ func (c *Canvas) MoveStart(x, y int) {
 }
 
 // MoveCursor should be called whenever the cursor moves, regardless of if a move is being made.
-func (c *Canvas) MoveCursor(x, y int) {
+func (c *Canvas) MoveCursor(pp pixelPosition) {
 	if c.gameStatus != game.InProgress {
 		return
 	}
 	switch c.selection.moveState {
 	case drag, rect:
-		c.selection.endX = x
-		c.selection.endY = y
+		c.selection.end = pp
 		c.Redraw()
 		return
 	case grab:
-		if c.tileSelection(x, y) == nil {
+		if c.tileSelection(pp) == nil {
 			c.selection.setMoveState(none)
 		}
 	case none:
-		if c.tileSelection(x, y) != nil {
+		if c.tileSelection(pp) != nil {
 			c.selection.setMoveState(grab)
 		}
 	}
 }
 
 // MoveEnd should be called when a move is done being made at the specified coordinates.
-func (c *Canvas) MoveEnd(x, y int) {
+func (c *Canvas) MoveEnd(pp pixelPosition) {
 	if c.gameStatus != game.InProgress {
 		return
 	}
-	c.selection.endX = x
-	c.selection.endY = y
+	c.selection.end = pp
 	switch c.selection.moveState {
 	case swap:
 		c.selection.setMoveState(none)
@@ -363,8 +353,8 @@ func (c *Canvas) MoveEnd(x, y int) {
 	case rect:
 		c.selection.tiles = c.calculateSelectedTiles()
 		c.selection.setMoveState(none)
-		c.selection.startX, c.selection.endX = 0, 0
-		c.selection.startY, c.selection.endY = 0, 0
+		c.selection.start = pixelPosition{}
+		c.selection.end = pixelPosition{}
 		c.Redraw()
 	case drag:
 		c.moveSelectedTiles()
@@ -384,7 +374,7 @@ func (c *Canvas) StartSwap() {
 
 // swap trades a tile for some new ones
 func (c *Canvas) swap() {
-	endTS := c.tileSelection(c.selection.endX, c.selection.endY)
+	endTS := c.tileSelection(c.selection.end)
 	endTileWasSelected := func() bool {
 		_, ok := c.selection.tiles[endTS.tile.ID]
 		return ok
@@ -404,11 +394,11 @@ func (c *Canvas) swap() {
 }
 
 // getTileSelection returns the tile at the specified coordinates on the canvas or nil if none exists
-func (c Canvas) tileSelection(x, y int) *tileSelection {
+func (c Canvas) tileSelection(pp pixelPosition) *tileSelection {
 	switch {
-	case c.draw.unusedMinX <= x && x < c.draw.unusedMinX+len(c.board.UnusedTileIDs)*c.draw.tileLength &&
-		c.draw.unusedMinY <= y && y < c.draw.unusedMinY+c.draw.tileLength:
-		idx := (x - c.draw.unusedMinX) / c.draw.tileLength
+	case c.draw.unusedMinX <= pp.x && pp.x < c.draw.unusedMinX+len(c.board.UnusedTileIDs)*c.draw.tileLength &&
+		c.draw.unusedMinY <= pp.y && pp.y < c.draw.unusedMinY+c.draw.tileLength:
+		idx := (pp.x - c.draw.unusedMinX) / c.draw.tileLength
 		id := c.board.UnusedTileIDs[idx]
 		if t, ok := c.board.UnusedTiles[id]; ok {
 			var ts tileSelection
@@ -416,10 +406,10 @@ func (c Canvas) tileSelection(x, y int) *tileSelection {
 			ts.tile = t
 			return &ts
 		}
-	case c.draw.usedMinX <= x && x < c.draw.usedMinX+c.draw.numCols*c.draw.tileLength &&
-		c.draw.usedMinY <= y && y < c.draw.usedMinY+c.draw.numRows*c.draw.tileLength:
-		col := tile.X((x - c.draw.usedMinX) / c.draw.tileLength)
-		row := tile.Y((y - c.draw.usedMinY) / c.draw.tileLength)
+	case c.draw.usedMinX <= pp.x && pp.x < c.draw.usedMinX+c.draw.numCols*c.draw.tileLength &&
+		c.draw.usedMinY <= pp.y && pp.y < c.draw.usedMinY+c.draw.numRows*c.draw.tileLength:
+		col := tile.X((pp.x - c.draw.usedMinX) / c.draw.tileLength)
+		row := tile.Y((pp.y - c.draw.usedMinY) / c.draw.tileLength)
 		if yUsedTileLocs, ok := c.board.UsedTileLocs[col]; ok {
 			if t, ok := yUsedTileLocs[row]; ok {
 				var ts tileSelection
@@ -435,8 +425,8 @@ func (c Canvas) tileSelection(x, y int) *tileSelection {
 }
 
 func (c Canvas) calculateSelectedTiles() map[tile.ID]tileSelection {
-	minX, maxX := sort(c.selection.startX, c.selection.endX)
-	minY, maxY := sort(c.selection.startY, c.selection.endY)
+	minX, maxX := sort(c.selection.start.x, c.selection.end.x)
+	minY, maxY := sort(c.selection.start.y, c.selection.end.y)
 	selectedUnusedTileIds := c.calculateSelectedUnusedTiles(minX, maxX, minY, maxY)
 	selectedUsedTileIds := c.calculateSelectedUsedTiles(minX, maxX, minY, maxY)
 	switch {
@@ -467,11 +457,10 @@ func (c Canvas) calculateSelectedUnusedTiles(minX, maxX, minY, maxY int) map[til
 	}
 	tiles := make(map[tile.ID]tileSelection)
 	for i, id := range c.board.UnusedTileIDs[minI:maxI] {
+		t := c.board.UnusedTiles[id]
 		tiles[id] = tileSelection{
-			used: false,
-			tile: tile.Tile{
-				ID: id,
-			},
+			used:  false,
+			tile:  t,
 			index: minI + i,
 		}
 	}
@@ -531,33 +520,28 @@ func (c Canvas) selectionTilePositions() []tile.Position {
 	if len(c.selection.tiles) == 0 {
 		return []tile.Position{}
 	}
-	midTS := c.tileSelection(c.selection.startX, c.selection.startY)
-	endC := (c.selection.endX - c.draw.usedMinX) / c.draw.tileLength
-	endR := (c.selection.endY - c.draw.usedMinY) / c.draw.tileLength
+	startTS := c.tileSelection(c.selection.start)
+	endC := (c.selection.end.x - c.draw.usedMinX) / c.draw.tileLength
+	endR := (c.selection.end.y - c.draw.usedMinY) / c.draw.tileLength
 	switch {
-	case midTS == nil:
+	case startTS == nil:
 		log.Error("no tile position at start position")
 		return []tile.Position{}
-	case midTS.used:
-		midTP := tile.Position{
-			// TODO: selectionUsedTilePositions should only accept 'Position' because only x, y are needed, not tile
-			X: midTS.x,
-			Y: midTS.y,
-		}
-		return c.selectionUsedTilePositions(midTP, endC, endR)
+	case startTS.used:
+		return c.selectionUsedTilePositions(*startTS, endC, endR)
 	default:
-		return c.selectionUnusedTilePositions(midTS.index, endC, endR)
+		return c.selectionUnusedTilePositions(*startTS, endC, endR)
 	}
 }
 
-func (c Canvas) selectionUnusedTilePositions(midIndex int, endC, endR int) []tile.Position {
+func (c Canvas) selectionUnusedTilePositions(startTS tileSelection, endC, endR int) []tile.Position {
 	if endR < 0 || c.draw.numRows <= endR {
 		return []tile.Position{}
 	}
 	tilePositions := make([]tile.Position, 0, len(c.selection.tiles))
 	y := tile.Y(endR)
 	for _, ts := range c.selection.tiles {
-		deltaIdx := ts.index - midIndex
+		deltaIdx := ts.index - startTS.index
 		col := endC + deltaIdx
 		switch {
 		case col < 0, c.draw.numCols <= col:
@@ -572,10 +556,10 @@ func (c Canvas) selectionUnusedTilePositions(midIndex int, endC, endR int) []til
 	return tilePositions
 }
 
-func (c Canvas) selectionUsedTilePositions(midTP tile.Position, endC, endR int) []tile.Position {
+func (c Canvas) selectionUsedTilePositions(startTS tileSelection, endC, endR int) []tile.Position {
 	tilePositions := make([]tile.Position, 0, len(c.selection.tiles))
-	deltaC := endC - int(midTP.X)
-	deltaR := endR - int(midTP.Y)
+	deltaC := endC - int(startTS.x)
+	deltaR := endR - int(startTS.y)
 	for _, ts := range c.selection.tiles {
 		col := int(ts.x) + deltaC
 		row := int(ts.y) + deltaR
@@ -601,22 +585,32 @@ func (s *selection) setMoveState(ms moveState) {
 }
 
 func (s selection) inRect(x, y int) bool {
-	minX, maxX := sort(s.startX, s.endX)
-	minY, maxY := sort(s.startY, s.endY)
+	minX, maxX := sort(s.start.x, s.end.x)
+	minY, maxY := sort(s.start.y, s.end.y)
 	return minX <= x && x < maxX &&
 		minY <= y && y < maxY
 }
 
-func (tp *touchPos) update(event js.Value) {
+// fromMouse updates the pixelPosition for the mouse event and returns it
+func (pp *pixelPosition) fromMouse(event js.Value) pixelPosition {
+	pp.x = event.Get("offsetX").Int()
+	pp.y = event.Get("offsetY").Int()
+	return *pp
+}
+
+// fromTouch updates the pixelPosition for the first touch of the touch event and returns it
+func (pp *pixelPosition) fromTouch(event js.Value) pixelPosition {
 	event.Call("preventDefault")
 	touches := event.Get("touches")
 	if touches.Length() == 0 {
-		return
+		log.Error("no touches for touch event, using previous touch location")
+		return *pp
 	}
 	touch := touches.Index(0)
 	canvasRect := event.Get("target").Call("getBoundingClientRect")
-	tp.x = touch.Get("pageX").Int() - canvasRect.Get("left").Int()
-	tp.y = touch.Get("pageY").Int() - canvasRect.Get("top").Int()
+	pp.x = touch.Get("pageX").Int() - canvasRect.Get("left").Int()
+	pp.y = touch.Get("pageY").Int() - canvasRect.Get("top").Int()
+	return *pp
 }
 
 // sort returns the elements in increasing order.
