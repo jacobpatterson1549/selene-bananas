@@ -171,12 +171,6 @@ func SetUsernamesReadOnly(username string) {
 	}
 }
 
-// SetPoints sets the value of the points input
-func SetPoints(points int) {
-	pointsElement := document.Call("querySelector", "input.points")
-	pointsElement.Set("value", points)
-}
-
 // StoreCredentials attempts to save the credentials for the login, if browser wants to
 func StoreCredentials(username, password string) {
 	passwordCredential := document.Get("PasswordCredential")

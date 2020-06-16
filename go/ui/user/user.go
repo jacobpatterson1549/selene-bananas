@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall/js"
@@ -86,7 +87,7 @@ func (u *User) login(token string) {
 		return
 	}
 	dom.SetUsernamesReadOnly(string(ui.username))
-	dom.SetPoints(ui.points)
+	dom.SetValueQuery("input.points", strconv.Itoa(ui.points))
 	dom.SetChecked("tab-4", true) // lobby tab
 	u.hasLogin(true)
 }
@@ -125,13 +126,13 @@ func (j jwt) getUser() (*userInfo, error) {
 	if !ok {
 		return nil, errors.New("no 'points' field in user claims")
 	}
-	pointsI, ok := points.(float64)
+	pointsF, ok := points.(float64)
 	if !ok {
 		return nil, errors.New("points is not a number")
 	}
 	u := userInfo{
 		username: username,
-		points:   int(pointsI),
+		points:   int(pointsF),
 	}
 	return &u, nil
 }
