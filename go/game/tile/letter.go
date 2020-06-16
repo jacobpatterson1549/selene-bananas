@@ -34,10 +34,8 @@ func (l *letter) UnmarshalJSON(b []byte) error {
 	if len(s) != 1 {
 		return fmt.Errorf("invalid letter: %v", s)
 	}
-	ch := s[0]
-	if ch < 'A' || ch > 'Z' {
-		return fmt.Errorf("invalid letter: %v, must be [A-Z]", s)
-	}
-	*l = letter(ch)
-	return nil
+	b0 := s[0]
+	r := rune(b0)
+	*l, err = newLetter(r)
+	return err
 }
