@@ -93,11 +93,17 @@ func FormatTime(utcSeconds int64) string {
 	return t.Format("15:04:05")
 }
 
+// cloneElementById creates a close of the element in the template.
+func cloneElementById(id string) js.Value {
+	templateElement := getElementById(id)
+	contentElement := templateElement.Get("content")
+	clone := contentElement.Call("cloneNode", true)
+	return clone
+}
+
 // AddLog adds a log message with the specified class
 func AddLog(class, text string) {
-	logItemTemplate := getElementById("log-item")
-	logItemTemplateContent := logItemTemplate.Get("content")
-	clone := logItemTemplateContent.Call("cloneNode", true)
+	clone := cloneElementById("log-item")
 	cloneChildren := clone.Get("children")
 	logItemElement := cloneChildren.Index(0)
 	time := FormatTime(time.Now().UTC().Unix())
@@ -117,15 +123,10 @@ func SetGameInfos(gameInfos []game.Info) {
 	tbodyElement := document.Call("querySelector", "table#game-infos>tbody")
 	tbodyElement.Set("innerHTML", "")
 	if len(gameInfos) == 0 {
-		// TODO: create clone helper function
-		emptyGameInfoTemplate := getElementById("no-game-info-row")
-		emptyGameInfoTemplateContent := emptyGameInfoTemplate.Get("content")
-		emptyGameInfoElement := emptyGameInfoTemplateContent.Call("cloneNode", true)
+		emptyGameInfoElement := cloneElementById("no-game-info-row")
 		tbodyElement.Call("appendChild", emptyGameInfoElement)
 		return
 	}
-	gameInfoTemplate := getElementById("game-info-row")
-	gameInfoTemplateContent := gameInfoTemplate.Get("content")
 	getStatus := func(i game.Info) string {
 		switch i.Status {
 		case game.NotStarted:
@@ -138,7 +139,7 @@ func SetGameInfos(gameInfos []game.Info) {
 		return "?"
 	}
 	for _, gameInfo := range gameInfos {
-		gameInfoElement := gameInfoTemplateContent.Call("cloneNode", true)
+		gameInfoElement := cloneElementById("game-info-row")
 		rowElement := gameInfoElement.Get("children").Index(0)
 		createdAtTimeText := FormatTime(gameInfo.CreatedAt)
 		rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
@@ -147,8 +148,7 @@ func SetGameInfos(gameInfos []game.Info) {
 		status := getStatus(gameInfo)
 		rowElement.Get("children").Index(2).Set("innerHTML", status)
 		if gameInfo.CanJoin {
-			joinGameButtonTemplate := getElementById("join-game-button")
-			joinGameButtonElement := joinGameButtonTemplate.Get("content").Call("cloneNode", true)
+			joinGameButtonElement := cloneElementById("join-game-button")
 			joinGameButtonElement.Get("children").Index(0).Set("value", int(gameInfo.ID))
 			rowElement.Get("children").Index(2).Call("appendChild", joinGameButtonElement)
 		}
