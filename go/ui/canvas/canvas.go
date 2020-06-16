@@ -276,28 +276,11 @@ func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
 }
 
 func (c *Canvas) drawSelectionRectangle() {
-	var x, y int
-	switch {
-	case c.selection.startX < c.selection.endX:
-		x = c.selection.startX
-	default:
-		x = c.selection.endX
-	}
-	switch {
-	case c.selection.startY < c.selection.endY:
-		y = c.selection.startY
-	default:
-		y = c.selection.endY
-	}
-	width := c.selection.endX - c.selection.startX
-	height := c.selection.endY - c.selection.startY
-	if width < 0 {
-		width *= -1
-	}
-	if height < 0 {
-		height *= -1
-	}
-	c.ctx.StrokeRect(x, y, width, height)
+	minX, maxX := sort(c.selection.startX, c.selection.endX)
+	minY, maxY := sort(c.selection.startY, c.selection.endY)
+	width := maxX - minX
+	height := maxY - minY
+	c.ctx.StrokeRect(minX, minY, width, height)
 }
 
 // MoveStart should be called when a move is started to be made at the specified coordinates.
@@ -448,23 +431,8 @@ func (c Canvas) tileSelection(x, y int) *tileSelection {
 }
 
 func (c Canvas) calculateSelectedTileIds() map[tile.ID]struct{} {
-	var minX, maxX, minY, maxY int // TODO: better assignment
-	switch {
-	case c.selection.startX < c.selection.endX:
-		minX = c.selection.startX
-		maxX = c.selection.endX
-	default:
-		minX = c.selection.endX
-		maxX = c.selection.startX
-	}
-	switch {
-	case c.selection.startY < c.selection.endY:
-		minY = c.selection.startY
-		maxY = c.selection.endY
-	default:
-		minY = c.selection.endY
-		maxY = c.selection.startY
-	}
+	minX, maxX := sort(c.selection.startX, c.selection.endX)
+	minY, maxY := sort(c.selection.startY, c.selection.endY)
 	selectedUnusedTileIds := c.calculateSelectedUnusedTileIds(minX, maxX, minY, maxY)
 	selectedUsedTileIds := c.calculateSelectedUsedTileIds(minX, maxX, minY, maxY)
 	switch {
@@ -619,23 +587,8 @@ func (s *selection) setMoveState(ms moveState) {
 }
 
 func (s selection) inRect(x, y int) bool {
-	var minX, maxX, minY, maxY int
-	switch {
-	case s.startX < s.endX:
-		minX = s.startX
-		maxX = s.endX
-	default:
-		minX = s.endX
-		maxX = s.startX
-	}
-	switch {
-	case s.startY < s.endY:
-		minY = s.startY
-		maxY = s.endY
-	default:
-		minY = s.endY
-		maxY = s.startY
-	}
+	minX, maxX := sort(s.startX, s.endX)
+	minY, maxY := sort(s.startY, s.endY)
 	return minX <= x && x < maxX &&
 		minY <= y && y < maxY
 }
@@ -650,4 +603,14 @@ func (tp *touchPos) update(event js.Value) {
 	canvasRect := event.Get("target").Call("getBoundingClientRect")
 	tp.x = touch.Get("pageX").Int() - canvasRect.Get("left").Int()
 	tp.y = touch.Get("pageY").Int() - canvasRect.Get("top").Int()
+}
+
+// sort returns the elements in increasing order.
+// If a < b, the returned values are [a, b].
+// If a > b, the returned values are [b, a].
+func sort(a, b int) (int, int) {
+	if a < b {
+		return a, b
+	}
+	return b, a
 }
