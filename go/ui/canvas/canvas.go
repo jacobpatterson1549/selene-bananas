@@ -510,23 +510,23 @@ func (c Canvas) calculateSelectedUsedTiles(minX, maxX, minY, maxY int) map[tile.
 
 func (c *Canvas) moveSelectedTiles() {
 	tilePositions := c.selectionTilePositions()
-	// TODO: selectionTilePositions() should return an empty array if any tile positions will overlap new places
-	//       afterwards, make CanMoveTiles private
+	if len(tilePositions) == 0 {
+		return
+	}
 	if !c.board.CanMoveTiles(tilePositions) {
 		return
 	}
-	if err := c.board.MoveTiles(tilePositions); err != nil { // TODO: only do this if len(tilePositions) > 0
+	if err := c.board.MoveTiles(tilePositions); err != nil {
 		log.Error("moving tiles to presumably valid locations: " + err.Error())
 		return
 	}
-	if len(tilePositions) > 0 {
-		dom.Send(game.Message{
-			Type:          game.TilesMoved,
-			TilePositions: tilePositions,
-		})
-	}
+	dom.Send(game.Message{
+		Type:          game.TilesMoved,
+		TilePositions: tilePositions,
+	})
 }
 
+// selectionTilePositions calculates the new positions of the selected tiles.
 func (c Canvas) selectionTilePositions() []tile.Position {
 	if len(c.selection.tiles) == 0 {
 		return []tile.Position{}
@@ -555,17 +555,18 @@ func (c Canvas) selectionUnusedTilePositions(midIndex int, endC, endR int) []til
 		return []tile.Position{}
 	}
 	tilePositions := make([]tile.Position, 0, len(c.selection.tiles))
-	for id, ts := range c.selection.tiles {
+	y := tile.Y(endR)
+	for _, ts := range c.selection.tiles {
 		deltaIdx := ts.index - midIndex
 		col := endC + deltaIdx
-		if col < 0 || c.draw.numCols <= col {
+		switch {
+		case col < 0, c.draw.numCols <= col:
 			return []tile.Position{}
 		}
-		t := c.board.UnusedTiles[id]
 		tilePositions = append(tilePositions, tile.Position{
-			Tile: t,
+			Tile: ts.tile,
 			X:    tile.X(col),
-			Y:    tile.Y(endR),
+			Y:    y,
 		})
 	}
 	return tilePositions
