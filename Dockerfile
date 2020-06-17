@@ -26,7 +26,7 @@ RUN GOOS=js GOARCH=wasm \
             /app/cmd/server/*.go
 
 # copy necessary files and folders to a minimal build image
-FROM alpine:3.11
+FROM scratch
 WORKDIR /app
 COPY --from=0 \
     /app/main \
