@@ -55,7 +55,6 @@ func GetChecked(id string) bool {
 }
 
 // SetInnerHTML sets the inner html of the element with the specified id.
-// TODO: audit SetInnerHTML usage
 func SetInnerHTML(id string, innerHTML string) {
 	element := getElementById(id)
 	element.Set("innerHTML", innerHTML)
@@ -99,6 +98,12 @@ func cloneElementById(id string) js.Value {
 	contentElement := templateElement.Get("content")
 	clone := contentElement.Call("cloneNode", true)
 	return clone
+}
+
+//ClearLog removes all log messages.
+func ClearLog() {
+	logScrollElement := getElementById("log-scroll")
+	logScrollElement.Set("innerHTML", "")
 }
 
 // AddLog adds a log message with the specified class

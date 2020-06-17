@@ -45,7 +45,7 @@ func Chat(text string) {
 // Clear clears the log.
 func Clear() {
 	dom.SetChecked("has-log", false)
-	dom.SetInnerHTML("log-scroll", "")
+	dom.ClearLog()
 }
 
 // log writes a log item with the specified class.
