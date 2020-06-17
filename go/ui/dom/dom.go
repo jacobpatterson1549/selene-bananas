@@ -21,7 +21,7 @@ type (
 )
 
 var (
-	global   js.Value = js.Global() // TODO: add global elsewhere in this package
+	global   js.Value = js.Global()
 	document js.Value = global.Get("document")
 	// WebSocket is the Socket used for game Communication
 	WebSocket Socket // TODO: HACK! (circular dependency)
@@ -180,7 +180,7 @@ func StoreCredentials(username, password string) {
 // Confirm shows a popup asking the user a yes/no question.
 // The true return value implies the "yes" choice.
 func Confirm(message string) bool {
-	result := js.Global().Call("confirm", message)
+	result := global.Call("confirm", message)
 	return result.Bool()
 }
 

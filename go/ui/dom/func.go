@@ -9,10 +9,10 @@ import (
 // RegisterFunc sets the function as a field on the parent.
 // The parent object is created if it does not exist.
 func RegisterFunc(parentName, fnName string, fn js.Func) {
-	parent := js.Global().Get(parentName)
+	parent := global.Get(parentName)
 	if parent.IsUndefined() {
 		parent = js.ValueOf(make(map[string]interface{}))
-		js.Global().Set(parentName, parent)
+		global.Set(parentName, parent)
 	}
 	parent.Set(fnName, fn)
 }
