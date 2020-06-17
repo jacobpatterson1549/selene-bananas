@@ -12,6 +12,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/canvas"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/controller"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/socket"
@@ -36,8 +37,7 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	u := user.New(&httpClient)
 	u.InitDom(ctx, wg)
 	// canvas
-	document := js.Global().Get("document")
-	canvasElement := document.Call("querySelector", "#game>canvas")
+	canvasElement := dom.QuerySelector("#game>canvas")
 	contextElement := canvasElement.Call("getContext", "2d")
 	canvasCtx := canvasContext{contextElement}
 	var board board.Board

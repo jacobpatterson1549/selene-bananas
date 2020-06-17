@@ -26,11 +26,13 @@ var (
 	WebSocket Socket // TODO: HACK! (circular dependency)
 )
 
+// getElementById  gets the element with the specified id.
 func getElementById(id string) js.Value {
 	return document.Call("getElementById", id)
 }
 
-func querySelector(query string) js.Value {
+// QuerySelector returns the first element that the equery returns from the root of the document.
+func QuerySelector(query string) js.Value {
 	return document.Call("querySelector", query)
 }
 
@@ -42,7 +44,7 @@ func SetChecked(id string, checked bool) {
 
 // SetCheckedQuery sets the checked property of the element with the specified element query.
 func SetCheckedQuery(query string, checked bool) {
-	element := querySelector(query)
+	element := QuerySelector(query)
 	element.Set("checked", checked)
 }
 
@@ -75,7 +77,7 @@ func SetValue(id, value string) {
 
 // SetValueQuery sets the value of the input element with the specified element query..
 func SetValueQuery(query, value string) {
-	element := querySelector(query)
+	element := QuerySelector(query)
 	element.Set("value", value)
 }
 
@@ -124,7 +126,7 @@ func AddLog(class, text string) {
 
 // SetGameInfos updates the game-infos table with the specified game infos.
 func SetGameInfos(gameInfos []game.Info, username string) {
-	tbodyElement := document.Call("querySelector", "table#game-infos>tbody")
+	tbodyElement := QuerySelector("table#game-infos>tbody")
 	tbodyElement.Set("innerHTML", "")
 	if len(gameInfos) == 0 {
 		emptyGameInfoElement := cloneElementById("no-game-info-row")
