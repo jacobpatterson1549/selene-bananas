@@ -13,7 +13,6 @@ import (
 
 type (
 	// Socket represents a method set of functions to communicate directly with the server
-	// TODO: should user::Request implement this?
 	Socket interface {
 		Send(m game.Message)
 		Close()
