@@ -20,7 +20,6 @@ type (
 		GameStatus    Status          `json:"gameStatus,omitempty"`
 		GamePlayers   []string        `json:"gamePlayers,omitempty"`
 		PlayerName    PlayerName      `json:"-"`
-		GameInfoChan  chan<- Info     `json:"-"`
 	}
 )
 

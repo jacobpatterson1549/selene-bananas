@@ -2,14 +2,14 @@
     {{ template "username.html" . }}
     <input type="submit">
 </form>
-<form method="get" action="/user_join_lobby" onsubmit="lobby.getGameInfos(event)">
+<input type="checkbox" id="has-websocket" hidden>
+<form method="get" action="/lobby" onsubmit="lobby.connect(event)" class="lobby-connect">
     <fieldset>
-        <legend>Refresh Games</legend>
+        <legend>Connect</legend>
         <input type="submit">
     </fieldset>
 </form>
-<input type="checkbox" id="has-websocket" hidden>
-<div>
+<div class="lobby-connected">
     <table id="game-infos">
         <thead>
             <tr>

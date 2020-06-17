@@ -162,7 +162,7 @@ func (s *Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	case "/main.wasm", "/wasm_exec.js":
 		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
 		http.ServeFile(w, r, "."+r.URL.Path)
-	case "/user_join_lobby":
+	case "/lobby":
 		err := r.ParseForm()
 		if err != nil {
 			return fmt.Errorf("parsing form: %w", err)

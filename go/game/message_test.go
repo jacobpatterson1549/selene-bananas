@@ -41,8 +41,8 @@ func TestMessageJSON(t *testing.T) {
 			j: `{"type":9,"tilePositions":[{"tile":{"id":8,"ch":"R"},"x":4,"y":46}]}`,
 		},
 		{
-			m: Message{Type: 3, GameInfos: []Info{{ID: 7, Status: 2, Players: []string{"fred", "barney"}, CanJoin: true, CreatedAt: 1257894000}}},
-			j: `{"type":3,"gameInfos":[{"id":7,"status":2,"players":["fred","barney"],"canJoin":true,"createdAt":1257894000}]}`,
+			m: Message{Type: 3, GameInfos: []Info{{ID: 7, Status: 2, Players: []string{"fred", "barney"}, CreatedAt: 1257894000}}},
+			j: `{"type":3,"gameInfos":[{"id":7,"status":2,"players":["fred","barney"],"createdAt":1257894000}]}`,
 		},
 		{
 			m: Message{Type: 11},
@@ -69,7 +69,7 @@ func TestMessageJSON(t *testing.T) {
 }
 
 func TestMessageMarshalOmitsInternals(t *testing.T) {
-	m := Message{PlayerName: "selene", GameInfoChan: make(chan Info, 0)}
+	m := Message{PlayerName: "selene"}
 	want := []byte(`{"type":0}`)
 	got, err := json.Marshal(m)
 	switch {

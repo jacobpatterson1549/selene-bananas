@@ -8,7 +8,6 @@ import (
 	"sync"
 	"syscall/js"
 
-	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/controller"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
@@ -25,30 +24,26 @@ type (
 // InitDom regesters lobby dom functions
 func (l *Lobby) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	getGameInfosJsFunc := dom.NewJsEventFunc(func(event js.Value) {
-		go l.getGameInfos(event)
+	connectJsFunc := dom.NewJsEventFunc(func(event js.Value) {
+		go l.connect(event)
 	})
 	leaveJsFunc := dom.NewJsFunc(l.leave)
-	dom.RegisterFunc("lobby", "getGameInfos", getGameInfosJsFunc)
+	dom.RegisterFunc("lobby", "connect", connectJsFunc)
 	dom.RegisterFunc("lobby", "leave", leaveJsFunc)
 	go func() {
 		<-ctx.Done()
-		getGameInfosJsFunc.Release()
+		connectJsFunc.Release()
 		leaveJsFunc.Release()
 		wg.Done()
 	}()
 }
 
-// get game infos makes a asynchronous request to get current game infos, establishing a socket connection if necessary
-func (l *Lobby) getGameInfos(event js.Value) {
+// connect makes a synchronous request to connect to the lobby.
+// It is expected that the server will respond with a game infos message
+func (l *Lobby) connect(event js.Value) {
 	err := l.Socket.Connect(event)
-	switch {
-	case err != nil:
+	if err != nil {
 		log.Error(err.Error())
-	default:
-		dom.Send(game.Message{
-			Type: game.Infos,
-		})
 	}
 }
 

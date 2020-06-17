@@ -30,8 +30,10 @@ type (
 
 	// User is the state of the current user.
 	User interface {
-		// JWT gets the use's Java Web Token.
+		// JWT gets the user's Java Web Token.
 		JWT() string
+		// Username gets the user's username.
+		Username() string
 		// Logout releases the use credentials from the browser.
 		Logout()
 	}
@@ -134,7 +136,7 @@ func (s *Socket) onMessage(event js.Value) {
 	case game.Leave:
 		s.handleGameLeave(m)
 	case game.Infos:
-		dom.SetGameInfos(m.GameInfos)
+		dom.SetGameInfos(m.GameInfos, s.User.Username())
 	case game.PlayerDelete:
 		s.handlePlayerDelete(m)
 	case game.Join, game.StatusChange, game.TilesChange:

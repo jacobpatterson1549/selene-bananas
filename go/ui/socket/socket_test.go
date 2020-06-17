@@ -66,6 +66,10 @@ func (u mockUser) JWT() string {
 	return u.jwt
 }
 
+func (u mockUser) Username() string {
+	return ""
+}
+
 func (u *mockUser) Logout() {
 	// NOOP
 }

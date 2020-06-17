@@ -4,7 +4,8 @@
 #has-login:not(:checked)+.tabs>div.login-required,
 #has-game-infos:not(:checked)+div,
 #has-game:not(:checked)+div,
-#has-websocket:not(:checked)+div,
+#has-websocket:not(:checked)~.lobby-connected,
+#has-websocket:checked~.lobby-connect,
 #has-log:not(:checked)+div#log,
 #game>input {
     display: none;

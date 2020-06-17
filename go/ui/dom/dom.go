@@ -124,7 +124,7 @@ func AddLog(class, text string) {
 }
 
 // SetGameInfos updates the game-infos table with the specified game infos.
-func SetGameInfos(gameInfos []game.Info) {
+func SetGameInfos(gameInfos []game.Info, username string) {
 	tbodyElement := document.Call("querySelector", "table#game-infos>tbody")
 	tbodyElement.Set("innerHTML", "")
 	if len(gameInfos) == 0 {
@@ -141,7 +141,7 @@ func SetGameInfos(gameInfos []game.Info) {
 		rowElement.Get("children").Index(1).Set("innerHTML", players)
 		status := gameInfo.Status.String()
 		rowElement.Get("children").Index(2).Set("innerHTML", status)
-		if gameInfo.CanJoin {
+		if gameInfo.CanJoin(username) {
 			joinGameButtonElement := cloneElementById("join-game-button")
 			joinGameButtonElement.Get("children").Index(0).Set("value", int(gameInfo.ID))
 			rowElement.Get("children").Index(2).Call("appendChild", joinGameButtonElement)

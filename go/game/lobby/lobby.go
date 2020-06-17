@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"sort"
 
 	"github.com/gorilla/websocket"
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
@@ -25,7 +24,7 @@ type (
 		socketCfg      socket.Config
 		gameCfg        controller.Config
 		sockets        map[game.PlayerName]messageHandler
-		games          map[game.ID]messageHandler
+		games          map[game.ID]gameMessageHandler
 		addSockets     chan playerSocket
 		socketMessages chan game.Message
 		gameMessages   chan game.Message
@@ -58,6 +57,11 @@ type (
 		writeMessages chan<- game.Message
 		context.CancelFunc
 	}
+
+	gameMessageHandler struct {
+		info game.Info
+		messageHandler
+	}
 )
 
 // NewLobby creates a new game lobby
@@ -75,7 +79,7 @@ func (cfg Config) NewLobby() (*Lobby, error) {
 		gameCfg:        cfg.GameCfg,
 		socketCfg:      cfg.SocketCfg,
 		sockets:        make(map[game.PlayerName]messageHandler, cfg.MaxSockets),
-		games:          make(map[game.ID]messageHandler, cfg.MaxGames),
+		games:          make(map[game.ID]gameMessageHandler, cfg.MaxGames),
 		addSockets:     make(chan playerSocket),
 		socketMessages: make(chan game.Message),
 		gameMessages:   make(chan game.Message),
@@ -141,8 +145,6 @@ func (l *Lobby) handleSocketMessage(ctx context.Context, m game.Message) {
 	switch m.Type {
 	case game.Create:
 		l.createGame(ctx, m)
-	case game.Infos:
-		l.handleGameInfos(m)
 	case game.PlayerDelete:
 		delete(l.sockets, m.PlayerName)
 	default:
@@ -154,7 +156,12 @@ func (l *Lobby) handleGameMessage(ctx context.Context, m game.Message) {
 	if l.debug {
 		l.log.Printf("lobby reading game message with type %v", m.Type)
 	}
-	l.sendSocketMessage(m)
+	switch m.Type {
+	case game.Infos:
+		l.handleGameInfoChanged(m)
+	default:
+		l.sendSocketMessage(m)
+	}
 }
 
 // createGame creates and adds the a game to the lobby if there is room.
@@ -188,12 +195,14 @@ func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 	}
 	writeMessages := make(chan game.Message)
 	go g.Run(ctx, removeGameFunc, writeMessages, l.gameMessages)
-	gmh := messageHandler{
+	mh := messageHandler{
 		writeMessages: writeMessages,
 		CancelFunc:    cancelFunc,
 	}
-	l.games[id] = gmh
-	writeMessages <- game.Message{
+	l.games[id] = gameMessageHandler{
+		messageHandler: mh,
+	}
+	writeMessages <- game.Message{ // this will update the game's info
 		Type:       game.Join,
 		PlayerName: m.PlayerName,
 	}
@@ -208,39 +217,7 @@ func (l *Lobby) removeGame(id game.ID) {
 	}
 	delete(l.games, id)
 	mh.CancelFunc()
-}
-
-func (l *Lobby) handleGameInfos(m game.Message) {
-	smh, ok := l.sockets[m.PlayerName]
-	if !ok {
-		l.sendSocketErrorMessage(m, fmt.Sprintf("no socket to send game infos to for playerName=%v", m.PlayerName))
-		return
-	}
-	infosC := make(chan game.Info)
-	for _, gmh := range l.games {
-		gmh.writeMessages <- game.Message{
-			Type:         game.Infos,
-			PlayerName:   m.PlayerName,
-			GameInfoChan: infosC,
-		}
-	}
-	infos := make([]game.Info, len(l.games))
-	i := 0
-	for range l.games {
-		select {
-		case gameInfo := <-infosC:
-			infos[i] = gameInfo
-			i++
-		}
-	}
-	close(infosC)
-	sort.Slice(infos, func(i, j int) bool {
-		return infos[i].CreatedAt < infos[j].CreatedAt
-	})
-	smh.writeMessages <- game.Message{
-		Type:      game.Infos,
-		GameInfos: infos,
-	}
+	l.gameInfosChanged()
 }
 
 // addSocket creates and adds the playerSocket to the socket messageHandlers and returns the merged inbound message and error channels
@@ -281,6 +258,12 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 		l.removeSocket(ps.PlayerName)
 	}
 	l.sockets[ps.PlayerName] = mh
+	infos := l.gameInfos()
+	m := game.Message{
+		Type:      game.Infos,
+		GameInfos: infos,
+	}
+	writeMessages <- m
 	ps.result <- nil
 }
 
@@ -325,5 +308,42 @@ func (l *Lobby) sendSocketErrorMessage(m game.Message, info string) {
 		Type:       game.SocketError,
 		PlayerName: m.PlayerName,
 		Info:       info,
+	}
+}
+
+// gameInfos gets the gameInfos for the lobby
+func (l Lobby) gameInfos() []game.Info {
+	infos := make([]game.Info, 0, len(l.games))
+	for _, mh := range l.games {
+		infos = append(infos, mh.info)
+	}
+	return infos
+}
+
+// handleGameInfo updates the game info for the game
+func (l *Lobby) handleGameInfoChanged(m game.Message) {
+	if len(m.GameInfos) != 1 {
+		log.Printf("expected 1 gameInfo to have changed, got %v", len(m.GameInfos))
+		return
+	}
+	i := m.GameInfos[0]
+	mh, ok := l.games[i.ID]
+	if !ok {
+		l.log.Printf("no game to update info for with id %v", i.ID)
+		return
+	}
+	mh.info = i
+	l.games[i.ID] = mh
+	l.gameInfosChanged()
+}
+
+func (l Lobby) gameInfosChanged() {
+	infos := l.gameInfos()
+	m := game.Message{
+		Type:      game.Infos,
+		GameInfos: infos,
+	}
+	for _, mh := range l.sockets {
+		mh.writeMessages <- m
 	}
 }

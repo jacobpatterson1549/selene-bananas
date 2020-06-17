@@ -147,6 +147,17 @@ func (u User) JWT() string {
 	return dom.GetValue("jwt")
 }
 
+// UserName returns the username of the logged in user.
+// If any problem occurs, an empty string is returned.
+func (u User) Username() string {
+	j := jwt(u.JWT())
+	ui, err := j.getUser()
+	if err != nil {
+		return ""
+	}
+	return ui.username
+}
+
 // escapePassword escapes the password for html dom input pattern matching using Regexp.
 func (u User) escapePassword(p string) string {
 	return string(u.escapeRE.ReplaceAll([]byte(p), []byte(`\$1`)))

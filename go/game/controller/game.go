@@ -157,7 +157,6 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 		game.Snag:         g.handleGameSnag,
 		game.Swap:         g.handleGameSwap,
 		game.TilesMoved:   g.handleGameTilesMoved,
-		game.Infos:        g.handleGameInfos,
 		game.Chat:         g.handleGameChat,
 	}
 	defer removeGameFunc()
@@ -190,7 +189,7 @@ func (g *Game) handleMessage(ctx context.Context, m game.Message, out chan<- gam
 	mh, ok := messageHandlers[m.Type]
 	if !ok {
 		err = fmt.Errorf("game does not know how to handle MessageType %v", m.Type)
-	} else if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join && m.Type != game.Infos {
+	} else if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join {
 		err = fmt.Errorf("game does not have player named '%v'", m.PlayerName)
 	} else {
 		err = mh(ctx, m, out)
@@ -255,6 +254,7 @@ func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- ga
 			}
 		}
 	}
+	g.handleInfoChanged(out)
 	return nil
 }
 
@@ -272,11 +272,18 @@ func (g *Game) handleGameDelete(ctx context.Context, m game.Message, out chan<- 
 func (g *Game) handleGameStatusChange(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	switch g.status {
 	case game.NotStarted:
-		return g.handleGameStart(ctx, m, out)
+		if err := g.handleGameStart(ctx, m, out); err != nil {
+			return err
+		}
 	case game.InProgress:
-		return g.handleGameFinish(ctx, m, out)
+		if err := g.handleGameFinish(ctx, m, out); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("cannot change game state from %v", g.status)
 	}
-	return fmt.Errorf("cannot change game state from %v", g.status)
+	g.handleInfoChanged(out)
+	return nil
 }
 
 func (g *Game) handleGameStart(ctx context.Context, m game.Message, out chan<- game.Message) error {
@@ -483,24 +490,6 @@ func (g *Game) handleBoardRefresh(ctx context.Context, m game.Message, out chan<
 	return nil
 }
 
-func (g *Game) handleGameInfos(ctx context.Context, m game.Message, out chan<- game.Message) error {
-	var canJoin bool
-	switch g.status {
-	case game.NotStarted:
-		canJoin = true
-	case game.InProgress, game.Finished:
-		_, canJoin = g.players[m.PlayerName]
-	}
-	m.GameInfoChan <- game.Info{
-		ID:        g.id,
-		Status:    g.status,
-		Players:   g.playerNames(),
-		CanJoin:   canJoin,
-		CreatedAt: g.createdAt,
-	}
-	return nil
-}
-
 func (g *Game) handleGameChat(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	info := fmt.Sprintf("%v : %v", m.PlayerName, m.Info)
 	for n := range g.players {
@@ -539,4 +528,18 @@ func (g Game) playerNames() []string {
 	}
 	sort.Strings(playerNames)
 	return playerNames
+}
+
+// handleInfoChanged sends the game's info in a message.
+func (g Game) handleInfoChanged(out chan<- game.Message) {
+	i := game.Info{
+		ID:        g.id,
+		Status:    g.status,
+		Players:   g.playerNames(),
+		CreatedAt: g.createdAt,
+	}
+	out <- game.Message{
+		Type:      game.Infos,
+		GameInfos: []game.Info{i},
+	}
 }
