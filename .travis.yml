@@ -1,6 +1,4 @@
-language: go
-go:
-  - "1.14"
+language: minimial
 
 services:
   - docker
