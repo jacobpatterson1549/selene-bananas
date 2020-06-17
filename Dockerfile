@@ -26,16 +26,17 @@ RUN GOOS=js GOARCH=wasm \
             /app/cmd/server/*.go
 
 # copy necessary files and folders to a minimal build image
-FROM scratch
+FROM alpine:3.11
+WORKDIR /app
 COPY --from=0 \
     /app/main \
     /app/main.wasm \
     /usr/local/go/misc/wasm/wasm_exec.js \
     /usr/share/dict/american-english-large \
-    /
-COPY sql  /sql/
-COPY static /static/
-COPY html /html/
+    /app/
+COPY sql  /app/sql/
+COPY static /app/static/
+COPY html /app/html/
 
 # run the server
-CMD ["/main", "-words-file", "/american-english-large"]
+CMD ["/app/main", "-words-file", "/app/american-english-large"]
