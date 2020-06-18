@@ -97,7 +97,7 @@ func (s *Socket) getWebSocketURL(f dom.Form) string {
 // onMessage is called when the websocket opens.
 func (s *Socket) onOpen(errC chan<- error) func() {
 	return func() {
-		dom.SetChecked("has-websocket", true)
+		dom.SetCheckedQuery(".has-websocket", true)
 		dom.WebSocket = s
 		errC <- nil
 	}
@@ -109,7 +109,7 @@ func (s *Socket) onClose(event js.Value) {
 	if reason := event.Get("reason"); !reason.IsUndefined() && len(reason.String()) != 0 {
 		log.Warning("left lobby: " + reason.String())
 	}
-	dom.SetChecked("has-websocket", false)
+	dom.SetCheckedQuery(".has-websocket", false)
 	dom.SetCheckedQuery(".has-game", false)
 	dom.SetCheckedQuery("#tab-lobby", true)
 }

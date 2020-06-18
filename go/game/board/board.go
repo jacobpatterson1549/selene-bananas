@@ -40,7 +40,7 @@ func New(unusedTiles []tile.Tile) Board {
 // An error is returned and the tile is not added if the player already has it.
 func (b *Board) AddTile(t tile.Tile) error {
 	if b.hasTile(t) {
-		return fmt.Errorf("player already has tile id=%v", t.ID)
+		return fmt.Errorf("player already has tile with id %v", t.ID)
 	}
 	b.UnusedTiles[t.ID] = t
 	b.UnusedTileIDs = append(b.UnusedTileIDs, t.ID)
@@ -51,7 +51,7 @@ func (b *Board) AddTile(t tile.Tile) error {
 // An error is returned if the board does not have the tile.
 func (b *Board) RemoveTile(t tile.Tile) error {
 	if !b.hasTile(t) {
-		return fmt.Errorf("player does not have tile id=%v", t.ID)
+		return fmt.Errorf("player does not have tile with id %v", t.ID)
 	}
 	_, ok := b.UnusedTiles[t.ID]
 	switch {

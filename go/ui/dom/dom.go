@@ -150,15 +150,15 @@ func AddLog(class, text string) {
 
 // SetGameInfos updates the game-infos table with the specified game infos.
 func SetGameInfos(gameInfos []game.Info, username string) {
-	tbodyElement := QuerySelector("table#game-infos>tbody")
+	tbodyElement := QuerySelector(".game-infos>tbody")
 	tbodyElement.Set("innerHTML", "")
 	if len(gameInfos) == 0 {
-		emptyGameInfoElement := cloneElementById("no-game-info-row")
+		emptyGameInfoElement := cloneElementByQuery(".no-game-info-row")
 		tbodyElement.Call("appendChild", emptyGameInfoElement)
 		return
 	}
 	for _, gameInfo := range gameInfos {
-		gameInfoElement := cloneElementById("game-info-row")
+		gameInfoElement := cloneElementByQuery(".game-info-row")
 		rowElement := gameInfoElement.Get("children").Index(0)
 		createdAtTimeText := FormatTime(gameInfo.CreatedAt)
 		rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
@@ -167,7 +167,7 @@ func SetGameInfos(gameInfos []game.Info, username string) {
 		status := gameInfo.Status.String()
 		rowElement.Get("children").Index(2).Set("innerHTML", status)
 		if gameInfo.CanJoin(username) {
-			joinGameButtonElement := cloneElementById("join-game-button")
+			joinGameButtonElement := cloneElementByQuery(".join-game-button")
 			joinGameButtonElement.Get("children").Index(0).Set("value", int(gameInfo.ID))
 			rowElement.Get("children").Index(2).Call("appendChild", joinGameButtonElement)
 		}
@@ -211,7 +211,7 @@ func Confirm(message string) bool {
 
 // SocketHTTPPing submits the small ping form to keep the server's http handling active.
 func SocketHTTPPing() {
-	pingFormElement := getElementById("ping-form")
+	pingFormElement := QuerySelector(".ping-form>form")
 	var preventDefaultFunc js.Func
 	preventDefaultFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		preventDefaultFunc.Release()
