@@ -1,12 +1,12 @@
-.tab>input,
-.tab>.content,
-.has-login:checked~.logout-required,
-.has-login:not(:checked)~.login-required,
-.has-game:not(:checked)+.content,
-.lobby>.has-websocket:not(:checked)~.connected,
-.lobby>.has-websocket:checked~.connect,
 .has-log:not(:checked)+.log,
-.game>.move-state {
+.tabs>.has-login:checked~.logout-required,
+.tabs>.has-login:not(:checked)~.login-required,
+.tabs>.has-game:not(:checked)+.content,
+.tabs>.tab>input,
+.tabs>.tab>.content,
+.tabs>.tab>.content>.lobby>.has-websocket:not(:checked)~.connected,
+.tabs>.tab>.content>.lobby>.has-websocket:checked~.connect,
+.tabs>.tab>.content>.game>.move-state {
     display: none;
 }
 
@@ -58,18 +58,16 @@ form label {
     display: block;
 }
 
-/* TODO: checked might need to be before the class */
-.game>.move-state.none:checked~canvas { cursor: default;   }
-.game>.move-state.swap:checked~canvas { cursor: progress;  }
-.game>.move-state.rect:checked~canvas { cursor: crosshair; }
-.game>.move-state.drag:checked~canvas { cursor: grabbing;  }
-.game>.move-state.grab:checked~canvas { cursor: pointer;   }
-.game>canvas {
+.tab>.content>.game>.move-state.none:checked~canvas { cursor: default;   }
+.tab>.content>.game>.move-state.swap:checked~canvas { cursor: progress;  }
+.tab>.content>.game>.move-state.rect:checked~canvas { cursor: crosshair; }
+.tab>.content>.game>.move-state.drag:checked~canvas { cursor: grabbing;  }
+.tab>.content>.game>.move-state.grab:checked~canvas { cursor: pointer;   }
+.tab>.content>.game>canvas {
     border: 1px dotted black;
 }
 
-/* TODO tie to #tab-about */
-ul.icons>li>svg {
+.tab>.content>.about>ul.icons>li>svg {
     height: 1em;
     margin-right: .25em;
 }
