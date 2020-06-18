@@ -26,7 +26,7 @@ var (
 	WebSocket Socket // TODO: HACK! (circular dependency)
 )
 
-// getElementById  gets the element with the specified id.
+// getElementById  gets the element with the specified id. // TODO: Replace all users with querySelector.
 func getElementById(id string) js.Value {
 	return document.Call("getElementById", id)
 }
@@ -101,22 +101,31 @@ func cloneElementById(id string) js.Value {
 	return clone
 }
 
+// cloneElementById creates a close of the element in the template.
+// TODO: remove the word "query" from all functions when "id" functions are removed
+func cloneElementByQuery(query string) js.Value {
+	templateElement := QuerySelector(query)
+	contentElement := templateElement.Get("content")
+	clone := contentElement.Call("cloneNode", true)
+	return clone
+}
+
 //ClearLog removes all log messages.
 func ClearLog() {
-	logScrollElement := getElementById("log-scroll")
+	logScrollElement := QuerySelector(".log>.scroll")
 	logScrollElement.Set("innerHTML", "")
 }
 
 // AddLog adds a log message with the specified class
 func AddLog(class, text string) {
-	clone := cloneElementById("log-item")
+	clone := cloneElementByQuery(".log>template")
 	cloneChildren := clone.Get("children")
 	logItemElement := cloneChildren.Index(0)
 	time := FormatTime(time.Now().UTC().Unix())
 	textContent := time + " : " + text
 	logItemElement.Set("textContent", textContent)
 	logItemElement.Set("className", class)
-	logScrollElement := getElementById("log-scroll")
+	logScrollElement := QuerySelector(".log>.scroll")
 	logScrollElement.Call("appendChild", logItemElement)
 	scrollHeight := logScrollElement.Get("scrollHeight")
 	clientHeight := logScrollElement.Get("clientHeight")

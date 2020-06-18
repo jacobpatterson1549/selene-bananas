@@ -6,7 +6,7 @@
 #has-game:not(:checked)+div,
 #has-websocket:not(:checked)~.lobby-connected,
 #has-websocket:checked~.lobby-connect,
-#has-log:not(:checked)+div#log,
+.log-visible:not(:checked)+.log,
 #game>input {
     display: none;
 }
@@ -62,14 +62,13 @@ ul.icons>li>svg {
     display: block;
 }
 
-#log-scroll {
+.log>.scroll {
     height: 5em;
     overflow: auto;
 }
-
-#log-scroll>.error   { color: red;    }
-#log-scroll>.chat    { color: green;  }
-#log-scroll>.warning { color: orange; }
+.log>.scroll>.error   { color: red;    }
+.log>.scroll>.chat    { color: green;  }
+.log>.scroll>.warning { color: orange; }
 
 #game>input:checked.move-state.none~canvas { cursor: default;   }
 #game>input:checked.move-state.swap~canvas { cursor: progress;  }
