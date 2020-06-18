@@ -44,12 +44,12 @@ func Chat(text string) {
 
 // Clear clears the log.
 func Clear() {
-	dom.SetCheckedQuery(".log-visible", false)
+	dom.SetCheckedQuery(".has-log", false)
 	dom.ClearLog()
 }
 
 // log writes a log item with the specified class.
 func log(class, text string) {
-	dom.SetCheckedQuery(".log-visible", true)
+	dom.SetCheckedQuery(".has-log", true)
 	dom.AddLog(class, text)
 }

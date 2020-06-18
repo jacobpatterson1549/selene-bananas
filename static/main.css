@@ -6,7 +6,7 @@
 #has-game:not(:checked)+div,
 #has-websocket:not(:checked)~.lobby-connected,
 #has-websocket:checked~.lobby-connect,
-.log-visible:not(:checked)+.log,
+.has-log:not(:checked)+.log,
 #game>input {
     display: none;
 }
