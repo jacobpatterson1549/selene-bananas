@@ -1,5 +1,5 @@
-.tabs>div>div,
-.tabs>div>input, 
+.tab>input,
+.tab>.content,
 #has-login:checked+.tabs>div.logout-required,
 #has-login:not(:checked)+.tabs>div.login-required,
 #has-game-infos:not(:checked)+div,
@@ -15,10 +15,13 @@ form label {
     display: inline-block;
 }
 
-ul.icons>li>svg {
-    height: 1em;
-    margin-right: .25em;
+.log>.scroll {
+    height: 5em;
+    overflow: auto;
 }
+.log>.scroll>.error   { color: red;    }
+.log>.scroll>.chat    { color: green;  }
+.log>.scroll>.warning { color: orange; }
 
 .tabs {
     display: block;
@@ -28,47 +31,33 @@ ul.icons>li>svg {
     min-height: 200px;
 }
 
-.tabs>div {
+.tab {
     float: left;
 }
-
-.tabs>div>label {
+.tab>input:checked+label {
+    background: #bbb;
+}
+.tab>label:active {
+    background: #ccc;
+}
+.tab>label:hover {
+    background: #ddd;
+}
+.tab>label {
     margin: 1em .2em;
     padding: .3em;
     border: 1px solid black;
     background: #eee;
 }
-
-.tabs>div>label:hover {
-    background: #ddd;
-}
-
-.tabs>div>label:active {
-    background: #ccc;
-}
-
-.tabs>div>input:checked+label {
-    background: #bbb;
-}
-
-.tabs>div>div {
+.tab>.content {
     position: absolute;
     left: 0;
     background: #fff;
     margin: 1em;
 }
-
-.tabs>div>input:checked+label+div {
+.tab>input:checked+label+.content {
     display: block;
 }
-
-.log>.scroll {
-    height: 5em;
-    overflow: auto;
-}
-.log>.scroll>.error   { color: red;    }
-.log>.scroll>.chat    { color: green;  }
-.log>.scroll>.warning { color: orange; }
 
 #game>input:checked.move-state.none~canvas { cursor: default;   }
 #game>input:checked.move-state.swap~canvas { cursor: progress;  }
@@ -78,4 +67,10 @@ ul.icons>li>svg {
 
 #game>canvas {
     border: 1px dotted black;
+}
+
+/* TODO tie to #tab-about */
+ul.icons>li>svg {
+    height: 1em;
+    margin-right: .25em;
 }

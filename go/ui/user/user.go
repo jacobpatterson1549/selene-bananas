@@ -88,7 +88,7 @@ func (u *User) login(token string) {
 	}
 	dom.SetUsernamesReadOnly(string(ui.username))
 	dom.SetValueQuery("input.points", strconv.Itoa(ui.points))
-	dom.SetChecked("tab-4", true) // lobby tab
+	dom.SetCheckedQuery("#tab-lobby", true)
 	u.hasLogin(true)
 }
 
@@ -97,7 +97,7 @@ func (u *User) Logout() {
 	u.hasLogin(false)
 	dom.SetChecked("has-game", false)
 	dom.SetUsernamesReadOnly("")
-	dom.SetChecked("tab-1", true) // login tab
+	dom.SetCheckedQuery("#tab-login-user", true)
 }
 
 func (j jwt) getUser() (*userInfo, error) {

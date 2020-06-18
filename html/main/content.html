@@ -1,46 +1,46 @@
 <input type="text" id="jwt" hidden>
 <input type="checkbox" id="has-login" hidden>
 <div class=tabs>
-    <div class="logout-required">
-        <input id="tab-1" type="radio" name="tab-group" checked>
-        <label for="tab-1">Sign In</label>
-        <div>
+    <div class="tab logout-required">
+        <input id="tab-login-user" type="radio" name="tab-group" checked>
+        <label for="tab-login-user">Sign In</label>
+        <div class="content">
             {{ template "user_login.html" . }}
         </div>
     </div>
-    <div class="logout-required">
-        <input id="tab-2" type="radio" name="tab-group">
-        <label for="tab-2">Create User</label>
-        <div>
+    <div class="tab logout-required">
+        <input id="tab-create-user" type="radio" name="tab-group">
+        <label for="tab-create-user">Create User</label>
+        <div class="content">
             {{ template "user_create.html" . }}
         </div>
     </div>
-    <div class="login-required">
-        <input id="tab-3" type="radio" name="tab-group">
-        <label for="tab-3">User Actions</label>
-        <div>
+    <div class="tab login-required">
+        <input id="tab-modify-user" type="radio" name="tab-group">
+        <label for="tab-modify-user">User Actions</label>
+        <div class="content">
             {{ template "user_modify.html" . }}
         </div>
     </div>
-    <div class="login-required">
-        <input id="tab-4" type="radio" name="tab-group">
-        <label for="tab-4">Lobby</label>
-        <div>
+    <div class="tab login-required">
+        <input id="tab-lobby" type="radio" name="tab-group">
+        <label for="tab-lobby">Lobby</label>
+        <div class="content">
             {{ template "lobby.html" . }}
         </div>
     </div>
     <input type="checkbox" id="has-game" hidden>
-    <div class="login-required" id="game-tab">
-        <input id="tab-5" type="radio" name="tab-group">
-        <label for="tab-5">Game</label>
-        <div>
+    <div class="tab login-required" id="game-tab">
+        <input id="tab-game" type="radio" name="tab-group">
+        <label for="tab-game">Game</label>
+        <div class="content">
             {{ template "game.html" . }}
         </div>
     </div>
-    <div>
-        <input id="tab-6" type="radio" name="tab-group">
-        <label for="tab-6">About</label>
-        <div>
+    <div class="tab">
+        <input id="tab-about" type="radio" name="tab-group">
+        <label for="tab-about">About</label>
+        <div class="content">
             {{ template "about.html" . }}
         </div>
     </div>

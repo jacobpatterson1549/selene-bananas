@@ -111,7 +111,7 @@ func (s *Socket) onClose(event js.Value) {
 	}
 	dom.SetChecked("has-websocket", false)
 	dom.SetChecked("has-game", false)
-	dom.SetChecked("tab-4", true) // lobby tab
+	dom.SetCheckedQuery("#tab-lobby", true)
 }
 
 // onMessage is called when the websocket encounters an unexpected error.
