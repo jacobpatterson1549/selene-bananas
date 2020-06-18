@@ -216,7 +216,6 @@ func (s Server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 	t := template.New("main.html")
 	templateFileGlobs := []string{
-		"html/*.html",
 		"html/**/*.html",
 		"static/fa/*.svg",
 		"static/main.css",
