@@ -161,7 +161,7 @@ func (ud UserDao) setupSQLQueries() ([]sqlQuery, error) {
 	filenames := []string{"s", "_create", "_read", "_update_password", "_update_points_increment", "_delete"}
 	queries := make([]sqlQuery, len(filenames))
 	for i, n := range filenames {
-		f := fmt.Sprintf("sql/user/user%s.sql", n)
+		f := fmt.Sprintf("sql/user%s.sql", n)
 		b, err := ud.readFileFunc(f)
 		if err != nil {
 			return nil, fmt.Errorf("reading setup file %v: %w", f, err)
