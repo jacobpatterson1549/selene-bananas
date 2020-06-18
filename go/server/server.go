@@ -2,11 +2,13 @@
 package server
 
 import (
+	"compress/gzip"
 	"context"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/db"
@@ -157,10 +159,23 @@ func (s *Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 			return fmt.Errorf("rendering template : %w", err)
 		}
 	case "/favicon.ico", "/robots.txt", "/run_wasm.js":
-		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
+		s.cacheResponse(w)
 		http.ServeFile(w, r, "static"+r.URL.Path)
-	case "/main.wasm", "/wasm_exec.js":
-		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
+	case "/wasm_exec.js":
+		s.cacheResponse(w)
+		http.ServeFile(w, r, "."+r.URL.Path)
+	case "/main.wasm":
+		s.cacheResponse(w)
+		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			w.Header().Set("Content-Encoding", "gzip")
+			gzw := gzip.NewWriter(w)
+			defer gzw.Close()
+			gzrw := gzipResponseWriter{
+				Writer:         gzw,
+				ResponseWriter: w,
+			}
+			w = http.ResponseWriter(gzrw)
+		}
 		http.ServeFile(w, r, "."+r.URL.Path)
 	case "/lobby":
 		err := r.ParseForm()
@@ -240,6 +255,12 @@ func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 	}
 	return t.Execute(w, s.data)
 }
+
+
+func (s Server) cacheResponse(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
+}
+
 
 func httpError(w http.ResponseWriter, statusCode int) {
 	http.Error(w, http.StatusText(statusCode), statusCode)
