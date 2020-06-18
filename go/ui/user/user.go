@@ -47,7 +47,10 @@ func New(httpClient *http.Client) User {
 // InitDom regesters user dom functions.
 func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	logoutJsFunc := dom.NewJsFunc(u.Logout)
+	logoutJsFunc := dom.NewJsEventFunc(func(event js.Value) {
+		// wrapper handles preventDefault
+		u.Logout()
+	})
 	requestJsFunc := dom.NewJsEventFunc(func(event js.Value) {
 		f, err := dom.NewForm(event)
 		if err != nil {
