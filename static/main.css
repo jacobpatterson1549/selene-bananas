@@ -1,7 +1,7 @@
 .has-log:not(:checked)+.log,
 .tabs>.has-login:checked~.logout-required,
 .tabs>.has-login:not(:checked)~.login-required,
-.tabs>.has-game:not(:checked)+.content,
+.tabs>.has-game:not(:checked)+.tab,
 .tabs>.tab>input,
 .tabs>.tab>.content,
 .tabs>.tab>.content>.lobby>.has-websocket:not(:checked)~.connected,
