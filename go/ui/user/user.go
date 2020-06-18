@@ -98,7 +98,7 @@ func (u *User) login(token string) {
 // Logout logs out the user
 func (u *User) Logout() {
 	u.hasLogin(false)
-	dom.SetChecked("has-game", false)
+	dom.SetCheckedQuery(".has-game", false)
 	dom.SetUsernamesReadOnly("")
 	dom.SetCheckedQuery("#tab-login-user", true)
 }

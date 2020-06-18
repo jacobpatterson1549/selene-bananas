@@ -100,11 +100,11 @@ const (
 )
 
 var moveStateRadioQueries = map[moveState]string{
-	none: "#game>input.move-state.none",
-	swap: "#game>input.move-state.swap",
-	rect: "#game>input.move-state.rect",
-	drag: "#game>input.move-state.drag",
-	grab: "#game>input.move-state.grab",
+	none: ".game>.move-state.none",
+	swap: ".game>.move-state.swap",
+	rect: ".game>.move-state.rect",
+	drag: ".game>.move-state.drag",
+	grab: ".game>.move-state.grab",
 }
 
 // New Creates a canvas from the config.

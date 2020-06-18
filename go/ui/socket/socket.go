@@ -110,7 +110,7 @@ func (s *Socket) onClose(event js.Value) {
 		log.Warning("left lobby: " + reason.String())
 	}
 	dom.SetChecked("has-websocket", false)
-	dom.SetChecked("has-game", false)
+	dom.SetCheckedQuery(".has-game", false)
 	dom.SetCheckedQuery("#tab-lobby", true)
 }
 

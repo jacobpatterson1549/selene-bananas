@@ -81,9 +81,9 @@ func SetValueQuery(query, value string) {
 	element.Set("value", value)
 }
 
-// SetButtonDisabledQuery sets the button element with the id disabled or enabled.
-func SetButtonDisabled(id string, disabled bool) {
-	element := getElementById(id)
+// SetButtonDisabled sets the button element with the id disabled or enabled.
+func SetButtonDisabled(query string, disabled bool) {
+	element := QuerySelector(query)
 	element.Set("disabled", disabled)
 }
 

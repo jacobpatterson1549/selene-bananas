@@ -1,35 +1,38 @@
-<form onsubmit="game.sendChat(event)">
-    <label>
-        <div>Status:</div>
-        <input type="text" id="game-status" readonly="readonly">
-    </label>
-    <label>
-        <div>Tiles Left:</div>
-        <input type="number" id="game-tiles-left" readonly="readonly">
-    </label>
-    <label>
-        <div>Players:</div>
-        <input type="text" id="game-players" readonly="readonly">
-    </label>
-    <fieldset>
-        <legend>Game Chat</legend>
-        <input type="text" name="chat">
-        <input type="submit" value="Send">
+<div class="game">
+    <fieldset class="info">
+        <legend>Info</legend>
+        <label>
+            <div>Status:</div>
+            <input type="text" class="status" readonly="readonly">
+        </label>
+        <label>
+            <div>Tiles Left:</div>
+            <input type="number" class="tiles-left" readonly="readonly">
+        </label>
+        <label>
+            <div>Players:</div>
+            <input type="text" class="players" readonly="readonly">
+        </label>
     </fieldset>
-</form>
-<div id="game">
+    <form onsubmit="game.sendChat(event)">
+        <fieldset>
+            <legend>Game Chat</legend>
+            <input type="text" name="chat">
+            <input type="submit" value="Send">
+        </fieldset>
+    </form>
     <input type="radio" name="canvas" class="move-state none" checked>
     <input type="radio" name="canvas" class="move-state swap">
     <input type="radio" name="canvas" class="move-state rect">
     <input type="radio" name="canvas" class="move-state drag">
     <input type="radio" name="canvas" class="move-state grab">
-    <canvas  width="500" height="500"></canvas>
-</div>
-<div>
-    <button type="button" id="game-snag" onclick="game.snagTile()" disabled title="Get a new tile when you have run out of tiles.  All other players also get a tile.">Snag</button>
-    <button type="button" id="game-start" onclick="game.start()" disabled title="Starts the game for everyone.">Start</button>
-    <button type="button" id="game-finish" onclick="game.finish()" disabled title="Requests words to be checked.  To win, all tiles must be connected to form one group of actual words when the tile pile is empty.">Finish</button>
-    <button type="button" id="game-swap" onclick="canvas.swapTile()" disabled title="Swap 1 tile for three new ones in the pile.">Swap</button>
-    <button type="button" id="game-leave" onclick="game.leave()" title="Leave the game">Leave</button>
-    <button type="button" id="game-delete" onclick="game.delete()" title="Delete the game for everyone">Delete</button>
+    <canvas width="500" height="500"></canvas>
+    <div class="actions">
+        <button type="button" class="snag" onclick="game.snagTile()" disabled title="Get a new tile when you have run out of tiles.  All other players also get a tile.">Snag</button>
+        <button type="button" class="start" onclick="game.start()" disabled title="Starts the game for everyone.">Start</button>
+        <button type="button" class="finish" onclick="game.finish()" disabled title="Requests words to be checked.  To win, all tiles must be connected to form one group of actual words when the tile pile is empty.">Finish</button>
+        <button type="button" class="swap" onclick="canvas.swapTile()" disabled title="Swap 1 tile for three new ones in the pile.">Swap</button>
+        <button type="button" class="leave" onclick="game.leave()" title="Leave the game">Leave</button>
+        <button type="button" class="delete" onclick="game.delete()" title="Delete the game for everyone">Delete</button>
+    </div>
 </div>

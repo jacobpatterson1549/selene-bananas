@@ -105,7 +105,7 @@ func (g *Game) Join(id int) {
 
 // Leave changes the view for game by hiding it.
 func (g *Game) Leave() {
-	dom.SetChecked("has-game", false)
+	dom.SetCheckedQuery(".has-game", false)
 	dom.SetCheckedQuery("#tab-lobby", true)
 }
 
@@ -221,25 +221,25 @@ func (g *Game) updateStatus(m game.Message) {
 	default:
 		return
 	}
-	dom.SetValue("game-status", statusText)
-	dom.SetButtonDisabled("game-snag", snagDisabled)
-	dom.SetButtonDisabled("game-swap", swapDisabled)
-	dom.SetButtonDisabled("game-start", startDisabled)
-	dom.SetButtonDisabled("game-finish", finishDisabled)
+	dom.SetValueQuery(".game>.info>label>.status", statusText)
+	dom.SetButtonDisabled(".game>.actions>.snag", snagDisabled)
+	dom.SetButtonDisabled(".game>.actions>.swap", swapDisabled)
+	dom.SetButtonDisabled(".game>.actions>.start", startDisabled)
+	dom.SetButtonDisabled(".game>.actions>.finish", finishDisabled)
 	g.canvas.GameStatus(m.GameStatus)
 }
 
 // updateTilesLeft updates the TilesLeft label.  Other labels are updated if there are no tiles left.
 func (g *Game) updateTilesLeft(m game.Message) {
-	dom.SetValue("game-tiles-left", strconv.Itoa(m.TilesLeft))
+	dom.SetValueQuery(".game>.info>label>.tiles-left", strconv.Itoa(m.TilesLeft))
 	if m.TilesLeft == 0 {
-		dom.SetButtonDisabled("game-snag", true)
-		dom.SetButtonDisabled("game-swap", true)
+		dom.SetButtonDisabled(".game>.actions>.snag", true)
+		dom.SetButtonDisabled(".game>.actions>.swap", true)
 		// enable the finish button if the game is not being started or is already finished
 		switch m.GameStatus {
 		case game.NotStarted, game.Finished:
 		default:
-			dom.SetButtonDisabled("game-finish", false)
+			dom.SetButtonDisabled(".game>.actions>.finish", false)
 		}
 	}
 }
@@ -247,7 +247,7 @@ func (g *Game) updateTilesLeft(m game.Message) {
 func (g *Game) updatePlayers(m game.Message) {
 	if len(m.GamePlayers) > 0 {
 		players := strings.Join(m.GamePlayers, ",")
-		dom.SetValue("game-players", players)
+		dom.SetValueQuery(".game>.info>label>.players", players)
 	}
 }
 
@@ -259,6 +259,6 @@ func (g *Game) resetTiles() {
 }
 
 func setTabActive() {
-	dom.SetChecked("has-game", true)
+	dom.SetCheckedQuery(".has-game", true)
 	dom.SetCheckedQuery("#tab-game", true)
 }

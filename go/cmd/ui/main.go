@@ -37,7 +37,7 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	u := user.New(&httpClient)
 	u.InitDom(ctx, wg)
 	// canvas
-	canvasElement := dom.QuerySelector("#game>canvas")
+	canvasElement := dom.QuerySelector(".game>canvas")
 	contextElement := canvasElement.Call("getContext", "2d")
 	canvasCtx := canvasContext{contextElement}
 	var board board.Board

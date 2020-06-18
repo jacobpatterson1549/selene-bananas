@@ -2,12 +2,11 @@
 .tab>.content,
 #has-login:checked+.tabs>div.logout-required,
 #has-login:not(:checked)+.tabs>div.login-required,
-#has-game-infos:not(:checked)+div,
-#has-game:not(:checked)+div,
+.has-game:not(:checked)+.content,
 #has-websocket:not(:checked)~.lobby-connected,
 #has-websocket:checked~.lobby-connect,
 .has-log:not(:checked)+.log,
-#game>input {
+.game>.move-state {
     display: none;
 }
 
@@ -59,13 +58,13 @@ form label {
     display: block;
 }
 
-#game>input:checked.move-state.none~canvas { cursor: default;   }
-#game>input:checked.move-state.swap~canvas { cursor: progress;  }
-#game>input:checked.move-state.rect~canvas { cursor: crosshair; }
-#game>input:checked.move-state.drag~canvas { cursor: grabbing;  }
-#game>input:checked.move-state.grab~canvas { cursor: pointer;   }
-
-#game>canvas {
+/* TODO: checked might need to be before the class */
+.game>.move-state.none:checked~canvas { cursor: default;   }
+.game>.move-state.swap:checked~canvas { cursor: progress;  }
+.game>.move-state.rect:checked~canvas { cursor: crosshair; }
+.game>.move-state.drag:checked~canvas { cursor: grabbing;  }
+.game>.move-state.grab:checked~canvas { cursor: pointer;   }
+.game>canvas {
     border: 1px dotted black;
 }
 
