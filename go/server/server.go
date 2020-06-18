@@ -3,6 +3,7 @@ package server
 
 import (
 	"compress/gzip"
+	"compress/zlib"
 	"context"
 	"fmt"
 	"html/template"
@@ -246,15 +247,21 @@ func (s *Server) handleRootFile(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) handleWasmFile(w http.ResponseWriter, r *http.Request) error {
-	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-		w.Header().Set("Content-Encoding", "gzip")
-		gzw := gzip.NewWriter(w)
-		defer gzw.Close()
-		wrw := wrappedResponseWriter{
-			Writer:         gzw,
-			ResponseWriter: w,
+	encoders := map[string]func() io.WriteCloser{
+		"gzip":    func() io.WriteCloser { return gzip.NewWriter(w) },
+		"deflate": func() io.WriteCloser { return zlib.NewWriter(w) },
+	}
+	for _, n := range []string{"gzip", "deflate"} { // give gzip priority
+		if strings.Contains(r.Header.Get("Accept-Encoding"), n) {
+			w.Header().Set("Content-Encoding", n)
+			w2 := encoders[n]()
+			defer w2.Close()
+			w = wrappedResponseWriter{
+				Writer:         w2,
+				ResponseWriter: w,
+			}
+			break
 		}
-		w = http.ResponseWriter(wrw)
 	}
 	s.cacheResponse(w)
 	http.ServeFile(w, r, "."+r.URL.Path)
