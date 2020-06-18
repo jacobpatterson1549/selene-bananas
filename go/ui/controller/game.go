@@ -221,7 +221,7 @@ func (g *Game) updateStatus(m game.Message) {
 	default:
 		return
 	}
-	dom.SetValue(".game>.info>label>.status", statusText)
+	dom.SetValue(".game>form>.info>label>.status", statusText)
 	setButtonDisabled(".game>.actions>.snag", snagDisabled)
 	setButtonDisabled(".game>.actions>.swap", swapDisabled)
 	setButtonDisabled(".game>.actions>.start", startDisabled)
@@ -231,7 +231,7 @@ func (g *Game) updateStatus(m game.Message) {
 
 // updateTilesLeft updates the TilesLeft label.  Other labels are updated if there are no tiles left.
 func (g *Game) updateTilesLeft(m game.Message) {
-	dom.SetValue(".game>.info>label>.tiles-left", strconv.Itoa(m.TilesLeft))
+	dom.SetValue(".game>form>.info>label>.tiles-left", strconv.Itoa(m.TilesLeft))
 	if m.TilesLeft == 0 {
 		setButtonDisabled(".game>.actions>.snag", true)
 		setButtonDisabled(".game>.actions>.swap", true)
@@ -247,7 +247,7 @@ func (g *Game) updateTilesLeft(m game.Message) {
 func (g *Game) updatePlayers(m game.Message) {
 	if len(m.GamePlayers) > 0 {
 		players := strings.Join(m.GamePlayers, ",")
-		dom.SetValue(".game>.info>label>.players", players)
+		dom.SetValue(".game>form>.info>label>.players", players)
 	}
 }
 

@@ -1,23 +1,25 @@
 <div class="game">
-    <fieldset class="info">
-        <legend>Info</legend>
-        <label>
-            <div>Status:</div>
-            <input type="text" class="status" readonly="readonly">
-        </label>
-        <label>
-            <div>Tiles Left:</div>
-            <input type="number" class="tiles-left" readonly="readonly">
-        </label>
-        <label>
-            <div>Players:</div>
-            <input type="text" class="players" readonly="readonly">
-        </label>
-    </fieldset>
     <form onsubmit="game.sendChat(event)">
+        <fieldset class="info">
+            <legend>Info</legend>
+            <label>
+                <div>Status:</div>
+                <input type="text" class="status" readonly="readonly">
+            </label>
+            <label>
+                <div>Tiles Left:</div>
+                <input type="number" class="tiles-left" readonly="readonly">
+            </label>
+            <label>
+                <div>Players:</div>
+                <input type="text" class="players" readonly="readonly">
+            </label>
+        </fieldset>
         <fieldset>
-            <legend>Chat</legend>
-            <input type="text" name="chat">
+            <label>
+                <div>Chat</div>
+                <input type="text" name="chat">
+            </label>
             <input type="submit" value="Send">
         </fieldset>
     </form>
