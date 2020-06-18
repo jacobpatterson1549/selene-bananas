@@ -154,61 +154,26 @@ func (s Server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	switch r.URL.Path {
 	case "/":
-		err := s.handleTemplate(w, r)
-		if err != nil {
+		if err := s.handleTemplate(w, r); err != nil {
 			return fmt.Errorf("rendering template : %w", err)
 		}
+		return nil
 	case "/favicon.ico", "/robots.txt", "/run_wasm.js":
-		s.cacheResponse(w)
-		http.ServeFile(w, r, "static"+r.URL.Path)
+		return s.handleStaticFile(w, r)
 	case "/wasm_exec.js":
-		s.cacheResponse(w)
-		http.ServeFile(w, r, "."+r.URL.Path)
+		return s.handleRootFile(w, r)
 	case "/main.wasm":
-		s.cacheResponse(w)
-		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			w.Header().Set("Content-Encoding", "gzip")
-			gzw := gzip.NewWriter(w)
-			defer gzw.Close()
-			gzrw := gzipResponseWriter{
-				Writer:         gzw,
-				ResponseWriter: w,
-			}
-			w = http.ResponseWriter(gzrw)
-		}
-		http.ServeFile(w, r, "."+r.URL.Path)
+		return s.handleWasmFile(w, r)
 	case "/lobby":
-		err := r.ParseForm()
-		if err != nil {
-			return fmt.Errorf("parsing form: %w", err)
-		}
-		tokenString := r.FormValue("access_token")
-		tokenUsername, err := s.tokenizer.ReadUsername(tokenString)
-		if err != nil {
-			s.log.Printf("reading username from token: %v", err)
-			httpError(w, http.StatusUnauthorized)
-			return nil
-		}
-		err = s.handleUserJoinLobby(w, r, tokenUsername)
-		if err != nil {
-			return err
-		}
+		return s.handleLobby(w, r)
 	case "/ping":
-		_, err := s.readTokenUsername(r)
-		if err != nil {
-			s.log.Print(err)
-			httpError(w, http.StatusForbidden)
-			return nil
-		}
+		return s.handleHTTPPing(w, r)
 	case "/monitor":
-		err := s.handleMonitor(w, r)
-		if err != nil {
-			return err
-		}
+		return s.handleMonitor(w, r)
 	default:
 		httpError(w, http.StatusNotFound)
+		return nil
 	}
-	return nil
 }
 
 func (s Server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
@@ -216,6 +181,7 @@ func (s Server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 	var err error
 	switch r.URL.Path {
 	case "/user_create", "/user_login":
+		// [unauthenticated]
 	default:
 		tokenUsername, err = s.readTokenUsername(r)
 		if err != nil {
@@ -256,11 +222,61 @@ func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 	return t.Execute(w, s.data)
 }
 
-
-func (s Server) cacheResponse(w http.ResponseWriter) {
+func (s *Server) cacheResponse(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
 }
 
+func (s *Server) handleStaticFile(w http.ResponseWriter, r *http.Request) error {
+	s.cacheResponse(w)
+	http.ServeFile(w, r, "static"+r.URL.Path)
+	return nil
+}
+
+func (s *Server) handleRootFile(w http.ResponseWriter, r *http.Request) error {
+	s.cacheResponse(w)
+	http.ServeFile(w, r, "."+r.URL.Path)
+	return nil
+}
+
+func (s *Server) handleWasmFile(w http.ResponseWriter, r *http.Request) error {
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		w.Header().Set("Content-Encoding", "gzip")
+		gzw := gzip.NewWriter(w)
+		defer gzw.Close()
+		gzrw := gzipResponseWriter{
+			Writer:         gzw,
+			ResponseWriter: w,
+		}
+		w = http.ResponseWriter(gzrw)
+	}
+	s.cacheResponse(w)
+	http.ServeFile(w, r, "."+r.URL.Path)
+	return nil
+}
+
+func (s *Server) handleLobby(w http.ResponseWriter, r *http.Request) error {
+	err := r.ParseForm()
+	if err != nil {
+		return fmt.Errorf("parsing form: %w", err)
+	}
+	tokenString := r.FormValue("access_token")
+	tokenUsername, err := s.tokenizer.ReadUsername(tokenString)
+	if err != nil {
+		s.log.Printf("reading username from token: %v", err)
+		httpError(w, http.StatusUnauthorized)
+		return nil
+	}
+	return s.handleUserJoinLobby(w, r, tokenUsername)
+}
+
+func (s Server) handleHTTPPing(w http.ResponseWriter, r *http.Request) error {
+	_, err := s.readTokenUsername(r)
+	if err != nil {
+		s.log.Print(err)
+		httpError(w, http.StatusForbidden)
+	}
+	return nil
+}
 
 func httpError(w http.ResponseWriter, statusCode int) {
 	http.Error(w, http.StatusText(statusCode), statusCode)
