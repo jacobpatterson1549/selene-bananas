@@ -18,9 +18,9 @@ form label {
     height: 5em;
     overflow: auto;
 }
-.log>.scroll>.error   { color: red;    }
-.log>.scroll>.chat    { color: green;  }
-.log>.scroll>.warning { color: orange; }
+.log>.scroll>.error   { color: #f00;    }
+.log>.scroll>.chat    { color: #080;  }
+.log>.scroll>.warning { color: #f90; }
 
 .tabs {
     display: block;
@@ -45,7 +45,7 @@ form label {
 .tab>label {
     margin: 1em .2em;
     padding: .3em;
-    border: 1px solid black;
+    border: 1px solid #000;
     background: #eee;
 }
 .tab>.content {
@@ -64,7 +64,7 @@ form label {
 .tab>.content>.game>.move-state.drag:checked~canvas { cursor: grabbing;  }
 .tab>.content>.game>.move-state.grab:checked~canvas { cursor: pointer;   }
 .tab>.content>.game>canvas {
-    border: 1px dotted black;
+    border: 1px dotted #000;
 }
 
 .tab>.content>.about>ul.icons>li>svg {
