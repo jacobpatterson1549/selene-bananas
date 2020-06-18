@@ -55,6 +55,13 @@ func GetChecked(id string) bool {
 	return checked.Bool()
 }
 
+// GetCheckedQuery returns whether the element has a checked value of true.
+func GetCheckedQuery(query string) bool {
+	element := QuerySelector(query)
+	checked := element.Get("checked")
+	return checked.Bool()
+}
+
 // SetInnerHTML sets the inner html of the element with the specified id.
 func SetInnerHTML(id string, innerHTML string) {
 	element := getElementById(id)
@@ -64,6 +71,14 @@ func SetInnerHTML(id string, innerHTML string) {
 // GetValue gets the value of the input element with the specified id.
 func GetValue(id string) string {
 	element := getElementById(id)
+	value := element.Get("value")
+	return value.String()
+
+}
+
+// GetValueQuery gets the value of the input element with the specified query.
+func GetValueQuery(query string) string {
+	element := QuerySelector(query)
 	value := element.Get("value")
 	return value.String()
 
