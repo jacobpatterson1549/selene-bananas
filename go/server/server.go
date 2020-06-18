@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -48,6 +49,12 @@ type (
 		StopDur time.Duration
 		// CachenSec is the number of seconds some files are cached
 		CacheSec int
+	}
+
+	// wrappedResponseWriter wraps response writing with another writer.
+	wrappedResponseWriter struct {
+		io.Writer
+		http.ResponseWriter
 	}
 )
 
@@ -243,11 +250,11 @@ func (s *Server) handleWasmFile(w http.ResponseWriter, r *http.Request) error {
 		w.Header().Set("Content-Encoding", "gzip")
 		gzw := gzip.NewWriter(w)
 		defer gzw.Close()
-		gzrw := gzipResponseWriter{
+		wrw := wrappedResponseWriter{
 			Writer:         gzw,
 			ResponseWriter: w,
 		}
-		w = http.ResponseWriter(gzrw)
+		w = http.ResponseWriter(wrw)
 	}
 	s.cacheResponse(w)
 	http.ServeFile(w, r, "."+r.URL.Path)
@@ -313,4 +320,8 @@ func (s Server) readTokenUsername(r *http.Request) (string, error) {
 		return "", fmt.Errorf("username not same as token username")
 	}
 	return tokenUsername, nil
+}
+
+func (wrw wrappedResponseWriter) Write(p []byte) (n int, err error) {
+	return wrw.Writer.Write(p)
 }
