@@ -221,25 +221,25 @@ func (g *Game) updateStatus(m game.Message) {
 	default:
 		return
 	}
-	dom.SetValueQuery(".game>.info>label>.status", statusText)
-	dom.SetButtonDisabled(".game>.actions>.snag", snagDisabled)
-	dom.SetButtonDisabled(".game>.actions>.swap", swapDisabled)
-	dom.SetButtonDisabled(".game>.actions>.start", startDisabled)
-	dom.SetButtonDisabled(".game>.actions>.finish", finishDisabled)
+	dom.SetValue(".game>.info>label>.status", statusText)
+	setButtonDisabled(".game>.actions>.snag", snagDisabled)
+	setButtonDisabled(".game>.actions>.swap", swapDisabled)
+	setButtonDisabled(".game>.actions>.start", startDisabled)
+	setButtonDisabled(".game>.actions>.finish", finishDisabled)
 	g.canvas.GameStatus(m.GameStatus)
 }
 
 // updateTilesLeft updates the TilesLeft label.  Other labels are updated if there are no tiles left.
 func (g *Game) updateTilesLeft(m game.Message) {
-	dom.SetValueQuery(".game>.info>label>.tiles-left", strconv.Itoa(m.TilesLeft))
+	dom.SetValue(".game>.info>label>.tiles-left", strconv.Itoa(m.TilesLeft))
 	if m.TilesLeft == 0 {
-		dom.SetButtonDisabled(".game>.actions>.snag", true)
-		dom.SetButtonDisabled(".game>.actions>.swap", true)
+		setButtonDisabled(".game>.actions>.snag", true)
+		setButtonDisabled(".game>.actions>.swap", true)
 		// enable the finish button if the game is not being started or is already finished
 		switch m.GameStatus {
 		case game.NotStarted, game.Finished:
 		default:
-			dom.SetButtonDisabled(".game>.actions>.finish", false)
+			setButtonDisabled(".game>.actions>.finish", false)
 		}
 	}
 }
@@ -247,7 +247,7 @@ func (g *Game) updateTilesLeft(m game.Message) {
 func (g *Game) updatePlayers(m game.Message) {
 	if len(m.GamePlayers) > 0 {
 		players := strings.Join(m.GamePlayers, ",")
-		dom.SetValueQuery(".game>.info>label>.players", players)
+		dom.SetValue(".game>.info>label>.players", players)
 	}
 }
 
@@ -261,4 +261,10 @@ func (g *Game) resetTiles() {
 func setTabActive() {
 	dom.SetCheckedQuery(".has-game", true)
 	dom.SetCheckedQuery("#tab-game", true)
+}
+
+// setButtonDisabled sets the disable property of the button element.
+func setButtonDisabled(query string, disabled bool) {
+	element := dom.QuerySelector(query)
+	element.Set("disabled", disabled)
 }

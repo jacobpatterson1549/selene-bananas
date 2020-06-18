@@ -82,7 +82,7 @@ func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 func (u *User) login(token string) {
-	dom.SetValueQuery(".jwt", token)
+	dom.SetValue(".jwt", token)
 	j := jwt(token)
 	ui, err := j.getUser()
 	if err != nil {
@@ -90,7 +90,7 @@ func (u *User) login(token string) {
 		return
 	}
 	dom.SetUsernamesReadOnly(string(ui.username))
-	dom.SetValueQuery("input.points", strconv.Itoa(ui.points))
+	dom.SetValue("input.points", strconv.Itoa(ui.points))
 	dom.SetCheckedQuery("#tab-lobby", true)
 	dom.SetCheckedQuery(".has-login", true)
 }
@@ -142,7 +142,7 @@ func (j jwt) getUser() (*userInfo, error) {
 
 // JWT gets the value of the jwt input.
 func (u User) JWT() string {
-	return dom.GetValueQuery(".jwt")
+	return dom.GetValue(".jwt")
 }
 
 // UserName returns the username of the logged in user.

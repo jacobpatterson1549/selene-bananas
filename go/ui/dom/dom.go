@@ -26,33 +26,15 @@ var (
 	WebSocket Socket // TODO: HACK! (circular dependency)
 )
 
-// getElementById  gets the element with the specified id. // TODO: Replace all users with querySelector.
-func getElementById(id string) js.Value {
-	return document.Call("getElementById", id)
-}
-
-// QuerySelector returns the first element that the equery returns from the root of the document.
+// QuerySelector returns the first element returned by the query from root of the document.
 func QuerySelector(query string) js.Value {
 	return document.Call("querySelector", query)
 }
 
-// SetChecked sets the checked property of the element with the specified element id
-func SetChecked(id string, checked bool) {
-	element := getElementById(id)
-	element.Set("checked", checked)
-}
-
-// SetCheckedQuery sets the checked property of the element with the specified element query.
+// SetCheckedQuery sets the checked property of the element.
 func SetCheckedQuery(query string, checked bool) {
 	element := QuerySelector(query)
 	element.Set("checked", checked)
-}
-
-// GetChecked returns whether the element has a checked value of true.
-func GetChecked(id string) bool {
-	element := getElementById(id)
-	checked := element.Get("checked")
-	return checked.Bool()
 }
 
 // GetCheckedQuery returns whether the element has a checked value of true.
@@ -62,63 +44,27 @@ func GetCheckedQuery(query string) bool {
 	return checked.Bool()
 }
 
-// SetInnerHTML sets the inner html of the element with the specified id.
-func SetInnerHTML(id string, innerHTML string) {
-	element := getElementById(id)
-	element.Set("innerHTML", innerHTML)
-}
-
-// GetValue gets the value of the input element with the specified id.
-func GetValue(id string) string {
-	element := getElementById(id)
-	value := element.Get("value")
-	return value.String()
-
-}
-
-// GetValueQuery gets the value of the input element with the specified query.
-func GetValueQuery(query string) string {
+// GetValue gets the value of the input element.
+func GetValue(query string) string {
 	element := QuerySelector(query)
 	value := element.Get("value")
 	return value.String()
-
 }
 
-// SetValue sets the value of the input element with the specified id.
-func SetValue(id, value string) {
-	element := getElementById(id)
-	element.Set("value", value)
-}
-
-// SetValueQuery sets the value of the input element with the specified element query..
-func SetValueQuery(query, value string) {
+// SetValue sets the value of the input element.
+func SetValue(query, value string) {
 	element := QuerySelector(query)
 	element.Set("value", value)
 }
 
-// SetButtonDisabled sets the button element with the id disabled or enabled.
-func SetButtonDisabled(query string, disabled bool) {
-	element := QuerySelector(query)
-	element.Set("disabled", disabled)
-}
-
-// FormatDate formats a datetime to HH:MM:SS.
-func FormatTime(utcSeconds int64) string {
+// formatDate formats a datetime to HH:MM:SS.
+func formatTime(utcSeconds int64) string {
 	t := time.Unix(utcSeconds, 0) // uses local timezone
 	return t.Format("15:04:05")
 }
 
-// cloneElementById creates a close of the element in the template.
-func cloneElementById(id string) js.Value {
-	templateElement := getElementById(id)
-	contentElement := templateElement.Get("content")
-	clone := contentElement.Call("cloneNode", true)
-	return clone
-}
-
-// cloneElementById creates a close of the element in the template.
-// TODO: remove the word "query" from all functions when "id" functions are removed
-func cloneElementByQuery(query string) js.Value {
+// cloneElement creates a close of the element, which should be a template.
+func cloneElement(query string) js.Value {
 	templateElement := QuerySelector(query)
 	contentElement := templateElement.Get("content")
 	clone := contentElement.Call("cloneNode", true)
@@ -133,10 +79,10 @@ func ClearLog() {
 
 // AddLog adds a log message with the specified class
 func AddLog(class, text string) {
-	clone := cloneElementByQuery(".log>template")
+	clone := cloneElement(".log>template")
 	cloneChildren := clone.Get("children")
 	logItemElement := cloneChildren.Index(0)
-	time := FormatTime(time.Now().UTC().Unix())
+	time := formatTime(time.Now().UTC().Unix())
 	textContent := time + " : " + text
 	logItemElement.Set("textContent", textContent)
 	logItemElement.Set("className", class)
@@ -153,21 +99,21 @@ func SetGameInfos(gameInfos []game.Info, username string) {
 	tbodyElement := QuerySelector(".game-infos>tbody")
 	tbodyElement.Set("innerHTML", "")
 	if len(gameInfos) == 0 {
-		emptyGameInfoElement := cloneElementByQuery(".no-game-info-row")
+		emptyGameInfoElement := cloneElement(".no-game-info-row")
 		tbodyElement.Call("appendChild", emptyGameInfoElement)
 		return
 	}
 	for _, gameInfo := range gameInfos {
-		gameInfoElement := cloneElementByQuery(".game-info-row")
+		gameInfoElement := cloneElement(".game-info-row")
 		rowElement := gameInfoElement.Get("children").Index(0)
-		createdAtTimeText := FormatTime(gameInfo.CreatedAt)
+		createdAtTimeText := formatTime(gameInfo.CreatedAt)
 		rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
 		players := strings.Join(gameInfo.Players, ", ")
 		rowElement.Get("children").Index(1).Set("innerHTML", players)
 		status := gameInfo.Status.String()
 		rowElement.Get("children").Index(2).Set("innerHTML", status)
 		if gameInfo.CanJoin(username) {
-			joinGameButtonElement := cloneElementByQuery(".join-game-button")
+			joinGameButtonElement := cloneElement(".join-game-button")
 			joinGameButtonElement.Get("children").Index(0).Set("value", int(gameInfo.ID))
 			rowElement.Get("children").Index(2).Call("appendChild", joinGameButtonElement)
 		}
