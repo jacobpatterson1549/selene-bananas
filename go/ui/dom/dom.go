@@ -175,8 +175,7 @@ func NewWebSocket(url string) js.Value {
 	return global.Get("WebSocket").New(url)
 }
 
-// Send delivers a message to the sever.
-// TODO: rename to SendWebSocketMessage
-func Send(m game.Message) {
+// SendWebSocketMessage delivers a message to the sever.
+func SendWebSocketMessage(m game.Message) {
 	WebSocket.Send(m)
 }

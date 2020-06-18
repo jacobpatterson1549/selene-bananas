@@ -385,7 +385,7 @@ func (c *Canvas) swap() {
 	if err := c.board.RemoveTile(endTS.tile); err != nil {
 		log.Error("removing tile while swapping: " + err.Error())
 	}
-	dom.Send(game.Message{
+	dom.SendWebSocketMessage(game.Message{
 		Type: game.Swap,
 		Tiles: []tile.Tile{
 			endTS.tile,
@@ -509,7 +509,7 @@ func (c *Canvas) moveSelectedTiles() {
 		log.Error("moving tiles to presumably valid locations: " + err.Error())
 		return
 	}
-	dom.Send(game.Message{
+	dom.SendWebSocketMessage(game.Message{
 		Type:          game.TilesMoved,
 		TilePositions: tilePositions,
 	})
