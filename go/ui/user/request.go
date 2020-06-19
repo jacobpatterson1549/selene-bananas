@@ -51,7 +51,6 @@ func (u User) request(f dom.Form) {
 func (r request) do(f dom.Form) (*http.Response, error) {
 	var httpRequest *http.Request
 	var err error
-	// TODO: pass context when making http request
 	switch f.Method {
 	case "get":
 		f.URL.RawQuery = f.Params.Encode()
@@ -80,7 +79,7 @@ func (u *User) newRequest(f dom.Form) (*request, error) {
 	var validator func() bool
 	var handler func(body io.ReadCloser)
 	switch f.URL.Path {
-	case "/user_create":
+	case "/user_create", "/user_update_password":
 		handler = func(body io.ReadCloser) {
 			f.StoreCredentials()
 			u.Logout()
@@ -104,11 +103,6 @@ func (u *User) newRequest(f dom.Form) (*request, error) {
 			}
 			f.StoreCredentials()
 			u.login(string(jwt))
-		}
-	case "/user_update_password":
-		handler = func(body io.ReadCloser) {
-			f.StoreCredentials()
-			u.Logout()
 		}
 	case "/ping":
 		// NOOP
