@@ -23,7 +23,7 @@ type (
 )
 
 // Request makes a request to the server using the fields in the form.
-func (u User) request(f dom.Form) {
+func (u User) Request(f dom.Form) {
 	r, err := u.newRequest(f)
 	switch {
 	case err != nil:

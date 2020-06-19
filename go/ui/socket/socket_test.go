@@ -70,6 +70,10 @@ func (u mockUser) Username() string {
 	return ""
 }
 
+func (u *mockUser) Request(f dom.Form) {
+	// NOOP
+}
+
 func (u *mockUser) Logout() {
 	// NOOP
 }

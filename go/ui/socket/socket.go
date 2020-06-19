@@ -34,6 +34,8 @@ type (
 		JWT() string
 		// Username gets the user's username.
 		Username() string
+		// Request submits the form to the server in an http request.
+		Request(f dom.Form)
 		// Logout releases the use credentials from the browser.
 		Logout()
 	}
@@ -209,16 +211,12 @@ func (s *Socket) handleInfo(m game.Message) {
 }
 
 // httpPing submits the small ping form to keep the server's http handling active.
-func (Socket) httpPing() {
+func (s *Socket) httpPing() {
 	pingFormElement := dom.QuerySelector(".ping-form>form")
-	var preventDefaultFunc js.Func
-	preventDefaultFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		preventDefaultFunc.Release()
-		return nil
-	})
-	pingEvent := map[string]interface{}{
-		"preventDefault": preventDefaultFunc,
-		"target":         pingFormElement,
+	f, err := dom.NewForm(pingFormElement)
+	if err != nil {
+		log.Error(err.Error())
+		return
 	}
-	pingFormElement.Call("onsubmit", js.ValueOf(pingEvent))
+	go s.User.Request(*f)
 }
