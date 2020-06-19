@@ -151,31 +151,29 @@ func (s Server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
+	var err error
 	switch r.URL.Path {
 	case "/":
-		if err := s.handleTemplate(w, r); err != nil {
-			return fmt.Errorf("rendering template : %w", err)
-		}
-		return nil
+		s.handleFile(s.serveTemplate)(w, r)
 	case "/favicon.ico", "/robots.txt", "/run_wasm.js":
-		return s.handleStaticFile(w, r)
+		s.handleFile(s.serveFile("static"+r.URL.Path))(w, r)
 	case "/wasm_exec.js", "/main.wasm":
-		return s.handleRootFile(w, r)
+		s.handleFile(s.serveFile("."+r.URL.Path))(w, r)
 	case "/lobby":
-		return s.handleLobby(w, r)
+		err = s.handleLobby(w, r)
 	case "/ping":
-		return s.handleHTTPPing(w, r)
+		err = s.handleHTTPPing(w, r)
 	case "/monitor":
-		return s.handleMonitor(w, r)
+		err = s.handleMonitor(w, r)
 	default:
 		httpError(w, http.StatusNotFound)
-		return nil
 	}
+	return err
 }
 
 func (s Server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
-	var tokenUsername string
 	var err error
+	var tokenUsername string
 	switch r.URL.Path {
 	case "/user_create", "/user_login":
 		// [unauthenticated]
@@ -202,7 +200,7 @@ func (s Server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
 	return err
 }
 
-func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
+func (s Server) serveTemplate(w http.ResponseWriter, r *http.Request) {
 	t := template.New("main.html")
 	templateFileGlobs := []string{
 		"html/**/*.html",
@@ -212,36 +210,41 @@ func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 	for _, g := range templateFileGlobs {
 		_, err := t.ParseGlob(g)
 		if err != nil {
-			return err
+			s.log.Printf("globbing template files: %v", err)
+			httpError(w, http.StatusInternalServerError)
+			return
 		}
 	}
-	return t.Execute(w, s.data)
-}
-
-func (s Server) handleStaticFile(w http.ResponseWriter, r *http.Request) error {
-	return s.serveFile(w, r, "static"+r.URL.Path)
-}
-
-func (s Server) handleRootFile(w http.ResponseWriter, r *http.Request) error {
-	return s.serveFile(w, r, "."+r.URL.Path)
-}
-
-// serveFile serves the file, adding a cache-control header and compressing it if possible.
-func (s Server) serveFile(w http.ResponseWriter, r *http.Request, name string) error {
-	if !strings.Contains(r.Header.Get("Cache-Control"), "no-store") {
-		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
+	if err := t.Execute(w, s.data); err != nil {
+		s.log.Printf("rendering template: %v", err)
+		httpError(w, http.StatusInternalServerError)
 	}
-	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-		w.Header().Set("Content-Encoding", "gzip")
-		w2 := gzip.NewWriter(w)
-		defer w2.Close()
-		w = wrappedResponseWriter{
-			Writer:         w2,
-			ResponseWriter: w,
+}
+
+// serveFile serves the file from the filesystem
+func (Server) serveFile(name string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, name)
+	}
+}
+
+// handleFile wraps the handling of the file, add cache-control header and gzip compression, if possible.
+func (s Server) handleFile(fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Cache-Control"), "no-store") {
+			w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
 		}
+		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			w.Header().Set("Content-Encoding", "gzip")
+			w2 := gzip.NewWriter(w)
+			defer w2.Close()
+			w = wrappedResponseWriter{
+				Writer:         w2,
+				ResponseWriter: w,
+			}
+		}
+		fn(w, r)
 	}
-	http.ServeFile(w, r, name)
-	return nil
 }
 
 func (s Server) handleLobby(w http.ResponseWriter, r *http.Request) error {
