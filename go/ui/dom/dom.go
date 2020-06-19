@@ -31,6 +31,11 @@ func QuerySelector(query string) js.Value {
 	return document.Call("querySelector", query)
 }
 
+// QuerySelectorAll returns an array of the elements returned by the query from root of the document.
+func QuerySelectorAll(query string) js.Value {
+	return document.Call("querySelectorAll", query)
+}
+
 // SetCheckedQuery sets the checked property of the element.
 func SetCheckedQuery(query string, checked bool) {
 	element := QuerySelector(query)

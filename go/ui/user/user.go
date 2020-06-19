@@ -89,7 +89,7 @@ func (u *User) login(token string) {
 		log.Error("getting user from jwt: " + err.Error())
 		return
 	}
-	dom.SetUsernamesReadOnly(string(ui.username))
+	setUsernamesReadOnly(string(ui.username))
 	dom.SetValue("input.points", strconv.Itoa(ui.points))
 	dom.SetCheckedQuery("#tab-lobby", true)
 	dom.SetCheckedQuery(".has-login", true)
@@ -99,7 +99,7 @@ func (u *User) login(token string) {
 func (u *User) Logout() {
 	dom.SetCheckedQuery(".has-login", false)
 	dom.SetCheckedQuery(".has-game", false)
-	dom.SetUsernamesReadOnly("")
+	setUsernamesReadOnly("")
 	dom.SetCheckedQuery("#tab-login-user", true)
 }
 
@@ -159,4 +159,19 @@ func (u User) Username() string {
 // escapePassword escapes the password for html dom input pattern matching using Regexp.
 func (u User) escapePassword(p string) string {
 	return string(u.escapeRE.ReplaceAll([]byte(p), []byte(`\$1`)))
+}
+
+// setUsernamesReadOnly sets all of the username inputs to readonly with the specified username if it is not empty, otherwise, it removes the readonly attribute.
+func setUsernamesReadOnly(username string) {
+	usernameElements := dom.QuerySelectorAll("input.username")
+	for i := 0; i < usernameElements.Length(); i++ {
+		usernameElement := usernameElements.Index(i)
+		switch {
+		case len(username) == 0:
+			usernameElement.Call("removeAttribute", "readonly")
+		default:
+			usernameElement.Set("value", username)
+			usernameElement.Call("setAttribute", "readonly", "readonly")
+		}
+	}
 }
