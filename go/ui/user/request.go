@@ -82,9 +82,9 @@ func (u *User) newRequest(f dom.Form) (*request, error) {
 	switch f.URL.Path {
 	case "/user_create":
 		handler = func(body io.ReadCloser) {
-			username := f.Params.Get("username")
-			password := f.Params.Get("password")
-			dom.StoreCredentials(username, password)
+			// username := f.Params.Get("username")
+			// password := f.Params.Get("password")
+			f.StoreCredentials()
 			u.Logout()
 		}
 	case "/user_delete":
@@ -104,16 +104,16 @@ func (u *User) newRequest(f dom.Form) (*request, error) {
 				log.Error("reading response body: " + err.Error())
 				return
 			}
-			username := f.Params.Get("username")
-			password := f.Params.Get("password")
-			dom.StoreCredentials(username, password)
+			// username := f.Params.Get("username")
+			// password := f.Params.Get("password")
+			f.StoreCredentials()
 			u.login(string(jwt))
 		}
 	case "/user_update_password":
 		handler = func(body io.ReadCloser) {
-			username := f.Params.Get("username")
-			password := f.Params.Get("password_confirm")
-			dom.StoreCredentials(username, password)
+			// username := f.Params.Get("username")
+			// password := f.Params.Get("password_confirm")
+			f.StoreCredentials()
 			u.Logout()
 		}
 	case "/ping":

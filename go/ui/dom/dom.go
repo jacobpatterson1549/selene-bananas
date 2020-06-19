@@ -112,18 +112,6 @@ func EnableSubmitButtons() {
 	}
 }
 
-// StoreCredentials attempts to save the credentials for the login, if browser wants to
-func StoreCredentials(username, password string) {
-	passwordCredential := document.Get("PasswordCredential")
-	if passwordCredential.Truthy() {
-		c := map[string]string{
-			"id":       username,
-			"password": password,
-		}
-		document.Get("credentials").Call("store", c)
-	}
-}
-
 // Confirm shows a popup asking the user a yes/no question.
 // The true return value implies the "yes" choice.
 func Confirm(message string) bool {
