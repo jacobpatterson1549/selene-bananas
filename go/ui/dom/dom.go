@@ -103,21 +103,6 @@ func SetGameInfos(gameInfos []game.Info, username string) {
 	}
 }
 
-// SetUsernamesReadOnly sets all of the username inputs to readonly with the specified username if it is not empty, otherwise, it removes the readonly attribute.
-func SetUsernamesReadOnly(username string) {
-	usernameElements := document.Call("querySelectorAll", "input.username")
-	for i := 0; i < usernameElements.Length(); i++ {
-		usernameElement := usernameElements.Index(i)
-		switch {
-		case len(username) == 0:
-			usernameElement.Call("removeAttribute", "readonly")
-		default:
-			usernameElement.Set("value", username)
-			usernameElement.Call("setAttribute", "readonly", "readonly")
-		}
-	}
-}
-
 // EnableSubmitButtons removes the disabled attribute from all submit buttons
 func EnableSubmitButtons() {
 	disabledSubmitButtons := document.Call("querySelectorAll", `input[type="submit"]:disabled`)
