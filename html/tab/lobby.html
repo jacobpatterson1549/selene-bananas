@@ -1,8 +1,8 @@
 <div class="lobby">
     <div class="ping-form">
-        <form method="get" action="/ping" onsubmit="user.request(event)"hidden>
+        <form method="get" action="/ping" onsubmit="user.request(event)" hidden>
             {{ template "username.html" . }}
-            <input type="submit">
+            <input type="submit" disabled>
         </form>
     </div>
     <input type="checkbox" class="has-websocket" hidden>
@@ -10,7 +10,7 @@
         <form method="get" action="/lobby" onsubmit="lobby.connect(event)">
             <fieldset>
                 <legend>Connect</legend>
-                <input type="submit">
+                <input type="submit" disabled>
             </fieldset>
         </form>
     </div>

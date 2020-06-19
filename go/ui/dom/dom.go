@@ -136,6 +136,15 @@ func SetUsernamesReadOnly(username string) {
 	}
 }
 
+// EnableSubmitButtons removes the disabled attribute from all submit buttons
+func EnableSubmitButtons() {
+	disabledSubmitButtons := document.Call("querySelectorAll", `input[type="submit"]:disabled`)
+	for i := 0; i < disabledSubmitButtons.Length(); i++ {
+		submitButton := disabledSubmitButtons.Index(i)
+		submitButton.Set("disabled", false)
+	}
+}
+
 // StoreCredentials attempts to save the credentials for the login, if browser wants to
 func StoreCredentials(username, password string) {
 	passwordCredential := document.Get("PasswordCredential")

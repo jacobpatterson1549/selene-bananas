@@ -74,4 +74,6 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 		return nil
 	})
 	js.Global().Call("addEventListener", "beforeunload", fn)
+	// allow interaction
+	dom.EnableSubmitButtons()
 }
