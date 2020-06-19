@@ -6,6 +6,7 @@ package log
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
 )
@@ -45,11 +46,24 @@ func Chat(text string) {
 // Clear clears the log.
 func Clear() {
 	dom.SetCheckedQuery(".has-log", false)
-	dom.ClearLog()
+	logScrollElement := dom.QuerySelector(".log>.scroll")
+	logScrollElement.Set("innerHTML", "")
 }
 
 // log writes a log item with the specified class.
 func log(class, text string) {
 	dom.SetCheckedQuery(".has-log", true)
-	dom.AddLog(class, text)
+	clone := dom.CloneElement(".log>template")
+	cloneChildren := clone.Get("children")
+	logItemElement := cloneChildren.Index(0)
+	time := dom.FormatTime(time.Now().UTC().Unix())
+	textContent := time + " : " + text
+	logItemElement.Set("textContent", textContent)
+	logItemElement.Set("className", class)
+	logScrollElement := dom.QuerySelector(".log>.scroll")
+	logScrollElement.Call("appendChild", logItemElement)
+	scrollHeight := logScrollElement.Get("scrollHeight")
+	clientHeight := logScrollElement.Get("clientHeight")
+	scrollTop := scrollHeight.Int() - clientHeight.Int()
+	logScrollElement.Set("scrollTop", scrollTop)
 }

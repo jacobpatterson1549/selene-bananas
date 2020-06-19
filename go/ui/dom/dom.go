@@ -62,41 +62,18 @@ func SetValue(query, value string) {
 	element.Set("value", value)
 }
 
-// formatDate formats a datetime to HH:MM:SS.
-func formatTime(utcSeconds int64) string {
+// FormatTime formats a datetime to HH:MM:SS.
+func FormatTime(utcSeconds int64) string {
 	t := time.Unix(utcSeconds, 0) // uses local timezone
 	return t.Format("15:04:05")
 }
 
-// cloneElement creates a close of the element, which should be a template.
-func cloneElement(query string) js.Value {
+// CloneElement creates a close of the element, which should be a template.
+func CloneElement(query string) js.Value {
 	templateElement := QuerySelector(query)
 	contentElement := templateElement.Get("content")
 	clone := contentElement.Call("cloneNode", true)
 	return clone
-}
-
-//ClearLog removes all log messages.
-func ClearLog() {
-	logScrollElement := QuerySelector(".log>.scroll")
-	logScrollElement.Set("innerHTML", "")
-}
-
-// AddLog adds a log message with the specified class
-func AddLog(class, text string) {
-	clone := cloneElement(".log>template")
-	cloneChildren := clone.Get("children")
-	logItemElement := cloneChildren.Index(0)
-	time := formatTime(time.Now().UTC().Unix())
-	textContent := time + " : " + text
-	logItemElement.Set("textContent", textContent)
-	logItemElement.Set("className", class)
-	logScrollElement := QuerySelector(".log>.scroll")
-	logScrollElement.Call("appendChild", logItemElement)
-	scrollHeight := logScrollElement.Get("scrollHeight")
-	clientHeight := logScrollElement.Get("clientHeight")
-	scrollTop := scrollHeight.Int() - clientHeight.Int()
-	logScrollElement.Set("scrollTop", scrollTop)
 }
 
 // SetGameInfos updates the game-infos table with the specified game infos.
@@ -104,21 +81,21 @@ func SetGameInfos(gameInfos []game.Info, username string) {
 	tbodyElement := QuerySelector(".game-infos>tbody")
 	tbodyElement.Set("innerHTML", "")
 	if len(gameInfos) == 0 {
-		emptyGameInfoElement := cloneElement(".no-game-info-row")
+		emptyGameInfoElement := CloneElement(".no-game-info-row")
 		tbodyElement.Call("appendChild", emptyGameInfoElement)
 		return
 	}
 	for _, gameInfo := range gameInfos {
-		gameInfoElement := cloneElement(".game-info-row")
+		gameInfoElement := CloneElement(".game-info-row")
 		rowElement := gameInfoElement.Get("children").Index(0)
-		createdAtTimeText := formatTime(gameInfo.CreatedAt)
+		createdAtTimeText := FormatTime(gameInfo.CreatedAt)
 		rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
 		players := strings.Join(gameInfo.Players, ", ")
 		rowElement.Get("children").Index(1).Set("innerHTML", players)
 		status := gameInfo.Status.String()
 		rowElement.Get("children").Index(2).Set("innerHTML", status)
 		if gameInfo.CanJoin(username) {
-			joinGameButtonElement := cloneElement(".join-game-button")
+			joinGameButtonElement := CloneElement(".join-game-button")
 			joinGameButtonElement.Get("children").Index(0).Set("value", int(gameInfo.ID))
 			rowElement.Get("children").Index(2).Call("appendChild", joinGameButtonElement)
 		}
