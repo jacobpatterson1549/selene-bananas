@@ -57,7 +57,7 @@ func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 			log.Error(err.Error())
 			return
 		}
-		go u.Request(*f)
+		go u.request(*f)
 	})
 	updateConfirmPasswordJsFunc := dom.NewJsEventFunc(func(event js.Value) {
 		password1InputElement := event.Get("target")
