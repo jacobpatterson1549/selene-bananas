@@ -61,7 +61,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 }
 
 func tokenizerConfig(rand *rand.Rand, timeFunc func() int64) server.TokenizerConfig {
-	var tokenValidDurationSec int64 = 365 * 24 * 60 * 60 // 1 year
+	var tokenValidDurationSec int64 = int64((24 * time.Hour).Seconds()) // 1 day
 	cfg := server.TokenizerConfig{
 		Rand:     rand,
 		TimeFunc: timeFunc,
@@ -136,7 +136,7 @@ func socketConfig(m mainFlags, log *log.Logger, timeFunc func() int64) socket.Co
 		Log:            log,
 		TimeFunc:       timeFunc,
 		PongPeriod:     20 * time.Second,
-		PingPeriod:     15 * time.Second,
+		PingPeriod:     16 * time.Second,
 		IdlePeriod:     15 * time.Minute,
 		HTTPPingPeriod: 10 * time.Minute,
 	}
