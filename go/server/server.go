@@ -3,7 +3,6 @@ package server
 
 import (
 	"compress/gzip"
-	"compress/zlib"
 	"context"
 	"fmt"
 	"html/template"
@@ -160,10 +159,8 @@ func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	case "/favicon.ico", "/robots.txt", "/run_wasm.js":
 		return s.handleStaticFile(w, r)
-	case "/wasm_exec.js":
+	case "/wasm_exec.js", "/main.wasm":
 		return s.handleRootFile(w, r)
-	case "/main.wasm":
-		return s.handleWasmFile(w, r)
 	case "/lobby":
 		return s.handleLobby(w, r)
 	case "/ping":
@@ -221,41 +218,29 @@ func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 	return t.Execute(w, s.data)
 }
 
-func (s Server) cacheResponse(w http.ResponseWriter) {
-	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
-}
-
 func (s Server) handleStaticFile(w http.ResponseWriter, r *http.Request) error {
-	s.cacheResponse(w)
-	http.ServeFile(w, r, "static"+r.URL.Path)
-	return nil
+	return s.serveFile(w, r, "static"+r.URL.Path)
 }
 
 func (s Server) handleRootFile(w http.ResponseWriter, r *http.Request) error {
-	s.cacheResponse(w)
-	http.ServeFile(w, r, "."+r.URL.Path)
-	return nil
+	return s.serveFile(w, r, "."+r.URL.Path)
 }
 
-func (s Server) handleWasmFile(w http.ResponseWriter, r *http.Request) error {
-	encoders := map[string]func() io.WriteCloser{
-		"gzip":    func() io.WriteCloser { return gzip.NewWriter(w) },
-		"deflate": func() io.WriteCloser { return zlib.NewWriter(w) },
+// serveFile serves the file, adding a cache-control header and compressing it if possible.
+func (s Server) serveFile(w http.ResponseWriter, r *http.Request, name string) error {
+	if !strings.Contains(r.Header.Get("Cache-Control"), "no-store") {
+		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
 	}
-	for _, n := range []string{"gzip", "deflate"} { // give gzip priority
-		if strings.Contains(r.Header.Get("Accept-Encoding"), n) {
-			w.Header().Set("Content-Encoding", n)
-			w2 := encoders[n]()
-			defer w2.Close()
-			w = wrappedResponseWriter{
-				Writer:         w2,
-				ResponseWriter: w,
-			}
-			break
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		w.Header().Set("Content-Encoding", "gzip")
+		w2 := gzip.NewWriter(w)
+		defer w2.Close()
+		w = wrappedResponseWriter{
+			Writer:         w2,
+			ResponseWriter: w,
 		}
 	}
-	s.cacheResponse(w)
-	http.ServeFile(w, r, "."+r.URL.Path)
+	http.ServeFile(w, r, name)
 	return nil
 }
 
