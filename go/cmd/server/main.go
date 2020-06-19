@@ -8,8 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-
-	_ "github.com/lib/pq"
 )
 
 func main() {

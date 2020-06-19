@@ -15,6 +15,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/go/game/socket"
 	"github.com/jacobpatterson1549/selene-bananas/go/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/go/server"
+	_ "github.com/lib/pq" // regester "postgres" database driver from package init() function
 )
 
 func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Config, error) {
