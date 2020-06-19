@@ -64,7 +64,7 @@ func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		password2InputElement := password1InputElement.
 			Get("parentElement").
 			Get("nextElementSibling").
-			Call("querySelector", ".password2")
+			Get("lastElementChild")
 		password1Value := password1InputElement.Get("value").String()
 		passwordRegex := u.escapePassword(password1Value)
 		password2InputElement.Set("pattern", passwordRegex)
