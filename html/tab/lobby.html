@@ -1,10 +1,8 @@
 <div class="lobby">
-    <div class="ping-form">
-        <form method="get" action="/ping" onsubmit="user.request(event)" hidden>
-            {{ template "username.html" . }}
-            <input type="submit" disabled>
-        </form>
-    </div>
+    <form method="get" action="/ping" onsubmit="user.request(event)" class="ping" hidden>
+        {{ template "username.html" . }}
+        <input type="submit" disabled>
+    </form>
     <input type="checkbox" class="has-websocket" hidden>
     <div class="connect">
         <form method="get" action="/lobby" onsubmit="lobby.connect(event)">
