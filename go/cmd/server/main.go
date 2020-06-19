@@ -14,11 +14,11 @@ import (
 
 func main() {
 	m := newMainFlags(os.Args, os.LookupEnv)
-	
+
 	var buf bytes.Buffer
 	log := log.New(&buf, m.applicationName+" ", log.LstdFlags)
 	log.SetOutput(os.Stdout)
-	
+
 	ctx := context.Background()
 	cfg, err := serverConfig(ctx, m, log)
 	if err != nil {
