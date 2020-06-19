@@ -21,9 +21,7 @@ type (
 	// Server runs the site
 	Server struct {
 		data       interface{}
-		addr       string
 		log        *log.Logger
-		handler    http.Handler
 		tokenizer  Tokenizer
 		userDao    *db.UserDao
 		lobby      *lobby.Lobby
@@ -79,14 +77,16 @@ func (cfg Config) NewServer() (*Server, error) {
 	}
 	s := Server{
 		data:      data,
-		addr:      addr,
 		log:       cfg.Log,
-		handler:   serveMux,
 		tokenizer: cfg.Tokenizer,
 		userDao:   cfg.UserDao,
 		lobby:     lobby,
-		stopDur:   cfg.StopDur,
-		cacheSec:  cfg.CacheSec,
+		httpServer: &http.Server{
+			Addr:    addr,
+			Handler: serveMux,
+		},
+		stopDur:  cfg.StopDur,
+		cacheSec: cfg.CacheSec,
 	}
 	serveMux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
 	serveMux.HandleFunc("/", s.httpMethodHandler)
@@ -114,25 +114,17 @@ func (cfg Config) validate() error {
 }
 
 // Run runs the server until it receives a shutdown signal.
-func (s *Server) Run(ctx context.Context) error {
-	if s.httpServer != nil {
-		return fmt.Errorf("server already run")
-	}
-	s.httpServer = &http.Server{
-		Addr:    s.addr,
-		Handler: s.handler,
-	}
+func (s Server) Run(ctx context.Context) {
 	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
 	s.httpServer.RegisterOnShutdown(lobbyCancelFunc)
 	go s.lobby.Run(lobbyCtx)
-	s.log.Println("server started successfully, locally running at http://127.0.0.1" + s.addr)
+	s.log.Println("server started successfully, locally running at http://127.0.0.1" + s.httpServer.Addr)
 	go s.httpServer.ListenAndServe()
-	return nil
 }
 
 // Stop asks the server to shutdown and waits for the shutdown to complete.
 // An error is returned if the server if the context times out.
-func (s *Server) Stop(ctx context.Context) error {
+func (s Server) Stop(ctx context.Context) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, s.stopDur)
 	defer cancelFunc()
 	if err := s.httpServer.Shutdown(ctx); err != nil {
@@ -159,7 +151,7 @@ func (s Server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
+func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	switch r.URL.Path {
 	case "/":
 		if err := s.handleTemplate(w, r); err != nil {
@@ -229,23 +221,23 @@ func (s Server) handleTemplate(w http.ResponseWriter, r *http.Request) error {
 	return t.Execute(w, s.data)
 }
 
-func (s *Server) cacheResponse(w http.ResponseWriter) {
+func (s Server) cacheResponse(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
 }
 
-func (s *Server) handleStaticFile(w http.ResponseWriter, r *http.Request) error {
+func (s Server) handleStaticFile(w http.ResponseWriter, r *http.Request) error {
 	s.cacheResponse(w)
 	http.ServeFile(w, r, "static"+r.URL.Path)
 	return nil
 }
 
-func (s *Server) handleRootFile(w http.ResponseWriter, r *http.Request) error {
+func (s Server) handleRootFile(w http.ResponseWriter, r *http.Request) error {
 	s.cacheResponse(w)
 	http.ServeFile(w, r, "."+r.URL.Path)
 	return nil
 }
 
-func (s *Server) handleWasmFile(w http.ResponseWriter, r *http.Request) error {
+func (s Server) handleWasmFile(w http.ResponseWriter, r *http.Request) error {
 	encoders := map[string]func() io.WriteCloser{
 		"gzip":    func() io.WriteCloser { return gzip.NewWriter(w) },
 		"deflate": func() io.WriteCloser { return zlib.NewWriter(w) },
@@ -267,7 +259,7 @@ func (s *Server) handleWasmFile(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func (s *Server) handleLobby(w http.ResponseWriter, r *http.Request) error {
+func (s Server) handleLobby(w http.ResponseWriter, r *http.Request) error {
 	err := r.ParseForm()
 	if err != nil {
 		return fmt.Errorf("parsing form: %w", err)

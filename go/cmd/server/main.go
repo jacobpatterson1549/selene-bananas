@@ -33,10 +33,7 @@ func main() {
 
 	done := make(chan os.Signal, 2)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
-	if err := server.Run(ctx); err != nil {
-		log.Fatalf("running server: %v", err)
-	}
-
+	server.Run(ctx)
 	<-done
 	if err := server.Stop(ctx); err != nil {
 		log.Fatalf("stopping server: %v", err)
