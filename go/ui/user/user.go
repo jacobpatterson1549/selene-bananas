@@ -163,7 +163,7 @@ func (u User) escapePassword(p string) string {
 
 // setUsernamesReadOnly sets all of the username inputs to readonly with the specified username if it is not empty, otherwise, it removes the readonly attribute.
 func setUsernamesReadOnly(username string) {
-	usernameElements := dom.QuerySelectorAll("input.username")
+	usernameElements := dom.QuerySelectorAll(dom.Document, "input.username")
 	for i := 0; i < usernameElements.Length(); i++ {
 		usernameElement := usernameElements.Index(i)
 		switch {

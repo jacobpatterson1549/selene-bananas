@@ -19,19 +19,21 @@ type (
 )
 
 var (
-	global   js.Value = js.Global()
-	document js.Value = global.Get("document")
+	// global is the root js object
+	global js.Value = js.Global()
+	// Document is the root js element on the page.
+	Document js.Value = global.Get("document")
 	// WebSocket is the Socket used for game Communication
 	WebSocket Socket // TODO: HACK! (circular dependency)
 )
 
 // QuerySelector returns the first element returned by the query from root of the document.
 func QuerySelector(query string) js.Value {
-	return document.Call("querySelector", query)
+	return Document.Call("querySelector", query)
 }
 
-// QuerySelectorAll returns an array of the elements returned by the query from root of the document.
-func QuerySelectorAll(query string) js.Value {
+// QuerySelectorAll returns an array of the elements returned by the query from the specified document.
+func QuerySelectorAll(document js.Value, query string) js.Value {
 	return document.Call("querySelectorAll", query)
 }
 
@@ -73,15 +75,6 @@ func CloneElement(query string) js.Value {
 	contentElement := templateElement.Get("content")
 	clone := contentElement.Call("cloneNode", true)
 	return clone
-}
-
-// EnableSubmitButtons removes the disabled attribute from all submit buttons
-func EnableSubmitButtons() {
-	disabledSubmitButtons := document.Call("querySelectorAll", `input[type="submit"]:disabled`)
-	for i := 0; i < disabledSubmitButtons.Length(); i++ {
-		submitButton := disabledSubmitButtons.Index(i)
-		submitButton.Set("disabled", false)
-	}
 }
 
 // Confirm shows a popup asking the user a yes/no question.

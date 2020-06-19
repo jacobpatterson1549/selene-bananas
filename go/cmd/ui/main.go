@@ -75,5 +75,9 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	})
 	js.Global().Call("addEventListener", "beforeunload", fn)
 	// allow interaction
-	dom.EnableSubmitButtons()
+	disabledSubmitButtons := dom.QuerySelectorAll(dom.Document, `input[type="submit"]:disabled`)
+	for i := 0; i < disabledSubmitButtons.Length(); i++ {
+		submitButton := disabledSubmitButtons.Index(i)
+		submitButton.Set("disabled", false)
+	}
 }
