@@ -169,21 +169,6 @@ func Confirm(message string) bool {
 	return result.Bool()
 }
 
-// SocketHTTPPing submits the small ping form to keep the server's http handling active.
-func SocketHTTPPing() {
-	pingFormElement := QuerySelector(".ping-form>form")
-	var preventDefaultFunc js.Func
-	preventDefaultFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		preventDefaultFunc.Release()
-		return nil
-	})
-	pingEvent := map[string]interface{}{
-		"preventDefault": preventDefaultFunc,
-		"target":         pingFormElement,
-	}
-	pingFormElement.Call("onsubmit", js.ValueOf(pingEvent))
-}
-
 // NewWebSocket creates a new WebSocket with the specified url.
 func NewWebSocket(url string) js.Value {
 	return global.Get("WebSocket").New(url)

@@ -146,7 +146,7 @@ func (s *Socket) onMessage(event js.Value) {
 	case game.SocketWarning:
 		log.Warning(m.Info)
 	case game.SocketHTTPPing:
-		dom.SocketHTTPPing()
+		s.httpPing()
 	case game.Chat:
 		log.Chat(m.Info)
 	default:
@@ -206,4 +206,19 @@ func (s *Socket) handleInfo(m game.Message) {
 	if len(m.Info) > 0 {
 		log.Info(m.Info)
 	}
+}
+
+// httpPing submits the small ping form to keep the server's http handling active.
+func (Socket) httpPing() {
+	pingFormElement := dom.QuerySelector(".ping-form>form")
+	var preventDefaultFunc js.Func
+	preventDefaultFunc = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		preventDefaultFunc.Release()
+		return nil
+	})
+	pingEvent := map[string]interface{}{
+		"preventDefault": preventDefaultFunc,
+		"target":         pingFormElement,
+	}
+	pingFormElement.Call("onsubmit", js.ValueOf(pingEvent))
 }
