@@ -4,7 +4,6 @@
 package dom
 
 import (
-	"strings"
 	"syscall/js"
 	"time"
 
@@ -74,33 +73,6 @@ func CloneElement(query string) js.Value {
 	contentElement := templateElement.Get("content")
 	clone := contentElement.Call("cloneNode", true)
 	return clone
-}
-
-// SetGameInfos updates the game-infos table with the specified game infos.
-func SetGameInfos(gameInfos []game.Info, username string) {
-	tbodyElement := QuerySelector(".game-infos>tbody")
-	tbodyElement.Set("innerHTML", "")
-	if len(gameInfos) == 0 {
-		emptyGameInfoElement := CloneElement(".no-game-info-row")
-		tbodyElement.Call("appendChild", emptyGameInfoElement)
-		return
-	}
-	for _, gameInfo := range gameInfos {
-		gameInfoElement := CloneElement(".game-info-row")
-		rowElement := gameInfoElement.Get("children").Index(0)
-		createdAtTimeText := FormatTime(gameInfo.CreatedAt)
-		rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
-		players := strings.Join(gameInfo.Players, ", ")
-		rowElement.Get("children").Index(1).Set("innerHTML", players)
-		status := gameInfo.Status.String()
-		rowElement.Get("children").Index(2).Set("innerHTML", status)
-		if gameInfo.CanJoin(username) {
-			joinGameButtonElement := CloneElement(".join-game-button")
-			joinGameButtonElement.Get("children").Index(0).Set("value", int(gameInfo.ID))
-			rowElement.Get("children").Index(2).Call("appendChild", joinGameButtonElement)
-		}
-		tbodyElement.Call("appendChild", gameInfoElement)
-	}
 }
 
 // EnableSubmitButtons removes the disabled attribute from all submit buttons
