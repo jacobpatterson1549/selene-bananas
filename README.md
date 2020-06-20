@@ -33,13 +33,13 @@ DATABASE_URL=postgres://selene:selene123@127.0.0.1:54320/selene_bananas_db?sslmo
 PORT=8000 # Server web port
 ```
 
-It is recommended to install the [wamerican-small](https://packages.debian.org/buster/wamerican-small) package.  This package provides /usr/share/dict/american-english-small, which is the default location of the word list.  Lowercase words are read from the word list for checking valid words in the game.  This can be overridden by providing the `WORDS_FILE` environment variable.
+It is recommended to install the [wamerican-large](https://packages.debian.org/buster/wamerican-large) package.  This package provides /usr/share/dict/american-english-large to be used as a words list in games.  Lowercase words are read from the word list for checking valid words in the game.  This can be overridden by providing the `WORDS_FILE` environment variable.
 
-For development, it is recommended to set `CACHE_SECONDS` to `0` to avoid caching files while they are modified.
+For development, set `CACHE_SECONDS` to `0` to not cache files.
 
 ### Database
 
-The app stores user information in a postgresql database.  Every time the app starts, files in the [sql](sql) folder are ran to ensure the table and stored functions are fresh.
+The app stores user information in a Postgresql database.  When the app starts, files in the [sql](sql) folder are ran to ensure database objects functions are fresh.
 
 A Postgresql database can be created with the command below.  Change the `PGUSER` and `PGPASSWORD` variables.  The command requires administrator access.
 ```bash
@@ -58,7 +58,7 @@ sudo -u postgres psql \
 
 ### Make
 
-The [Makefile](Makefile) runs the application locally.  This requires Go and a Postgres database to be installed.  Run `make serve` to build and run the application.
+The [Makefile](Makefile) runs the application locally.  This requires Go and a Postgres database to be installed.  [Node](https://github.com/nodejs) is needed to run WebAssembly tests.  Run `make serve` to build and run the application.
 
 ### Docker
 
@@ -85,7 +85,7 @@ Steps to run on Heroku:
 1. Provision a new app on [Heroku](https://dashboard.heroku.com/apps).  The name of the application is referenced as HEROKU_APP_NAME in the steps below
 1. Provision a [Heroku Postgres](https://www.heroku.com/postgres) **add-on** on the **Overview** (main) tab for the app.
 1. Configure additional environment variables, such as APPLICATION_NAME on the **Settings** tab.  The PORT and DATABASE_URL variables are automatically configured, although the PORT variable is not displayed.
-1. Connect the app to this GitHub repository on the **Deploy** tab.  Use the GIT_URL, https://github.com/jacobpatterson1549/selene-bananas.git.
+1. Connect the app to this GitHub repository on the **Deploy** tab.  Use https://github.com/jacobpatterson1549/selene-bananas.git as GIT_URL.
 1. In a terminal, with [heroku-cli](https://devcenter.heroku.com/articles/heroku-cli) run the command below.  This builds the and deploys the code to Heroku using a docker image.
 ```
 git clone GIT_URL
