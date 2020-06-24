@@ -46,6 +46,12 @@ func SetValue(query, value string) {
 	element.Set("value", value)
 }
 
+// SetButtonDisabled sets the disable property of the button element.
+func SetButtonDisabled(query string, disabled bool) {
+	element := QuerySelector(query)
+	element.Set("disabled", disabled)
+}
+
 // FormatTime formats a datetime to HH:MM:SS.
 func FormatTime(utcSeconds int64) string {
 	t := time.Unix(utcSeconds, 0) // uses local timezone
