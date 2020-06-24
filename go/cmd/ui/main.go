@@ -52,20 +52,21 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	// game
 	g := controller.NewGame(&board, &canvas)
 	g.InitDom(ctx, wg)
+	// lobby
+	l := lobby.Lobby{
+		Game:   &g,
+	}
+	l.InitDom(ctx, wg)
 	// websocket
 	s := socket.Socket{
+		Lobby: &l,
 		Game: &g,
 		User: &u,
 	}
 	canvas.Socket = &s
 	g.Socket = &s // [circular reference]
+	l.Socket = &s // [circular reference]
 	s.InitDom(ctx, wg)
-	// lobby
-	l := lobby.Lobby{
-		Game:   &g,
-		Socket: &s,
-	}
-	l.InitDom(ctx, wg)
 	// close handling
 	var fn js.Func
 	fn = js.FuncOf(func(this js.Value, args []js.Value) interface{} {

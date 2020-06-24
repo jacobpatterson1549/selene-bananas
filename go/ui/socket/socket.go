@@ -7,13 +7,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"strings"
 	"sync"
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/go/game"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/controller"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/go/ui/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/go/ui/log"
 )
 
@@ -21,6 +21,7 @@ type (
 	// Socket can be used to easily push and pull messages from the server.
 	Socket struct {
 		webSocket       js.Value
+		Lobby           *lobby.Lobby
 		Game            *controller.Game
 		User            User
 		onOpenJsFunc    js.Func
@@ -99,7 +100,6 @@ func (s *Socket) getWebSocketURL(f dom.Form) string {
 func (s *Socket) onOpen(errC chan<- error) func() {
 	return func() {
 		dom.SetCheckedQuery(".has-websocket", true)
-		// TODO: disable create-game button when joining lobby, enable here
 		errC <- nil
 	}
 }
@@ -137,7 +137,7 @@ func (s *Socket) onMessage(event js.Value) {
 	case game.Leave:
 		s.handleGameLeave(m)
 	case game.Infos:
-		s.setGameInfos(m.GameInfos)
+		s.Lobby.SetGameInfos(m.GameInfos, s.User.Username())
 	case game.PlayerDelete:
 		s.handlePlayerDelete(m)
 	case game.Join, game.StatusChange, game.TilesChange:
@@ -206,34 +206,6 @@ func (s *Socket) handleInfo(m game.Message) {
 	s.Game.UpdateInfo(m)
 	if len(m.Info) > 0 {
 		log.Info(m.Info)
-	}
-}
-
-// setGameInfos updates the game-infos table with the specified game infos.
-func (s *Socket) setGameInfos(gameInfos []game.Info) {
-	tbodyElement := dom.QuerySelector(".game-infos>tbody")
-	tbodyElement.Set("innerHTML", "")
-	if len(gameInfos) == 0 {
-		emptyGameInfoElement := dom.CloneElement(".no-game-info-row")
-		tbodyElement.Call("appendChild", emptyGameInfoElement)
-		return
-	}
-	username := s.User.Username()
-	for _, gameInfo := range gameInfos {
-		gameInfoElement := dom.CloneElement(".game-info-row")
-		rowElement := gameInfoElement.Get("children").Index(0)
-		createdAtTimeText := dom.FormatTime(gameInfo.CreatedAt)
-		rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
-		players := strings.Join(gameInfo.Players, ", ")
-		rowElement.Get("children").Index(1).Set("innerHTML", players)
-		status := gameInfo.Status.String()
-		rowElement.Get("children").Index(2).Set("innerHTML", status)
-		if gameInfo.CanJoin(username) {
-			joinGameButtonElement := dom.CloneElement(".join-game-button")
-			joinGameButtonElement.Get("children").Index(0).Set("value", int(gameInfo.ID))
-			rowElement.Get("children").Index(2).Call("appendChild", joinGameButtonElement)
-		}
-		tbodyElement.Call("appendChild", gameInfoElement)
 	}
 }
 

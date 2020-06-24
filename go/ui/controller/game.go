@@ -229,10 +229,10 @@ func (g *Game) updateStatus(m game.Message) {
 		return
 	}
 	dom.SetValue(".game>form>.info>label>.status", statusText)
-	setButtonDisabled(".game>.actions>.snag", snagDisabled)
-	setButtonDisabled(".game>.actions>.swap", swapDisabled)
-	setButtonDisabled(".game>.actions>.start", startDisabled)
-	setButtonDisabled(".game>.actions>.finish", finishDisabled)
+	dom.SetButtonDisabled(".game>.actions>.snag", snagDisabled)
+	dom.SetButtonDisabled(".game>.actions>.swap", swapDisabled)
+	dom.SetButtonDisabled(".game>.actions>.start", startDisabled)
+	dom.SetButtonDisabled(".game>.actions>.finish", finishDisabled)
 	g.canvas.GameStatus(m.GameStatus)
 }
 
@@ -240,13 +240,13 @@ func (g *Game) updateStatus(m game.Message) {
 func (g *Game) updateTilesLeft(m game.Message) {
 	dom.SetValue(".game>form>.info>label>.tiles-left", strconv.Itoa(m.TilesLeft))
 	if m.TilesLeft == 0 {
-		setButtonDisabled(".game>.actions>.snag", true)
-		setButtonDisabled(".game>.actions>.swap", true)
+		dom.SetButtonDisabled(".game>.actions>.snag", true)
+		dom.SetButtonDisabled(".game>.actions>.swap", true)
 		// enable the finish button if the game is not being started or is already finished
 		switch m.GameStatus {
 		case game.NotStarted, game.Finished:
 		default:
-			setButtonDisabled(".game>.actions>.finish", false)
+			dom.SetButtonDisabled(".game>.actions>.finish", false)
 		}
 	}
 }
@@ -268,10 +268,4 @@ func (g *Game) resetTiles() {
 func setTabActive() {
 	dom.SetCheckedQuery(".has-game", true)
 	dom.SetCheckedQuery("#tab-game", true)
-}
-
-// setButtonDisabled sets the disable property of the button element.
-func setButtonDisabled(query string, disabled bool) {
-	element := dom.QuerySelector(query)
-	element.Set("disabled", disabled)
 }
