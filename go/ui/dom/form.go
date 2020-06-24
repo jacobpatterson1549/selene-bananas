@@ -54,9 +54,12 @@ func (f *Form) Reset() {
 
 // StoreCredentials attempts to save the credentials for the login, if browser wants to
 func (f *Form) StoreCredentials() {
+	global := js.Global()
 	passwordCredential := global.Get("PasswordCredential")
 	if passwordCredential.Truthy() {
 		c := passwordCredential.New(f.v)
-		global.Get("navigator").Get("credentials").Call("store", c)
+		navigator := global.Get("navigator")
+		credentials := navigator.Get("credentials")
+		credentials.Call("store", c)
 	}
 }

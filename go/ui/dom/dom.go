@@ -8,16 +8,11 @@ import (
 	"time"
 )
 
-var (
-	// global is the root js object
-	global js.Value = js.Global()
-	// Document is the root js element on the page.
-	Document js.Value = global.Get("document")
-)
-
 // QuerySelector returns the first element returned by the query from root of the document.
 func QuerySelector(query string) js.Value {
-	return Document.Call("querySelector", query)
+	global := js.Global()
+	document := global.Get("document")
+	return document.Call("querySelector", query)
 }
 
 // QuerySelectorAll returns an array of the elements returned by the query from the specified document.
@@ -68,11 +63,13 @@ func CloneElement(query string) js.Value {
 // Confirm shows a popup asking the user a yes/no question.
 // The true return value implies the "yes" choice.
 func Confirm(message string) bool {
+	global := js.Global()
 	result := global.Call("confirm", message)
 	return result.Bool()
 }
 
 // NewWebSocket creates a new WebSocket with the specified url.
 func NewWebSocket(url string) js.Value {
+	global := js.Global()
 	return global.Get("WebSocket").New(url)
 }
