@@ -63,6 +63,7 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 		Game: &g,
 		User: &u,
 	}
+	u.Socket = &s
 	canvas.Socket = &s
 	g.Socket = &s // [circular reference]
 	l.Socket = &s // [circular reference]

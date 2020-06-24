@@ -26,11 +26,17 @@ type (
 	User struct {
 		httpClient *http.Client
 		escapeRE   regexp.Regexp
+		Socket     Socket
 	}
 	// userInfo contains a user's username and points.
 	userInfo struct {
 		username string
 		points   int
+	}
+
+	// Socket is a structure that the user interacts with for the lobby and game.
+	Socket interface {
+		Close()
 	}
 )
 
@@ -97,8 +103,8 @@ func (u *User) login(token string) {
 
 // Logout logs out the user
 func (u *User) Logout() {
+	u.Socket.Close()
 	dom.SetCheckedQuery(".has-login", false)
-	dom.SetCheckedQuery(".has-game", false)
 	setUsernamesReadOnly("")
 	dom.SetCheckedQuery("#tab-login-user", true)
 }

@@ -106,10 +106,18 @@ func (s *Socket) onOpen(errC chan<- error) func() {
 
 // onMessage is called when the websocket is closing.
 func (s *Socket) onClose(event js.Value) {
-	s.releaseWebSocketJsFuncs()
 	if reason := event.Get("reason"); !reason.IsUndefined() && len(reason.String()) != 0 {
 		log.Warning("left lobby: " + reason.String())
 	}
+	s.closeWebSocket()
+}
+
+func (s *Socket) closeWebSocket() {
+	s.webSocket.Set("onopen", nil)
+	s.webSocket.Set("onclose", nil)
+	s.webSocket.Set("onerror", nil)
+	s.webSocket.Set("onmessage", nil)
+	s.releaseWebSocketJsFuncs()
 	dom.SetCheckedQuery(".has-websocket", false)
 	dom.SetCheckedQuery(".has-game", false)
 	dom.SetCheckedQuery("#tab-lobby", true)
@@ -172,16 +180,15 @@ func (s *Socket) Send(m game.Message) {
 // Close releases the websocket
 func (s *Socket) Close() {
 	if s.isOpen() {
+		s.closeWebSocket() // removes onClose
 		s.webSocket.Call("close")
 	}
-	s.webSocket = js.Null()
 	s.Game.Leave()
 }
 
 // isOpen determines if the socket is defined and has a readyState of OPEN.
 func (s *Socket) isOpen() bool {
 	return !s.webSocket.IsUndefined() &&
-		!s.webSocket.IsNull() &&
 		s.webSocket.Get("readyState").Int() == 1
 }
 
