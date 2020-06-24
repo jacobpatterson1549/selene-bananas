@@ -114,7 +114,11 @@ var moveStateRadioQueries = map[moveState]string{
 }
 
 // New Creates a canvas from the config.
-func (cfg Config) New(ctx Context, board *board.Board) Canvas {
+func (cfg Config) New(board *board.Board, canvasElement js.Value) Canvas {
+	contextElement := canvasElement.Call("getContext", "2d")
+	ctx := canvasContext{contextElement}
+	width := canvasElement.Get("width").Int()
+	height := canvasElement.Get("height").Int()
 	font := strconv.Itoa(cfg.TileLength) + "px " + cfg.FontName
 	ctx.SetFont(font)
 	ctx.SetLineWidth(2)
@@ -124,16 +128,16 @@ func (cfg Config) New(ctx Context, board *board.Board) Canvas {
 	unusedMinY := cfg.TileLength
 	usedMinX := padding
 	usedMinY := cfg.TileLength * 4
-	usedMaxX := cfg.Width - padding
-	usedMaxY := cfg.Height - padding
+	usedMaxX := width - padding
+	usedMaxY := height - padding
 	numRows := (usedMaxY - usedMinY) / cfg.TileLength
 	numCols := (usedMaxX - usedMinX) / cfg.TileLength
 	c := Canvas{
-		ctx:   ctx,
+		ctx:   &ctx,
 		board: board,
 		draw: drawMetrics{
-			width:      cfg.Width,
-			height:     cfg.Height,
+			width:      width,
+			height:     height,
 			tileLength: cfg.TileLength,
 			textOffset: textOffset,
 			unusedMin: pixelPosition{

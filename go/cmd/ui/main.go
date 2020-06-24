@@ -38,30 +38,26 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	u.InitDom(ctx, wg)
 	// canvas
 	canvasElement := dom.QuerySelector(".game>canvas")
-	contextElement := canvasElement.Call("getContext", "2d")
-	canvasCtx := canvasContext{contextElement}
 	var board board.Board
 	canvasCfg := canvas.Config{
-		Width:      canvasElement.Get("width").Int(),
-		Height:     canvasElement.Get("height").Int(),
 		TileLength: 20,
 		FontName:   "sans-serif",
 	}
-	canvas := canvasCfg.New(&canvasCtx, &board)
+	canvas := canvasCfg.New(&board, canvasElement)
 	canvas.InitDom(ctx, wg, canvasElement)
 	// game
 	g := controller.NewGame(&board, &canvas)
 	g.InitDom(ctx, wg)
 	// lobby
 	l := lobby.Lobby{
-		Game:   &g,
+		Game: &g,
 	}
 	l.InitDom(ctx, wg)
 	// websocket
 	s := socket.Socket{
 		Lobby: &l,
-		Game: &g,
-		User: &u,
+		Game:  &g,
+		User:  &u,
 	}
 	u.Socket = &s
 	canvas.Socket = &s

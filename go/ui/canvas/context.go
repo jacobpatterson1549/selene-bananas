@@ -1,6 +1,6 @@
 // +build js,wasm
 
-package main
+package canvas
 
 import (
 	"syscall/js"
