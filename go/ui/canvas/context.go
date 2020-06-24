@@ -7,39 +7,39 @@ import (
 )
 
 type (
-	canvasContext struct {
+	jsContext struct {
 		ctx js.Value
 	}
 )
 
-func (cc *canvasContext) SetFont(name string) {
-	cc.ctx.Set("font", name)
+func (c *jsContext) SetFont(name string) {
+	c.ctx.Set("font", name)
 }
 
-func (cc *canvasContext) SetLineWidth(width int) {
-	cc.ctx.Set("lineWidth", width)
+func (c *jsContext) SetLineWidth(width int) {
+	c.ctx.Set("lineWidth", width)
 }
 
-func (cc *canvasContext) SetFillColor(name string) {
-	cc.ctx.Set("fillStyle", name)
+func (c *jsContext) SetFillColor(name string) {
+	c.ctx.Set("fillStyle", name)
 }
 
-func (cc *canvasContext) SetStrokeColor(name string) {
-	cc.ctx.Set("strokeStyle", name)
+func (c *jsContext) SetStrokeColor(name string) {
+	c.ctx.Set("strokeStyle", name)
 }
 
-func (cc *canvasContext) FillText(text string, x, y int) {
-	cc.ctx.Call("fillText", text, x, y)
+func (c *jsContext) FillText(text string, x, y int) {
+	c.ctx.Call("fillText", text, x, y)
 }
 
-func (cc *canvasContext) ClearRect(x, y, width, height int) {
-	cc.ctx.Call("clearRect", x, y, width, height)
+func (c *jsContext) ClearRect(x, y, width, height int) {
+	c.ctx.Call("clearRect", x, y, width, height)
 }
 
-func (cc *canvasContext) FillRect(x, y, width, height int) {
-	cc.ctx.Call("fillRect", x, y, width, height)
+func (c *jsContext) FillRect(x, y, width, height int) {
+	c.ctx.Call("fillRect", x, y, width, height)
 }
 
-func (cc *canvasContext) StrokeRect(x, y, width, height int) {
-	cc.ctx.Call("strokeRect", x, y, width, height)
+func (c *jsContext) StrokeRect(x, y, width, height int) {
+	c.ctx.Call("strokeRect", x, y, width, height)
 }

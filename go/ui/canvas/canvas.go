@@ -116,7 +116,7 @@ var moveStateRadioQueries = map[moveState]string{
 // New Creates a canvas from the config.
 func (cfg Config) New(board *board.Board, canvasElement js.Value) Canvas {
 	contextElement := canvasElement.Call("getContext", "2d")
-	ctx := canvasContext{contextElement}
+	ctx := jsContext{contextElement}
 	width := canvasElement.Get("width").Int()
 	height := canvasElement.Get("height").Int()
 	font := strconv.Itoa(cfg.TileLength) + "px " + cfg.FontName
