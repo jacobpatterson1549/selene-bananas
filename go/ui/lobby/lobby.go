@@ -16,8 +16,8 @@ import (
 
 type (
 	Lobby struct {
-		Game   controller.Game
-		Socket socket.Socket
+		Game   *controller.Game
+		Socket *socket.Socket
 	}
 )
 

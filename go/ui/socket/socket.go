@@ -99,7 +99,7 @@ func (s *Socket) getWebSocketURL(f dom.Form) string {
 func (s *Socket) onOpen(errC chan<- error) func() {
 	return func() {
 		dom.SetCheckedQuery(".has-websocket", true)
-		dom.WebSocket = s
+		// TODO: disable create-game button when joining lobby, enable here
 		errC <- nil
 	}
 }
@@ -156,7 +156,7 @@ func (s *Socket) onMessage(event js.Value) {
 }
 
 // Send delivers a message to the server via it's websocket, panicing if the WebSocket is not open.
-func (s Socket) Send(m game.Message) {
+func (s *Socket) Send(m game.Message) {
 	if !s.isOpen() {
 		log.Error("websocket not open")
 		return
@@ -179,7 +179,7 @@ func (s *Socket) Close() {
 }
 
 // isOpen determines if the socket is defined and has a readyState of OPEN.
-func (s Socket) isOpen() bool {
+func (s *Socket) isOpen() bool {
 	return !s.webSocket.IsUndefined() &&
 		!s.webSocket.IsNull() &&
 		s.webSocket.Get("readyState").Int() == 1

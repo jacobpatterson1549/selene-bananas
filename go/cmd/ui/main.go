@@ -57,11 +57,13 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 		Game: &g,
 		User: &u,
 	}
+	canvas.Socket = &s
+	g.Socket = &s // [circular reference]
 	s.InitDom(ctx, wg)
 	// lobby
 	l := lobby.Lobby{
-		Game:   g,
-		Socket: s,
+		Game:   &g,
+		Socket: &s,
 	}
 	l.InitDom(ctx, wg)
 	// close handling

@@ -6,16 +6,6 @@ package dom
 import (
 	"syscall/js"
 	"time"
-
-	"github.com/jacobpatterson1549/selene-bananas/go/game"
-)
-
-type (
-	// Socket represents a method set of functions to communicate directly with the server
-	Socket interface {
-		Send(m game.Message)
-		Close()
-	}
 )
 
 var (
@@ -23,8 +13,6 @@ var (
 	global js.Value = js.Global()
 	// Document is the root js element on the page.
 	Document js.Value = global.Get("document")
-	// WebSocket is the Socket used for game Communication
-	WebSocket Socket // TODO: HACK! (circular dependency)
 )
 
 // QuerySelector returns the first element returned by the query from root of the document.
@@ -87,9 +75,4 @@ func Confirm(message string) bool {
 // NewWebSocket creates a new WebSocket with the specified url.
 func NewWebSocket(url string) js.Value {
 	return global.Get("WebSocket").New(url)
-}
-
-// SendWebSocketMessage delivers a message to the sever.
-func SendWebSocketMessage(m game.Message) {
-	WebSocket.Send(m)
 }

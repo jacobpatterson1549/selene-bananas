@@ -1,6 +1,6 @@
 // +build js,wasm
 
-// Package user contains code to view available games and to close the websocket.
+// Package user contains code to create and edit users that can play games in the lobby.
 package user
 
 import (

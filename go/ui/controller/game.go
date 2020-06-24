@@ -19,9 +19,16 @@ import (
 )
 
 type (
+	// Game handles managing the state of the board and drawing it on the canvas.
 	Game struct {
 		board  *board.Board
 		canvas *canvas.Canvas
+		Socket Socket
+	}
+
+	// Socket sends messages to the server.
+	Socket interface {
+		Send(m game.Message)
 	}
 )
 
@@ -89,7 +96,7 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 // Create clears the tiles and asks the server for a new game to join
 func (g *Game) Create() {
 	g.resetTiles()
-	dom.SendWebSocketMessage(game.Message{
+	g.Socket.Send(game.Message{
 		Type: game.Create,
 	})
 }
@@ -97,7 +104,7 @@ func (g *Game) Create() {
 // Join asks the server to join an existing game.
 func (g *Game) Join(id int) {
 	g.resetTiles()
-	dom.SendWebSocketMessage(game.Message{
+	g.Socket.Send(game.Message{
 		Type:   game.Join,
 		GameID: game.ID(id),
 	})
@@ -112,7 +119,7 @@ func (g *Game) Leave() {
 // Delete removes everyone from the game and deletes it.
 func (g *Game) Delete() {
 	if dom.Confirm("Are you sure? Deleting the game will kick everyone out.") {
-		dom.SendWebSocketMessage(game.Message{
+		g.Socket.Send(game.Message{
 			Type: game.Delete,
 		})
 	}
@@ -120,7 +127,7 @@ func (g *Game) Delete() {
 
 // Starts triggers the game to start for everyone.
 func (g *Game) Start() {
-	dom.SendWebSocketMessage(game.Message{
+	g.Socket.Send(game.Message{
 		Type:       game.StatusChange,
 		GameStatus: game.InProgress,
 	})
@@ -128,7 +135,7 @@ func (g *Game) Start() {
 
 // Starts triggers the game to finish for everyone by checking the players tiles.
 func (g *Game) Finish() {
-	dom.SendWebSocketMessage(game.Message{
+	g.Socket.Send(game.Message{
 		Type:       game.StatusChange,
 		GameStatus: game.Finished,
 	})
@@ -136,14 +143,14 @@ func (g *Game) Finish() {
 
 // SnagTile asks the game to give everone a new tile.
 func (g *Game) SnagTile() {
-	dom.SendWebSocketMessage(game.Message{
+	g.Socket.Send(game.Message{
 		Type: game.Snag,
 	})
 }
 
 // SendChat sends a chat message.
 func (g *Game) SendChat(message string) {
-	dom.SendWebSocketMessage(game.Message{
+	g.Socket.Send(game.Message{
 		Type: game.Chat,
 		Info: message,
 	})
