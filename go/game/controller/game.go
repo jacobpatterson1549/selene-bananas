@@ -226,10 +226,17 @@ func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- ga
 	}
 	newTiles := g.unusedTiles[:g.numNewTiles]
 	g.unusedTiles = g.unusedTiles[g.numNewTiles:]
-	b := board.New(newTiles)
+	cfg := board.Config{
+		NumCols: m.NumCols,
+		NumRows: m.NumRows,
+	}
+	b, err := cfg.New(newTiles)
+	if err != nil {
+		return err
+	}
 	p := &player{
 		winPoints: 10,
-		Board:     b,
+		Board:     *b,
 	}
 	g.players[m.PlayerName] = p
 	gamePlayers := g.playerNames()
@@ -453,36 +460,16 @@ func (g *Game) handleGameTilesMoved(ctx context.Context, m game.Message, out cha
 }
 
 func (g *Game) handleBoardRefresh(ctx context.Context, m game.Message, out chan<- game.Message) error {
+	cfg := board.Config{
+		NumCols: m.NumCols,
+		NumRows: m.NumRows,
+	}
 	p := g.players[m.PlayerName]
-	unusedTiles := make([]tile.Tile, len(p.UnusedTiles))
-	for i, id := range p.UnusedTileIDs {
-		unusedTiles[i] = p.UnusedTiles[id]
+	m2, err := p.refreshBoard(cfg, g, m.PlayerName)
+	if err != nil {
+		return err
 	}
-	usedTilePositions := make([]tile.Position, 0, len(p.UsedTiles))
-	for _, tps := range p.UsedTiles {
-		usedTilePositions = append(usedTilePositions, tps)
-	}
-	sort.Slice(usedTilePositions, func(i, j int) bool {
-		a, b := usedTilePositions[i], usedTilePositions[j]
-		// top-bottom, left-right
-		switch {
-		case a.Y == b.Y:
-			return a.X < b.X
-		default:
-			return a.Y > b.Y
-		}
-	})
-	out <- game.Message{
-		Type:          m.Type,
-		PlayerName:    m.PlayerName,
-		Info:          m.Info,
-		Tiles:         unusedTiles,
-		TilePositions: usedTilePositions,
-		TilesLeft:     len(g.unusedTiles),
-		GameStatus:    g.status,
-		GamePlayers:   g.playerNames(),
-		GameID:        g.id,
-	}
+	out <- *m2
 	return nil
 }
 

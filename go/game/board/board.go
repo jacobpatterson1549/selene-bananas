@@ -17,23 +17,47 @@ type (
 		UnusedTileIDs []tile.ID
 		UsedTiles     map[tile.ID]tile.Position
 		UsedTileLocs  map[tile.X]map[tile.Y]tile.Tile
+		NumRows       int
+		NumCols       int
+	}
+
+	// Config stores fields for creating a board.
+	Config struct {
+		NumRows int
+		NumCols int
 	}
 )
 
 // New creates a new board with the unused tiles.
-func New(unusedTiles []tile.Tile) Board {
+func (cfg Config) New(unusedTiles []tile.Tile) (*Board, error) {
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
 	unusedTilesByID := make(map[tile.ID]tile.Tile, len(unusedTiles))
 	unusedTileIDs := make([]tile.ID, len(unusedTiles))
 	for i, t := range unusedTiles {
 		unusedTilesByID[t.ID] = t
 		unusedTileIDs[i] = t.ID
 	}
-	return Board{
+	b := Board{
 		UnusedTiles:   unusedTilesByID,
 		UnusedTileIDs: unusedTileIDs,
 		UsedTiles:     make(map[tile.ID]tile.Position),
 		UsedTileLocs:  make(map[tile.X]map[tile.Y]tile.Tile),
+		NumCols:       cfg.NumCols,
+		NumRows:       cfg.NumRows,
 	}
+	return &b, nil
+}
+
+func (cfg Config) validate() error {
+	switch {
+	case cfg.NumRows < 10:
+		return fmt.Errorf("not enough rows on board")
+	case cfg.NumCols < 10:
+		return fmt.Errorf("not enough columns on board")
+	}
+	return nil
 }
 
 // AddTile adds a tile to the board's unused tiles.
@@ -131,7 +155,9 @@ func (b Board) desiredUsedTileLocs(tilePositions []tile.Position) (map[tile.X]ma
 	var e struct{}
 	movedTileIDs := make(map[tile.ID]struct{}, len(tilePositions))
 	for _, tp := range tilePositions {
-		if !b.hasTile(tp.Tile) {
+		switch {
+		case tp.X < 0, tp.Y < 0, int(tp.X) >= b.NumCols, int(tp.Y) >= b.NumRows,
+			!b.hasTile(tp.Tile):
 			return nil, nil, false
 		}
 		if _, ok := movedTileIDs[tp.Tile.ID]; ok {

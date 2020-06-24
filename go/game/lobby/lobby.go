@@ -205,6 +205,8 @@ func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 	writeMessages <- game.Message{ // this will update the game's info
 		Type:       game.Join,
 		PlayerName: m.PlayerName,
+		NumCols:    m.NumCols,
+		NumRows:    m.NumRows,
 	}
 }
 

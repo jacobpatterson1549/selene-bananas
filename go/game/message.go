@@ -19,6 +19,8 @@ type (
 		GameID        ID              `json:"gameID,omitempty"`
 		GameStatus    Status          `json:"gameStatus,omitempty"`
 		GamePlayers   []string        `json:"gamePlayers,omitempty"`
+		NumCols       int             `json:"c,omitempty"`
+		NumRows       int             `json:"r,omitempty"`
 		PlayerName    PlayerName      `json:"-"`
 	}
 )

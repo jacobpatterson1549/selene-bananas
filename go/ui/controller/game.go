@@ -38,6 +38,8 @@ func NewGame(board *board.Board, canvas *canvas.Canvas) Game {
 		board:  board,
 		canvas: canvas,
 	}
+	board.NumCols = canvas.NumCols()
+	board.NumRows = canvas.NumRows()
 	return g
 }
 
@@ -97,7 +99,9 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 func (g *Game) Create() {
 	g.resetTiles()
 	g.Socket.Send(game.Message{
-		Type: game.Create,
+		Type:    game.Create,
+		NumCols: g.canvas.NumCols(),
+		NumRows: g.canvas.NumRows(),
 	})
 }
 
@@ -105,8 +109,10 @@ func (g *Game) Create() {
 func (g *Game) Join(id int) {
 	g.resetTiles()
 	g.Socket.Send(game.Message{
-		Type:   game.Join,
-		GameID: game.ID(id),
+		Type:    game.Join,
+		GameID:  game.ID(id),
+		NumCols: g.canvas.NumCols(),
+		NumRows: g.canvas.NumRows(),
 	})
 }
 

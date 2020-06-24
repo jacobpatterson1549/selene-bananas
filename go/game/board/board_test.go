@@ -8,7 +8,14 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	b := New([]tile.Tile{{ID: 1}})
+	cfg := Config{
+		NumCols: 10,
+		NumRows: 10,
+	}
+	b, err := cfg.New([]tile.Tile{{ID: 1}})
+	if err != nil || b == nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if len(b.UnusedTileIDs) != 1 || b.UnusedTiles[1].ID != 1 {
 		t.Errorf("wanted only unused tile to have id 1, got %v", b.UnusedTiles)
 	}
@@ -24,7 +31,14 @@ func TestNew(t *testing.T) {
 }
 
 func TestAddTile(t *testing.T) {
-	b := New([]tile.Tile{})
+	b := Board{
+		UnusedTiles:   make(map[tile.ID]tile.Tile),
+		UnusedTileIDs: make([]tile.ID, 0, 1),
+		UsedTiles:     make(map[tile.ID]tile.Position),
+		UsedTileLocs:  make(map[tile.X]map[tile.Y]tile.Tile),
+		NumCols:       1,
+		NumRows:       1,
+	}
 	tl := tile.Tile{ID: 1}
 	err := b.AddTile(tl)
 	if err != nil {
@@ -219,6 +233,8 @@ func TestSingleUsedGroup(t *testing.T) {
 		b := Board{
 			UsedTiles:    test.usedTiles,
 			UsedTileLocs: test.usedTileLocs,
+			NumCols:      5,
+			NumRows:      5,
 		}
 		got := b.HasSingleUsedGroup()
 		if test.want != got {
@@ -228,7 +244,14 @@ func TestSingleUsedGroup(t *testing.T) {
 }
 
 func TestMoveTilesSwap(t *testing.T) {
-	b := New([]tile.Tile{})
+	b := Board{
+		UnusedTiles:   make(map[tile.ID]tile.Tile),
+		UnusedTileIDs: make([]tile.ID, 0, 2),
+		UsedTiles:     make(map[tile.ID]tile.Position),
+		UsedTileLocs:  make(map[tile.X]map[tile.Y]tile.Tile),
+		NumCols:       3,
+		NumRows:       3,
+	}
 	t1 := tile.Tile{ID: 1}
 	t2 := tile.Tile{ID: 2}
 	b.AddTile(t1)
@@ -264,6 +287,10 @@ func TestMoveTiles(t *testing.T) {
 		want          Board
 	}{
 		{
+			board: Board{
+				NumCols: 10,
+				NumRows: 10,
+			},
 			tilePositions: []tile.Position{{Tile: tile.Tile{ID: 1}}},
 			wantErr:       true, // hasTile == false
 		},
@@ -275,6 +302,8 @@ func TestMoveTiles(t *testing.T) {
 			board: Board{
 				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}},
 				UnusedTileIDs: []tile.ID{1},
+				NumCols:       10,
+				NumRows:       10,
 			},
 			wantErr: true, // tile moved twice
 		},
@@ -289,6 +318,8 @@ func TestMoveTiles(t *testing.T) {
 					2: {ID: 2},
 				},
 				UnusedTileIDs: []tile.ID{1, 2},
+				NumCols:       10,
+				NumRows:       10,
 			},
 			wantErr: true, // tiles move to same position
 		},
@@ -299,8 +330,22 @@ func TestMoveTiles(t *testing.T) {
 				UnusedTileIDs: []tile.ID{1},
 				UsedTiles:     map[tile.ID]tile.Position{4: {Tile: tile.Tile{ID: 4}, X: 2, Y: 3}},
 				UsedTileLocs:  map[tile.X]map[tile.Y]tile.Tile{2: {3: {ID: 4}}},
+				NumCols:       10,
+				NumRows:       10,
 			},
 			wantErr: true, // tile already at desired location
+		},
+		{
+			tilePositions: []tile.Position{{Tile: tile.Tile{ID: 1}, X: 2, Y: 99}},
+			board: Board{
+				UnusedTiles: map[tile.ID]tile.Tile{
+					1: {ID: 1},
+				},
+				UnusedTileIDs: []tile.ID{1},
+				NumCols:       10,
+				NumRows:       10,
+			},
+			wantErr: true, // tile is moved off board
 		},
 		{
 			tilePositions: []tile.Position{{Tile: tile.Tile{ID: 1}, X: 2, Y: 3}},
@@ -309,6 +354,8 @@ func TestMoveTiles(t *testing.T) {
 				UnusedTileIDs: []tile.ID{1},
 				UsedTiles:     map[tile.ID]tile.Position{2: {Tile: tile.Tile{ID: 2}, X: 2, Y: 4}},
 				UsedTileLocs:  map[tile.X]map[tile.Y]tile.Tile{2: {4: {ID: 2}}},
+				NumCols:       10,
+				NumRows:       10,
 			},
 			want: Board{
 				UsedTiles: map[tile.ID]tile.Position{
@@ -321,6 +368,8 @@ func TestMoveTiles(t *testing.T) {
 						4: {ID: 2},
 					},
 				},
+				NumCols: 10,
+				NumRows: 10,
 			},
 		},
 	}

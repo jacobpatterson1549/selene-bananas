@@ -632,3 +632,13 @@ func sort(a, b int) (int, int) {
 	}
 	return b, a
 }
+
+// NumCols the number of columns the canvas can draw.
+func (c Canvas) NumCols() int {
+	return c.draw.numCols
+}
+
+// NumRows the number of rows the canvas can draw.
+func (c Canvas) NumRows() int {
+	return c.draw.numRows
+}
