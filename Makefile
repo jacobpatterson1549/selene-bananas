@@ -36,7 +36,7 @@ main: test
 install: main main.wasm wasm_exec.js
 
 serve: install
-	export $(shell grep -v '^#' .env | xargs) && \
+	export $(shell grep -s -v '^#' .env | xargs) && \
 		./main
 
 clean:
