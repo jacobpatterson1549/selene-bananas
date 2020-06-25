@@ -16,8 +16,13 @@ func QuerySelector(query string) js.Value {
 }
 
 // QuerySelectorAll returns an array of the elements returned by the query from the specified document.
-func QuerySelectorAll(document js.Value, query string) js.Value {
-	return document.Call("querySelectorAll", query)
+func QuerySelectorAll(document js.Value, query string) []js.Value {
+	value := document.Call("querySelectorAll", query)
+	values := make([]js.Value, value.Length())
+	for i := 0; i < len(values); i++ {
+		values[i] = value.Index(i)
+	}
+	return values
 }
 
 // SetCheckedQuery sets the checked property of the element.
