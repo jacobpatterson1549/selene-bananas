@@ -223,11 +223,9 @@ func (b Board) keyedUsedWords(tiles map[int]map[int]tile.Tile, ord func(tp tile.
 	keyedUsedWords := make(map[int][]string, len(tiles))
 	wordCount := 0
 	for z, zTiles := range tiles {
-		tilePositions := make([]tile.Position, len(zTiles))
-		i := 0
+		tilePositions := make([]tile.Position, 0, len(zTiles))
 		for _, t := range zTiles {
-			tilePositions[i] = b.UsedTiles[t.ID]
-			i++
+			tilePositions = append(tilePositions, b.UsedTiles[t.ID])
 		}
 		sort.Slice(tilePositions, func(i, j int) bool {
 			return ord(tilePositions[i]) < ord(tilePositions[j])
@@ -256,15 +254,13 @@ func (b Board) keyedUsedWords(tiles map[int]map[int]tile.Tile, ord func(tp tile.
 func (b Board) usedTileWordsZ(tiles map[int]map[int]tile.Tile, ord func(tp tile.Position) int) []string {
 	keyedUsedWords, wordCount := b.keyedUsedWords(tiles, ord)
 	//sort the keyedUsedWords by the keys (z)
-	keys := make([]int, len(keyedUsedWords))
-	i := 0
+	keys := make([]int, 0, len(keyedUsedWords))
 	for k := range keyedUsedWords {
-		keys[i] = k
-		i++
+		keys = append(keys, k)
 	}
 	sort.Ints(keys)
 	usedWords := make([]string, wordCount)
-	i = 0
+	i := 0
 	for _, k := range keys {
 		copy(usedWords[i:], keyedUsedWords[k])
 		i += len(keyedUsedWords[k])
