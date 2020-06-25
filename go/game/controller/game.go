@@ -359,13 +359,11 @@ func (g *Game) handleGameSnag(ctx context.Context, m game.Message, out chan<- ga
 		return gameWarning("no tiles left to snag, use what you have to finish")
 	}
 	snagPlayerMessages := make(map[game.PlayerName]game.Message, len(g.players))
-	snagPlayerNames := make([]game.PlayerName, len(g.players))
+	snagPlayerNames := make([]game.PlayerName, 1, len(g.players))
 	snagPlayerNames[0] = m.PlayerName
-	i := 1
 	for n2 := range g.players {
 		if m.PlayerName != n2 {
-			snagPlayerNames[i] = n2
-			i++
+			snagPlayerNames = append(snagPlayerNames, n2)
 		}
 	}
 	g.shufflePlayersFunc(snagPlayerNames[1:])
@@ -460,11 +458,9 @@ func (g *Game) handleBoardRefresh(ctx context.Context, m game.Message, out chan<
 	for i, id := range p.UnusedTileIDs {
 		unusedTiles[i] = p.UnusedTiles[id]
 	}
-	usedTilePositions := make([]tile.Position, len(p.UsedTiles))
-	i := 0
+	usedTilePositions := make([]tile.Position, 0, len(p.UsedTiles))
 	for _, tps := range p.UsedTiles {
-		usedTilePositions[i] = tps
-		i++
+		usedTilePositions = append(usedTilePositions, tps)
 	}
 	sort.Slice(usedTilePositions, func(i, j int) bool {
 		a, b := usedTilePositions[i], usedTilePositions[j]
@@ -503,12 +499,7 @@ func (g *Game) handleGameChat(ctx context.Context, m game.Message, out chan<- ga
 }
 
 func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName game.PlayerName) error {
-	users := make([]string, len(g.players))
-	i := 0
-	for n := range g.players {
-		users[i] = string(n)
-		i++
-	}
+	users := g.playerNames()
 	userPointsIncrementFunc := func(u string) int {
 		if string(u) == string(winningPlayerName) {
 			p := g.players[winningPlayerName]
@@ -520,11 +511,9 @@ func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName game.Play
 }
 
 func (g Game) playerNames() []string {
-	playerNames := make([]string, len(g.players))
-	i := 0
+	playerNames := make([]string, 0, len(g.players))
 	for n := range g.players {
-		playerNames[i] = string(n)
-		i++
+		playerNames = append(playerNames, string(n))
 	}
 	sort.Strings(playerNames)
 	return playerNames
