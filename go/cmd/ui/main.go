@@ -78,8 +78,7 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	// allow interaction
 	document := dom.QuerySelector("body")
 	disabledSubmitButtons := dom.QuerySelectorAll(document, `input[type="submit"]:disabled`)
-	for i := 0; i < disabledSubmitButtons.Length(); i++ {
-		submitButton := disabledSubmitButtons.Index(i)
-		submitButton.Set("disabled", false)
+	for _, disabledSubmitButton := range disabledSubmitButtons {
+		disabledSubmitButton.Set("disabled", false)
 	}
 }

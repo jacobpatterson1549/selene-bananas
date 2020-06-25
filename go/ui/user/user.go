@@ -171,8 +171,7 @@ func (u User) escapePassword(p string) string {
 func setUsernamesReadOnly(username string) {
 	body := dom.QuerySelector("body")
 	usernameElements := dom.QuerySelectorAll(body, "input.username")
-	for i := 0; i < usernameElements.Length(); i++ {
-		usernameElement := usernameElements.Index(i)
+	for _, usernameElement := range usernameElements {
 		switch {
 		case len(username) == 0:
 			usernameElement.Call("removeAttribute", "readonly")

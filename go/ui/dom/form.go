@@ -27,9 +27,8 @@ func NewForm(event js.Value) (*Form, error) {
 		return nil, errors.New("getting url from form action: " + err.Error())
 	}
 	formInputs := QuerySelectorAll(form, `input[name]:not([type="submit"])`)
-	params := make(map[string][]string, formInputs.Length())
-	for i := 0; i < formInputs.Length(); i++ {
-		formInput := formInputs.Index(i)
+	params := make(map[string][]string, len(formInputs))
+	for _, formInput := range formInputs {
 		name := formInput.Get("name").String()
 		value := formInput.Get("value").String()
 		params[name] = []string{value}
@@ -46,8 +45,7 @@ func NewForm(event js.Value) (*Form, error) {
 // Reset clears the named inputs of the form.
 func (f *Form) Reset() {
 	formInputs := QuerySelectorAll(f.v, `input[name]:not([type="submit"])`)
-	for i := 0; i < formInputs.Length(); i++ {
-		formInput := formInputs.Index(i)
+	for _, formInput := range formInputs {
 		formInput.Set("value", "")
 	}
 }
