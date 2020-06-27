@@ -631,8 +631,8 @@ func (pp *pixelPosition) fromTouch(event js.Value) pixelPosition {
 	}
 	touch := touches.Index(0)
 	canvasRect := event.Get("target").Call("getBoundingClientRect")
-	pp.x = touch.Get("pageX").Int() - canvasRect.Get("left").Int()
-	pp.y = touch.Get("pageY").Int() - canvasRect.Get("top").Int()
+	pp.x = touch.Get("clientX").Int() - canvasRect.Get("left").Int()
+	pp.y = touch.Get("clientY").Int() - canvasRect.Get("top").Int()
 	return *pp
 }
 
