@@ -82,5 +82,6 @@ func Confirm(message string) bool {
 // NewWebSocket creates a new WebSocket with the specified url.
 func NewWebSocket(url string) js.Value {
 	global := js.Global()
-	return global.Get("WebSocket").New(url)
+	webSocket := global.Get("WebSocket")
+	return webSocket.New(url)
 }
