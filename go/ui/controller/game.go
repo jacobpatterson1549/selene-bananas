@@ -95,25 +95,19 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 
 // Create clears the tiles and asks the server for a new game to join
 func (g *Game) Create() {
-	g.setTabActive()
-	g.resetTiles()
-	g.Socket.Send(game.Message{
-		Type:    game.Create,
-		NumCols: g.canvas.NumCols(),
-		NumRows: g.canvas.NumRows(),
-	})
+	m := game.Message{
+		Type: game.Create,
+	}
+	g.setTabActive(m)
 }
 
 // Join asks the server to join an existing game.
 func (g *Game) Join(id int) {
-	g.setTabActive()
-	g.resetTiles()
-	g.Socket.Send(game.Message{
-		Type:    game.Join,
-		GameID:  game.ID(id),
-		NumCols: g.canvas.NumCols(),
-		NumRows: g.canvas.NumRows(),
-	})
+	m := game.Message{
+		Type:   game.Join,
+		GameID: game.ID(id),
+	}
+	g.setTabActive(m)
 }
 
 // Leave changes the view for game by hiding it.
@@ -270,11 +264,25 @@ func (g *Game) resetTiles() {
 	g.board.UsedTileLocs = make(map[tile.X]map[tile.Y]tile.Tile)
 }
 
-func (g Game) setTabActive() {
+// setTabActive performs the actions need to activate the game tab and create or join a game.
+func (g Game) setTabActive(m game.Message) {
 	dom.SetCheckedQuery(".has-game", true)
 	dom.SetCheckedQuery("#tab-game", true)
 	// the tab now has a size, so update the canvas and board
 	g.canvas.UpdateSize()
+	cfg := board.Config{
+		NumCols: g.canvas.NumCols(),
+		NumRows: g.canvas.NumRows(),
+	}
+	if err := cfg.Validate(); err != nil {
+		log.Error("cannot open game: " + err.Error())
+		g.Leave()
+		return
+	}
 	g.board.NumCols = g.canvas.NumCols()
 	g.board.NumRows = g.canvas.NumRows()
+	g.resetTiles()
+	m.NumCols = g.board.NumCols
+	m.NumRows = g.board.NumRows
+	g.Socket.Send(m)
 }

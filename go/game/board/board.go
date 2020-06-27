@@ -28,9 +28,14 @@ type (
 	}
 )
 
+const (
+	minCols = 10
+	minRows = 10
+)
+
 // New creates a new board with the unused tiles.
 func (cfg Config) New(unusedTiles []tile.Tile) (*Board, error) {
-	if err := cfg.validate(); err != nil {
+	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
 	unusedTilesByID := make(map[tile.ID]tile.Tile, len(unusedTiles))
@@ -50,12 +55,13 @@ func (cfg Config) New(unusedTiles []tile.Tile) (*Board, error) {
 	return &b, nil
 }
 
-func (cfg Config) validate() error {
+// Validate returns an error if the number of rows or columns is invalid.
+func (cfg Config) Validate() error {
 	switch {
-	case cfg.NumRows < 10:
-		return fmt.Errorf("not enough rows on board")
-	case cfg.NumCols < 10:
-		return fmt.Errorf("not enough columns on board")
+	case cfg.NumRows < minRows:
+		return fmt.Errorf("not enough rows on board (%v<%v)", cfg.NumRows, minRows)
+	case cfg.NumCols < minCols:
+		return fmt.Errorf("not enough columns on board (%v<%v)", cfg.NumCols, minCols)
 	}
 	return nil
 }
