@@ -26,20 +26,19 @@ type (
 		touchPos   pixelPosition
 		gameStatus game.Status
 		Socket     Socket
+		parentDiv  *js.Value
+		element    *js.Value
 	}
 
 	// Config contains the parameters to create a Canvas
 	Config struct {
-		Width      int
-		Height     int
 		TileLength int
-		FontName   string
 	}
 
 	// Context handles the drawing of the canvas
 	Context interface {
 		SetFont(name string)
-		SetLineWidth(width int)
+		SetLineWidth(width float64)
 		SetFillColor(name string)
 		SetStrokeColor(name string)
 		FillText(text string, x, y int)
@@ -105,61 +104,48 @@ const (
 	dragColor       = "blue"
 )
 
-var moveStateRadioQueries = map[moveState]string{
-	none: ".game>.move-state.none",
-	swap: ".game>.move-state.swap",
-	rect: ".game>.move-state.rect",
-	drag: ".game>.move-state.drag",
-	grab: ".game>.move-state.grab",
-}
-
 // New Creates a canvas from the config.
-func (cfg Config) New(board *board.Board, canvasElement js.Value) Canvas {
-	contextElement := canvasElement.Call("getContext", "2d")
-	ctx := jsContext{contextElement}
-	width := canvasElement.Get("width").Int()
-	height := canvasElement.Get("height").Int()
-	font := strconv.Itoa(cfg.TileLength) + "px " + cfg.FontName
-	ctx.SetFont(font)
-	ctx.SetLineWidth(2)
-	textOffset := (cfg.TileLength * 3) / 20
-	padding := 5
-	unusedMinX := padding
-	unusedMinY := cfg.TileLength
-	usedMinX := padding
-	usedMinY := cfg.TileLength * 4
-	usedMaxX := width - padding
-	usedMaxY := height - padding
-	numRows := (usedMaxY - usedMinY) / cfg.TileLength
-	numCols := (usedMaxX - usedMinX) / cfg.TileLength
-	c := Canvas{
+func (cfg Config) New(board *board.Board, parentDiv, element *js.Value) *Canvas {
+	contextElement := element.Call("getContext", "2d")
+	ctx := jsContext{&contextElement}
+	c := &Canvas{
 		ctx:   &ctx,
 		board: board,
-		draw: drawMetrics{
-			width:      width,
-			height:     height,
-			tileLength: cfg.TileLength,
-			textOffset: textOffset,
-			unusedMin: pixelPosition{
-				x: unusedMinX,
-				y: unusedMinY,
-			},
-			usedMin: pixelPosition{
-				x: usedMinX,
-				y: usedMinY,
-			},
-			numRows: numRows,
-			numCols: numCols,
-		},
 		selection: selection{
 			tiles: make(map[tile.ID]tileSelection),
+		},
+		parentDiv: parentDiv,
+		element:   element,
+		draw: drawMetrics{
+			tileLength: cfg.TileLength,
 		},
 	}
 	return c
 }
 
+// UpdateSize sets the draw properties of the canvas for it's current size in the window.
+// TODO: allow tileLength to be changed
+func (c *Canvas) UpdateSize() {
+	c.draw.width = c.parentDiv.Get("offsetWidth").Int()
+	padding := 5
+	c.draw.textOffset = (c.draw.tileLength * 3) / 20
+	c.draw.unusedMin.x = padding
+	c.draw.unusedMin.y = c.draw.tileLength
+	c.draw.usedMin.x = padding
+	c.draw.usedMin.y = c.draw.tileLength * 4
+	c.draw.numCols = (c.draw.width - c.draw.usedMin.x - padding) / c.draw.tileLength
+	c.draw.numRows = 500 / c.draw.numCols
+	c.draw.height = c.draw.usedMin.y + c.draw.numRows*c.draw.tileLength
+	c.element.Set("width", c.draw.width)
+	c.element.Set("height", c.draw.height)
+	c.parentDiv.Set("width", c.draw.width)
+	c.parentDiv.Set("height", c.draw.height)
+	c.ctx.SetFont(strconv.Itoa(c.draw.tileLength) + "px sans-serif")
+	c.ctx.SetLineWidth(float64(c.draw.tileLength) / 10)
+}
+
 // InitDom regesters canvas dom functions.
-func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup, canvasElement js.Value) {
+func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	redrawJsFunc := dom.NewJsFunc(c.Redraw)
 	swapTileJsFunc := dom.NewJsFunc(c.StartSwap)
@@ -186,12 +172,12 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup, canvasElement 
 	}
 	dom.RegisterFunc("canvas", "redraw", redrawJsFunc)
 	dom.RegisterFunc("canvas", "swapTile", swapTileJsFunc)
-	mouseDownJsFunc := dom.RegisterEventListenerFunc(canvasElement, "mousedown", mouseDownFunc)
-	mouseUpJsFunc := dom.RegisterEventListenerFunc(canvasElement, "mouseup", mouseUpFunc)
-	mouseMoveJsFunc := dom.RegisterEventListenerFunc(canvasElement, "mousemove", mouseMoveFunc)
-	touchStartJsFunc := dom.RegisterEventListenerFunc(canvasElement, "touchstart", touchStartFunc)
-	touchEndJsFunc := dom.RegisterEventListenerFunc(canvasElement, "touchend", touchEndFunc)
-	touchMoveJsFunc := dom.RegisterEventListenerFunc(canvasElement, "touchmove", touchMoveFunc)
+	mouseDownJsFunc := c.registerEventListener("mousedown", mouseDownFunc)
+	mouseUpJsFunc := c.registerEventListener("mouseup", mouseUpFunc)
+	mouseMoveJsFunc := c.registerEventListener("mousemove", mouseMoveFunc)
+	touchStartJsFunc := c.registerEventListener("touchstart", touchStartFunc)
+	touchEndJsFunc := c.registerEventListener("touchend", touchEndFunc)
+	touchMoveJsFunc := c.registerEventListener("touchmove", touchMoveFunc)
 	go func() {
 		<-ctx.Done()
 		redrawJsFunc.Release()
@@ -204,6 +190,24 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup, canvasElement 
 		touchMoveJsFunc.Release()
 		wg.Done()
 	}()
+}
+
+// registerEventListener adds an event listener to the canvas element
+func (c *Canvas) registerEventListener(fnName string, fn func(event js.Value)) js.Func {
+	jsFunc := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		event := args[0]
+		fn(event)
+		return nil
+	})
+	args := []interface{}{
+		fnName,
+		jsFunc,
+		map[string]interface{}{
+			"passive": false,
+		},
+	}
+	c.element.Call("addEventListener", args...)
+	return jsFunc
 }
 
 // Redraw draws the canvas
@@ -589,8 +593,17 @@ func (c Canvas) selectionUsedTilePositions(startTS tileSelection, endC, endR int
 
 func (s *selection) setMoveState(ms moveState) {
 	s.moveState = ms
-	if query, ok := moveStateRadioQueries[ms]; ok {
-		dom.SetCheckedQuery(query, true)
+	switch ms {
+	case none:
+		dom.SetCheckedQuery(".game>.canvas>.move-state.none", true)
+	case swap:
+		dom.SetCheckedQuery(".game>.canvas>.move-state.swap", true)
+	case rect:
+		dom.SetCheckedQuery(".game>.canvas>.move-state.rect", true)
+	case drag:
+		dom.SetCheckedQuery(".game>.canvas>.move-state.drag", true)
+	case grab:
+		dom.SetCheckedQuery(".game>.canvas>.move-state.grab", true)
 	}
 }
 

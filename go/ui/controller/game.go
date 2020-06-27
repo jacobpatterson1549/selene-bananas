@@ -38,8 +38,6 @@ func NewGame(board *board.Board, canvas *canvas.Canvas) Game {
 		board:  board,
 		canvas: canvas,
 	}
-	board.NumCols = canvas.NumCols()
-	board.NumRows = canvas.NumRows()
 	return g
 }
 
@@ -97,6 +95,7 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 
 // Create clears the tiles and asks the server for a new game to join
 func (g *Game) Create() {
+	g.setTabActive()
 	g.resetTiles()
 	g.Socket.Send(game.Message{
 		Type:    game.Create,
@@ -107,6 +106,7 @@ func (g *Game) Create() {
 
 // Join asks the server to join an existing game.
 func (g *Game) Join(id int) {
+	g.setTabActive()
 	g.resetTiles()
 	g.Socket.Send(game.Message{
 		Type:    game.Join,
@@ -194,7 +194,6 @@ func (g *Game) addUnusedTiles(m game.Message) {
 		log.Info(message)
 	}
 	g.canvas.Redraw()
-	setTabActive()
 }
 
 // UpdateInfo updates the game for the specified message.
@@ -271,7 +270,11 @@ func (g *Game) resetTiles() {
 	g.board.UsedTileLocs = make(map[tile.X]map[tile.Y]tile.Tile)
 }
 
-func setTabActive() {
+func (g Game) setTabActive() {
 	dom.SetCheckedQuery(".has-game", true)
 	dom.SetCheckedQuery("#tab-game", true)
+	// the tab now has a size, so update the canvas and board
+	g.canvas.UpdateSize()
+	g.board.NumCols = g.canvas.NumCols()
+	g.board.NumRows = g.canvas.NumRows()
 }

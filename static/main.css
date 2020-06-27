@@ -6,7 +6,7 @@
 .tabs>.tab>.content,
 .tabs>.tab>.content>.lobby>.has-websocket:not(:checked)~.connected,
 .tabs>.tab>.content>.lobby>.has-websocket:checked~.connect,
-.tabs>.tab>.content>.game>.move-state {
+.tabs>.tab>.content>.game>.canvas>.move-state {
     display: none;
 }
 
@@ -58,12 +58,12 @@ form label {
     display: block;
 }
 
-.tab>.content>.game>.move-state.none:checked~canvas { cursor: default;   }
-.tab>.content>.game>.move-state.swap:checked~canvas { cursor: progress;  }
-.tab>.content>.game>.move-state.rect:checked~canvas { cursor: crosshair; }
-.tab>.content>.game>.move-state.drag:checked~canvas { cursor: grabbing;  }
-.tab>.content>.game>.move-state.grab:checked~canvas { cursor: pointer;   }
-.tab>.content>.game>canvas {
+.tab>.content>.game>.canvas>.move-state.none:checked~canvas { cursor: default;   }
+.tab>.content>.game>.canvas>.move-state.swap:checked~canvas { cursor: progress;  }
+.tab>.content>.game>.canvas>.move-state.rect:checked~canvas { cursor: crosshair; }
+.tab>.content>.game>.canvas>.move-state.drag:checked~canvas { cursor: grabbing;  }
+.tab>.content>.game>.canvas>.move-state.grab:checked~canvas { cursor: pointer;   }
+.tab>.content>.game>.canvas {
     border: 1px dotted #000;
 }
 

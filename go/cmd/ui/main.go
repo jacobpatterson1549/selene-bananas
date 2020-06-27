@@ -37,16 +37,16 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	u := user.New(&httpClient)
 	u.InitDom(ctx, wg)
 	// canvas
-	canvasElement := dom.QuerySelector(".game>canvas")
+	canvasDiv := dom.QuerySelector(".game>.canvas")
+	canvasElement := dom.QuerySelector(".game>.canvas>canvas")
 	var board board.Board
 	canvasCfg := canvas.Config{
 		TileLength: 20,
-		FontName:   "sans-serif",
 	}
-	canvas := canvasCfg.New(&board, canvasElement)
-	canvas.InitDom(ctx, wg, canvasElement)
+	canvas := canvasCfg.New(&board, &canvasDiv, &canvasElement)
+	canvas.InitDom(ctx, wg)
 	// game
-	g := controller.NewGame(&board, &canvas)
+	g := controller.NewGame(&board, canvas)
 	g.InitDom(ctx, wg)
 	// lobby
 	l := lobby.Lobby{

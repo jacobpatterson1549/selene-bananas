@@ -8,7 +8,7 @@ import (
 
 type (
 	jsContext struct {
-		ctx js.Value
+		ctx *js.Value
 	}
 )
 
@@ -16,7 +16,7 @@ func (c *jsContext) SetFont(name string) {
 	c.ctx.Set("font", name)
 }
 
-func (c *jsContext) SetLineWidth(width int) {
+func (c *jsContext) SetLineWidth(width float64) {
 	c.ctx.Set("lineWidth", width)
 }
 

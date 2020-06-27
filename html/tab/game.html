@@ -23,12 +23,6 @@
             <input type="submit" value="Send" disabled>
         </fieldset>
     </form>
-    <input type="radio" name="canvas" class="move-state none" checked>
-    <input type="radio" name="canvas" class="move-state swap">
-    <input type="radio" name="canvas" class="move-state rect">
-    <input type="radio" name="canvas" class="move-state drag">
-    <input type="radio" name="canvas" class="move-state grab">
-    <canvas width="500" height="500"></canvas>
     <div class="actions">
         <button type="button" class="snag" onclick="game.snagTile()" disabled title="Get a new tile when you have run out of tiles.  All other players also get a tile.">Snag</button>
         <button type="button" class="start" onclick="game.start()" disabled title="Starts the game for everyone.">Start</button>
@@ -36,5 +30,13 @@
         <button type="button" class="swap" onclick="canvas.swapTile()" disabled title="Swap 1 tile for three new ones in the pile.">Swap</button>
         <button type="button" class="leave" onclick="game.leave()" title="Leave the game">Leave</button>
         <button type="button" class="delete" onclick="game.delete()" title="Delete the game for everyone">Delete</button>
+    </div>
+    <div class="canvas">
+        <input type="radio" name="canvas" class="move-state none" checked>
+        <input type="radio" name="canvas" class="move-state swap">
+        <input type="radio" name="canvas" class="move-state rect">
+        <input type="radio" name="canvas" class="move-state drag">
+        <input type="radio" name="canvas" class="move-state grab">
+        <canvas width="100"></canvas>
     </div>
 </div>

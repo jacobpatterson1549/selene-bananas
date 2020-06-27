@@ -13,7 +13,7 @@ import (
 type (
 	mockContext struct {
 		SetFontFunc        func(name string)
-		SetLineWidthFunc   func(width int)
+		SetLineWidthFunc   func(width float64)
 		SetFillColorFunc   func(name string)
 		SetStrokeColorFunc func(name string)
 		FillTextFunc       func(text string, x, y int)
@@ -138,7 +138,7 @@ func (ctx *mockContext) SetFont(name string) {
 	ctx.SetFontFunc(name)
 }
 
-func (ctx *mockContext) SetLineWidth(width int) {
+func (ctx *mockContext) SetLineWidth(width float64) {
 	ctx.SetLineWidthFunc(width)
 }
 
