@@ -27,6 +27,7 @@ type (
 		httpServer *http.Server
 		stopDur    time.Duration
 		cacheSec   int
+		uuid       string
 	}
 
 	// Config contains fields which describe the server
@@ -47,6 +48,8 @@ type (
 		StopDur time.Duration
 		// CachenSec is the number of seconds some files are cached
 		CacheSec int
+		// UUID is used to bust caches of files from older server version
+		UUID string
 	}
 
 	// wrappedResponseWriter wraps response writing with another writer.
@@ -64,9 +67,11 @@ func (cfg Config) NewServer() (*Server, error) {
 	data := struct {
 		ApplicationName string
 		Description     string
+		UUID            string
 	}{
 		ApplicationName: cfg.AppName,
 		Description:     "a tile-based word-forming game",
+		UUID:            cfg.UUID,
 	}
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	serveMux := new(http.ServeMux)
@@ -86,8 +91,8 @@ func (cfg Config) NewServer() (*Server, error) {
 		},
 		stopDur:  cfg.StopDur,
 		cacheSec: cfg.CacheSec,
+		uuid:     cfg.UUID,
 	}
-	serveMux.Handle("/js/", http.StripPrefix("/js/", http.FileServer(http.Dir("js"))))
 	serveMux.HandleFunc("/", s.httpMethodHandler)
 	return &s, nil
 }
@@ -154,11 +159,11 @@ func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	var err error
 	switch r.URL.Path {
 	case "/":
-		s.handleFile(s.serveTemplate)(w, r)
-	case "/favicon.ico", "/robots.txt", "/run_wasm.js":
-		s.handleFile(s.serveFile("static"+r.URL.Path))(w, r)
+		s.handleFile(s.serveTemplate, false)(w, r)
+	case "/favicon.ico", "/robots.txt":
+		s.handleFile(s.serveFile("static"+r.URL.Path), false)(w, r)
 	case "/wasm_exec.js", "/main.wasm":
-		s.handleFile(s.serveFile("."+r.URL.Path))(w, r)
+		s.handleFile(s.serveFile("."+r.URL.Path), true)(w, r)
 	case "/lobby":
 		err = s.handleLobby(w, r)
 	case "/ping":
@@ -206,6 +211,7 @@ func (s Server) serveTemplate(w http.ResponseWriter, r *http.Request) {
 		"html/**/*.html",
 		"static/fa/*.svg",
 		"static/main.css",
+		"static/run_wasm.js",
 	}
 	for _, g := range templateFileGlobs {
 		_, err := t.ParseGlob(g)
@@ -229,9 +235,18 @@ func (Server) serveFile(name string) http.HandlerFunc {
 }
 
 // handleFile wraps the handling of the file, add cache-control header and gzip compression, if possible.
-func (s Server) handleFile(fn http.HandlerFunc) http.HandlerFunc {
+func (s Server) handleFile(fn http.HandlerFunc, checkUUID bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Cache-Control"), "no-store") {
+		if checkUUID && r.URL.Query().Get("uuid") != s.uuid {
+			url := r.URL
+			q := url.Query()
+			q.Set("uuid", s.uuid)
+			url.RawQuery = q.Encode()
+			w.Header().Set("Location", url.String())
+			w.WriteHeader(http.StatusMovedPermanently)
+			return
+		}
+		if s.cacheSec > 0 && !strings.Contains(r.Header.Get("Cache-Control"), "no-store") {
 			w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
 		}
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {

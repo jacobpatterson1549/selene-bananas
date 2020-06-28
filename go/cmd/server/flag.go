@@ -12,6 +12,7 @@ const (
 	environmentVariableServerPort      = "PORT"
 	environmentVariableDatabaseURL     = "DATABASE_URL"
 	environmentVariableWordsFile       = "WORDS_FILE"
+	environmentVariableUUID            = "UUID"
 	environmentVariableDebugGame       = "DEBUG_GAME_MESSAGES"
 	environmentVariableCacheSec        = "CACHE_SECONDS"
 )
@@ -21,6 +22,7 @@ type mainFlags struct {
 	serverPort      string
 	databaseURL     string
 	wordsFile       string
+	uuid            string
 	debugGame       bool
 	cacheSec        int
 }
@@ -35,6 +37,7 @@ func usage(fs *flag.FlagSet) {
 		environmentVariableServerPort,
 		environmentVariableDatabaseURL,
 		environmentVariableWordsFile,
+		environmentVariableUUID,
 		environmentVariableDebugGame,
 		environmentVariableCacheSec,
 	}
@@ -70,6 +73,7 @@ func (m *mainFlags) newFlagSet(programName string, osLookupEnvFunc func(string) 
 	fs.StringVar(&m.databaseURL, "data-source", envOrDefault(environmentVariableDatabaseURL, ""), "The data source to the PostgreSQL database (connection URI).")
 	fs.StringVar(&m.serverPort, "port", envOrDefault(environmentVariableServerPort, ""), "The port number to run the server on.")
 	fs.StringVar(&m.wordsFile, "words-file", envOrDefault(environmentVariableWordsFile, ""), "The list of valid lower-case words that can be used.")
+	fs.StringVar(&m.uuid, "uuid", envOrDefault(environmentVariableUUID, ""), "The UUID to bust previously cached files.  Change eeach time a new version of the server is run.")
 	fs.BoolVar(&m.debugGame, "debug-game", envPresent(environmentVariableDebugGame), "Logs game message types in the console if present.")
 	fs.IntVar(&m.cacheSec, "cache-sec", envOrDefaultInt(environmentVariableCacheSec, defaultCacheSec), "The number of seconds static assets are cached, such as javascript files.")
 	return fs

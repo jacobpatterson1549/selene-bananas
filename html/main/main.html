@@ -11,8 +11,10 @@
         <style type="text/css">
             {{template "main.css"}}
         </style>
-        <script defer src="wasm_exec.js"></script>
-        <script defer src="run_wasm.js"></script>
+        <script defer src="wasm_exec.js?uuid={{.UUID}}"></script>
+        <script>
+            {{ template "run_wasm.js" . }}
+        </script>
     </head>
     <body>
         <header>
