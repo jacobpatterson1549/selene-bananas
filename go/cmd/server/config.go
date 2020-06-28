@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"log"
@@ -48,6 +49,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	if err != nil {
 		return nil, err
 	}
+	v := version(m, log)
 	cfg := server.Config{
 		AppName:   m.applicationName,
 		Port:      m.serverPort,
@@ -57,7 +59,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		LobbyCfg:  *lobbyCfg,
 		StopDur:   time.Second,
 		CacheSec:  m.cacheSec,
-		Version:   m.version,
+		Version:   v,
 	}
 	return &cfg, nil
 }
@@ -143,4 +145,19 @@ func socketConfig(m mainFlags, log *log.Logger, timeFunc func() int64) socket.Co
 		HTTPPingPeriod: 10 * time.Minute,
 	}
 	return cfg
+}
+
+func version(m mainFlags, log *log.Logger) string {
+	versionFile, err := os.Open(m.versionFile)
+	if err != nil {
+		log.Printf("trying to open version file: %v", err)
+		return ""
+	}
+	scanner := bufio.NewScanner(versionFile)
+	scanner.Split(bufio.ScanWords)
+	if !scanner.Scan() {
+		log.Print("no words in version file")
+		return ""
+	}
+	return scanner.Text()
 }

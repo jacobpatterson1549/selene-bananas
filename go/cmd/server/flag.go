@@ -12,7 +12,7 @@ const (
 	environmentVariableServerPort      = "PORT"
 	environmentVariableDatabaseURL     = "DATABASE_URL"
 	environmentVariableWordsFile       = "WORDS_FILE"
-	environmentVariableVersion         = "VERSION"
+	environmentVariableVersionFile     = "VERSION_FILE"
 	environmentVariableDebugGame       = "DEBUG_GAME_MESSAGES"
 	environmentVariableCacheSec        = "CACHE_SECONDS"
 )
@@ -22,7 +22,7 @@ type mainFlags struct {
 	serverPort      string
 	databaseURL     string
 	wordsFile       string
-	version         string
+	versionFile     string
 	debugGame       bool
 	cacheSec        int
 }
@@ -37,7 +37,7 @@ func usage(fs *flag.FlagSet) {
 		environmentVariableServerPort,
 		environmentVariableDatabaseURL,
 		environmentVariableWordsFile,
-		environmentVariableVersion,
+		environmentVariableVersionFile,
 		environmentVariableDebugGame,
 		environmentVariableCacheSec,
 	}
@@ -73,7 +73,7 @@ func (m *mainFlags) newFlagSet(programName string, osLookupEnvFunc func(string) 
 	fs.StringVar(&m.databaseURL, "data-source", envOrDefault(environmentVariableDatabaseURL, ""), "The data source to the PostgreSQL database (connection URI).")
 	fs.StringVar(&m.serverPort, "port", envOrDefault(environmentVariableServerPort, ""), "The port number to run the server on.")
 	fs.StringVar(&m.wordsFile, "words-file", envOrDefault(environmentVariableWordsFile, ""), "The list of valid lower-case words that can be used.")
-	fs.StringVar(&m.version, "version", envOrDefault(environmentVariableVersion, ""), "The Version to bust previously cached files.  Change eeach time a new version of the server is run.")
+	fs.StringVar(&m.versionFile, "version-file", envOrDefault(environmentVariableVersionFile, ""), "A file containing the version key (the first word).  Used to bust previously cached files.  Change each time a new version of the server is run.")
 	fs.BoolVar(&m.debugGame, "debug-game", envPresent(environmentVariableDebugGame), "Logs game message types in the console if present.")
 	fs.IntVar(&m.cacheSec, "cache-sec", envOrDefaultInt(environmentVariableCacheSec, defaultCacheSec), "The number of seconds static assets are cached, such as javascript files.")
 	return fs
