@@ -40,20 +40,20 @@ func TestGetWebSocketURL(t *testing.T) {
 		},
 	}
 	for i, test := range getWebSocketURLTests {
-		url, err := url.Parse(test.url)
+		u, err := url.Parse(test.url)
 		if err != nil {
 			t.Errorf("Test %v: %v", i, err)
 			continue
 		}
 		f := dom.Form{
-			URL:    *url,
-			Params: make(map[string][]string, 1),
+			URL:    *u,
+			Params: make(url.Values, 1),
 		}
-		u := mockUser{
+		mu := mockUser{
 			jwt: test.jwt,
 		}
 		s := Socket{
-			User: &u,
+			User: &mu,
 		}
 		got := s.getWebSocketURL(f)
 		if test.want != got {

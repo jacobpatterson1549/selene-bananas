@@ -22,12 +22,12 @@ func NewForm(event js.Value) (*Form, error) {
 	form := event.Get("target")
 	method := form.Get("method").String()
 	action := form.Get("action").String()
-	url, err := url.Parse(action)
+	u, err := url.Parse(action)
 	if err != nil {
 		return nil, errors.New("getting url from form action: " + err.Error())
 	}
 	formInputs := QuerySelectorAll(form, `input[name]:not([type="submit"])`)
-	params := make(map[string][]string, len(formInputs))
+	params := make(url.Values, len(formInputs))
 	for _, formInput := range formInputs {
 		name := formInput.Get("name").String()
 		value := formInput.Get("value").String()
@@ -36,7 +36,7 @@ func NewForm(event js.Value) (*Form, error) {
 	f := Form{
 		v:      form,
 		Method: method,
-		URL:    *url,
+		URL:    *u,
 		Params: params,
 	}
 	return &f, nil
