@@ -1,14 +1,14 @@
-# initialize environment, add node to run wasm tests and wamerican-large word list, download golang dependencies
+# download golang dependencies, add node to run wasm tests and wamerican-large word list
 FROM golang:1.14-buster
-RUN apt-get update && \
+WORKDIR /app
+COPY go/go.mod go/go.sum /app/
+RUN go mod download && \
+    apt-get update && \
     apt-get install \
         --no-install-recommends \
         -y \
             nodejs \
             wamerican-large=2018.04.16-1
-WORKDIR /app
-COPY go/go.mod go/go.sum /app/
-RUN go mod download 
 
 # run tests and build the applications
 COPY go /app
