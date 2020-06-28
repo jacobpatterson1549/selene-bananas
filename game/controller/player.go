@@ -68,7 +68,7 @@ func (p *player) refreshBoard(cfg board.Config, g *Game, n game.PlayerName) (*ga
 		GameID:        g.id,
 	}
 	if len(movedTiles) > 0 {
-		m.Info = fmt.Sprintf("moving %v tiles to unused are of narrower/shorter board", len(movedTiles))
+		m.Info = fmt.Sprintf("moving %v tile(s) to unused area of narrower/shorter board", len(movedTiles))
 	}
 	return &m, nil
 }
