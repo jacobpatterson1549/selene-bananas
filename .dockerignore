@@ -2,7 +2,11 @@
 *
 
 # Necessary files whitelist
-!go
-!html
-!sql
-!static
+!cmd
+!db
+!game
+!resources
+!server
+!ui
+!go.mod
+!go.sum

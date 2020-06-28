@@ -20,7 +20,7 @@ New dependencies are automatically added to [go.mod](go/go.mod) when the project
 * [Gorilla Websockets](https://github.com/gorilla/websocket) are used for bidirectional communication between users and the server
 * [jwt-go](https://github.com/dgrijalva/jwt-go) is used for stateless web sessions
 * [crypto](https://github.com/golang/crypto) is used to  encrypt passwords with the Bcrypt one-way function
-* [Font-Awesome](https://github.com/FortAwesome/Font-Awesome) provides the "copyright", "github," and, "linkedin" icons on the about page; they were copied from version [5.13.0](https://github.com/FortAwesome/Font-Awesome/releases/tag/5.13.0) to [static/fa](static/fa).
+* [Font-Awesome](https://github.com/FortAwesome/Font-Awesome) provides the "copyright", "github," and, "linkedin" icons on the about page; they were copied from version [5.13.0](https://github.com/FortAwesome/Font-Awesome/releases/tag/5.13.0) to [resources/fa](resources/fa).
 
 ## Build/Run
 
@@ -39,7 +39,7 @@ For development, set `CACHE_SECONDS` to `0` to not cache files.
 
 ### Database
 
-The app stores user information in a Postgresql database.  When the app starts, files in the [sql](sql) folder are ran to ensure database objects functions are fresh.
+The app stores user information in a Postgresql database.  When the app starts, files in the [resources/sql](resources/sql) folder are ran to ensure database objects functions are fresh.
 
 A Postgresql database can be created with the command below.  Change the `PGUSER` and `PGPASSWORD` variables.  The command requires administrator access.
 ```bash

@@ -1,7 +1,8 @@
 # download golang dependencies, add node to run wasm tests and wamerican-large word list
-FROM golang:1.14-buster
+FROM golang:1.14-buster \
+    AS BUILDER
 WORKDIR /app
-COPY go/go.mod go/go.sum /app/
+COPY go.mod go.sum /app/
 RUN go mod download && \
     apt-get update && \
     apt-get install \
@@ -10,17 +11,19 @@ RUN go mod download && \
             nodejs \
             wamerican-large=2018.04.16-1
 
-# run tests and build the applications
-COPY go /app
-RUN GOOS=js GOARCH=wasm \
+# create version, run tests, and build the applications
+COPY . /app
+RUN tar -cf - . | md5sum | cut -c -32 > /app/version && \
+    GOOS=js GOARCH=wasm \
         go test -exec=/usr/local/go/misc/wasm/go_js_wasm_exec \
-			github.com/jacobpatterson1549/selene-bananas/go/ui/... --cover && \
-    go test ./... -bench=. && \
+			github.com/jacobpatterson1549/selene-bananas/ui/... --cover && \
+    CGO_ENABLED=0 \
+        go test ./... -bench=. && \
     GOOS=js GOARCH=wasm \
         go build \
             -o /app/main.wasm \
             /app/cmd/ui/*.go && \
-    CGO_ENABLED=0 \ 
+    CGO_ENABLED=0 \
         go build \
             -o /app/main \
             /app/cmd/server/*.go
@@ -28,15 +31,13 @@ RUN GOOS=js GOARCH=wasm \
 # copy necessary files and folders to a minimal build image
 FROM alpine:3.11
 WORKDIR /app
-COPY --from=0 \
+COPY --from=BUILDER \
     /app/main \
     /app/main.wasm \
+    /app/version \
     /usr/local/go/misc/wasm/wasm_exec.js \
     /usr/share/dict/american-english-large \
     /app/
-COPY sql  /app/sql/
-COPY static /app/static/
-COPY html /app/html/
-
-# run the server
-CMD ["/app/main", "-words-file", "/app/american-english-large" ]
+COPY --from=BUILDER \
+    /app/resources /app/resources/
+CMD [ "/app/main", "-words-file=/app/american-english-large", "-version-file=/app/version" ]
