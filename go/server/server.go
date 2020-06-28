@@ -27,7 +27,7 @@ type (
 		httpServer *http.Server
 		stopDur    time.Duration
 		cacheSec   int
-		uuid       string
+		version    string
 	}
 
 	// Config contains fields which describe the server
@@ -48,8 +48,8 @@ type (
 		StopDur time.Duration
 		// CachenSec is the number of seconds some files are cached
 		CacheSec int
-		// UUID is used to bust caches of files from older server version
-		UUID string
+		// Version is used to bust caches of files from older server version
+		Version string
 	}
 
 	// wrappedResponseWriter wraps response writing with another writer.
@@ -67,11 +67,11 @@ func (cfg Config) NewServer() (*Server, error) {
 	data := struct {
 		ApplicationName string
 		Description     string
-		UUID            string
+		Version         string
 	}{
 		ApplicationName: cfg.AppName,
 		Description:     "a tile-based word-forming game",
-		UUID:            cfg.UUID,
+		Version:         cfg.Version,
 	}
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	serveMux := new(http.ServeMux)
@@ -91,7 +91,7 @@ func (cfg Config) NewServer() (*Server, error) {
 		},
 		stopDur:  cfg.StopDur,
 		cacheSec: cfg.CacheSec,
-		uuid:     cfg.UUID,
+		version:  cfg.Version,
 	}
 	serveMux.HandleFunc("/", s.httpMethodHandler)
 	return &s, nil
@@ -235,12 +235,12 @@ func (Server) serveFile(name string) http.HandlerFunc {
 }
 
 // handleFile wraps the handling of the file, add cache-control header and gzip compression, if possible.
-func (s Server) handleFile(fn http.HandlerFunc, checkUUID bool) http.HandlerFunc {
+func (s Server) handleFile(fn http.HandlerFunc, checkVersion bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if checkUUID && r.URL.Query().Get("uuid") != s.uuid {
+		if checkVersion && r.URL.Query().Get("v") != s.version {
 			url := r.URL
 			q := url.Query()
-			q.Set("uuid", s.uuid)
+			q.Set("v", s.version)
 			url.RawQuery = q.Encode()
 			w.Header().Set("Location", url.String())
 			w.WriteHeader(http.StatusMovedPermanently)

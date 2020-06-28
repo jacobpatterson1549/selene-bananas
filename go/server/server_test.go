@@ -7,47 +7,47 @@ import (
 	"testing"
 )
 
-func TestHandleFileUUID(t *testing.T) {
-	handleFileUUIDTests := []struct {
-		uuid       string
+func TestHandleFileVersion(t *testing.T) {
+	handleFileVersionTests := []struct {
+		version    string
 		url        string
 		wantCode   int
 		wantHeader http.Header
 	}{
 		{
-			url:        "http://example.com/main.wasm?uuid=",
+			url:        "http://example.com/main.wasm?v=",
 			wantCode:   200,
 			wantHeader: make(http.Header),
 		},
 		{
-			uuid:       "abc",
-			url:        "http://example.com/main.wasm?uuid=abc",
+			version:    "abc",
+			url:        "http://example.com/main.wasm?v=abc",
 			wantCode:   200,
 			wantHeader: make(http.Header),
 		},
 		{
-			uuid:     "abc",
+			version:  "abc",
 			url:      "http://example.com/main.wasm",
 			wantCode: 301,
 			wantHeader: http.Header{
-				"Location": {"http://example.com/main.wasm?uuid=abc"},
+				"Location": {"http://example.com/main.wasm?v=abc"},
 			},
 		},
 		{
-			uuid:     "abc",
-			url:      "http://example.com/main.wasm?uuid=defg",
+			version:  "abc",
+			url:      "http://example.com/main.wasm?v=defg",
 			wantCode: 301,
 			wantHeader: http.Header{
-				"Location": {"http://example.com/main.wasm?uuid=abc"},
+				"Location": {"http://example.com/main.wasm?v=abc"},
 			},
 		},
 	}
 	okHandler := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}
-	for i, test := range handleFileUUIDTests {
+	for i, test := range handleFileVersionTests {
 		s := Server{
-			uuid: test.uuid,
+			version: test.version,
 		}
 		fileHandler := s.handleFile(okHandler, true)
 		r := httptest.NewRequest("", test.url, nil)

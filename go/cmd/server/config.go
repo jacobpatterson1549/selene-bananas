@@ -57,7 +57,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		LobbyCfg:  *lobbyCfg,
 		StopDur:   time.Second,
 		CacheSec:  m.cacheSec,
-		UUID:      m.uuid,
+		Version:   m.version,
 	}
 	return &cfg, nil
 }

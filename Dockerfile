@@ -39,4 +39,4 @@ COPY static /app/static/
 COPY html /app/html/
 
 # run the server
-CMD ["/app/main", "-words-file", "/app/american-english-large"]
+CMD ["/app/main", "-words-file", "/app/american-english-large" ]
