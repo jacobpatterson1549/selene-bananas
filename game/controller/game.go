@@ -465,7 +465,7 @@ func (g *Game) handleBoardRefresh(ctx context.Context, m game.Message, out chan<
 		NumRows: m.NumRows,
 	}
 	p := g.players[m.PlayerName]
-	m2, err := p.refreshBoard(cfg, g, m.PlayerName)
+	m2, err := p.refreshBoard(cfg, *g, m.PlayerName)
 	if err != nil {
 		return err
 	}
