@@ -45,32 +45,13 @@ func NewGame(board *board.Board, canvas *canvas.Canvas) Game {
 func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	createJsFunc := dom.NewJsFunc(g.Create)
-	joinJsFunc := dom.NewJsEventFunc(func(event js.Value) {
-		joinGameButton := event.Get("srcElement")
-		gameIdInput := joinGameButton.Get("previousElementSibling")
-		idText := gameIdInput.Get("value").String()
-		id, err := strconv.Atoi(idText)
-		if err != nil {
-			log.Error("could not get Id of game: " + err.Error())
-			return
-		}
-		g.Join(id)
-	})
+	joinJsFunc := dom.NewJsEventFunc(g.join)
 	leaveJsFunc := dom.NewJsFunc(g.Leave)
 	deleteJsFunc := dom.NewJsFunc(g.Delete)
 	startJsFunc := dom.NewJsFunc(g.Start)
 	finishJsFunc := dom.NewJsFunc(g.Finish)
 	snagTileJsFunc := dom.NewJsFunc(g.SnagTile)
-	sendChatJsFunc := dom.NewJsEventFunc(func(event js.Value) {
-		f, err := dom.NewForm(event)
-		if err != nil {
-			log.Error(err.Error())
-			return
-		}
-		message := f.Params.Get("chat")
-		f.Reset()
-		g.SendChat(message)
-	})
+	sendChatJsFunc := dom.NewJsEventFunc(g.sendChat)
 	dom.RegisterFunc("game", "create", createJsFunc)
 	dom.RegisterFunc("game", "join", joinJsFunc)
 	dom.RegisterFunc("game", "leave", leaveJsFunc)
@@ -101,8 +82,16 @@ func (g *Game) Create() {
 	g.setTabActive(m)
 }
 
-// Join asks the server to join an existing game.
-func (g *Game) Join(id int) {
+// join asks the server to join an existing game.
+func (g *Game) join(event js.Value) {
+	joinGameButton := event.Get("srcElement")
+	gameIDInput := joinGameButton.Get("previousElementSibling")
+	idText := gameIDInput.Get("value").String()
+	id, err := strconv.Atoi(idText)
+	if err != nil {
+		log.Error("could not get Id of game: " + err.Error())
+		return
+	}
 	m := game.Message{
 		Type:   game.Join,
 		GameID: game.ID(id),
@@ -125,7 +114,7 @@ func (g *Game) Delete() {
 	}
 }
 
-// Starts triggers the game to start for everyone.
+// Start triggers the game to start for everyone.
 func (g *Game) Start() {
 	g.Socket.Send(game.Message{
 		Type:       game.StatusChange,
@@ -133,7 +122,7 @@ func (g *Game) Start() {
 	})
 }
 
-// Starts triggers the game to finish for everyone by checking the players tiles.
+// Finish triggers the game to finish for everyone by checking the players tiles.
 func (g *Game) Finish() {
 	g.Socket.Send(game.Message{
 		Type:       game.StatusChange,
@@ -148,8 +137,15 @@ func (g *Game) SnagTile() {
 	})
 }
 
-// SendChat sends a chat message.
-func (g *Game) SendChat(message string) {
+// sendChat sends a chat message from the form of the event.
+func (g *Game) sendChat(event js.Value) {
+	f, err := dom.NewForm(event)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	message := f.Params.Get("chat")
+	f.Reset()
 	g.Socket.Send(game.Message{
 		Type: game.Chat,
 		Info: message,
