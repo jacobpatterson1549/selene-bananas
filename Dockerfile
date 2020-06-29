@@ -2,7 +2,10 @@
 FROM golang:1.14-buster \
     AS BUILDER
 WORKDIR /app
-COPY go.mod go.sum /app/
+COPY \
+    go.mod \
+    go.sum \
+    /app/
 RUN go mod download && \
     apt-get update && \
     apt-get install \
@@ -30,7 +33,7 @@ RUN tar -cf - . | md5sum | cut -c -32 > /app/version && \
             /app/cmd/server/*.go
 
 # copy necessary files and folders to a minimal build image
-FROM alpine:3.11
+FROM scratch
 WORKDIR /app
 COPY --from=BUILDER \
     /app/main \
@@ -40,5 +43,9 @@ COPY --from=BUILDER \
     /usr/share/dict/american-english-large \
     /app/
 COPY --from=BUILDER \
-    /app/resources /app/resources/
-CMD [ "/app/main", "-words-file=/app/american-english-large", "-version-file=/app/version" ]
+    /app/resources \
+    /app/resources/
+ENTRYPOINT [ \
+    "/app/main", \
+    "-words-file=/app/american-english-large", \
+    "-version-file=/app/version" ]
