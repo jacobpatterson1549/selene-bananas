@@ -66,6 +66,8 @@ func TestRefreshBoard(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	case len(p.UnusedTileIDs) != 1, p.UnusedTileIDs[0] != t2.ID:
 		t.Errorf("wanted tile 2 to be moved back to the unused area now that the board is more narrow")
+	case len(m.Tiles) != 1, m.Tiles[0].ID != t2.ID:
+		t.Errorf("wanted tile 2 to be moved back to the unused area now that the board is more narrow")
 	case m.PlayerName != playerName:
 		t.Errorf("wanted playerName in message to be %v, got %v", m.PlayerName, playerName)
 	}
