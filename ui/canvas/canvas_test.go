@@ -16,6 +16,7 @@ type (
 		SetLineWidthFunc   func(width float64)
 		SetFillColorFunc   func(name string)
 		SetStrokeColorFunc func(name string)
+		SetOpacityFunc     func(fraction string)
 		FillTextFunc       func(text string, x, y int)
 		ClearRectFunc      func(x, y, width, height int)
 		FillRectFunc       func(x, y, width, height int)
@@ -73,8 +74,9 @@ func TestDrawTile(t *testing.T) {
 		FillTextFunc: func(text string, x, y int) {
 			gotDrawn = true
 		},
-		StrokeRectFunc: func(x, y, width, height int) {
-		},
+		StrokeRectFunc:   func(x, y, width, height int) {},
+		SetFillColorFunc: func(name string) {},
+		FillRectFunc:     func(x, y, width, height int) {},
 	}
 	for i, test := range drawTileTests {
 		gotDrawn = false

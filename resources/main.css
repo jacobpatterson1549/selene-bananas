@@ -10,8 +10,14 @@
     display: none;
 }
 
+table,
+.actions button,
 form label {
     display: inline-block;
+    margin: .25em;
+}
+.actions {
+    text-align: center;
 }
 
 .log>.scroll {
@@ -33,29 +39,42 @@ form label {
 .tab {
     float: left;
 }
+button,
+input[type=submit],
 .tab>input:checked+label {
     background: #bbb;
 }
+button,
+input[type=submit],
 .tab>label:active {
     background: #ccc;
 }
+button,
+input[type=submit],
 .tab>label:hover {
     background: #ddd;
 }
+button,
+input[type=submit],
 .tab>label {
     margin: 1em .2em;
     padding: .3em;
-    border: 1px solid #000;
+    border: 1px inset #000;
+    border-radius: 0  20% 20% 20%;
     background: #eee;
 }
 .tab>.content {
     position: absolute;
     left: 0;
-    background: #fff;
+    background: rgba(255, 255, 0, 0.3);
     margin: 1em;
 }
 .tab>input:checked+label+.content {
     display: block;
+}
+table thead th:nth-last-of-type(even),
+table tbody td:nth-last-of-type(even) {
+    background: rgba(0, 0, 0, 0.15);
 }
 
 .tab>.content>.game>.canvas>.move-state.none:checked~canvas { cursor: default;   }

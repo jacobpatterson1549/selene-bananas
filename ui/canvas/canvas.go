@@ -28,6 +28,9 @@ type (
 		Socket     Socket
 		parentDiv  *js.Value
 		element    *js.Value
+		mainColor  string
+		tileColor  string
+		dragColor  string
 	}
 
 	// Config contains the parameters to create a Canvas
@@ -99,9 +102,6 @@ const (
 	rect
 	drag
 	grab
-	mainColor       = "black"
-	backgroundColor = "white"
-	dragColor       = "blue"
 )
 
 // New Creates a canvas from the config.
@@ -119,6 +119,9 @@ func (cfg Config) New(board *board.Board, parentDiv, element *js.Value) *Canvas 
 		draw: drawMetrics{
 			tileLength: cfg.TileLength,
 		},
+		mainColor: "black",
+		dragColor: "blue",
+		tileColor: "#f0d0b5",
 	}
 	return c
 }
@@ -213,15 +216,13 @@ func (c *Canvas) registerEventListener(fnName string, fn func(event js.Value)) j
 // Redraw draws the canvas
 func (c *Canvas) Redraw() {
 	c.ctx.ClearRect(0, 0, c.draw.width, c.draw.height)
-	c.ctx.SetFillColor(backgroundColor)
-	c.ctx.FillRect(0, 0, c.draw.width, c.draw.height)
-	c.ctx.SetStrokeColor(mainColor)
-	c.ctx.SetFillColor(mainColor)
+	c.ctx.SetStrokeColor(c.mainColor)
+	c.ctx.SetFillColor(c.mainColor)
 	c.ctx.FillText("Unused Tiles", 0, c.draw.unusedMin.y-c.draw.textOffset)
-	c.drawUnusedTiles(false)
 	c.ctx.FillText("Game Area:", 0, c.draw.usedMin.y-c.draw.textOffset)
 	c.ctx.StrokeRect(c.draw.usedMin.x, c.draw.usedMin.y,
 		c.draw.numCols*c.draw.tileLength, c.draw.numRows*c.draw.tileLength)
+	c.drawUnusedTiles(false)
 	c.drawUsedTiles(false)
 	switch {
 	case c.gameStatus == game.NotStarted:
@@ -231,8 +232,7 @@ func (c *Canvas) Redraw() {
 	case c.selection.moveState == rect:
 		c.drawSelectionRectangle()
 	case len(c.selection.tiles) > 0:
-		c.ctx.SetStrokeColor(dragColor)
-		c.ctx.SetFillColor(dragColor)
+		c.ctx.SetStrokeColor(c.dragColor)
 		c.drawUnusedTiles(true)
 		c.drawUsedTiles(true)
 	}
@@ -266,12 +266,14 @@ func (c *Canvas) drawUsedTiles(fromSelection bool) {
 }
 
 func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
+	lineColor := c.mainColor
 	switch {
 	case fromSelection:
 		// only draw selected tiles
 		if _, ok := c.selection.tiles[t.ID]; !ok {
 			return
 		}
+		lineColor = c.dragColor
 		// draw tile with change in location
 		x += c.selection.end.x - c.selection.start.x
 		y += c.selection.end.y - c.selection.start.y
@@ -281,7 +283,11 @@ func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
 			return
 		}
 	}
+	c.ctx.SetFillColor(c.tileColor)
+	c.ctx.FillRect(x, y, c.draw.tileLength, c.draw.tileLength)
+	c.ctx.SetFillColor(lineColor)
 	c.ctx.StrokeRect(x, y, c.draw.tileLength, c.draw.tileLength)
+	c.ctx.SetFillColor(lineColor)
 	c.ctx.FillText(t.Ch.String(), x+c.draw.textOffset, y+c.draw.tileLength-c.draw.textOffset)
 }
 
