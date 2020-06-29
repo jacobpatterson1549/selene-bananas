@@ -14,6 +14,7 @@ RUN go mod download && \
 # create version, run tests, and build the applications
 COPY . /app
 RUN tar -cf - . | md5sum | cut -c -32 > /app/version && \
+    echo version $(cat /app/version) && \
     GOOS=js GOARCH=wasm \
         go test -exec=/usr/local/go/misc/wasm/go_js_wasm_exec \
 			github.com/jacobpatterson1549/selene-bananas/ui/... --cover && \
