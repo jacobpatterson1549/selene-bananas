@@ -42,21 +42,16 @@ label {
 .tab {
     float: left;
 }
-button,
-input[type=submit],
 .tab>input:checked+label {
-    background: #bbb;
-}
-button,
-input[type=submit],
-.tab>label:active {
     background: #ccc;
 }
-button,
-input[type=submit],
+.button:hover,
+button:hover,
+input[type=submit]:hover,
 .tab>label:hover {
     background: #ddd;
 }
+.button,
 button,
 input[type=submit],
 .tab>label {
