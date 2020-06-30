@@ -1,7 +1,7 @@
 {
     "name": "selene-bananas",
-    "theme_color": "#ffff00",
-    "background_color": "#000000",
+    "theme_color": "#f0d0b5",
+    "background_color": "#ffffc2",
     "display": "standalone",
     "start_url": "/",
     "icons": [
