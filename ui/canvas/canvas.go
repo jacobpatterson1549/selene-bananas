@@ -119,8 +119,8 @@ func (cfg Config) New(board *board.Board, parentDiv, element *js.Value) *Canvas 
 		draw: drawMetrics{
 			tileLength: cfg.TileLength,
 		},
-		mainColor: "black",
-		dragColor: "blue",
+		mainColor: "#000000",
+		dragColor: "#0000ff",
 		tileColor: "#f0d0b5",
 	}
 	return c
