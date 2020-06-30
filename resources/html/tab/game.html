@@ -32,15 +32,15 @@
             </div>
         </fieldset>
     </form>
-    <form onsubmit="game.resizeTiles(event)" class="tile-length">
+    <form class="tile-length">
         <fieldset>
             <input type="checkbox" id="hide-tile-length" hidden>
             <legend><label for="hide-tile-length" title="Change the size of the tiles in the game.  Click to toggle visibility.">Tile Length</label></legend>
             <div>
                 <label>
                     <div>Pixels</div>
-                    <input type="number" value="20" class="tile-length-display" readonly="readonly">
-                    <input type="range" value="20" min="10" max="100" name="tile-length" onchange="this.form.requestSubmit()">
+                    <input type="number" value="20" name="tile-length-display" readonly="readonly">
+                    <input type="range" value="20" min="10" max="100" name="tile-length" onchange="game.resizeTiles()" oninput="game.refreshTileLength(event)">
                 </label>
             </div>
         </fieldset>

@@ -52,7 +52,8 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	finishJsFunc := dom.NewJsFunc(g.Finish)
 	snagTileJsFunc := dom.NewJsFunc(g.SnagTile)
 	sendChatJsFunc := dom.NewJsEventFunc(g.sendChat)
-	resizeTilesJsFunc := dom.NewJsEventFunc(g.resizeTiles)
+	resizeTilesJsFunc := dom.NewJsFunc(g.resizeTiles)
+	refreshTileLengthJsFunc := dom.NewJsFunc(g.refreshTileLength)
 	dom.RegisterFunc("game", "create", createJsFunc)
 	dom.RegisterFunc("game", "join", joinJsFunc)
 	dom.RegisterFunc("game", "leave", leaveJsFunc)
@@ -62,6 +63,7 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	dom.RegisterFunc("game", "snagTile", snagTileJsFunc)
 	dom.RegisterFunc("game", "sendChat", sendChatJsFunc)
 	dom.RegisterFunc("game", "resizeTiles", resizeTilesJsFunc)
+	dom.RegisterFunc("game", "refreshTileLength", refreshTileLengthJsFunc)
 	go func() {
 		<-ctx.Done()
 		createJsFunc.Release()
@@ -73,6 +75,7 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		snagTileJsFunc.Release()
 		sendChatJsFunc.Release()
 		resizeTilesJsFunc.Release()
+		refreshTileLengthJsFunc.Release()
 		wg.Done()
 	}()
 }
@@ -263,19 +266,18 @@ func (g *Game) resetTiles() {
 	g.board.UsedTileLocs = make(map[tile.X]map[tile.Y]tile.Tile)
 }
 
-func (g *Game) resizeTiles(event js.Value) {
-	f, err := dom.NewForm(event)
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
-	tileLengthStr := f.Params.Get("tile-length")
+func (g *Game) refreshTileLength() {
+	tileLengthStr := dom.GetValue(`.tile-length input[name="tile-length"]`)
+	dom.SetValue(`.tile-length input[name="tile-length-display"]`, tileLengthStr)
+}
+
+func (g *Game) resizeTiles() {
+	tileLengthStr := dom.GetValue(`.tile-length input[name="tile-length"]`)
 	tileLength, err := strconv.Atoi(tileLengthStr)
 	if err != nil {
 		log.Error("retrieving tile size: " + err.Error())
 		return
 	}
-	dom.SetValue(".tile-length-display", tileLengthStr)
 	g.canvas.TileLength(tileLength)
 	m := game.Message{
 		Type: game.BoardSize,

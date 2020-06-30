@@ -79,7 +79,7 @@ table thead th:nth-last-of-type(even),
 table tbody td:nth-last-of-type(even) {
     background: rgba(0, 0, 0, 0.15);
 }
-input.tile-length-display {
+.tile-length input[type="number"] {
     width: 3em;
 }
 
