@@ -1,6 +1,7 @@
 {
     "name": "selene-bananas",
     "short_name": "bananas",
+    "description": "a tile-based word-forming game",
     "theme_color": "#f0d0b5",
     "background_color": "#ffffc2",
     "display": "standalone",
