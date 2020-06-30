@@ -164,7 +164,7 @@ func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	switch r.URL.Path {
 	case "/":
 		s.handleFile(s.serveTemplate, false)(w, r)
-	case "/robots.txt", "/manifest.json", "/favicon.ico", "/favicon-192.png":
+	case "/robots.txt", "/manifest.json", "/favicon.ico", "/favicon-192.png", "/favicon-512.png":
 		s.handleFile(s.serveFile("resources"+r.URL.Path), false)(w, r)
 	case "/wasm_exec.js", "/main.wasm":
 		s.handleFile(s.serveFile("."+r.URL.Path), true)(w, r)
