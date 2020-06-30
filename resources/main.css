@@ -27,9 +27,9 @@ label {
     height: 5em;
     overflow: auto;
 }
-.log>.scroll>.error   { color: #f00; }
-.log>.scroll>.chat    { color: #080; }
-.log>.scroll>.warning { color: #f90; }
+.log>.scroll>.error   { color: #ff0000; }
+.log>.scroll>.chat    { color: #008000; }
+.log>.scroll>.warning { color: #ff8000; }
 
 .tabs {
     display: block;
@@ -43,22 +43,22 @@ label {
     float: left;
 }
 .tab>input:checked+.button {
-    background: #ccc;
+    background: #cccccc;
 }
 .button:hover {
-    background: #ddd;
+    background: #dddddd;
 }
 .button {
     margin: 1em .2em;
     padding: .3em;
     border: 1px inset #000;
     border-radius: 0  20% 20% 20%;
-    background: #eee;
+    background: #eeeeee;
 }
 .tab>.content {
     position: absolute;
     left: 0;
-    background: rgba(255, 255, 0, 0.3);
+    background: #ffff0040;
     margin: 1em;
 }
 .tab>input:checked+.button+.content {
@@ -66,7 +66,7 @@ label {
 }
 table thead th:nth-last-of-type(even),
 table tbody td:nth-last-of-type(even) {
-    background: rgba(0, 0, 0, 0.15);
+    background: #00000020;
 }
 .tile-length input[type="number"] {
     width: 3em;
@@ -78,7 +78,7 @@ table tbody td:nth-last-of-type(even) {
 .tab>.content>.game>.canvas>.move-state.drag:checked~canvas { cursor: grabbing;  }
 .tab>.content>.game>.canvas>.move-state.grab:checked~canvas { cursor: pointer;   }
 .tab>.content>.game>.canvas {
-    border: 1px dotted #000;
+    border: 1px dotted #000000;
 }
 
 .tab>.content>.about>ul.icons>li>svg {
