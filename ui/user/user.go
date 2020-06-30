@@ -53,10 +53,7 @@ func New(httpClient *http.Client) User {
 // InitDom regesters user dom functions.
 func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	logoutJsFunc := dom.NewJsEventFunc(func(event js.Value) {
-		// wrapper handles preventDefault
-		u.Logout()
-	})
+	logoutJsFunc := dom.NewJsEventFunc(u.logoutButton)
 	requestJsFunc := dom.NewJsEventFunc(func(event js.Value) {
 		f, err := dom.NewForm(event)
 		if err != nil {
@@ -99,6 +96,11 @@ func (u *User) login(token string) {
 	dom.SetValue("input.points", strconv.Itoa(ui.points))
 	dom.SetCheckedQuery("#tab-lobby", true)
 	dom.SetCheckedQuery(".has-login", true)
+}
+
+func (u *User) logoutButton(event js.Value) {
+	u.Logout()
+	log.Clear()
 }
 
 // Logout logs out the user
