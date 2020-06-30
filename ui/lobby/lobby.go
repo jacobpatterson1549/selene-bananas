@@ -32,9 +32,7 @@ type (
 // InitDom regesters lobby dom functions
 func (l *Lobby) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	connectJsFunc := dom.NewJsEventFunc(func(event js.Value) {
-		go l.connect(event)
-	})
+	connectJsFunc := dom.NewJsEventFunc(l.connect)
 	leaveJsFunc := dom.NewJsFunc(l.leave)
 	dom.RegisterFunc("lobby", "connect", connectJsFunc)
 	dom.RegisterFunc("lobby", "leave", leaveJsFunc)
@@ -46,13 +44,15 @@ func (l *Lobby) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	}()
 }
 
-// connect makes a synchronous request to connect to the lobby.
+// connect makes an asynchronous request to connect to the lobby.
 // It is expected that the server will respond with a game infos message
 func (l *Lobby) connect(event js.Value) {
-	err := l.Socket.Connect(event)
-	if err != nil {
-		log.Error(err.Error())
-	}
+	go func() {
+		err := l.Socket.Connect(event)
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}()
 }
 
 // leave closes the socket and leaves the game.

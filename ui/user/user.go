@@ -54,24 +54,8 @@ func New(httpClient *http.Client) User {
 func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	logoutJsFunc := dom.NewJsEventFunc(u.logoutButton)
-	requestJsFunc := dom.NewJsEventFunc(func(event js.Value) {
-		f, err := dom.NewForm(event)
-		if err != nil {
-			log.Error(err.Error())
-			return
-		}
-		go u.request(*f)
-	})
-	updateConfirmPasswordJsFunc := dom.NewJsEventFunc(func(event js.Value) {
-		password1InputElement := event.Get("target")
-		password2InputElement := password1InputElement.
-			Get("parentElement").
-			Get("nextElementSibling").
-			Get("lastElementChild")
-		password1Value := password1InputElement.Get("value").String()
-		passwordRegex := u.escapePassword(password1Value)
-		password2InputElement.Set("pattern", passwordRegex)
-	})
+	requestJsFunc := dom.NewJsEventFunc(u.request)
+	updateConfirmPasswordJsFunc := dom.NewJsEventFunc(u.updateConfirmPassword)
 	dom.RegisterFunc("user", "logout", logoutJsFunc)
 	dom.RegisterFunc("user", "request", requestJsFunc)
 	dom.RegisterFunc("user", "updateConfirmPattern", updateConfirmPasswordJsFunc)
@@ -162,6 +146,17 @@ func (u User) Username() string {
 		return ""
 	}
 	return ui.username
+}
+
+func (u User) updateConfirmPassword(event js.Value) {
+	password1InputElement := event.Get("target")
+	password2InputElement := password1InputElement.
+		Get("parentElement").
+		Get("nextElementSibling").
+		Get("lastElementChild")
+	password1Value := password1InputElement.Get("value").String()
+	passwordRegex := u.escapePassword(password1Value)
+	password2InputElement.Set("pattern", passwordRegex)
 }
 
 // escapePassword escapes the password for html dom input pattern matching using Regexp.

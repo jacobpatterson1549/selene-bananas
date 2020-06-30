@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
@@ -22,9 +23,14 @@ type (
 	}
 )
 
-// Request makes a request to the server using the fields in the form.
-func (u User) request(f dom.Form) {
-	r, err := u.newRequest(f)
+// Request makes an asynchronous request to the server using the fields in the form.
+func (u *User) request(event js.Value) {
+	f, err := dom.NewForm(event)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	r, err := u.newRequest(*f)
 	switch {
 	case err != nil:
 		log.Error(err.Error())
@@ -34,23 +40,26 @@ func (u User) request(f dom.Form) {
 			return
 		}
 	}
-	response, err := r.do(f)
-	switch {
-	case err != nil:
-		log.Error("making http request: " + err.Error())
-		return
-	case response.StatusCode >= 400:
-		log.Error(response.Status)
-		u.Logout()
-		return
-	case r.handler != nil:
-		r.handler(response.Body)
-	}
+	go func() {
+		response, err := r.do()
+		switch {
+		case err != nil:
+			log.Error("making http request: " + err.Error())
+			return
+		case response.StatusCode >= 400:
+			log.Error(response.Status)
+			u.Logout()
+			return
+		case r.handler != nil:
+			r.handler(response.Body)
+		}
+	}()
 }
 
-func (r request) do(f dom.Form) (*http.Response, error) {
+func (r request) do() (*http.Response, error) {
 	var httpRequest *http.Request
 	var err error
+	f := r.form
 	switch f.Method {
 	case "get":
 		f.URL.RawQuery = f.Params.Encode()
