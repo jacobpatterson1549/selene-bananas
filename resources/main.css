@@ -58,7 +58,7 @@ label {
 .tab>.content {
     position: absolute;
     left: 0;
-    background: #ffff0040;
+    background: #ffffc2;
     margin: 1em;
 }
 .tab>input:checked+.button+.content {
