@@ -1,7 +1,9 @@
 <div class="game">
-    <form onsubmit="game.sendChat(event)">
-        <fieldset class="info">
-            <legend>Info</legend>
+    <form class="info">
+        <fieldset>
+            <input type="checkbox" id="hide-info" hidden checked>
+            <legend><label for="hide-info" title="Information about the game  Click to toggle visibility.">Info</label></legend>
+            <div>
             <label>
                 <div>Status:</div>
                 <input type="text" class="status" readonly="readonly">
@@ -14,14 +16,33 @@
                 <div>Players:</div>
                 <input type="text" class="players" readonly="readonly">
             </label>
+            </div>
         </fieldset>
+    </form>
+    <form onsubmit="game.sendChat(event)" class="chat">
         <fieldset>
-            <legend>Chat</legend>
-            <label>
-                <div>Message</div>
-                <input type="text" name="chat">
-            </label>
-            <input type="submit" value="Send" disabled>
+            <input type="checkbox" id="hide-chat" hidden checked>
+            <legend><label for="hide-chat" title="Send messages to the logs of other players in the game.  Click to toggle visibility.">Chat</label></legend>
+            <div>
+                <label>
+                    <div>Message</div>
+                    <input type="text" name="chat">
+                </label>
+                <input type="submit" value="Send" disabled>
+            </div>
+        </fieldset>
+    </form>
+    <form onsubmit="game.resizeTiles(event)" class="tile-length">
+        <fieldset>
+            <input type="checkbox" id="hide-tile-length" hidden>
+            <legend><label for="hide-tile-length" title="Change the size of the tiles in the game.  Click to toggle visibility.">Tile Length</label></legend>
+            <div>
+                <label>
+                    <div>Pixels</div>
+                    <input type="number" value="20" class="tile-length-display" readonly="readonly">
+                    <input type="range" value="20" min="10" max="100" name="tile-length" onchange="this.form.requestSubmit()">
+                </label>
+            </div>
         </fieldset>
     </form>
     <div class="actions">
@@ -40,14 +61,4 @@
         <input type="radio" name="canvas" class="move-state grab">
         <canvas width="100"></canvas>
     </div>
-    <form onsubmit="game.resizeTiles(event)">
-        <fieldset>
-            <legend>Tile Size</legend>
-            <label>
-                <div>Pixels</div>
-                <input type="number" value="20" class="tile-length-display" readonly="readonly">
-                <input type="range" value="20" min="10" max="100" name="tile-length" onchange="this.form.requestSubmit()">
-            </label>
-        </fieldset>
-    </form>
 </div>

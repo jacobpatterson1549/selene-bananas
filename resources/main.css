@@ -6,13 +6,16 @@
 .tabs>.tab>.content,
 .tabs>.tab>.content>.lobby>.has-websocket:not(:checked)~.connected,
 .tabs>.tab>.content>.lobby>.has-websocket:checked~.connect,
+.tabs>.tab>.content>.game>.info #hide-info:not(:checked)+legend+div,
+.tabs>.tab>.content>.game>.chat #hide-chat:not(:checked)+legend+div,
+.tabs>.tab>.content>.game>.tile-length #hide-tile-length:not(:checked)+legend+div,
 .tabs>.tab>.content>.game>.canvas>.move-state {
     display: none;
 }
 
 table,
 .actions button,
-form label {
+label {
     display: inline-block;
     margin: .25em;
 }
