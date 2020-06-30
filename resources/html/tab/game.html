@@ -40,4 +40,14 @@
         <input type="radio" name="canvas" class="move-state grab">
         <canvas width="100"></canvas>
     </div>
+    <form onsubmit="game.resizeTiles(event)">
+        <fieldset>
+            <legend>Tile Size</legend>
+            <label>
+                <div>Pixels</div>
+                <input type="number" value="20" class="tile-length-display" readonly="readonly">
+                <input type="range" value="20" min="10" max="100" name="tile-length" onchange="this.form.requestSubmit()">
+            </label>
+        </fieldset>
+    </form>
 </div>

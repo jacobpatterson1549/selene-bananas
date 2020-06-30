@@ -76,6 +76,9 @@ table thead th:nth-last-of-type(even),
 table tbody td:nth-last-of-type(even) {
     background: rgba(0, 0, 0, 0.15);
 }
+input.tile-length-display {
+    width: 3em;
+}
 
 .tab>.content>.game>.canvas>.move-state.none:checked~canvas { cursor: default;   }
 .tab>.content>.game>.canvas>.move-state.swap:checked~canvas { cursor: progress;  }

@@ -57,4 +57,6 @@ const (
 	SocketHTTPPing
 	// Chat is a MessageType that users send to communicate with ether players through the server.
 	Chat
+	// BoardSize refreshes the board size for the current game by reading the NumCols and NumRows fields.
+	BoardSize
 )

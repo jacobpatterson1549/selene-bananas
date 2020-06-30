@@ -52,6 +52,7 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	finishJsFunc := dom.NewJsFunc(g.Finish)
 	snagTileJsFunc := dom.NewJsFunc(g.SnagTile)
 	sendChatJsFunc := dom.NewJsEventFunc(g.sendChat)
+	resizeTilesJsFunc := dom.NewJsEventFunc(g.resizeTiles)
 	dom.RegisterFunc("game", "create", createJsFunc)
 	dom.RegisterFunc("game", "join", joinJsFunc)
 	dom.RegisterFunc("game", "leave", leaveJsFunc)
@@ -60,6 +61,7 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	dom.RegisterFunc("game", "finish", finishJsFunc)
 	dom.RegisterFunc("game", "snagTile", snagTileJsFunc)
 	dom.RegisterFunc("game", "sendChat", sendChatJsFunc)
+	dom.RegisterFunc("game", "resizeTiles", resizeTilesJsFunc)
 	go func() {
 		<-ctx.Done()
 		createJsFunc.Release()
@@ -70,6 +72,7 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		finishJsFunc.Release()
 		snagTileJsFunc.Release()
 		sendChatJsFunc.Release()
+		resizeTilesJsFunc.Release()
 		wg.Done()
 	}()
 }
@@ -260,8 +263,28 @@ func (g *Game) resetTiles() {
 	g.board.UsedTileLocs = make(map[tile.X]map[tile.Y]tile.Tile)
 }
 
+func (g *Game) resizeTiles(event js.Value) {
+	f, err := dom.NewForm(event)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	tileLengthStr := f.Params.Get("tile-length")
+	tileLength, err := strconv.Atoi(tileLengthStr)
+	if err != nil {
+		log.Error("retrieving tile size: " + err.Error())
+		return
+	}
+	dom.SetValue(".tile-length-display", tileLengthStr)
+	g.canvas.TileLength(tileLength)
+	m := game.Message{
+		Type: game.BoardSize,
+	}
+	g.boardSize(m)
+}
+
 // setTabActive performs the actions need to activate the game tab and create or join a game.
-func (g Game) setTabActive(m game.Message) {
+func (g *Game) setTabActive(m game.Message) {
 	dom.SetCheckedQuery(".has-game", true)
 	dom.SetCheckedQuery("#tab-game", true)
 	// the tab now has a size, so update the canvas and board
@@ -275,6 +298,11 @@ func (g Game) setTabActive(m game.Message) {
 		g.Leave()
 		return
 	}
+	g.boardSize(m)
+}
+
+// boardSize updates the board size due to a recent canvas update, adds the updated size to the message, and sends it.
+func (g *Game) boardSize(m game.Message) {
 	g.board.NumCols = g.canvas.NumCols()
 	g.board.NumRows = g.canvas.NumRows()
 	g.resetTiles()

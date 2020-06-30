@@ -127,7 +127,6 @@ func (cfg Config) New(board *board.Board, parentDiv, element *js.Value) *Canvas 
 }
 
 // UpdateSize sets the draw properties of the canvas for it's current size in the window.
-// TODO: allow tileLength to be changed
 func (c *Canvas) UpdateSize() {
 	c.draw.width = c.parentDiv.Get("offsetWidth").Int()
 	padding := 5
@@ -145,6 +144,12 @@ func (c *Canvas) UpdateSize() {
 	c.parentDiv.Set("height", c.draw.height)
 	c.ctx.SetFont(strconv.Itoa(c.draw.tileLength) + "px sans-serif")
 	c.ctx.SetLineWidth(float64(c.draw.tileLength) / 10)
+}
+
+// TileLength sets the drawing size of the tiles length/height.
+func (c *Canvas) TileLength(tileLength int) {
+	c.draw.tileLength = tileLength
+	c.UpdateSize()
 }
 
 // InitDom regesters canvas dom functions.

@@ -158,6 +158,7 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 		game.Swap:         g.handleGameSwap,
 		game.TilesMoved:   g.handleGameTilesMoved,
 		game.Chat:         g.handleGameChat,
+		game.BoardSize:    g.handleBoardRefresh,
 	}
 	defer removeGameFunc()
 	for { // BLOCKS
