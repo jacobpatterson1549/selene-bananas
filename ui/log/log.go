@@ -33,12 +33,12 @@ func Warning(text string) {
 	log("warning", text)
 }
 
-// Info logs an error-styled message.
+// Error logs an error-styled message.
 func Error(text string) {
 	log("error", text)
 }
 
-// Info logs an chat-styled message.
+// Chat logs an chat-styled message.
 func Chat(text string) {
 	log("chat", text)
 }

@@ -16,6 +16,7 @@ import (
 )
 
 type (
+	// Lobby handles viewing, joining, and creating games on the server.
 	Lobby struct {
 		Game   *controller.Game
 		Socket Socket
@@ -62,7 +63,7 @@ func (l *Lobby) leave() {
 	tbodyElement.Set("innerHTML", "")
 }
 
-// setGameInfos updates the game-infos table with the game infos for the username.
+// SetGameInfos updates the game-infos table with the game infos for the username.
 func (l *Lobby) SetGameInfos(gameInfos []game.Info, username string) {
 	tbodyElement := dom.QuerySelector(".game-infos>tbody")
 	tbodyElement.Set("innerHTML", "")

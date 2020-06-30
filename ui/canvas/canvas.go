@@ -317,18 +317,18 @@ func (c *Canvas) MoveStart(pp pixelPosition) {
 			c.selection.setMoveState(none)
 			log.Info("swap cancelled")
 		default:
-			tileId := ts.tile.ID
-			c.selection.tiles[tileId] = *ts
+			tileID := ts.tile.ID
+			c.selection.tiles[tileID] = *ts
 		}
 		return
 	}
 	hasPreviousSelection := len(c.selection.tiles) > 0
 	switch {
 	case hasPreviousSelection && ts != nil:
-		tileId := ts.tile.ID
-		if _, ok := c.selection.tiles[tileId]; !ok {
+		tileID := ts.tile.ID
+		if _, ok := c.selection.tiles[tileID]; !ok {
 			c.selection.tiles = make(map[tile.ID]tileSelection)
-			c.selection.tiles[tileId] = *ts
+			c.selection.tiles[tileID] = *ts
 		}
 		c.selection.setMoveState(drag)
 	case hasPreviousSelection:
@@ -336,8 +336,8 @@ func (c *Canvas) MoveStart(pp pixelPosition) {
 		c.selection.setMoveState(none)
 		c.Redraw()
 	case ts != nil:
-		tileId := ts.tile.ID
-		c.selection.tiles[tileId] = *ts
+		tileID := ts.tile.ID
+		c.selection.tiles[tileID] = *ts
 		c.selection.setMoveState(drag)
 	default:
 		c.selection.setMoveState(rect)

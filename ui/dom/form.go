@@ -18,6 +18,7 @@ type (
 	}
 )
 
+// NewForm creates a form from the target property of the event.  An error is returned if the url action is not successfully parsed.
 func NewForm(event js.Value) (*Form, error) {
 	form := event.Get("target")
 	method := form.Get("method").String()

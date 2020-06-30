@@ -151,7 +151,7 @@ func (u User) JWT() string {
 	return dom.GetValue(".jwt")
 }
 
-// UserName returns the username of the logged in user.
+// Username returns the username of the logged in user.
 // If any problem occurs, an empty string is returned.
 func (u User) Username() string {
 	j := jwt(u.JWT())
