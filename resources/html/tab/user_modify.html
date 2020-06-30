@@ -6,7 +6,7 @@
 <form onsubmit="user.logout(event)">
     <fieldset>
         <legend>Sign Out User</legend>
-        <input type="submit" disabled>
+        <input class="button" type="submit" disabled>
     </fieldset>
 </form>
 <form method="post" action="/user_update_password" onsubmit="user.request(event)">
@@ -18,7 +18,7 @@
             <legend>New Password</legend>
             {{ template "password_confirm.html" . }}
         </fieldset>
-        <input type="submit" disabled>
+        <input class="button" type="submit" disabled>
     </fieldset>
 </form>
 <form method="post" action="/user_delete" onsubmit="user.request(event)">
@@ -26,6 +26,6 @@
         <legend>Delete User</legend>
         {{ template "username.html" . }}
         {{ template "password.html" . }}
-        <input type="submit" disabled>
+        <input class="button" type="submit" disabled>
     </fieldset>
 </form>

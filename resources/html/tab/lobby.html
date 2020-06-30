@@ -8,7 +8,7 @@
         <form method="get" action="/lobby" onsubmit="lobby.connect(event)">
             <fieldset>
                 <legend>Connect</legend>
-                <input type="submit" disabled>
+                <input class="button" type="submit" disabled>
             </fieldset>
         </form>
     </div>
@@ -38,11 +38,11 @@
         </template>
         <template class="join-game-button">
             <input type="number" class="game-id" hidden>
-            <button type="button" onclick="game.join(event)">Join</button>
+            <button class="button" onclick="game.join(event)">Join</button>
         </template>
         <div class="actions">
-            <button type="button" onclick="game.create()">Create Game</button>
-            <button type="button" onclick="lobby.leave()">Leave Lobby</button>
+            <button class="button" onclick="game.create()">Create Game</button>
+            <button class="button" onclick="lobby.leave()">Leave Lobby</button>
         </div>
     </div>
 </div>

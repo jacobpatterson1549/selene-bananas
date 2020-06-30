@@ -3,28 +3,28 @@
     <input type="checkbox" class="has-login" hidden>
     <div class="tab logout-required">
         <input id="tab-login-user" type="radio" name="tab-group" checked>
-        <label for="tab-login-user">Sign In</label>
+        <label class="button" for="tab-login-user">Sign In</label>
         <div class="content">
             {{ template "user_login.html" . }}
         </div>
     </div>
     <div class="tab logout-required">
         <input id="tab-create-user" type="radio" name="tab-group">
-        <label for="tab-create-user">Create User</label>
+        <label class="button" for="tab-create-user">Create User</label>
         <div class="content">
             {{ template "user_create.html" . }}
         </div>
     </div>
     <div class="tab login-required">
         <input id="tab-modify-user" type="radio" name="tab-group">
-        <label for="tab-modify-user">User Actions</label>
+        <label class="button" for="tab-modify-user">User Actions</label>
         <div class="content">
             {{ template "user_modify.html" . }}
         </div>
     </div>
     <div class="tab login-required">
         <input id="tab-lobby" type="radio" name="tab-group">
-        <label for="tab-lobby">Lobby</label>
+        <label class="button" for="tab-lobby">Lobby</label>
         <div class="content">
             {{ template "lobby.html" . }}
         </div>
@@ -32,14 +32,14 @@
     <input type="checkbox" class="has-game" hidden>
     <div class="tab login-required">
         <input id="tab-game" type="radio" name="tab-group">
-        <label for="tab-game">Game</label>
+        <label class="button" for="tab-game">Game</label>
         <div class="content">
             {{ template "game.html" . }}
         </div>
     </div>
     <div class="tab">
         <input id="tab-about" type="radio" name="tab-group">
-        <label for="tab-about">About</label>
+        <label class="button" for="tab-about">About</label>
         <div class="content">
             {{ template "about.html" . }}
         </div>
