@@ -30,6 +30,9 @@ func TestIsForHTTP01Challenge(t *testing.T) {
 			token: "AbC",
 			path:  "/.well-known/acme-challenge/abc",
 		},
+		{
+			path: "/.well-known/acme-challenge/",
+		},
 	}
 	for i, test := range isForTests {
 		c := Challenge{

@@ -18,7 +18,8 @@ const (
 )
 
 func (c Challenge) isFor(path string) bool {
-	return len(path) == len(acmeHeader)+len(c.Token) &&
+	return len(c.Token) > 0 &&
+		len(path) == len(acmeHeader)+len(c.Token) &&
 		path[:len(acmeHeader)] == acmeHeader &&
 		path[len(acmeHeader):] == c.Token
 }
