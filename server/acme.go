@@ -24,7 +24,7 @@ func (c Challenge) isFor(path string) bool {
 		path[len(acmeHeader):] == c.Token
 }
 
-// handle writes the challenge token to the response.
+// handle writes the challenge to the response.
 // The concatenation of the token, a peroid, and the key.
 // The url of the request is not validated.
 func (c Challenge) handle(w http.ResponseWriter, r *http.Request) {
