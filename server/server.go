@@ -28,6 +28,7 @@ type (
 		stopDur    time.Duration
 		cacheSec   int
 		version    string
+		challenge  Challenge
 	}
 
 	// Config contains fields which describe the server
@@ -50,6 +51,8 @@ type (
 		CacheSec int
 		// Version is used to bust caches of files from older server version
 		Version string
+		// Challenge is the ACME HTTP-01 Challenge used to get a certificate
+		Challenge Challenge
 	}
 
 	// wrappedResponseWriter wraps response writing with another writer.
@@ -89,9 +92,10 @@ func (cfg Config) NewServer() (*Server, error) {
 			Addr:    addr,
 			Handler: serveMux,
 		},
-		stopDur:  cfg.StopDur,
-		cacheSec: cfg.CacheSec,
-		version:  cfg.Version,
+		stopDur:   cfg.StopDur,
+		cacheSec:  cfg.CacheSec,
+		version:   cfg.Version,
+		challenge: cfg.Challenge,
 	}
 	serveMux.HandleFunc("/", s.httpMethodHandler)
 	return &s, nil
@@ -171,6 +175,10 @@ func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	case "/monitor":
 		err = s.handleMonitor(w, r)
 	default:
+		if s.challenge.isFor(r.URL.Path) {
+			s.challenge.handle(w, r)
+			return nil
+		}
 		httpError(w, http.StatusNotFound)
 	}
 	return err

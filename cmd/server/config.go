@@ -50,6 +50,10 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		return nil, err
 	}
 	v := version(m, log)
+	challenge := server.Challenge{
+		Token: m.challengeToken,
+		Key:   m.challengeKey,
+	}
 	cfg := server.Config{
 		AppName:   m.applicationName,
 		Port:      m.serverPort,
@@ -60,6 +64,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		StopDur:   time.Second,
 		CacheSec:  m.cacheSec,
 		Version:   v,
+		Challenge: challenge,
 	}
 	return &cfg, nil
 }
