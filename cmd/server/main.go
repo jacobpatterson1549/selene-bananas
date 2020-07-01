@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -29,7 +30,13 @@ func main() {
 
 	done := make(chan os.Signal, 2)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
-	server.Run(ctx)
+	go func() {
+		err := server.Run(ctx)
+		if err != http.ErrServerClosed {
+			log.Printf("server stopped unexpectedly: %v", err)
+		}
+		done <- syscall.SIGTERM
+	}()
 	<-done
 	if err := server.Stop(ctx); err != nil {
 		log.Fatalf("stopping server: %v", err)

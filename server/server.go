@@ -130,13 +130,13 @@ func (cfg Config) validate() error {
 	return nil
 }
 
-// Run runs the server until it receives a shutdown signal.
-func (s Server) Run(ctx context.Context) {
+// Run the server until it receives a shutdown signal.
+func (s Server) Run(ctx context.Context) error {
 	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
 	s.httpServer.RegisterOnShutdown(lobbyCancelFunc)
 	go s.lobby.Run(lobbyCtx)
 	s.log.Println("server started successfully, locally running at https://127.0.0.1" + s.httpServer.Addr)
-	go s.httpServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile)
+	return s.httpServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile) // BLOCKS
 }
 
 // Stop asks the server to shutdown and waits for the shutdown to complete.
