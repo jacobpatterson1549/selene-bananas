@@ -55,16 +55,18 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		Key:   m.challengeKey,
 	}
 	cfg := server.Config{
-		AppName:   m.applicationName,
-		Port:      m.serverPort,
-		Log:       log,
-		Tokenizer: tokenizer,
-		UserDao:   ud,
-		LobbyCfg:  *lobbyCfg,
-		StopDur:   time.Second,
-		CacheSec:  m.cacheSec,
-		Version:   v,
-		Challenge: challenge,
+		AppName:     m.applicationName,
+		Port:        m.serverPort,
+		Log:         log,
+		Tokenizer:   tokenizer,
+		UserDao:     ud,
+		LobbyCfg:    *lobbyCfg,
+		StopDur:     time.Second,
+		CacheSec:    m.cacheSec,
+		Version:     v,
+		Challenge:   challenge,
+		TLSCertFile: m.tlsCertFile,
+		TLSKeyFile:  m.tlsKeyFile,
 	}
 	return &cfg, nil
 }

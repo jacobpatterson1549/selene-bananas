@@ -19,16 +19,18 @@ import (
 type (
 	// Server runs the site
 	Server struct {
-		data       interface{}
-		log        *log.Logger
-		tokenizer  Tokenizer
-		userDao    *db.UserDao
-		lobby      *lobby.Lobby
-		httpServer *http.Server
-		stopDur    time.Duration
-		cacheSec   int
-		version    string
-		challenge  Challenge
+		data        interface{}
+		log         *log.Logger
+		tokenizer   Tokenizer
+		userDao     *db.UserDao
+		lobby       *lobby.Lobby
+		httpServer  *http.Server
+		stopDur     time.Duration
+		cacheSec    int
+		version     string
+		challenge   Challenge
+		tlsCertFile string
+		tlsKeyFile  string
 	}
 
 	// Config contains fields which describe the server
@@ -53,6 +55,10 @@ type (
 		Version string
 		// Challenge is the ACME HTTP-01 Challenge used to get a certificate
 		Challenge Challenge
+		// The public HTTPS certificate file.
+		TLSCertFile string
+		// The private HTTPS key file.
+		TLSKeyFile string
 	}
 
 	// wrappedResponseWriter wraps response writing with another writer.
@@ -78,24 +84,27 @@ func (cfg Config) NewServer() (*Server, error) {
 	}
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	serveMux := new(http.ServeMux)
+	httpServer := &http.Server{
+		Addr:    addr,
+		Handler: serveMux,
+	}
 	lobby, err := cfg.LobbyCfg.NewLobby()
 	if err != nil {
 		return nil, err
 	}
 	s := Server{
-		data:      data,
-		log:       cfg.Log,
-		tokenizer: cfg.Tokenizer,
-		userDao:   cfg.UserDao,
-		lobby:     lobby,
-		httpServer: &http.Server{
-			Addr:    addr,
-			Handler: serveMux,
-		},
-		stopDur:   cfg.StopDur,
-		cacheSec:  cfg.CacheSec,
-		version:   cfg.Version,
-		challenge: cfg.Challenge,
+		data:        data,
+		log:         cfg.Log,
+		tokenizer:   cfg.Tokenizer,
+		userDao:     cfg.UserDao,
+		lobby:       lobby,
+		httpServer:  httpServer,
+		stopDur:     cfg.StopDur,
+		cacheSec:    cfg.CacheSec,
+		version:     cfg.Version,
+		challenge:   cfg.Challenge,
+		tlsCertFile: cfg.TLSCertFile,
+		tlsKeyFile:  cfg.TLSKeyFile,
 	}
 	serveMux.HandleFunc("/", s.httpMethodHandler)
 	return &s, nil
@@ -126,8 +135,8 @@ func (s Server) Run(ctx context.Context) {
 	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
 	s.httpServer.RegisterOnShutdown(lobbyCancelFunc)
 	go s.lobby.Run(lobbyCtx)
-	s.log.Println("server started successfully, locally running at http://127.0.0.1" + s.httpServer.Addr)
-	go s.httpServer.ListenAndServe()
+	s.log.Println("server started successfully, locally running at https://127.0.0.1" + s.httpServer.Addr)
+	go s.httpServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile)
 }
 
 // Stop asks the server to shutdown and waits for the shutdown to complete.

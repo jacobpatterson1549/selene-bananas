@@ -56,6 +56,21 @@ sudo -u postgres psql \
 && echo DATABASE_URL=postgres://$PGUSER:$PGPASSWORD@$PGHOSTADDR:$PGPORT/$PGDATABASE'
 ```
 
+### HTTPS on localhost
+
+The app requires HTTP TLS (HTTPS) to run. Insecure http requests are redirected to https.
+
+When running in a development environment, generate your own ssl certificate and key.  The script below creates a certificate and key that last a year.  Web browsers will note that the key is not trusted, but this warning can be bypassed.  Pass the absolute file paths to the app with the TLS_CERT_FILE and TLS_KEY_FILE arguments.
+```bash
+openssl req \
+    -x509 \
+    -nodes \
+    -days 365 \
+    -newkey rsa:2048 \
+    -out tls-localhost-cert.pem \
+    -keyout tls-localhost-key.pem
+```
+
 ### Make
 
 The [Makefile](Makefile) runs the application locally.  This requires Go and a Postgres database to be installed.  [Node](https://github.com/nodejs) is needed to run WebAssembly tests.  Run `make serve` to build and run the application.
