@@ -20,8 +20,15 @@
         </script>
     </head>
     <body>
+        <noscript>
+            <img src="/favicon.ico" alt="tile with inverted colors">
+            <span>ERROR: Site requires Javascript to load WebAssembly, which makes the site interactive.</span>
+        </noscript>
         <header>
-            <h1><a href="/">{{.ApplicationName}}</a></h1>
+            <h1>
+                <img src="/favicon.ico" alt="tile">
+                <a href="/">{{.ApplicationName}}</a>
+            </h1>
         </header>
         <main>
             {{ template "log.html" . }}
