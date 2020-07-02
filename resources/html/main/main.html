@@ -12,11 +12,11 @@
         <meta property="og:description" content="{{.Description}}">
         <meta name="theme-color" content="#ffffc2">
         <style type="text/css">
-            {{template "main.css"}}
+            {{ template "main.css" . }}
         </style>
         <script defer src="wasm_exec.js?v={{.Version}}"></script>
         <script>
-            {{ template "run_wasm.js" . }}
+            {{ template "init.js" . }}
         </script>
     </head>
     <body>

@@ -266,7 +266,7 @@ func (s Server) serveTemplate(w http.ResponseWriter, r *http.Request) {
 		"resources/html/**/*.html",
 		"resources/fa/*.svg",
 		"resources/main.css",
-		"resources/run_wasm.js",
+		"resources/init.js",
 	}
 	for _, g := range templateFileGlobs {
 		_, err := t.ParseGlob(g)
