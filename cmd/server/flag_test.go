@@ -13,6 +13,8 @@ func TestNewMainFlags(t *testing.T) {
 		envVars map[string]string
 		want    mainFlags
 		cache   bool // cache is specified
+		httpPort bool // httpPort is specified
+		httpsPort bool // httpsPort is specified
 	}{
 		{
 			osArgs: []string{"name"},
@@ -23,24 +25,28 @@ func TestNewMainFlags(t *testing.T) {
 			want:   mainFlags{applicationName: "name2"},
 		},
 		{
-			osArgs: []string{"", "port=8001"},
+			osArgs: []string{"", "https-port=8001"},
 		},
 		{
-			osArgs: []string{"", "-port=8001"},
-			want:   mainFlags{serverPort: "8001"},
+			osArgs: []string{"", "-https-port=8001"},
+			want:   mainFlags{httpsPort: 8001},
+			httpsPort: true,
 		},
 		{
-			osArgs: []string{"", "--port=8001"},
-			want:   mainFlags{serverPort: "8001"},
+			osArgs: []string{"", "--https-port=8001"},
+			want:   mainFlags{httpsPort: 8001},
+			httpsPort: true,
 		},
 		{
-			envVars: map[string]string{"PORT": "8002"},
-			want:    mainFlags{serverPort: "8002"},
+			envVars: map[string]string{"HTTPS_PORT": "8002"},
+			want:    mainFlags{httpsPort: 8002},
+			httpsPort: true,
 		},
 		{
-			osArgs:  []string{"", "-port=8003"},
-			envVars: map[string]string{"PORT": "8004"},
-			want:    mainFlags{serverPort: "8003"},
+			osArgs:  []string{"", "-https-port=8003"},
+			envVars: map[string]string{"HTTPS_PORT": "8004"},
+			want:    mainFlags{httpsPort: 8003},
+			httpsPort: true,
 		},
 		{
 			osArgs: []string{"", "-debug-game"},
@@ -57,7 +63,7 @@ func TestNewMainFlags(t *testing.T) {
 			osArgs: []string{
 				"",
 				"-app-name=1",
-				"-port=2",
+				"-https-port=2",
 				"-data-source=3",
 				"-words-file=4",
 				"-debug-game",
@@ -65,18 +71,19 @@ func TestNewMainFlags(t *testing.T) {
 			},
 			want: mainFlags{
 				applicationName: "1",
-				serverPort:      "2",
+				httpsPort:       2,
 				databaseURL:     "3",
 				wordsFile:       "4",
 				debugGame:       true,
 				cacheSec:        467,
 			},
 			cache: true,
+			httpsPort: true,
 		},
 		{ // all environment variables
 			envVars: map[string]string{
 				"APPLICATION_NAME":    "1",
-				"PORT":                "2",
+				"HTTPS_PORT":          "2",
 				"DATABASE_URL":        "3",
 				"WORDS_FILE":          "4",
 				"DEBUG_GAME_MESSAGES": "",
@@ -84,13 +91,14 @@ func TestNewMainFlags(t *testing.T) {
 			},
 			want: mainFlags{
 				applicationName: "1",
-				serverPort:      "2",
+				httpsPort:       2,
 				databaseURL:     "3",
 				wordsFile:       "4",
 				debugGame:       true,
 				cacheSec:        113,
 			},
 			cache: true,
+			httpsPort: true,
 		},
 	}
 	for i, test := range newMainFlagsTests {
@@ -99,6 +107,12 @@ func TestNewMainFlags(t *testing.T) {
 			return v, ok
 		}
 		got := newMainFlags(test.osArgs, osLookupEnvFunc)
+		if !test.httpPort {
+			test.want.httpPort = 80
+		}
+		if !test.httpsPort {
+			test.want.httpsPort = 443
+		}
 		if !test.cache {
 			test.want.cacheSec = defaultCacheSec
 		}

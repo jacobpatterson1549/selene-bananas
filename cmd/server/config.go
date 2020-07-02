@@ -56,7 +56,8 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	}
 	cfg := server.Config{
 		AppName:     m.applicationName,
-		Port:        m.serverPort,
+		HTTPPort:    m.httpPort,
+		HTTPSPort:   m.httpsPort,
 		Log:         log,
 		Tokenizer:   tokenizer,
 		UserDao:     ud,

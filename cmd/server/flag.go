@@ -9,7 +9,8 @@ import (
 
 const (
 	environmentVariableApplicationName = "APPLICATION_NAME"
-	environmentVariableServerPort      = "PORT"
+	environmentVariableHTTPPort        = "HTTP_PORT"
+	environmentVariableHTTPSPort       = "HTTPS_PORT"
 	environmentVariableDatabaseURL     = "DATABASE_URL"
 	environmentVariableWordsFile       = "WORDS_FILE"
 	environmentVariableVersionFile     = "VERSION_FILE"
@@ -23,7 +24,8 @@ const (
 
 type mainFlags struct {
 	applicationName string
-	serverPort      string
+	httpPort        int
+	httpsPort       int
 	databaseURL     string
 	wordsFile       string
 	versionFile     string
@@ -42,7 +44,8 @@ const (
 func usage(fs *flag.FlagSet) {
 	envVars := []string{
 		environmentVariableApplicationName,
-		environmentVariableServerPort,
+		environmentVariableHTTPPort,
+		environmentVariableHTTPSPort,
 		environmentVariableDatabaseURL,
 		environmentVariableWordsFile,
 		environmentVariableVersionFile,
@@ -83,7 +86,8 @@ func (m *mainFlags) newFlagSet(programName string, osLookupEnvFunc func(string) 
 	}
 	fs.StringVar(&m.applicationName, "app-name", envOrDefault(environmentVariableApplicationName, programName), "The name of the application.")
 	fs.StringVar(&m.databaseURL, "data-source", envOrDefault(environmentVariableDatabaseURL, ""), "The data source to the PostgreSQL database (connection URI).")
-	fs.StringVar(&m.serverPort, "port", envOrDefault(environmentVariableServerPort, ""), "The port number to run the server on.")
+	fs.IntVar(&m.httpPort, "http-port", envOrDefaultInt(environmentVariableHTTPPort, 80), "The TCP port for server http requests.  All traffic is redirected to the https port.")
+	fs.IntVar(&m.httpsPort, "https-port", envOrDefaultInt(environmentVariableHTTPSPort, 443), "The TCP port for server https requests.")
 	fs.StringVar(&m.wordsFile, "words-file", envOrDefault(environmentVariableWordsFile, ""), "The list of valid lower-case words that can be used.")
 	fs.StringVar(&m.versionFile, "version-file", envOrDefault(environmentVariableVersionFile, ""), "A file containing the version key (the first word).  Used to bust previously cached files.  Change each time a new version of the server is run.")
 	fs.StringVar(&m.challengeToken, "acme-challenge-token", envOrDefault(environmentVariableChallengeToken, ""), "The ACME HTTP-01 Challenge token used to get a certificate.")

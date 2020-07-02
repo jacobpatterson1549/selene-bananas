@@ -63,3 +63,46 @@ func TestHandleFileVersion(t *testing.T) {
 		}
 	}
 }
+
+func TestHandleHTTP(t *testing.T) {
+	handleHTTPTests := []struct {
+		httpURI    string
+		httpsAddr  string
+		want       string
+	}{
+		{
+			httpURI:   "http://example.com",
+			httpsAddr: ":443",
+			want:      "https://example.com",
+		},
+		{
+			httpURI:   "https://example.com",
+			httpsAddr: ":443",
+			want:      "https://example.com",
+		},
+		{
+			httpURI:   "http://example.com:80/abc",
+			httpsAddr: ":443",
+			want:      "https://example.com/abc",
+		},
+		{
+			httpURI:   "http://example.com:8001/abc/d",
+			httpsAddr: ":8000",
+			want:      "https://example.com:8000/abc/d",
+		},
+	}
+	for i, test := range handleHTTPTests {
+		s := Server{
+			httpsServer: &http.Server{
+				Addr: test.httpsAddr,
+			},
+		}
+		r := httptest.NewRequest("", test.httpURI, nil)
+		w := httptest.NewRecorder()
+		s.handleHTTP(w, r)
+		got := w.Header().Get("Location")
+		if test.want != got {
+			t.Errorf("test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
+		}
+	}
+}
