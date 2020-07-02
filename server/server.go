@@ -213,8 +213,6 @@ func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) error {
 	switch r.URL.Path {
 	case "/":
 		s.handleFile(s.serveTemplate, false)(w, r)
-	case "/robots.txt", "/manifest.json", "/favicon.ico", "/favicon-192.png", "/favicon-512.png":
-		s.handleFile(s.serveFile("resources"+r.URL.Path), false)(w, r)
 	case "/wasm_exec.js", "/main.wasm":
 		s.handleFile(s.serveFile("."+r.URL.Path), true)(w, r)
 	case "/lobby":
@@ -228,7 +226,7 @@ func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) error {
 			s.challenge.handle(w, r)
 			return nil
 		}
-		httpError(w, http.StatusNotFound)
+		s.handleFile(s.serveFile("resources"+r.URL.Path), false)(w, r)
 	}
 	return err
 }

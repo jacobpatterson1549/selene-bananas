@@ -27,6 +27,10 @@ label {
     height: 5em;
     overflow: auto;
 }
+noscript>img {
+    filter: invert(1);
+}
+noscript,
 .log>.scroll>.error   { color: #ff0000; }
 .log>.scroll>.chat    { color: #008000; }
 .log>.scroll>.warning { color: #ff8000; }
