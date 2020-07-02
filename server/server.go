@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -24,6 +25,7 @@ type (
 		tokenizer   Tokenizer
 		userDao     *db.UserDao
 		lobby       *lobby.Lobby
+		httpsServer *http.Server
 		httpServer  *http.Server
 		stopDur     time.Duration
 		cacheSec    int
@@ -37,8 +39,10 @@ type (
 	Config struct {
 		// AppName is the display name of the application
 		AppName string
-		// Port is the port number to run the server on
-		Port string
+		// HTTPPort is the TCP port for server http requests.  All traffic is redirected to the https port.
+		HTTPPort int
+		// HTTPSPORT is the TCP port for server https requests.
+		HTTPSPort int
 		// Log is used to log errors and other information
 		Log *log.Logger
 		// Tokenizer is used to generate and parse session tokens
@@ -82,11 +86,17 @@ func (cfg Config) NewServer() (*Server, error) {
 		Description:     "a tile-based word-forming game",
 		Version:         cfg.Version,
 	}
-	addr := fmt.Sprintf(":%s", cfg.Port)
-	serveMux := new(http.ServeMux)
+	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
+	httpAddr := fmt.Sprintf(":%d", cfg.HTTPPort)
+	httpsServeMux := new(http.ServeMux)
+	httpsServer := &http.Server{
+		Addr:    httpsAddr,
+		Handler: httpsServeMux,
+	}
+	httpServeMux := new(http.ServeMux)
 	httpServer := &http.Server{
-		Addr:    addr,
-		Handler: serveMux,
+		Addr:    httpAddr,
+		Handler: httpServeMux,
 	}
 	lobby, err := cfg.LobbyCfg.NewLobby()
 	if err != nil {
@@ -98,6 +108,7 @@ func (cfg Config) NewServer() (*Server, error) {
 		tokenizer:   cfg.Tokenizer,
 		userDao:     cfg.UserDao,
 		lobby:       lobby,
+		httpsServer: httpsServer,
 		httpServer:  httpServer,
 		stopDur:     cfg.StopDur,
 		cacheSec:    cfg.CacheSec,
@@ -106,7 +117,8 @@ func (cfg Config) NewServer() (*Server, error) {
 		tlsCertFile: cfg.TLSCertFile,
 		tlsKeyFile:  cfg.TLSKeyFile,
 	}
-	serveMux.HandleFunc("/", s.httpMethodHandler)
+	httpsServeMux.HandleFunc("/", s.handleHTTPS)
+	httpServeMux.HandleFunc("/", s.handleHTTP)
 	return &s, nil
 }
 
@@ -114,8 +126,6 @@ func (cfg Config) validate() error {
 	switch {
 	case len(cfg.AppName) == 0:
 		return fmt.Errorf("application name required")
-	case len(cfg.Port) == 0:
-		return fmt.Errorf("port number required")
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")
 	case cfg.Tokenizer == nil:
@@ -133,10 +143,17 @@ func (cfg Config) validate() error {
 // Run the server until it receives a shutdown signal.
 func (s Server) Run(ctx context.Context) error {
 	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
-	s.httpServer.RegisterOnShutdown(lobbyCancelFunc)
+	s.httpsServer.RegisterOnShutdown(lobbyCancelFunc)
 	go s.lobby.Run(lobbyCtx)
-	s.log.Println("server started successfully, locally running at https://127.0.0.1" + s.httpServer.Addr)
-	return s.httpServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile) // BLOCKS
+	errC := make(chan error, 2)
+	go func() {
+		errC <- s.httpsServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile)
+	}()
+	go func() {
+		errC <- s.httpServer.ListenAndServe()
+	}()
+	s.log.Println("server started, running at https://127.0.0.1" + s.httpsServer.Addr)
+	return <-errC
 }
 
 // Stop asks the server to shutdown and waits for the shutdown to complete.
@@ -144,20 +161,43 @@ func (s Server) Run(ctx context.Context) error {
 func (s Server) Stop(ctx context.Context) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, s.stopDur)
 	defer cancelFunc()
-	if err := s.httpServer.Shutdown(ctx); err != nil {
-		return err
+	httpsShutdownErr := s.httpsServer.Shutdown(ctx)
+	httpShutdownErr := s.httpServer.Shutdown(ctx)
+	switch {
+	case httpsShutdownErr != nil:
+		return httpsShutdownErr
+	case httpShutdownErr != nil:
+		return httpShutdownErr
 	}
 	s.log.Println("server stopped successfully")
 	return nil
 }
 
-func (s Server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
+func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
+	host := r.Host
+	if strings.Contains(host, ":") {
+		var err error
+		host, _, err = net.SplitHostPort(host)
+		if err != nil {
+			message := "could not redirect to https: " + err.Error()
+			http.Error(w, message, http.StatusInternalServerError)
+			return
+		}
+	}
+	if s.httpsServer.Addr != ":443" {
+		host = host + s.httpsServer.Addr
+	}
+	httpsURI := "https://" + host + r.URL.Path
+	http.Redirect(w, r, httpsURI, http.StatusTemporaryRedirect)
+}
+
+func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 	var err error
 	switch r.Method {
 	case "GET":
-		err = s.httpGetHandler(w, r)
+		err = s.handleHTTPSGet(w, r)
 	case "POST":
-		err = s.httpPostHandler(w, r)
+		err = s.handleHTTPSPost(w, r)
 	case "PUT":
 	default:
 		httpError(w, http.StatusMethodNotAllowed)
@@ -168,7 +208,7 @@ func (s Server) httpMethodHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
+func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) error {
 	var err error
 	switch r.URL.Path {
 	case "/":
@@ -193,7 +233,7 @@ func (s Server) httpGetHandler(w http.ResponseWriter, r *http.Request) error {
 	return err
 }
 
-func (s Server) httpPostHandler(w http.ResponseWriter, r *http.Request) error {
+func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) error {
 	var err error
 	var tokenUsername string
 	switch r.URL.Path {
