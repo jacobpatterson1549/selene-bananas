@@ -80,7 +80,7 @@ func colorConfig() server.ColorConfig {
 		CanvasTile:    "#f0d0b5",
 		LogError:      "#008000",
 		LogWarning:    "#ff8000",
-		LogChat:       "#f08000",
+		LogChat:       "#008000",
 		TabBackground: "#ffffc2",
 		TableStripe:   "#d9da9c",
 		Button:        "#eeeeee",
