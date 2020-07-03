@@ -34,7 +34,11 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	canvas := initCanvas(ctx, wg, log, board)
 	game := initGame(ctx, wg, log, board, canvas)
 	lobby := initLobby(ctx, wg, log, game)
-	_ = initSocket(ctx, wg, log, user, canvas, game, lobby)
+	socket := initSocket(ctx, wg, log, user, game, lobby)
+	user.Socket = socket   // [circular reference]
+	canvas.Socket = socket // [circular reference]
+	game.Socket = socket   // [circular reference]
+	lobby.Socket = socket  // [circular reference]
 	initBeforeUnloadFn(cancelFunc)
 	enableInteraction()
 }
@@ -90,7 +94,7 @@ func initLobby(ctx context.Context, wg *sync.WaitGroup, log *log.Log, game *cont
 	return lobby
 }
 
-func initSocket(ctx context.Context, wg *sync.WaitGroup, log *log.Log, user *user.User, canvas *canvas.Canvas, game *controller.Game, lobby *lobby.Lobby) *socket.Socket {
+func initSocket(ctx context.Context, wg *sync.WaitGroup, log *log.Log, user *user.User, game *controller.Game, lobby *lobby.Lobby) *socket.Socket {
 	cfg := socket.Config{
 		Log:   log,
 		User:  user,
@@ -98,10 +102,6 @@ func initSocket(ctx context.Context, wg *sync.WaitGroup, log *log.Log, user *use
 		Lobby: lobby,
 	}
 	socket := cfg.New()
-	user.Socket = socket
-	canvas.Socket = socket
-	game.Socket = socket  // [circular reference]
-	lobby.Socket = socket // [circular reference]
 	socket.InitDom(ctx, wg)
 	return socket
 }
