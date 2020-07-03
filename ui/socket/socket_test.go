@@ -53,7 +53,7 @@ func TestGetWebSocketURL(t *testing.T) {
 			jwt: test.jwt,
 		}
 		s := Socket{
-			User: &mu,
+			user: &mu,
 		}
 		got := s.getWebSocketURL(f)
 		if test.want != got {

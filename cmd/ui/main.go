@@ -28,67 +28,82 @@ func main() {
 
 func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	ctx, cancelFunc := context.WithCancel(ctx)
-	initLog(ctx, wg)
-	user := initUser(ctx, wg)
+	log := initLog(ctx, wg)
+	user := initUser(ctx, wg, log)
 	board := new(board.Board)
-	canvas := initCanvas(ctx, wg, board)
-	game := initGame(ctx, wg, board, canvas)
-	lobby := initLobby(ctx, wg, game)
-	_ = initSocket(ctx, wg, user, canvas, game, lobby)
+	canvas := initCanvas(ctx, wg, log, board)
+	game := initGame(ctx, wg, log, board, canvas)
+	lobby := initLobby(ctx, wg, log, game)
+	_ = initSocket(ctx, wg, log, user, canvas, game, lobby)
 	initBeforeUnloadFn(cancelFunc)
 	enableInteraction()
 }
 
-func initLog(ctx context.Context, wg *sync.WaitGroup) {
+func initLog(ctx context.Context, wg *sync.WaitGroup) *log.Log {
+	log := new(log.Log)
 	log.InitDom(ctx, wg)
+	return log
 }
 
-func initUser(ctx context.Context, wg *sync.WaitGroup) *user.User {
+func initUser(ctx context.Context, wg *sync.WaitGroup, log *log.Log) *user.User {
+	cfg := user.Config{
+		Log: log,
+	}
 	httpClient := http.Client{
 		Timeout: 5 * time.Second,
 	}
-	user := user.New(&httpClient)
+	user := cfg.New(&httpClient)
 	user.InitDom(ctx, wg)
 	return user
 }
 
-func initCanvas(ctx context.Context, wg *sync.WaitGroup, board *board.Board) *canvas.Canvas {
-	canvasDiv := dom.QuerySelector(".game>.canvas")
-	canvasElement := dom.QuerySelector(".game>.canvas>canvas")
-	canvasCfg := canvas.Config{
+func initCanvas(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *board.Board) *canvas.Canvas {
+	cfg := canvas.Config{
+		Log:        log,
 		TileLength: 20,
 	}
-	canvas := canvasCfg.New(board, &canvasDiv, &canvasElement)
+	canvasDiv := dom.QuerySelector(".game>.canvas")
+	canvasElement := dom.QuerySelector(".game>.canvas>canvas")
+	canvas := cfg.New(board, &canvasDiv, &canvasElement)
 	canvas.InitDom(ctx, wg)
 	return canvas
 }
 
-func initGame(ctx context.Context, wg *sync.WaitGroup, board *board.Board, canvas *canvas.Canvas) *controller.Game {
-	game := controller.NewGame(board, canvas)
+func initGame(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *board.Board, canvas *canvas.Canvas) *controller.Game {
+	cfg := controller.GameConfig{
+		Log:    log,
+		Board:  board,
+		Canvas: canvas,
+	}
+	game := cfg.NewGame()
 	game.InitDom(ctx, wg)
-	return &game
+	return game
 }
 
-func initLobby(ctx context.Context, wg *sync.WaitGroup, game *controller.Game) *lobby.Lobby {
-	lobby := lobby.Lobby{
+func initLobby(ctx context.Context, wg *sync.WaitGroup, log *log.Log, game *controller.Game) *lobby.Lobby {
+	cfg := lobby.Config{
+		Log:  log,
 		Game: game,
 	}
+	lobby := cfg.New()
 	lobby.InitDom(ctx, wg)
-	return &lobby
+	return lobby
 }
 
-func initSocket(ctx context.Context, wg *sync.WaitGroup, user *user.User, canvas *canvas.Canvas, game *controller.Game, lobby *lobby.Lobby) *socket.Socket {
-	socket := socket.Socket{
+func initSocket(ctx context.Context, wg *sync.WaitGroup, log *log.Log, user *user.User, canvas *canvas.Canvas, game *controller.Game, lobby *lobby.Lobby) *socket.Socket {
+	cfg := socket.Config{
+		Log:   log,
 		User:  user,
 		Game:  game,
 		Lobby: lobby,
 	}
-	user.Socket = &socket
-	canvas.Socket = &socket
-	game.Socket = &socket  // [circular reference]
-	lobby.Socket = &socket // [circular reference]
+	socket := cfg.New()
+	user.Socket = socket
+	canvas.Socket = socket
+	game.Socket = socket  // [circular reference]
+	lobby.Socket = socket // [circular reference]
 	socket.InitDom(ctx, wg)
-	return &socket
+	return socket
 }
 
 func initBeforeUnloadFn(cancelFunc context.CancelFunc) {

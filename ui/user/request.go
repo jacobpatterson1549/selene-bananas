@@ -11,7 +11,6 @@ import (
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
-	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
 
 type (
@@ -27,13 +26,13 @@ type (
 func (u *User) request(event js.Value) {
 	f, err := dom.NewForm(event)
 	if err != nil {
-		log.Error(err.Error())
+		u.log.Error(err.Error())
 		return
 	}
 	r, err := u.newRequest(*f)
 	switch {
 	case err != nil:
-		log.Error(err.Error())
+		u.log.Error(err.Error())
 		return
 	case r.validator != nil:
 		if ok := r.validator(); !ok {
@@ -44,10 +43,10 @@ func (u *User) request(event js.Value) {
 		response, err := r.do()
 		switch {
 		case err != nil:
-			log.Error("making http request: " + err.Error())
+			u.log.Error("making http request: " + err.Error())
 			return
 		case response.StatusCode >= 400:
-			log.Error(response.Status)
+			u.log.Error(response.Status)
 			u.Logout()
 			return
 		case r.handler != nil:
@@ -107,7 +106,7 @@ func (u *User) newRequest(f dom.Form) (*request, error) {
 			defer body.Close()
 			jwt, err := ioutil.ReadAll(body)
 			if err != nil {
-				log.Error("reading response body: " + err.Error())
+				u.log.Error("reading response body: " + err.Error())
 				return
 			}
 			f.StoreCredentials()
