@@ -28,8 +28,8 @@ New dependencies are automatically added to [go.mod](go/go.mod) when the project
 
 Environment variables are needed to customize the server.  Sample config:
 ```
-APPLICATION_NAME=selene_bananas
 DATABASE_URL=postgres://selene:selene123@127.0.0.1:54320/selene_bananas_db?sslmode=disable
+WORDS_FILE=/usr/share/dict/american-english-large
 ```
 
 It is recommended to install the [wamerican-large](https://packages.debian.org/buster/wamerican-large) package.  This package provides /usr/share/dict/american-english-large to be used as a words list in games.  Lowercase words are read from the word list for checking valid words in the game.  This can be overridden by providing the `WORDS_FILE` environment variable.

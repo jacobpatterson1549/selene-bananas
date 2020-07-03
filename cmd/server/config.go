@@ -54,8 +54,8 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		Token: m.challengeToken,
 		Key:   m.challengeKey,
 	}
+	cc := colorConfig()
 	cfg := server.Config{
-		AppName:     m.applicationName,
 		HTTPPort:    m.httpPort,
 		HTTPSPort:   m.httpsPort,
 		Log:         log,
@@ -68,8 +68,26 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		Challenge:   challenge,
 		TLSCertFile: m.tlsCertFile,
 		TLSKeyFile:  m.tlsKeyFile,
+		ColorConfig: cc,
 	}
 	return &cfg, nil
+}
+
+func colorConfig() server.ColorConfig {
+	cc := server.ColorConfig{
+		CanvasPrimary: "#000000",
+		CanvasDrag:    "#0000ff",
+		CanvasTile:    "#f0d0b5",
+		LogError:      "#008000",
+		LogWarning:    "#ff8000",
+		LogChat:       "#f08000",
+		TabBackground: "#ffffc2",
+		TableStripe:   "#d9da9c",
+		Button:        "#eeeeee",
+		ButtonHover:   "#dddddd",
+		ButtonActive:  "#cccccc",
+	}
+	return cc
 }
 
 func tokenizerConfig(rand *rand.Rand, timeFunc func() int64) server.TokenizerConfig {

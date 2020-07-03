@@ -15,7 +15,7 @@ func main() {
 	m := newMainFlags(os.Args, os.LookupEnv)
 
 	var buf bytes.Buffer
-	log := log.New(&buf, m.applicationName+" ", log.LstdFlags)
+	log := log.New(&buf, "", log.LstdFlags)
 	log.SetOutput(os.Stdout)
 
 	ctx := context.Background()

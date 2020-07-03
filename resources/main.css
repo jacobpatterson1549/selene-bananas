@@ -31,9 +31,9 @@ noscript>img {
     filter: invert(1);
 }
 noscript,
-.log>.scroll>.error   { color: #ff0000; }
-.log>.scroll>.chat    { color: #008000; }
-.log>.scroll>.warning { color: #ff8000; }
+.log>.scroll>.error { color: {{ .Colors.LogError }}; }
+.log>.scroll>.chat { color: {{ .Colors.LogChat }}; }
+.log>.scroll>.warning { color: {{ .Colors.LogWarning }}; }
 
 .tabs {
     display: block;
@@ -47,22 +47,22 @@ noscript,
     float: left;
 }
 .tab>input:checked+.button {
-    background: #cccccc;
+    background: {{ .Colors.ButtonActive }};
 }
 .button:hover {
-    background: #dddddd;
+    background: {{ .Colors.ButtonHover }};
 }
 .button {
     margin: 1em .2em;
     padding: .3em;
     border: 1px inset #000;
     border-radius: 0  20% 20% 20%;
-    background: #eeeeee;
+    background: {{ .Colors.Button }};
 }
 .tab>.content {
     position: absolute;
     left: 0;
-    background: #ffffc2;
+    background: {{ .Colors.TabBackground }};
     margin: 1em;
 }
 .tab>input:checked+.button+.content {
@@ -70,7 +70,7 @@ noscript,
 }
 table thead th:nth-last-of-type(even),
 table tbody td:nth-last-of-type(even) {
-    background: #00000020;
+    background: {{ .Colors.TableStripe }};
 }
 .tile-length input[type="number"] {
     width: 3em;
@@ -82,7 +82,7 @@ table tbody td:nth-last-of-type(even) {
 .tab>.content>.game>.canvas>.move-state.drag:checked~canvas { cursor: grabbing;  }
 .tab>.content>.game>.canvas>.move-state.grab:checked~canvas { cursor: pointer;   }
 .tab>.content>.game>.canvas {
-    border: 1px dotted #000000;
+    border: 1px dotted;
 }
 
 .tab>.content>.about>ul.icons>li>svg {
