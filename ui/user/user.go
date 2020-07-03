@@ -41,13 +41,13 @@ type (
 )
 
 // New creates a http/login helper struct.
-func New(httpClient *http.Client) User {
+func New(httpClient *http.Client) *User {
 	escapeRE := regexp.MustCompile("([" + regexp.QuoteMeta(`\^$*+?.()|[]{}`) + "])")
 	u := User{
 		httpClient: httpClient,
 		escapeRE:   *escapeRE,
 	}
-	return u
+	return &u
 }
 
 // InitDom regesters user dom functions.
