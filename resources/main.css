@@ -55,7 +55,7 @@ noscript,
 .button {
     margin: 1em .2em;
     padding: .3em;
-    border: 1px inset #000;
+    border: 1px inset;
     border-radius: 0  20% 20% 20%;
     background: {{ .Colors.Button }};
 }
