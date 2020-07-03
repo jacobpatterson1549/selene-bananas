@@ -66,8 +66,8 @@ openssl req \
     -nodes \
     -days 365 \
     -newkey rsa:2048 \
-    -out tls-localhost-cert.pem \
-    -keyout tls-localhost-key.pem
+    -keyout tls-localhost.key \
+    -out tls-localhost.crt
 ```
 
 ### Server ports
