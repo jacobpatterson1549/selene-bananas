@@ -19,6 +19,7 @@ import (
 type (
 	// Canvas is the object which draws the game
 	Canvas struct {
+		log        *log.Log
 		ctx        Context
 		board      *board.Board
 		draw       drawMetrics
@@ -35,6 +36,7 @@ type (
 
 	// Config contains the parameters to create a Canvas
 	Config struct {
+		Log        *log.Log
 		TileLength int
 	}
 
@@ -76,8 +78,9 @@ type (
 
 	// pixelPosition represents a location on the canvas
 	pixelPosition struct {
-		x int
-		y int
+		log *log.Log
+		x   int
+		y   int
 	}
 
 	// tileSelection represents a tile that the cursor/touch is on
@@ -116,7 +119,8 @@ func (cfg Config) New(board *board.Board, parentDiv, element *js.Value) *Canvas 
 	dragColor := divColor(".dragColor")
 	tileColor := divColor(".tileColor")
 	ctx := jsContext{&contextElement}
-	c := &Canvas{
+	c := Canvas{
+		log:   cfg.Log,
 		ctx:   &ctx,
 		board: board,
 		selection: selection{
@@ -131,7 +135,7 @@ func (cfg Config) New(board *board.Board, parentDiv, element *js.Value) *Canvas 
 		dragColor: dragColor,
 		tileColor: tileColor,
 	}
-	return c
+	return &c
 }
 
 // UpdateSize sets the draw properties of the canvas for it's current size in the window.
@@ -165,7 +169,7 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	redrawJsFunc := dom.NewJsFunc(c.Redraw)
 	swapTileJsFunc := dom.NewJsFunc(c.StartSwap)
-	var mousePP pixelPosition
+	mousePP := c.newPixelPosition()
 	mouseDownFunc := func(event js.Value) {
 		c.MoveStart(mousePP.fromMouse(event))
 	}
@@ -175,13 +179,13 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	mouseMoveFunc := func(event js.Value) {
 		c.MoveCursor(mousePP.fromMouse(event))
 	}
-	var touchPP pixelPosition
+	touchPP := c.newPixelPosition()
 	touchStartFunc := func(event js.Value) {
 		c.MoveStart(touchPP.fromTouch(event))
 	}
 	touchEndFunc := func(event js.Value) {
 		// the event has no touches, use previous touchPos
-		c.MoveEnd(touchPP)
+		c.MoveEnd(*touchPP)
 	}
 	touchMoveFunc := func(event js.Value) {
 		c.MoveCursor(touchPP.fromTouch(event))
@@ -323,7 +327,7 @@ func (c *Canvas) MoveStart(pp pixelPosition) {
 		switch {
 		case ts == nil:
 			c.selection.setMoveState(none)
-			log.Info("swap cancelled")
+			c.log.Info("swap cancelled")
 		default:
 			tileID := ts.tile.ID
 			c.selection.tiles[tileID] = *ts
@@ -399,7 +403,7 @@ func (c *Canvas) MoveEnd(pp pixelPosition) {
 
 // StartSwap start a swap move
 func (c *Canvas) StartSwap() {
-	log.Info("click a tile to swap for three others from the pile")
+	c.log.Info("click a tile to swap for three others from the pile")
 	c.selection.setMoveState(swap)
 	c.selection.tiles = make(map[tile.ID]tileSelection)
 	c.Redraw()
@@ -413,10 +417,10 @@ func (c *Canvas) swap() {
 		return ok
 	}
 	if endTS == nil || !endTileWasSelected() {
-		log.Info("swap cancelled")
+		c.log.Info("swap cancelled")
 	}
 	if err := c.board.RemoveTile(endTS.tile); err != nil {
-		log.Error("removing tile while swapping: " + err.Error())
+		c.log.Error("removing tile while swapping: " + err.Error())
 	}
 	c.Socket.Send(game.Message{
 		Type: game.Swap,
@@ -539,7 +543,7 @@ func (c *Canvas) moveSelectedTiles() {
 		return
 	}
 	if err := c.board.MoveTiles(tilePositions); err != nil {
-		log.Error("moving tiles to presumably valid locations: " + err.Error())
+		c.log.Error("moving tiles to presumably valid locations: " + err.Error())
 		return
 	}
 	c.Socket.Send(game.Message{
@@ -558,7 +562,7 @@ func (c Canvas) selectionTilePositions() []tile.Position {
 	endR := (c.selection.end.y - c.draw.usedMin.y) / c.draw.tileLength
 	switch {
 	case startTS == nil:
-		log.Error("no tile position at start position")
+		c.log.Error("no tile position at start position")
 		return []tile.Position{}
 	case startTS.used:
 		return c.selectionUsedTilePositions(*startTS, endC, endR)
@@ -633,6 +637,14 @@ func (s selection) inRect(x, y int) bool {
 		minY <= y && y < maxY
 }
 
+// newPixelPosition creates a new PixelPosition with the log of the canvas.
+func (c *Canvas) newPixelPosition() *pixelPosition {
+	pp := pixelPosition{
+		log: c.log,
+	}
+	return &pp
+}
+
 // fromMouse updates the pixelPosition for the mouse event and returns it
 func (pp *pixelPosition) fromMouse(event js.Value) pixelPosition {
 	pp.x = event.Get("offsetX").Int()
@@ -645,7 +657,7 @@ func (pp *pixelPosition) fromTouch(event js.Value) pixelPosition {
 	event.Call("preventDefault")
 	touches := event.Get("touches")
 	if touches.Length() == 0 {
-		log.Error("no touches for touch event, using previous touch location")
+		pp.log.Error("no touches for touch event, using previous touch location")
 		return *pp
 	}
 	touch := touches.Index(0)

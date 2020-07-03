@@ -11,10 +11,15 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 )
 
+type (
+	// Log manages messages for the log div.
+	Log struct{}
+)
+
 // InitDom regesters log dom functions.
-func InitDom(ctx context.Context, wg *sync.WaitGroup) {
+func (l *Log) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	clearJsFunc := dom.NewJsFunc(Clear)
+	clearJsFunc := dom.NewJsFunc(l.Clear)
 	dom.RegisterFunc("log", "clear", clearJsFunc)
 	go func() {
 		<-ctx.Done()
@@ -24,34 +29,34 @@ func InitDom(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 // Info logs an info-styled message.
-func Info(text string) {
-	log("info", text)
+func (l *Log) Info(text string) {
+	l.add("info", text)
 }
 
 // Warning logs an warning-styled message.
-func Warning(text string) {
-	log("warning", text)
+func (l *Log) Warning(text string) {
+	l.add("warning", text)
 }
 
 // Error logs an error-styled message.
-func Error(text string) {
-	log("error", text)
+func (l *Log) Error(text string) {
+	l.add("error", text)
 }
 
 // Chat logs an chat-styled message.
-func Chat(text string) {
-	log("chat", text)
+func (l *Log) Chat(text string) {
+	l.add("chat", text)
 }
 
 // Clear clears the log.
-func Clear() {
+func (l *Log) Clear() {
 	dom.SetCheckedQuery(".has-log", false)
 	logScrollElement := dom.QuerySelector(".log>.scroll")
 	logScrollElement.Set("innerHTML", "")
 }
 
-// log writes a log item with the specified class.
-func log(class, text string) {
+// add writes a log item with the specified class.
+func (l *Log) add(class, text string) {
 	dom.SetCheckedQuery(".has-log", true)
 	clone := dom.CloneElement(".log>template")
 	cloneChildren := clone.Get("children")

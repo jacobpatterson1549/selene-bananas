@@ -20,14 +20,23 @@ import (
 type (
 	// Socket can be used to easily push and pull messages from the server.
 	Socket struct {
+		log             *log.Log
 		webSocket       js.Value
-		Lobby           *lobby.Lobby
-		Game            *controller.Game
-		User            User
+		user            User
+		game            *controller.Game
+		lobby           *lobby.Lobby
 		onOpenJsFunc    js.Func
 		onCloseJsFunc   js.Func
 		onErrorJsFunc   js.Func
 		onMessageJsFunc js.Func
+	}
+
+	// Config contains the parameters to create a Socket.
+	Config struct {
+		Log   *log.Log
+		User  User
+		Game  *controller.Game
+		Lobby *lobby.Lobby
 	}
 
 	// User is the state of the current user.
@@ -40,6 +49,17 @@ type (
 		Logout()
 	}
 )
+
+// New creates a new socket.
+func (cfg Config) New() *Socket {
+	s := Socket{
+		log:   cfg.Log,
+		user:  cfg.User,
+		game:  cfg.Game,
+		lobby: cfg.Lobby,
+	}
+	return &s
+}
 
 // InitDom regesters socket dom functions.
 func (s *Socket) InitDom(ctx context.Context, wg *sync.WaitGroup) {
@@ -90,7 +110,7 @@ func (s *Socket) getWebSocketURL(f dom.Form) string {
 	default:
 		f.URL.Scheme = "wss"
 	}
-	jwt := s.User.JWT()
+	jwt := s.user.JWT()
 	f.Params.Add("access_token", jwt)
 	f.URL.RawQuery = f.Params.Encode()
 	return f.URL.String()
@@ -107,7 +127,7 @@ func (s *Socket) onOpen(errC chan<- error) func() {
 // onMessage is called when the websocket is closing.
 func (s *Socket) onClose(event js.Value) {
 	if reason := event.Get("reason"); !reason.IsUndefined() && len(reason.String()) != 0 {
-		log.Warning("left lobby: " + reason.String())
+		s.log.Warning("left lobby: " + reason.String())
 	}
 	s.closeWebSocket()
 }
@@ -126,7 +146,7 @@ func (s *Socket) closeWebSocket() {
 // onMessage is called when the websocket encounters an unexpected error.
 func (s *Socket) onError(errC chan<- error) func() {
 	return func() {
-		s.User.Logout()
+		s.user.Logout()
 		errC <- errors.New("lobby closed")
 	}
 }
@@ -138,40 +158,40 @@ func (s *Socket) onMessage(event js.Value) {
 	var m game.Message
 	err := json.Unmarshal([]byte(messageJSON), &m)
 	if err != nil {
-		log.Error("unmarshalling message: " + err.Error())
+		s.log.Error("unmarshalling message: " + err.Error())
 		return
 	}
 	switch m.Type {
 	case game.Leave:
 		s.handleGameLeave(m)
 	case game.Infos:
-		s.Lobby.SetGameInfos(m.GameInfos, s.User.Username())
+		s.lobby.SetGameInfos(m.GameInfos, s.user.Username())
 	case game.PlayerDelete:
 		s.handlePlayerDelete(m)
 	case game.Join, game.StatusChange, game.TilesChange:
 		s.handleInfo(m)
 	case game.SocketError:
-		log.Error(m.Info)
+		s.log.Error(m.Info)
 	case game.SocketWarning:
-		log.Warning(m.Info)
+		s.log.Warning(m.Info)
 	case game.SocketHTTPPing:
 		s.httpPing()
 	case game.Chat:
-		log.Chat(m.Info)
+		s.log.Chat(m.Info)
 	default:
-		log.Error("unknown message type received")
+		s.log.Error("unknown message type received")
 	}
 }
 
 // Send delivers a message to the server via it's websocket, panicing if the WebSocket is not open.
 func (s *Socket) Send(m game.Message) {
 	if !s.isOpen() {
-		log.Error("websocket not open")
+		s.log.Error("websocket not open")
 		return
 	}
 	messageJSON, err := json.Marshal(m)
 	if err != nil {
-		log.Error("marshalling socket message to send: " + err.Error())
+		s.log.Error("marshalling socket message to send: " + err.Error())
 		return
 	}
 	s.webSocket.Call("send", js.ValueOf(string(messageJSON)))
@@ -183,7 +203,7 @@ func (s *Socket) Close() {
 		s.closeWebSocket() // removes onClose
 		s.webSocket.Call("close")
 	}
-	s.Game.Leave()
+	s.game.Leave()
 }
 
 // isOpen determines if the socket is defined and has a readyState of OPEN.
@@ -194,9 +214,9 @@ func (s *Socket) isOpen() bool {
 
 // handleGameLeave leaves the game and logs any info text from the message.
 func (s *Socket) handleGameLeave(m game.Message) {
-	s.Game.Leave()
+	s.game.Leave()
 	if len(m.Info) > 0 {
-		log.Info(m.Info)
+		s.log.Info(m.Info)
 	}
 }
 
@@ -204,15 +224,15 @@ func (s *Socket) handleGameLeave(m game.Message) {
 func (s *Socket) handlePlayerDelete(m game.Message) {
 	s.Close()
 	if len(m.Info) > 0 {
-		log.Info(m.Info)
+		s.log.Info(m.Info)
 	}
 }
 
 // handleInfo contains the logic for handling messages with types Info and GameJoin.
 func (s *Socket) handleInfo(m game.Message) {
-	s.Game.UpdateInfo(m)
+	s.game.UpdateInfo(m)
 	if len(m.Info) > 0 {
-		log.Info(m.Info)
+		s.log.Info(m.Info)
 	}
 }
 

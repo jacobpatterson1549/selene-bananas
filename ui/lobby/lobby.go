@@ -18,8 +18,15 @@ import (
 type (
 	// Lobby handles viewing, joining, and creating games on the server.
 	Lobby struct {
-		Game   *controller.Game
+		log    *log.Log
+		game   *controller.Game
 		Socket Socket
+	}
+
+	// Config contains the parameters to create a Lobby.
+	Config struct {
+		Log  *log.Log
+		Game *controller.Game
 	}
 
 	// Socket is a structure that connects the server to the lobby.
@@ -28,6 +35,15 @@ type (
 		Close()
 	}
 )
+
+// New creates a lobby for games.
+func (cfg Config) New() *Lobby {
+	l := Lobby{
+		log:  cfg.Log,
+		game: cfg.Game,
+	}
+	return &l
+}
 
 // InitDom regesters lobby dom functions
 func (l *Lobby) InitDom(ctx context.Context, wg *sync.WaitGroup) {
@@ -50,7 +66,7 @@ func (l *Lobby) connect(event js.Value) {
 	go func() {
 		err := l.Socket.Connect(event)
 		if err != nil {
-			log.Error(err.Error())
+			l.log.Error(err.Error())
 		}
 	}()
 }
@@ -58,7 +74,7 @@ func (l *Lobby) connect(event js.Value) {
 // leave closes the socket and leaves the game.
 func (l *Lobby) leave() {
 	l.Socket.Close()
-	l.Game.Leave()
+	l.game.Leave()
 	tbodyElement := dom.QuerySelector(".game-infos>tbody")
 	tbodyElement.Set("innerHTML", "")
 }

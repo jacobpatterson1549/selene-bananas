@@ -24,10 +24,17 @@ type (
 	jwt string
 	// User is a http/login helper.
 	User struct {
+		log        *log.Log
 		httpClient *http.Client
 		escapeRE   regexp.Regexp
 		Socket     Socket
 	}
+
+	// Config contains the parameters to create a User.
+	Config struct {
+		Log *log.Log
+	}
+
 	// userInfo contains a user's username and points.
 	userInfo struct {
 		username string
@@ -41,9 +48,10 @@ type (
 )
 
 // New creates a http/login helper struct.
-func New(httpClient *http.Client) *User {
+func (cfg Config) New(httpClient *http.Client) *User {
 	escapeRE := regexp.MustCompile("([" + regexp.QuoteMeta(`\^$*+?.()|[]{}`) + "])")
 	u := User{
+		log:        cfg.Log,
 		httpClient: httpClient,
 		escapeRE:   *escapeRE,
 	}
@@ -73,7 +81,7 @@ func (u *User) login(token string) {
 	j := jwt(token)
 	ui, err := j.getUser()
 	if err != nil {
-		log.Error("getting user from jwt: " + err.Error())
+		u.log.Error("getting user from jwt: " + err.Error())
 		return
 	}
 	setUsernamesReadOnly(string(ui.username))
@@ -84,7 +92,7 @@ func (u *User) login(token string) {
 
 func (u *User) logoutButton(event js.Value) {
 	u.Logout()
-	log.Clear()
+	u.log.Clear()
 }
 
 // Logout logs out the user

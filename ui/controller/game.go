@@ -21,9 +21,17 @@ import (
 type (
 	// Game handles managing the state of the board and drawing it on the canvas.
 	Game struct {
+		log    *log.Log
 		board  *board.Board
 		canvas *canvas.Canvas
 		Socket Socket
+	}
+
+	// GameConfig contains the parameters to create a Game.
+	GameConfig struct {
+		Log    *log.Log
+		Board  *board.Board
+		Canvas *canvas.Canvas
 	}
 
 	// Socket sends messages to the server.
@@ -33,12 +41,13 @@ type (
 )
 
 // NewGame creates a new game controller with references to the board and canvas.
-func NewGame(board *board.Board, canvas *canvas.Canvas) Game {
+func (cfg GameConfig) NewGame() *Game {
 	g := Game{
-		board:  board,
-		canvas: canvas,
+		log:    cfg.Log,
+		board:  cfg.Board,
+		canvas: cfg.Canvas,
 	}
-	return g
+	return &g
 }
 
 // InitDom regesters game dom functions.
@@ -95,7 +104,7 @@ func (g *Game) join(event js.Value) {
 	idText := gameIDInput.Get("value").String()
 	id, err := strconv.Atoi(idText)
 	if err != nil {
-		log.Error("could not get Id of game: " + err.Error())
+		g.log.Error("could not get Id of game: " + err.Error())
 		return
 	}
 	m := game.Message{
@@ -147,7 +156,7 @@ func (g *Game) SnagTile() {
 func (g *Game) sendChat(event js.Value) {
 	f, err := dom.NewForm(event)
 	if err != nil {
-		log.Error(err.Error())
+		g.log.Error(err.Error())
 		return
 	}
 	message := f.Params.Get("chat")
@@ -177,7 +186,7 @@ func (g *Game) addUnusedTiles(m game.Message) {
 	for i, t := range m.Tiles {
 		tileStrings[i] = `"` + t.Ch.String() + `"`
 		if err := g.board.AddTile(t); err != nil {
-			log.Error("could not add unused tile(s): " + err.Error())
+			g.log.Error("could not add unused tile(s): " + err.Error())
 			return
 		}
 	}
@@ -187,7 +196,7 @@ func (g *Game) addUnusedTiles(m game.Message) {
 			message += "s"
 		}
 		message += ": " + strings.Join(tileStrings, ", ")
-		log.Info(message)
+		g.log.Info(message)
 	}
 	g.canvas.Redraw()
 }
@@ -275,7 +284,7 @@ func (g *Game) resizeTiles() {
 	tileLengthStr := dom.GetValue(`.tile-length input[name="tile-length"]`)
 	tileLength, err := strconv.Atoi(tileLengthStr)
 	if err != nil {
-		log.Error("retrieving tile size: " + err.Error())
+		g.log.Error("retrieving tile size: " + err.Error())
 		return
 	}
 	g.canvas.TileLength(tileLength)
@@ -296,7 +305,7 @@ func (g *Game) setTabActive(m game.Message) {
 		NumRows: g.canvas.NumRows(),
 	}
 	if err := cfg.Validate(); err != nil {
-		log.Error("cannot open game: " + err.Error())
+		g.log.Error("cannot open game: " + err.Error())
 		g.Leave()
 		return
 	}
