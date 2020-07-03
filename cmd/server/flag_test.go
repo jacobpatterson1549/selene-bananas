@@ -17,14 +17,6 @@ func TestNewMainFlags(t *testing.T) {
 		httpsPort bool // httpsPort is specified
 	}{
 		{
-			osArgs: []string{"name"},
-			want:   mainFlags{applicationName: "name"},
-		},
-		{
-			osArgs: []string{"name1", "-app-name=name2"},
-			want:   mainFlags{applicationName: "name2"},
-		},
-		{
 			osArgs: []string{"", "https-port=8001"},
 		},
 		{
@@ -62,7 +54,6 @@ func TestNewMainFlags(t *testing.T) {
 		{ // all command line
 			osArgs: []string{
 				"",
-				"-app-name=1",
 				"-https-port=2",
 				"-data-source=3",
 				"-words-file=4",
@@ -70,7 +61,6 @@ func TestNewMainFlags(t *testing.T) {
 				"-cache-sec=467",
 			},
 			want: mainFlags{
-				applicationName: "1",
 				httpsPort:       2,
 				databaseURL:     "3",
 				wordsFile:       "4",
@@ -82,7 +72,6 @@ func TestNewMainFlags(t *testing.T) {
 		},
 		{ // all environment variables
 			envVars: map[string]string{
-				"APPLICATION_NAME":    "1",
 				"HTTPS_PORT":          "2",
 				"DATABASE_URL":        "3",
 				"WORDS_FILE":          "4",
@@ -90,7 +79,6 @@ func TestNewMainFlags(t *testing.T) {
 				"CACHE_SECONDS":       "113",
 			},
 			want: mainFlags{
-				applicationName: "1",
 				httpsPort:       2,
 				databaseURL:     "3",
 				wordsFile:       "4",
@@ -123,15 +111,14 @@ func TestNewMainFlags(t *testing.T) {
 }
 
 func TestUsage(t *testing.T) {
-	programName := "mockProgramName"
 	osLookupEnvFunc := func(key string) (string, bool) {
 		return "", false
 	}
 	var m mainFlags
-	fs := m.newFlagSet(programName, osLookupEnvFunc)
+	fs := m.newFlagSet(osLookupEnvFunc)
 	var b bytes.Buffer
 	fs.SetOutput(&b)
-	fs.Init(programName, flag.ContinueOnError) // override ErrorHandling
+	fs.Init("", flag.ContinueOnError) // override ErrorHandling
 	err := fs.Parse([]string{"-h"})
 	if err != flag.ErrHelp {
 		t.Errorf("wanted ErrHelp, got %v", err)

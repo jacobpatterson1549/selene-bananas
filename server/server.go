@@ -37,8 +37,6 @@ type (
 
 	// Config contains fields which describe the server
 	Config struct {
-		// AppName is the display name of the application
-		AppName string
 		// HTTPPort is the TCP port for server http requests.  All traffic is redirected to the https port.
 		HTTPPort int
 		// HTTPSPORT is the TCP port for server https requests.
@@ -63,6 +61,34 @@ type (
 		TLSCertFile string
 		// The private HTTPS key file.
 		TLSKeyFile string
+		// ColorConfig contains the colors to use on the site.
+		ColorConfig ColorConfig
+	}
+
+	// ColorConfig represents the colors on the site.
+	ColorConfig struct {
+		// The color to paint text on the canvas.
+		CanvasPrimary string
+		// The color to paint text of tiles when they are bing dragged.
+		CanvasDrag string
+		// The color to paint tiles on the canvas.
+		CanvasTile string
+		// The color of log error messages.
+		LogError string
+		// The color of log warning messages.
+		LogWarning string
+		// The color of log chat messages between players.
+		LogChat string
+		// The color of the background of tabs.
+		TabBackground string
+		// The color of even-numbered columns in tables.
+		TableStripe string
+		// The color of a button.
+		Button string
+		// The color of a button when the mouse hovers over it.
+		ButtonHover string
+		// The color when a button is active (actually a tab).
+		ButtonActive string
 	}
 
 	// wrappedResponseWriter wraps response writing with another writer.
@@ -81,10 +107,12 @@ func (cfg Config) NewServer() (*Server, error) {
 		ApplicationName string
 		Description     string
 		Version         string
+		Colors          ColorConfig
 	}{
-		ApplicationName: cfg.AppName,
+		ApplicationName: "selene-bananas",
 		Description:     "a tile-based word-forming game",
 		Version:         cfg.Version,
+		Colors:          cfg.ColorConfig,
 	}
 	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
 	httpAddr := fmt.Sprintf(":%d", cfg.HTTPPort)
@@ -124,8 +152,6 @@ func (cfg Config) NewServer() (*Server, error) {
 
 func (cfg Config) validate() error {
 	switch {
-	case len(cfg.AppName) == 0:
-		return fmt.Errorf("application name required")
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")
 	case cfg.Tokenizer == nil:
@@ -211,10 +237,12 @@ func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) error {
 	var err error
 	switch r.URL.Path {
-	case "/":
-		s.handleFile(s.serveTemplate, false)(w, r)
+	case "/", "/manifest.json":
+		s.handleFile(s.serveTemplate(r.URL.Path), false)(w, r)
 	case "/wasm_exec.js", "/main.wasm":
 		s.handleFile(s.serveFile("."+r.URL.Path), true)(w, r)
+	case "/robots.txt", "/init.js", "/service-worker.js", "/favicon.ico", "/favicon-192.png", "/favicon-512.png":
+		s.handleFile(s.serveFile("resources"+r.URL.Path), false)(w, r)
 	case "/lobby":
 		err = s.handleLobby(w, r)
 	case "/ping":
@@ -226,7 +254,7 @@ func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) error {
 			s.challenge.handle(w, r)
 			return nil
 		}
-		s.handleFile(s.serveFile("resources"+r.URL.Path), false)(w, r)
+		httpError(w, http.StatusNotFound)
 	}
 	return err
 }
@@ -260,25 +288,42 @@ func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) error {
 	return err
 }
 
-func (s Server) serveTemplate(w http.ResponseWriter, r *http.Request) {
-	t := template.New("main.html")
-	templateFileGlobs := []string{
-		"resources/html/**/*.html",
-		"resources/fa/*.svg",
-		"resources/main.css",
-		"resources/init.js",
-	}
-	for _, g := range templateFileGlobs {
-		_, err := t.ParseGlob(g)
-		if err != nil {
-			s.log.Printf("globbing template files: %v", err)
+func (s Server) serveTemplate(name string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if name == "/" {
+			name = "/main.html"
+		}
+		t := template.New(name[1:])
+		switch name {
+		case "/main.html":
+			templateFileGlobs := []string{
+				"resources/html/**/*.html",
+				"resources/fa/*.svg",
+				"resources/main.css",
+				"resources/init.js",
+			}
+			for _, g := range templateFileGlobs {
+				if _, err := t.ParseGlob(g); err != nil {
+					s.log.Printf("globbing template files: %v", err)
+					httpError(w, http.StatusInternalServerError)
+					return
+				}
+			}
+		case "/manifest.json":
+			if _, err := t.ParseFiles("resources" + name); err != nil {
+				s.log.Printf("parsing manifest template: %v", err)
+				httpError(w, http.StatusInternalServerError)
+				return
+			}
+		default:
+			s.log.Printf("unknown template: %v", name)
 			httpError(w, http.StatusInternalServerError)
 			return
 		}
-	}
-	if err := t.Execute(w, s.data); err != nil {
-		s.log.Printf("rendering template: %v", err)
-		httpError(w, http.StatusInternalServerError)
+		if err := t.Execute(w, s.data); err != nil {
+			s.log.Printf("rendering template: %v", err)
+			httpError(w, http.StatusInternalServerError)
+		}
 	}
 }
 

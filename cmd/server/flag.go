@@ -8,7 +8,6 @@ import (
 )
 
 const (
-	environmentVariableApplicationName = "APPLICATION_NAME"
 	environmentVariableHTTPPort        = "HTTP_PORT"
 	environmentVariableHTTPSPort       = "HTTPS_PORT"
 	environmentVariableDatabaseURL     = "DATABASE_URL"
@@ -23,7 +22,6 @@ const (
 )
 
 type mainFlags struct {
-	applicationName string
 	httpPort        int
 	httpsPort       int
 	databaseURL     string
@@ -43,7 +41,6 @@ const (
 
 func usage(fs *flag.FlagSet) {
 	envVars := []string{
-		environmentVariableApplicationName,
 		environmentVariableHTTPPort,
 		environmentVariableHTTPSPort,
 		environmentVariableDatabaseURL,
@@ -63,8 +60,8 @@ func usage(fs *flag.FlagSet) {
 }
 
 // newFlagSet creates a flagSet that populates the specified mainFlags.
-func (m *mainFlags) newFlagSet(programName string, osLookupEnvFunc func(string) (string, bool)) *flag.FlagSet {
-	fs := flag.NewFlagSet(programName, flag.ExitOnError)
+func (m *mainFlags) newFlagSet(osLookupEnvFunc func(string) (string, bool)) *flag.FlagSet {
+	fs := flag.NewFlagSet("main", flag.ExitOnError)
 	fs.Usage = func() { usage(fs) }
 
 	envOrDefault := func(key, defaultValue string) string {
@@ -84,7 +81,6 @@ func (m *mainFlags) newFlagSet(programName string, osLookupEnvFunc func(string) 
 		_, ok := osLookupEnvFunc(key)
 		return ok
 	}
-	fs.StringVar(&m.applicationName, "app-name", envOrDefault(environmentVariableApplicationName, programName), "The name of the application.")
 	fs.StringVar(&m.databaseURL, "data-source", envOrDefault(environmentVariableDatabaseURL, ""), "The data source to the PostgreSQL database (connection URI).")
 	fs.IntVar(&m.httpPort, "http-port", envOrDefaultInt(environmentVariableHTTPPort, 80), "The TCP port for server http requests.  All traffic is redirected to the https port.")
 	fs.IntVar(&m.httpsPort, "https-port", envOrDefaultInt(environmentVariableHTTPSPort, 443), "The TCP port for server https requests.")
@@ -106,9 +102,9 @@ func newMainFlags(osArgs []string, osLookupEnvFunc func(string) (string, bool)) 
 	if len(osArgs) == 0 {
 		osArgs = []string{""}
 	}
-	programName, programArgs := osArgs[0], osArgs[1:]
+	programArgs := osArgs[1:]
 	var m mainFlags
-	fs := m.newFlagSet(programName, osLookupEnvFunc)
+	fs := m.newFlagSet(osLookupEnvFunc)
 	fs.Parse(programArgs)
 	return m
 }
