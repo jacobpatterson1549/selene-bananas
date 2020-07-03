@@ -276,12 +276,12 @@ func (g *Game) resetTiles() {
 }
 
 func (g *Game) refreshTileLength() {
-	tileLengthStr := dom.GetValue(`.tile-length input[name="tile-length"]`)
-	dom.SetValue(`.tile-length input[name="tile-length-display"]`, tileLengthStr)
+	tileLengthStr := dom.GetValue(".tile-length-slider")
+	dom.SetValue(".tile-length-display", tileLengthStr)
 }
 
 func (g *Game) resizeTiles() {
-	tileLengthStr := dom.GetValue(`.tile-length input[name="tile-length"]`)
+	tileLengthStr := dom.GetValue(".tile-length-slider")
 	tileLength, err := strconv.Atoi(tileLengthStr)
 	if err != nil {
 		g.log.Error("retrieving tile size: " + err.Error())
