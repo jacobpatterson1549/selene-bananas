@@ -30,14 +30,15 @@ func main() {
 
 	done := make(chan os.Signal, 2)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		err := server.Run(ctx)
+	errC := server.Run(ctx)
+	select {
+	case err := <-errC:
 		if err != http.ErrServerClosed {
 			log.Printf("server stopped unexpectedly: %v", err)
 		}
-		done <- syscall.SIGTERM
-	}()
-	<-done
+	case <-done:
+		// NOOP
+	}
 	if err := server.Stop(ctx); err != nil {
 		log.Fatalf("stopping server: %v", err)
 	}

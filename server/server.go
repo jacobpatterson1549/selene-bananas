@@ -166,8 +166,9 @@ func (cfg Config) validate() error {
 	return nil
 }
 
-// Run the server until it receives a shutdown signal.
-func (s Server) Run(ctx context.Context) error {
+// Run the server asynchronously until it receives a shutdown signal.
+// When the HTTP/HTTPS servers stop, errors are logged to the error channel.
+func (s Server) Run(ctx context.Context) <-chan error {
 	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
 	s.httpsServer.RegisterOnShutdown(lobbyCancelFunc)
 	go s.lobby.Run(lobbyCtx)
@@ -179,7 +180,7 @@ func (s Server) Run(ctx context.Context) error {
 		errC <- s.httpServer.ListenAndServe()
 	}()
 	s.log.Println("server started, running at https://127.0.0.1" + s.httpsServer.Addr)
-	return <-errC
+	return errC
 }
 
 // Stop asks the server to shutdown and waits for the shutdown to complete.
