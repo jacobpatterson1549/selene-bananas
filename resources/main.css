@@ -31,8 +31,8 @@ noscript>img {
     filter: invert(1);
 }
 noscript,
-.log>.scroll>.error { color: {{ .Colors.LogError }}; }
-.log>.scroll>.chat { color: {{ .Colors.LogChat }}; }
+.log>.scroll>.error   { color: {{ .Colors.LogError }}; }
+.log>.scroll>.chat    { color: {{ .Colors.LogChat }}; }
 .log>.scroll>.warning { color: {{ .Colors.LogWarning }}; }
 
 .tabs {
@@ -81,6 +81,9 @@ table tbody td:nth-last-of-type(even) {
 .tab>.content>.game>.canvas>.move-state.rect:checked~canvas { cursor: crosshair; }
 .tab>.content>.game>.canvas>.move-state.drag:checked~canvas { cursor: grabbing;  }
 .tab>.content>.game>.canvas>.move-state.grab:checked~canvas { cursor: pointer;   }
+.tab>.content>.game>.canvas>canvas>.mainColor { color: {{ .Colors.CanvasPrimary }}; }
+.tab>.content>.game>.canvas>canvas>.dragColor { color: {{ .Colors.CanvasDrag }}; }
+.tab>.content>.game>.canvas>canvas>.tileColor { color: {{ .Colors.CanvasTile }}; }
 .tab>.content>.game>.canvas {
     border: 1px dotted;
 }

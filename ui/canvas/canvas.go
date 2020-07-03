@@ -107,6 +107,14 @@ const (
 // New Creates a canvas from the config.
 func (cfg Config) New(board *board.Board, parentDiv, element *js.Value) *Canvas {
 	contextElement := element.Call("getContext", "2d")
+	divColor := func(query string) string {
+		div := element.Call("querySelector", query)
+		color := dom.GetColor(div)
+		return color
+	}
+	mainColor := divColor(".mainColor")
+	dragColor := divColor(".dragColor")
+	tileColor := divColor(".tileColor")
 	ctx := jsContext{&contextElement}
 	c := &Canvas{
 		ctx:   &ctx,
@@ -119,9 +127,9 @@ func (cfg Config) New(board *board.Board, parentDiv, element *js.Value) *Canvas 
 		draw: drawMetrics{
 			tileLength: cfg.TileLength,
 		},
-		mainColor: "#000000",
-		dragColor: "#0000ff",
-		tileColor: "#f0d0b5",
+		mainColor: mainColor,
+		dragColor: dragColor,
+		tileColor: tileColor,
 	}
 	return c
 }
