@@ -290,11 +290,11 @@ func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s Server) serveTemplate(name string) http.HandlerFunc {
+	if name == "/" {
+		name = "/main.html"
+	}
+	t := template.New(name[1:])
 	return func(w http.ResponseWriter, r *http.Request) {
-		if name == "/" {
-			name = "/main.html"
-		}
-		t := template.New(name[1:])
 		switch name {
 		case "/main.html":
 			templateFileGlobs := []string{
