@@ -19,7 +19,7 @@
             </div>
         </fieldset>
     </form>
-    <form onsubmit="game.sendChat(event)" class="chat">
+    <form class="chat" onsubmit="game.sendChat(event)">
         <fieldset>
             <input type="checkbox" id="hide-chat" hidden checked>
             <legend><label class="button" for="hide-chat" title="Send messages to the logs of other players in the game.">Chat</label></legend>
@@ -39,8 +39,8 @@
             <div>
                 <label>
                     <div>Pixels</div>
-                    <input type="number" value="20" name="tile-length-display" readonly="readonly">
-                    <input type="range" value="20" min="10" max="100" name="tile-length" onchange="game.resizeTiles()" oninput="game.refreshTileLength(event)">
+                    <input type="number" value="20" class="tile-length-display" readonly="readonly">
+                    <input type="range" value="20" min="10" max="100" class="tile-length-slider" onchange="game.resizeTiles()" oninput="game.refreshTileLength(event)">
                 </label>
             </div>
         </fieldset>

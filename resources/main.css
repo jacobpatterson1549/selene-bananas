@@ -72,7 +72,7 @@ table thead th:nth-last-of-type(even),
 table tbody td:nth-last-of-type(even) {
     background: {{ .Colors.TableStripe }};
 }
-.tile-length input[type="number"] {
+.tile-length-display {
     width: 3em;
 }
 
