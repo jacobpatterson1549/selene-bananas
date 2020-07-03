@@ -33,11 +33,14 @@ func main() {
 	errC := server.Run(ctx)
 	select {
 	case err := <-errC:
-		if err != http.ErrServerClosed {
+		switch {
+		case err == http.ErrServerClosed:
+			log.Printf("server shutdown triggered")
+		default:
 			log.Printf("server stopped unexpectedly: %v", err)
 		}
-	case <-done:
-		// NOOP
+	case signal := <-done:
+		log.Printf("handled %v", signal)
 	}
 	if err := server.Stop(ctx); err != nil {
 		log.Fatalf("stopping server: %v", err)
