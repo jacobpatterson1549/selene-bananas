@@ -4,30 +4,47 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/jacobpatterson1549/selene-bananas/server"
 )
 
 func main() {
 	m := newMainFlags(os.Args, os.LookupEnv)
+	log := newLog()
+	ctx := context.Background()
+	server, err := createServer(ctx, m, log)
+	if err != nil {
+		log.Fatal(err)
+	}
+	runServer(ctx, *server, log)
+}
 
+func newLog() *log.Logger {
 	var buf bytes.Buffer
 	log := log.New(&buf, "", log.LstdFlags)
 	log.SetOutput(os.Stdout)
+	return log
+}
 
-	ctx := context.Background()
+func createServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Server, error) {
 	cfg, err := serverConfig(ctx, m, log)
 	if err != nil {
-		log.Fatalf("configuring server: %v", err)
+		return nil, fmt.Errorf("configuring server: %v", err)
 	}
 	server, err := cfg.NewServer()
 	if err != nil {
-		log.Fatalf("creating server: %v", err)
+		return nil, fmt.Errorf("creating server: %v", err)
 	}
+	return server, nil
+}
 
+func runServer(ctx context.Context, server server.Server, log *log.Logger) {
 	done := make(chan os.Signal, 2)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 	errC := server.Run(ctx)
@@ -43,6 +60,6 @@ func main() {
 		log.Printf("handled %v", signal)
 	}
 	if err := server.Stop(ctx); err != nil {
-		log.Fatalf("stopping server: %v", err)
+		log.Printf("stopping server: %v", err)
 	}
 }
