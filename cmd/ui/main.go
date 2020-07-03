@@ -28,54 +28,83 @@ func main() {
 
 func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	ctx, cancelFunc := context.WithCancel(ctx)
-	// log
+	initLog(ctx, wg)
+	user := initUser(ctx, wg)
+	board := new(board.Board)
+	canvas := initCanvas(ctx, wg, board)
+	game := initGame(ctx, wg, board, canvas)
+	lobby := initLobby(ctx, wg, game)
+	_ = initSocket(ctx, wg, user, canvas, game, lobby)
+	initBeforeUnloadFn(cancelFunc)
+	enableInteraction()
+}
+
+func initLog(ctx context.Context, wg *sync.WaitGroup) {
 	log.InitDom(ctx, wg)
-	// user
+}
+
+func initUser(ctx context.Context, wg *sync.WaitGroup) *user.User {
 	httpClient := http.Client{
 		Timeout: 5 * time.Second,
 	}
-	u := user.New(&httpClient)
-	u.InitDom(ctx, wg)
-	// canvas
+	user := user.New(&httpClient)
+	user.InitDom(ctx, wg)
+	return user
+}
+
+func initCanvas(ctx context.Context, wg *sync.WaitGroup, board *board.Board) *canvas.Canvas {
 	canvasDiv := dom.QuerySelector(".game>.canvas")
 	canvasElement := dom.QuerySelector(".game>.canvas>canvas")
-	var board board.Board
 	canvasCfg := canvas.Config{
 		TileLength: 20,
 	}
-	canvas := canvasCfg.New(&board, &canvasDiv, &canvasElement)
+	canvas := canvasCfg.New(board, &canvasDiv, &canvasElement)
 	canvas.InitDom(ctx, wg)
-	// game
-	g := controller.NewGame(&board, canvas)
-	g.InitDom(ctx, wg)
-	// lobby
-	l := lobby.Lobby{
-		Game: &g,
+	return canvas
+}
+
+func initGame(ctx context.Context, wg *sync.WaitGroup, board *board.Board, canvas *canvas.Canvas) *controller.Game {
+	game := controller.NewGame(board, canvas)
+	game.InitDom(ctx, wg)
+	return &game
+}
+
+func initLobby(ctx context.Context, wg *sync.WaitGroup, game *controller.Game) *lobby.Lobby {
+	lobby := lobby.Lobby{
+		Game: game,
 	}
-	l.InitDom(ctx, wg)
-	// websocket
-	s := socket.Socket{
-		Lobby: &l,
-		Game:  &g,
-		User:  &u,
+	lobby.InitDom(ctx, wg)
+	return &lobby
+}
+
+func initSocket(ctx context.Context, wg *sync.WaitGroup, user *user.User, canvas *canvas.Canvas, game *controller.Game, lobby *lobby.Lobby) *socket.Socket {
+	socket := socket.Socket{
+		User:  user,
+		Game:  game,
+		Lobby: lobby,
 	}
-	u.Socket = &s
-	canvas.Socket = &s
-	g.Socket = &s // [circular reference]
-	l.Socket = &s // [circular reference]
-	s.InitDom(ctx, wg)
-	// close handling
+	user.Socket = &socket
+	canvas.Socket = &socket
+	game.Socket = &socket  // [circular reference]
+	lobby.Socket = &socket // [circular reference]
+	socket.InitDom(ctx, wg)
+	return &socket
+}
+
+func initBeforeUnloadFn(cancelFunc context.CancelFunc) {
 	var fn js.Func
 	fn = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		// args[0].Call("preventDefault") // debug in other browsers
-		// args[0].Set("returnValue", "") // debug in chrome
+		// args[0].Set("returnValue", "") // debug in chromium
 		cancelFunc()
 		fn.Release()
 		return nil
 	})
 	global := js.Global()
 	global.Call("addEventListener", "beforeunload", fn)
-	// allow interaction
+}
+
+func enableInteraction() {
 	document := dom.QuerySelector("body")
 	disabledSubmitButtons := dom.QuerySelectorAll(document, `input[type="submit"]:disabled`)
 	for _, disabledSubmitButton := range disabledSubmitButtons {
