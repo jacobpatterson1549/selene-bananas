@@ -12,81 +12,66 @@ func TestNewMainFlags(t *testing.T) {
 		osArgs  []string
 		envVars map[string]string
 		want    mainFlags
-		cache   bool // cache is specified
-		httpPort bool // httpPort is specified
-		httpsPort bool // httpsPort is specified
 	}{
-		{
-			osArgs: []string{"", "https-port=8001"},
-		},
-		{
-			osArgs: []string{"", "-https-port=8001"},
-			want:   mainFlags{httpsPort: 8001},
-			httpsPort: true,
-		},
-		{
-			osArgs: []string{"", "--https-port=8001"},
-			want:   mainFlags{httpsPort: 8001},
-			httpsPort: true,
-		},
-		{
-			envVars: map[string]string{"HTTPS_PORT": "8002"},
-			want:    mainFlags{httpsPort: 8002},
-			httpsPort: true,
-		},
-		{
-			osArgs:  []string{"", "-https-port=8003"},
-			envVars: map[string]string{"HTTPS_PORT": "8004"},
-			want:    mainFlags{httpsPort: 8003},
-			httpsPort: true,
-		},
-		{
-			osArgs: []string{"", "-debug-game"},
-			want:   mainFlags{debugGame: true},
-		},
-		{
-			envVars: map[string]string{"DEBUG_GAME_MESSAGES": ""},
-			want:    mainFlags{debugGame: true},
-		},
-		{
-			// 	osArgs: []string{"", "-h"}, // should print usage to console
+		{ // defaults
+			want: mainFlags{
+				httpPort:  80,
+				httpsPort: 443,
+				cacheSec:  defaultCacheSec,
+			},
 		},
 		{ // all command line
 			osArgs: []string{
-				"",
+				"ignored-binary-name",
+				"-http-port=1",
 				"-https-port=2",
 				"-data-source=3",
 				"-words-file=4",
 				"-debug-game",
-				"-cache-sec=467",
+				"-cache-sec=6",
+				"-acme-challenge-token=7",
+				"-acme-challenge-key=8",
+				"-tls-cert=9",
+				"-tls-key=a",
 			},
 			want: mainFlags{
-				httpsPort:       2,
-				databaseURL:     "3",
-				wordsFile:       "4",
-				debugGame:       true,
-				cacheSec:        467,
+				httpPort:       1,
+				httpsPort:      2,
+				databaseURL:    "3",
+				wordsFile:      "4",
+				debugGame:      true,
+				cacheSec:       6,
+				challengeToken: "7",
+				challengeKey:   "8",
+				tlsCertFile:    "9",
+				tlsKeyFile:     "a",
 			},
-			cache: true,
-			httpsPort: true,
 		},
 		{ // all environment variables
 			envVars: map[string]string{
-				"HTTPS_PORT":          "2",
-				"DATABASE_URL":        "3",
-				"WORDS_FILE":          "4",
-				"DEBUG_GAME_MESSAGES": "",
-				"CACHE_SECONDS":       "113",
+				"HTTP_PORT":            "1",
+				"HTTPS_PORT":           "2",
+				"DATABASE_URL":         "3",
+				"WORDS_FILE":           "4",
+				"DEBUG_GAME_MESSAGES":  "",
+				"CACHE_SECONDS":        "6",
+				"ACME_CHALLENGE_TOKEN": "7",
+				"ACME_CHALLENGE_KEY":   "8",
+				"TLS_CERT_FILE":        "9",
+				"TLS_KEY_FILE":         "a",
 			},
 			want: mainFlags{
-				httpsPort:       2,
-				databaseURL:     "3",
-				wordsFile:       "4",
-				debugGame:       true,
-				cacheSec:        113,
+				httpPort:       1,
+				httpsPort:      2,
+				databaseURL:    "3",
+				wordsFile:      "4",
+				debugGame:      true,
+				cacheSec:       6,
+				challengeToken: "7",
+				challengeKey:   "8",
+				tlsCertFile:    "9",
+				tlsKeyFile:     "a",
 			},
-			cache: true,
-			httpsPort: true,
 		},
 	}
 	for i, test := range newMainFlagsTests {
@@ -95,15 +80,6 @@ func TestNewMainFlags(t *testing.T) {
 			return v, ok
 		}
 		got := newMainFlags(test.osArgs, osLookupEnvFunc)
-		if !test.httpPort {
-			test.want.httpPort = 80
-		}
-		if !test.httpsPort {
-			test.want.httpsPort = 443
-		}
-		if !test.cache {
-			test.want.cacheSec = defaultCacheSec
-		}
 		if test.want != got {
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
 		}
