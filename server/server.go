@@ -104,15 +104,17 @@ func (cfg Config) NewServer() (*Server, error) {
 		return nil, err
 	}
 	data := struct {
-		ApplicationName string
-		Description     string
-		Version         string
-		Colors          ColorConfig
+		Name        string
+		ShortName   string
+		Description string
+		Version     string
+		Colors      ColorConfig
 	}{
-		ApplicationName: "selene-bananas",
-		Description:     "a tile-based word-forming game",
-		Version:         cfg.Version,
-		Colors:          cfg.ColorConfig,
+		Name:        "selene-bananas",
+		ShortName:   "bananas",
+		Description: "a tile-based word-forming game",
+		Version:     cfg.Version,
+		Colors:      cfg.ColorConfig,
 	}
 	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
 	httpAddr := fmt.Sprintf(":%d", cfg.HTTPPort)
