@@ -12,3 +12,4 @@ __debug_bin
 
 # SonarQube static analysis
 /.scannerwork
+/.coverage*.out
