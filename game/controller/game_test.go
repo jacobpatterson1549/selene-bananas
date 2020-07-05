@@ -24,14 +24,13 @@ func TestInitializeUnusedTilesAllLetters(t *testing.T) {
 		tileLetters: defaultTileLetters,
 	}
 	g.initializeUnusedTiles()
-	var e struct{}
 	m := make(map[rune]struct{}, 26)
 	for _, v := range g.unusedTiles {
 		ch := rune(v.Ch)
 		if ch < 'A' || ch > 'Z' {
 			t.Errorf("invalid tile: %v", v)
 		}
-		m[ch] = e
+		m[ch] = struct{}{}
 	}
 	want := 26
 	got := len(m)
@@ -72,13 +71,12 @@ func TestInitializeUnusedTilesShuffled(t *testing.T) {
 func TestInitializeUnusedTilesUniqueIds(t *testing.T) {
 	g := Game{}
 	g.initializeUnusedTiles()
-	var e struct{}
 	tileIDs := make(map[tile.ID]struct{}, len(g.unusedTiles))
 	for _, tile := range g.unusedTiles {
 		if _, ok := tileIDs[tile.ID]; ok {
 			t.Errorf("tile id %v repeated", tile.ID)
 		}
-		tileIDs[tile.ID] = e
+		tileIDs[tile.ID] = struct{}{}
 	}
 }
 

@@ -23,10 +23,9 @@ func NewWordChecker(r io.Reader) (*WordChecker, error) {
 	words := make(map[string]struct{})
 	scanner := bufio.NewScanner(r)
 	scanner.Split(scanLowerWords)
-	var e struct{}
 	for scanner.Scan() {
 		rawWord := scanner.Text()
-		words[rawWord] = e
+		words[rawWord] = struct{}{}
 	}
 	wc := WordChecker{
 		words: words,
