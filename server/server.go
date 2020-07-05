@@ -227,7 +227,6 @@ func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 		err = s.handleHTTPSGet(w, r)
 	case "POST":
 		err = s.handleHTTPSPost(w, r)
-	case "PUT":
 	default:
 		httpError(w, http.StatusMethodNotAllowed)
 	}
@@ -253,11 +252,12 @@ func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) error {
 	case "/monitor":
 		err = s.handleMonitor(w, r)
 	default:
-		if s.challenge.isFor(r.URL.Path) {
-			s.challenge.handle(w, r)
-			return nil
+		switch {
+		case s.challenge.isFor(r.URL.Path):
+			err = s.challenge.handle(w, r)
+		default:
+			httpError(w, http.StatusNotFound)
 		}
-		httpError(w, http.StatusNotFound)
 	}
 	return err
 }
@@ -366,10 +366,6 @@ func (s Server) handleFile(fn http.HandlerFunc, checkVersion bool) http.HandlerF
 }
 
 func (s Server) handleLobby(w http.ResponseWriter, r *http.Request) error {
-	err := r.ParseForm()
-	if err != nil {
-		return fmt.Errorf("parsing form: %w", err)
-	}
 	tokenString := r.FormValue("access_token")
 	tokenUsername, err := s.tokenizer.ReadUsername(tokenString)
 	if err != nil {
@@ -381,8 +377,7 @@ func (s Server) handleLobby(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s Server) handleHTTPPing(w http.ResponseWriter, r *http.Request) error {
-	_, err := s.readTokenUsername(r)
-	if err != nil {
+	if _, err := s.readTokenUsername(r); err != nil {
 		s.log.Print(err)
 		httpError(w, http.StatusForbidden)
 	}
@@ -398,8 +393,7 @@ func (s Server) addAuthorization(w http.ResponseWriter, u db.User) error {
 	if err != nil {
 		return err
 	}
-	_, err = w.Write([]byte(token))
-	if err != nil {
+	if _, err = w.Write([]byte(token)); err != nil {
 		return fmt.Errorf("writing authorization token: %w", err)
 	}
 	return nil
@@ -414,10 +408,6 @@ func (s Server) readTokenUsername(r *http.Request) (string, error) {
 	tokenUsername, err := s.tokenizer.ReadUsername(tokenString)
 	if err != nil {
 		return "", err
-	}
-	err = r.ParseForm()
-	if err != nil {
-		return "", fmt.Errorf("parsing form: %w", err)
 	}
 	formUsername := r.FormValue("username")
 	if string(tokenUsername) != formUsername {
