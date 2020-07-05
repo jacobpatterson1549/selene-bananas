@@ -38,8 +38,7 @@ func TestWords(t *testing.T) {
 		switch {
 		case err != nil:
 			t.Errorf("unexpected error: %v", err)
-		case (want == nil && len(wc.words) != 0) ||
-			(want != nil && !reflect.DeepEqual(want, wc.words)):
+		case !reflect.DeepEqual(want, wc.words):
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, want, wc.words)
 		}
 	}

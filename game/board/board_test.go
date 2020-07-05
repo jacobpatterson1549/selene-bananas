@@ -30,6 +30,25 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestNewInvalidBoards(t *testing.T) {
+	invalidBoardConfigs := []Config{
+		{},
+		{
+			NumRows: -1,
+		},
+		{
+			NumRows: 125,
+			NumCols: 8,
+		},
+	}
+	for i, cfg := range invalidBoardConfigs {
+		_, err := cfg.New(nil)
+		if err == nil {
+			t.Errorf("Test %v: expected error", i)
+		}
+	}
+}
+
 func TestAddTile(t *testing.T) {
 	b := Board{
 		UnusedTiles:   make(map[tile.ID]tile.Tile),
