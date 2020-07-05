@@ -18,19 +18,20 @@ const (
 	acmeHeader = "/.well-known/acme-challenge/"
 )
 
-// isFor determines if a path is a request for the acme Header
-func (c Challenge) isFor(path string) bool {
-	return len(c.Token) > 0 &&
-		len(path) == len(acmeHeader)+len(c.Token) &&
-		path[:len(acmeHeader)] == acmeHeader &&
-		path[len(acmeHeader):] == c.Token
+// isFor determines if a path is a request for an acme Challenge.  The challenge token must not be empty.
+func (Challenge) isFor(path string) bool {
+	return len(path) > len(acmeHeader) && path[:len(acmeHeader)] == acmeHeader
 }
 
 // handle writes the challenge to the response.
 // The concatenation of the token, a peroid, and the key.
 // The url of the request is not validated.
 func (c Challenge) handle(w http.ResponseWriter, r *http.Request) error {
-	if _, err := w.Write([]byte(c.Token + "." + c.Key)); err != nil {
+	if !c.isFor(r.URL.Path) || r.URL.Path[len(acmeHeader):] != c.Token {
+		return fmt.Errorf("path '%v' is not for challenge", r.URL.Path)
+	}
+	data := c.Token + "." + c.Key
+	if _, err := w.Write([]byte(data)); err != nil {
 		return fmt.Errorf("writing acme token: %w", err)
 	}
 	return nil

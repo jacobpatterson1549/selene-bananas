@@ -8,39 +8,29 @@ import (
 
 func TestIsForHTTP01Challenge(t *testing.T) {
 	isForTests := []struct {
-		token string
-		path  string
-		want  bool
+		path string
+		want bool
 	}{
 		{},
 		{
-			token: "abc",
-			path:  "abc",
+			path: acmeHeader,
 		},
 		{
-			token: "abc",
-			path:  "/.well-known/acme-challenge/abc",
-			want:  true,
+			path: "abc",
 		},
 		{
-			token: "abc",
-			path:  "/.NOTT-known/acme-challenge/abc",
+			path: acmeHeader + "abc",
+			want: true,
 		},
 		{
-			token: "AbC",
-			path:  "/.well-known/acme-challenge/abc",
-		},
-		{
-			path: "/.well-known/acme-challenge/",
+			path: "/.NOTT-known/acme-challenge/abc",
 		},
 	}
 	for i, test := range isForTests {
-		c := Challenge{
-			Token: test.token,
-		}
+		var c Challenge
 		got := c.isFor(test.path)
 		if test.want != got {
-			t.Errorf("test %v: wanted %v when token = %v, path = %v", i, test.want, test.token, test.path)
+			t.Errorf("test %v: wanted %v when path = %v", i, test.want, test.path)
 		}
 	}
 }
@@ -50,7 +40,7 @@ func TestHandleChallenge(t *testing.T) {
 		Token: "abc",
 		Key:   "s3cr3t",
 	}
-	r := httptest.NewRequest("", "/any-url", nil)
+	r := httptest.NewRequest("", acmeHeader+"abc", nil)
 	w := httptest.NewRecorder()
 
 	c.handle(w, r)
@@ -61,5 +51,25 @@ func TestHandleChallenge(t *testing.T) {
 	got := string(b)
 	if want != got {
 		t.Errorf("different body:\nwanted: %v\ngot:    %v", want, got)
+	}
+}
+
+func TestHandleBadChallengeToken(t *testing.T) {
+	c := Challenge{
+		Token: "abc",
+		Key:   "s3cr3t",
+	}
+	invalidPaths := []string{
+		"/",
+		"/acme-challenge/abc",
+		acmeHeader + "othertoken",
+	}
+	for i, path := range invalidPaths {
+		r := httptest.NewRequest("", path, nil)
+		w := httptest.NewRecorder()
+
+		if err := c.handle(w, r); err == nil {
+			t.Errorf("Test %v: expected error when handling url with incorrect challenge token", i)
+		}
 	}
 }
