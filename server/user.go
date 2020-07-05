@@ -8,15 +8,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game"
 )
 
-type (
-	userChangeFn func(r *http.Request) error
-)
-
 func (s Server) handleUserCreate(w http.ResponseWriter, r *http.Request) error {
-	err := r.ParseForm()
-	if err != nil {
-		return fmt.Errorf("parsing form: %w", err)
-	}
 	username := r.FormValue("username")
 	password := r.FormValue("password_confirm")
 	u, err := db.NewUser(username, password)
@@ -24,18 +16,13 @@ func (s Server) handleUserCreate(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	ctx := r.Context()
-	err = s.userDao.Create(ctx, *u)
-	if err != nil {
+	if err = s.userDao.Create(ctx, *u); err != nil {
 		return err
 	}
 	return nil
 }
 
 func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
-	err := r.ParseForm()
-	if err != nil {
-		return fmt.Errorf("parsing form: %w", err)
-	}
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	u, err := db.NewUser(username, password)
@@ -54,8 +41,7 @@ func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 
 func (s Server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, username string) error {
 	playerName := game.PlayerName(username)
-	err := s.lobby.AddUser(playerName, w, r)
-	if err != nil {
+	if err := s.lobby.AddUser(playerName, w, r); err != nil {
 		return fmt.Errorf("websocket error: %w", err)
 	}
 	return nil
@@ -69,8 +55,7 @@ func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request,
 		return err
 	}
 	ctx := r.Context()
-	err = s.userDao.UpdatePassword(ctx, *u, newPassword)
-	if err != nil {
+	if err := s.userDao.UpdatePassword(ctx, *u, newPassword); err != nil {
 		return err
 	}
 	playerName := game.PlayerName(username)
@@ -85,11 +70,10 @@ func (s Server) handleUserDelete(w http.ResponseWriter, r *http.Request, usernam
 		return err
 	}
 	ctx := r.Context()
-	err = s.userDao.Delete(ctx, *u)
-	if err != nil {
+	if err = s.userDao.Delete(ctx, *u); err != nil {
 		return err
 	}
 	playerName := game.PlayerName(username)
 	s.lobby.RemoveUser(playerName)
-	return err
+	return nil
 }

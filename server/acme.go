@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -17,6 +18,7 @@ const (
 	acmeHeader = "/.well-known/acme-challenge/"
 )
 
+// isFor determines if a path is a request for the acme Header
 func (c Challenge) isFor(path string) bool {
 	return len(c.Token) > 0 &&
 		len(path) == len(acmeHeader)+len(c.Token) &&
@@ -27,6 +29,9 @@ func (c Challenge) isFor(path string) bool {
 // handle writes the challenge to the response.
 // The concatenation of the token, a peroid, and the key.
 // The url of the request is not validated.
-func (c Challenge) handle(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(c.Token + "." + c.Key))
+func (c Challenge) handle(w http.ResponseWriter, r *http.Request) error {
+	if _, err := w.Write([]byte(c.Token + "." + c.Key)); err != nil {
+		return fmt.Errorf("writing acme token: %w", err)
+	}
+	return nil
 }
