@@ -158,7 +158,6 @@ func (b Board) CanMoveTiles(tilePositions []tile.Position) bool {
 // if a tile is moved more than once, or if multiple tiles move to the same position.
 func (b Board) desiredUsedTileLocs(tilePositions []tile.Position) (map[tile.X]map[tile.Y]struct{}, map[tile.ID]struct{}, bool) {
 	desiredUsedTileLocs := make(map[tile.X]map[tile.Y]struct{}, len(b.UsedTileLocs))
-	var e struct{}
 	movedTileIDs := make(map[tile.ID]struct{}, len(tilePositions))
 	for _, tp := range tilePositions {
 		switch {
@@ -169,14 +168,14 @@ func (b Board) desiredUsedTileLocs(tilePositions []tile.Position) (map[tile.X]ma
 		if _, ok := movedTileIDs[tp.Tile.ID]; ok {
 			return nil, nil, false
 		}
-		movedTileIDs[tp.Tile.ID] = e
+		movedTileIDs[tp.Tile.ID] = struct{}{}
 		if _, ok := desiredUsedTileLocs[tp.X]; !ok {
 			desiredUsedTileLocs[tp.X] = make(map[tile.Y]struct{}, 1)
 		}
 		if _, ok := desiredUsedTileLocs[tp.X][tp.Y]; ok {
 			return nil, nil, false
 		}
-		desiredUsedTileLocs[tp.X][tp.Y] = e
+		desiredUsedTileLocs[tp.X][tp.Y] = struct{}{}
 	}
 	return desiredUsedTileLocs, movedTileIDs, true
 }
