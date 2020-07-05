@@ -89,7 +89,7 @@ func (s *Socket) Connect(event js.Value) error {
 	}
 	url := s.getWebSocketURL(*f)
 	s.releaseWebSocketJsFuncs()
-	errC := make(chan error)
+	errC := make(chan error, 1)
 	s.onOpenJsFunc = dom.NewJsFunc(s.onOpen(errC))
 	s.onCloseJsFunc = dom.NewJsEventFunc(s.onClose)
 	s.onErrorJsFunc = dom.NewJsFunc(s.onError(errC))
