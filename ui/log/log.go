@@ -19,13 +19,9 @@ type (
 // InitDom regesters log dom functions.
 func (l *Log) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	clearJsFunc := dom.NewJsFunc(l.Clear)
-	dom.RegisterFunc("log", "clear", clearJsFunc)
-	go func() {
-		<-ctx.Done()
-		clearJsFunc.Release()
-		wg.Done()
-	}()
+	clear := dom.NewJsFunc(l.Clear)
+	dom.RegisterFunc("log", "clear", clear)
+	go dom.ReleaseJsFuncsOnDone(ctx, wg, clear)
 }
 
 // Info logs an info-styled message.

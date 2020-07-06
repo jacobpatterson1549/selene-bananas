@@ -3,6 +3,8 @@
 package dom
 
 import (
+	"context"
+	"sync"
 	"syscall/js"
 )
 
@@ -35,4 +37,14 @@ func NewJsEventFunc(fn func(event js.Value)) js.Func {
 		fn(event)
 		return nil
 	})
+}
+
+// ReleaseJsFuncsOnDone releases the jsFuncs and decrements the waitgroup when the context is done.
+// This function should be called on a separate goroutine.
+func ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs ...js.Func) {
+	<-ctx.Done() // BLOCKING
+	for _, f := range jsFuncs {
+		f.Release()
+	}
+	wg.Done()
 }

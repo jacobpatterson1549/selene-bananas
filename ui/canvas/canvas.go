@@ -167,8 +167,8 @@ func (c *Canvas) TileLength(tileLength int) {
 // InitDom regesters canvas dom functions.
 func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	redrawJsFunc := dom.NewJsFunc(c.Redraw)
-	swapTileJsFunc := dom.NewJsFunc(c.StartSwap)
+	redraw := dom.NewJsFunc(c.Redraw)
+	swapTile := dom.NewJsFunc(c.StartSwap)
 	mousePP := c.newPixelPosition()
 	mouseDownFunc := func(event js.Value) {
 		c.MoveStart(mousePP.fromMouse(event))
@@ -190,26 +190,15 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	touchMoveFunc := func(event js.Value) {
 		c.MoveCursor(touchPP.fromTouch(event))
 	}
-	dom.RegisterFunc("canvas", "redraw", redrawJsFunc)
-	dom.RegisterFunc("canvas", "swapTile", swapTileJsFunc)
-	mouseDownJsFunc := c.registerEventListener("mousedown", mouseDownFunc)
-	mouseUpJsFunc := c.registerEventListener("mouseup", mouseUpFunc)
-	mouseMoveJsFunc := c.registerEventListener("mousemove", mouseMoveFunc)
-	touchStartJsFunc := c.registerEventListener("touchstart", touchStartFunc)
-	touchEndJsFunc := c.registerEventListener("touchend", touchEndFunc)
-	touchMoveJsFunc := c.registerEventListener("touchmove", touchMoveFunc)
-	go func() {
-		<-ctx.Done()
-		redrawJsFunc.Release()
-		swapTileJsFunc.Release()
-		mouseDownJsFunc.Release()
-		mouseUpJsFunc.Release()
-		mouseMoveJsFunc.Release()
-		touchStartJsFunc.Release()
-		touchEndJsFunc.Release()
-		touchMoveJsFunc.Release()
-		wg.Done()
-	}()
+	dom.RegisterFunc("canvas", "redraw", redraw)
+	dom.RegisterFunc("canvas", "swapTile", swapTile)
+	mouseDown := c.registerEventListener("mousedown", mouseDownFunc)
+	mouseUp := c.registerEventListener("mouseup", mouseUpFunc)
+	mouseMove := c.registerEventListener("mousemove", mouseMoveFunc)
+	touchStart := c.registerEventListener("touchstart", touchStartFunc)
+	touchEnd := c.registerEventListener("touchend", touchEndFunc)
+	touchMove := c.registerEventListener("touchmove", touchMoveFunc)
+	go dom.ReleaseJsFuncsOnDone(ctx, wg, redraw, swapTile, mouseDown, mouseUp, mouseMove, touchStart, touchEnd, touchMove)
 }
 
 // registerEventListener adds an event listener to the canvas element

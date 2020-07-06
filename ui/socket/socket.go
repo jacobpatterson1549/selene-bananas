@@ -20,15 +20,17 @@ import (
 type (
 	// Socket can be used to easily push and pull messages from the server.
 	Socket struct {
-		log             *log.Log
-		webSocket       js.Value
-		user            User
-		game            *controller.Game
-		lobby           *lobby.Lobby
-		onOpenJsFunc    js.Func
-		onCloseJsFunc   js.Func
-		onErrorJsFunc   js.Func
-		onMessageJsFunc js.Func
+		log       *log.Log
+		webSocket js.Value
+		user      User
+		game      *controller.Game
+		lobby     *lobby.Lobby
+		jsFuncs   struct {
+			onOpen    js.Func
+			onClose   js.Func
+			onError   js.Func
+			onMessage js.Func
+		}
 	}
 
 	// Config contains the parameters to create a Socket.
@@ -64,18 +66,14 @@ func (cfg Config) New() *Socket {
 // InitDom regesters socket dom functions.
 func (s *Socket) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	go func() {
-		<-ctx.Done()
-		s.releaseWebSocketJsFuncs()
-		wg.Done()
-	}()
+	go dom.ReleaseJsFuncsOnDone(ctx, wg, s.jsFuncs.onOpen, s.jsFuncs.onClose, s.jsFuncs.onError, s.jsFuncs.onMessage)
 }
 
 func (s *Socket) releaseWebSocketJsFuncs() {
-	s.onOpenJsFunc.Release()
-	s.onCloseJsFunc.Release()
-	s.onErrorJsFunc.Release()
-	s.onMessageJsFunc.Release()
+	s.jsFuncs.onOpen.Release()
+	s.jsFuncs.onClose.Release()
+	s.jsFuncs.onError.Release()
+	s.jsFuncs.onMessage.Release()
 }
 
 // Connect establishes the websocket connection if it has not yet been established.
@@ -90,15 +88,15 @@ func (s *Socket) Connect(event js.Value) error {
 	url := s.getWebSocketURL(*f)
 	s.releaseWebSocketJsFuncs()
 	errC := make(chan error, 1)
-	s.onOpenJsFunc = dom.NewJsFunc(s.onOpen(errC))
-	s.onCloseJsFunc = dom.NewJsEventFunc(s.onClose)
-	s.onErrorJsFunc = dom.NewJsFunc(s.onError(errC))
-	s.onMessageJsFunc = dom.NewJsEventFunc(s.onMessage)
+	s.jsFuncs.onOpen = dom.NewJsFunc(s.onOpen(errC))
+	s.jsFuncs.onClose = dom.NewJsEventFunc(s.onClose)
+	s.jsFuncs.onError = dom.NewJsFunc(s.onError(errC))
+	s.jsFuncs.onMessage = dom.NewJsEventFunc(s.onMessage)
 	s.webSocket = dom.NewWebSocket(url)
-	s.webSocket.Set("onopen", s.onOpenJsFunc)
-	s.webSocket.Set("onclose", s.onCloseJsFunc)
-	s.webSocket.Set("onerror", s.onErrorJsFunc)
-	s.webSocket.Set("onmessage", s.onMessageJsFunc)
+	s.webSocket.Set("onopen", s.jsFuncs.onOpen)
+	s.webSocket.Set("onclose", s.jsFuncs.onClose)
+	s.webSocket.Set("onerror", s.jsFuncs.onError)
+	s.webSocket.Set("onmessage", s.jsFuncs.onMessage)
 	return <-errC
 }
 
