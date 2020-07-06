@@ -22,7 +22,7 @@ type (
 	}
 )
 
-// Request makes an asynchronous request to the server using the fields in the form.
+// Request makes an BLOCKING request to the server using the fields in the form.
 func (u *User) request(event js.Value) {
 	f, err := dom.NewForm(event)
 	if err != nil {
@@ -39,20 +39,18 @@ func (u *User) request(event js.Value) {
 			return
 		}
 	}
-	go func() {
-		response, err := r.do()
-		switch {
-		case err != nil:
-			u.log.Error("making http request: " + err.Error())
-			return
-		case response.StatusCode >= 400:
-			u.log.Error(response.Status)
-			u.Logout()
-			return
-		case r.handler != nil:
-			r.handler(response.Body)
-		}
-	}()
+	response, err := r.do()
+	switch {
+	case err != nil:
+		u.log.Error("making http request: " + err.Error())
+		return
+	case response.StatusCode >= 400:
+		u.log.Error(response.Status)
+		u.Logout()
+		return
+	case r.handler != nil:
+		r.handler(response.Body)
+	}
 }
 
 func (r request) do() (*http.Response, error) {

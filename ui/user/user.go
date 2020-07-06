@@ -62,7 +62,7 @@ func (cfg Config) New(httpClient *http.Client) *User {
 func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	logout := dom.NewJsEventFunc(u.logoutButton)
-	request := dom.NewJsEventFunc(u.request)
+	request := dom.NewJsEventFuncAsync(u.request, true)
 	updateConfirmPassword := dom.NewJsEventFunc(u.updateConfirmPassword)
 	dom.RegisterFunc("user", "logout", logout)
 	dom.RegisterFunc("user", "request", request)
