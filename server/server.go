@@ -203,6 +203,13 @@ func (s Server) Stop(ctx context.Context) error {
 }
 
 func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
+	if s.challenge.isFor(r.URL.Path) {
+		if err := s.challenge.handle(w, r); err != nil {
+			s.log.Printf("serving acme challenge: %v", err)
+			s.httpError(w, http.StatusInternalServerError)
+		}
+		return
+	}
 	host := r.Host
 	if strings.Contains(host, ":") {
 		var err error
@@ -252,12 +259,7 @@ func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) error {
 	case "/monitor":
 		err = s.handleMonitor(w, r)
 	default:
-		switch {
-		case s.challenge.isFor(r.URL.Path):
-			err = s.challenge.handle(w, r)
-		default:
-			s.httpError(w, http.StatusNotFound)
-		}
+		s.httpError(w, http.StatusNotFound)
 	}
 	return err
 }

@@ -55,19 +55,29 @@ sudo -u postgres psql \
 && echo DATABASE_URL=postgres://$PGUSER:$PGPASSWORD@$PGHOSTADDR:$PGPORT/$PGDATABASE'
 ```
 
-### HTTPS on localhost
+### HTTPS
 
 The app requires HTTP TLS (HTTPS) to run. Insecure http requests are redirected to https.
 
-When running in a development environment, generate your own ssl certificate and key.  The script below creates a public key (tls-localhost-cert.pem) and private key (tls-localhost-key.pem) that last a year.  Pass the absolute file paths to the app with the TLS_CERT_FILE and TLS_KEY_FILE arguments.
+#### ACME
+
+The server can verifiy its identity over http to pass a Automatic Certificate Management Environment (ACME) HTTP-01 challenge.  Add the `-acme-challenge-token` and `-acme-challenge-key` parameters with necissary values when running the server to return correct responses when the server's identity is challenged to create TLS certificates.  After the certificates are created, remove the acme-* flags, and specify the certificate and key with the `-tls-cert-file` and `-tls-key-file` flags.
+
+#### localhost
+
+Use [mkcert](https://github.com/FiloSottile/mkcert) to configure a development machine to accept local certificates.  
 ```bash
-openssl req \
-    -x509 \
-    -nodes \
-    -days 365 \
-    -newkey rsa:2048 \
-    -keyout tls-localhost.key \
-    -out tls-localhost.crt
+go get github.com/FiloSottile/mkcert
+mkcert -install
+```
+Generate certificates for localhost at 127.0.0.1
+```bash
+mkcert 127.0.0.1
+```
+Then, add the certificate files to the run environment configuration in `.env`.  The certificate files should be in the root of the 
+```
+TLS_CERT_FILE=127.0.0.1.pem
+TLS_KEY_FILE=127.0.0.1-key.pem
 ```
 
 ### Server ports

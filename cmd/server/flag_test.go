@@ -31,8 +31,8 @@ func TestNewMainFlags(t *testing.T) {
 				"-cache-sec=6",
 				"-acme-challenge-token=7",
 				"-acme-challenge-key=8",
-				"-tls-cert=9",
-				"-tls-key=a",
+				"-tls-cert-file=9",
+				"-tls-key-file=a",
 			},
 			want: mainFlags{
 				httpPort:       1,
