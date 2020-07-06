@@ -40,6 +40,8 @@ For development, set `CACHE_SECONDS` to `0` to not cache files.
 
 The app stores user information in a Postgresql database.  When the app starts, files in the [resources/sql](resources/sql) folder are ran to ensure database objects functions are fresh.
 
+#### localhost
+
 A Postgresql database can be created with the command below.  Change the `PGUSER` and `PGPASSWORD` variables.  The command requires administrator access.
 ```bash
 PGDATABASE="selene_bananas_db" \
@@ -80,9 +82,18 @@ TLS_CERT_FILE=127.0.0.1.pem
 TLS_KEY_FILE=127.0.0.1-key.pem
 ```
 
-### Server ports
+### Server Ports
 
 By default, the server will run on ports 80 and 443 for http and https traffic.  All http traffic is redirected to https.  To override the ports, use the HTTP_PORT and HTTPS_PORT flags.
+
+##### Local Default TCP HTTP Ports
+
+Run the command below to run on port 80 for HTTP and port 443 for HTTPS (default TCP ports).
+```bash
+make install
+sudo setcap 'cap_net_bind_service=+ep' main # grant effective and permitted network binding capabilities to server
+export $(echo $(grep -s -v '^#' .env | xargs) " HTTP_PORT=80 HTTPS_PORT=443") && sudo -E ./main
+```
 
 ### Make
 
