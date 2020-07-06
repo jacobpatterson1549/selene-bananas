@@ -36,7 +36,14 @@ func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) error {
 		http.Error(w, "incorrect username/password", http.StatusUnauthorized)
 		return nil
 	}
-	return s.addAuthorization(w, u2)
+	token, err := s.tokenizer.Create(u2)
+	if err != nil {
+		return err
+	}
+	if _, err = w.Write([]byte(token)); err != nil {
+		return fmt.Errorf("writing authorization token: %w", err)
+	}
+	return nil
 }
 
 func (s Server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, username string) error {

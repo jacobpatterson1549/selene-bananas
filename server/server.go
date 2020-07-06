@@ -388,17 +388,6 @@ func httpError(w http.ResponseWriter, statusCode int) {
 	http.Error(w, http.StatusText(statusCode), statusCode)
 }
 
-func (s Server) addAuthorization(w http.ResponseWriter, u db.User) error {
-	token, err := s.tokenizer.Create(u)
-	if err != nil {
-		return err
-	}
-	if _, err = w.Write([]byte(token)); err != nil {
-		return fmt.Errorf("writing authorization token: %w", err)
-	}
-	return nil
-}
-
 func (s Server) readTokenUsername(r *http.Request) (string, error) {
 	authorization := r.Header.Get("Authorization")
 	if len(authorization) < 7 || authorization[:7] != "Bearer " {
