@@ -31,10 +31,20 @@ func NewJsFunc(fn func()) js.Func {
 // NewJsEventFunc creates a new javascript function from the provided function that processes an event and returns nothing.
 // PreventDefault is called on the event before applying the function
 func NewJsEventFunc(fn func(event js.Value)) js.Func {
+	return NewJsEventFuncAsync(fn, false)
+}
+
+// NewJsEventFuncAsync performs similary to NewJsEventFunc, but calls the event-handling function asynchronously if async is true.
+func NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		event := args[0]
 		event.Call("preventDefault")
-		fn(event)
+		switch {
+		case async:
+			go fn(event)
+		default:
+			fn(event)
+		}
 		return nil
 	})
 }

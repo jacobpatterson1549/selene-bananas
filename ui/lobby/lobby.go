@@ -48,22 +48,20 @@ func (cfg Config) New() *Lobby {
 // InitDom regesters lobby dom functions
 func (l *Lobby) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	connect := dom.NewJsEventFunc(l.connect)
+	connect := dom.NewJsEventFuncAsync(l.connect, true)
 	leave := dom.NewJsFunc(l.leave)
 	dom.RegisterFunc("lobby", "connect", connect)
 	dom.RegisterFunc("lobby", "leave", leave)
 	go dom.ReleaseJsFuncsOnDone(ctx, wg, connect, leave)
 }
 
-// connect makes an asynchronous request to connect to the lobby.
+// connect makes an BLOCKING request to connect to the lobby.
 // It is expected that the server will respond with a game infos message
 func (l *Lobby) connect(event js.Value) {
-	go func() {
-		err := l.Socket.Connect(event)
-		if err != nil {
-			l.log.Error(err.Error())
-		}
-	}()
+	err := l.Socket.Connect(event)
+	if err != nil {
+		l.log.Error(err.Error())
+	}
 }
 
 // leave closes the socket and leaves the game.
