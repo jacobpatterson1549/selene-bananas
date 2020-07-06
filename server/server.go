@@ -4,6 +4,7 @@ package server
 import (
 	"compress/gzip"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"html/template"
 	"io"
@@ -171,18 +172,27 @@ func (cfg Config) validate() error {
 // Run the server asynchronously until it receives a shutdown signal.
 // When the HTTP/HTTPS servers stop, errors are logged to the error channel.
 func (s Server) Run(ctx context.Context) <-chan error {
-	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
-	s.httpsServer.RegisterOnShutdown(lobbyCancelFunc)
-	go s.lobby.Run(lobbyCtx)
 	errC := make(chan error, 2)
-	go func() {
-		errC <- s.httpsServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile)
-	}()
-	go func() {
-		errC <- s.httpServer.ListenAndServe()
-	}()
-	s.log.Println("server started, running at https://127.0.0.1" + s.httpsServer.Addr)
+	go s.runHTTPServer(ctx, errC)
+	go s.runHTTPSServer(ctx, errC)
 	return errC
+}
+
+func (s Server) runHTTPServer(ctx context.Context, errC chan<- error) {
+	errC <- s.httpServer.ListenAndServe()
+}
+
+func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
+	if _, err := tls.LoadX509KeyPair(s.tlsCertFile, s.tlsKeyFile); err != nil {
+		s.log.Printf("Problem loading tls certificate: %v", err)
+		s.log.Printf("Use http server at https://127.0.0.1%v%v<TOKEN> to handle ACME Challenges.", s.httpServer.Addr, acmeHeader)
+		return
+	}
+	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
+	go s.lobby.Run(lobbyCtx)
+	s.httpsServer.RegisterOnShutdown(lobbyCancelFunc)
+	s.log.Printf("statring https server at at https://127.0.0.1%v", s.httpsServer.Addr)
+	errC <- s.httpsServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile)
 }
 
 // Stop asks the server to shutdown and waits for the shutdown to complete.
