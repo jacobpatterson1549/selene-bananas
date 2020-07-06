@@ -228,7 +228,7 @@ func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 	case "POST":
 		err = s.handleHTTPSPost(w, r)
 	default:
-		httpError(w, http.StatusMethodNotAllowed)
+		s.httpError(w, http.StatusMethodNotAllowed)
 	}
 	if err != nil {
 		s.log.Printf("server error: %v", err)
@@ -256,7 +256,7 @@ func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) error {
 		case s.challenge.isFor(r.URL.Path):
 			err = s.challenge.handle(w, r)
 		default:
-			httpError(w, http.StatusNotFound)
+			s.httpError(w, http.StatusNotFound)
 		}
 	}
 	return err
@@ -272,7 +272,7 @@ func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) error {
 		tokenUsername, err = s.readTokenUsername(r)
 		if err != nil {
 			s.log.Print(err)
-			httpError(w, http.StatusForbidden)
+			s.httpError(w, http.StatusForbidden)
 			return nil
 		}
 	}
@@ -286,7 +286,7 @@ func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) error {
 	case "/user_delete":
 		err = s.handleUserDelete(w, r, tokenUsername)
 	default:
-		httpError(w, http.StatusNotFound)
+		s.httpError(w, http.StatusNotFound)
 	}
 	return err
 }
@@ -308,24 +308,24 @@ func (s Server) serveTemplate(name string) http.HandlerFunc {
 			for _, g := range templateFileGlobs {
 				if _, err := t.ParseGlob(g); err != nil {
 					s.log.Printf("globbing template files: %v", err)
-					httpError(w, http.StatusInternalServerError)
+					s.httpError(w, http.StatusInternalServerError)
 					return
 				}
 			}
 		case "/manifest.json":
 			if _, err := t.ParseFiles("resources" + name); err != nil {
 				s.log.Printf("parsing manifest template: %v", err)
-				httpError(w, http.StatusInternalServerError)
+				s.httpError(w, http.StatusInternalServerError)
 				return
 			}
 		default:
 			s.log.Printf("unknown template: %v", name)
-			httpError(w, http.StatusInternalServerError)
+			s.httpError(w, http.StatusInternalServerError)
 			return
 		}
 		if err := t.Execute(w, s.data); err != nil {
 			s.log.Printf("rendering template: %v", err)
-			httpError(w, http.StatusInternalServerError)
+			s.httpError(w, http.StatusInternalServerError)
 		}
 	}
 }
@@ -370,7 +370,7 @@ func (s Server) handleLobby(w http.ResponseWriter, r *http.Request) error {
 	tokenUsername, err := s.tokenizer.ReadUsername(tokenString)
 	if err != nil {
 		s.log.Printf("reading username from token: %v", err)
-		httpError(w, http.StatusUnauthorized)
+		s.httpError(w, http.StatusUnauthorized)
 		return nil
 	}
 	return s.handleUserJoinLobby(w, r, tokenUsername)
@@ -379,12 +379,12 @@ func (s Server) handleLobby(w http.ResponseWriter, r *http.Request) error {
 func (s Server) handleHTTPPing(w http.ResponseWriter, r *http.Request) error {
 	if _, err := s.readTokenUsername(r); err != nil {
 		s.log.Print(err)
-		httpError(w, http.StatusForbidden)
+		s.httpError(w, http.StatusForbidden)
 	}
 	return nil
 }
 
-func httpError(w http.ResponseWriter, statusCode int) {
+func (Server) httpError(w http.ResponseWriter, statusCode int) {
 	http.Error(w, http.StatusText(statusCode), statusCode)
 }
 
