@@ -88,12 +88,7 @@ By default, the server will run on ports 80 and 443 for http and https traffic. 
 
 ##### Local Default TCP HTTP Ports
 
-Run the command below to run on port 80 for HTTP and port 443 for HTTPS (default TCP ports).
-```bash
-make install
-sudo setcap 'cap_net_bind_service=+ep' main # grant effective and permitted network binding capabilities to server
-export $(echo $(grep -s -v '^#' .env | xargs) " HTTP_PORT=80 HTTPS_PORT=443") && sudo -E ./main
-```
+Run `make serve-tcp` to run on port 80 for HTTP and port 443 for HTTPS (default TCP ports).  Using these ports requires `sudo` (root) access.
 
 ### Make
 
