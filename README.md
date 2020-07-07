@@ -104,14 +104,13 @@ The [Makefile](Makefile) runs the application locally.  This requires Go and a P
 Launching the application with [Docker](https://www.docker.com) requires minimal configuration.
 
 1. Install [docker-compose](https://github.com/docker/compose)
-1. Set environment variables in a `.env` file in project root (next to Dockerfile).  Note that the DATABASE_URL will likely need the `sslmode=disable` query parameter.  Sample:
+1. Set database environment variables in a `.env` file in project root (next to Dockerfile).
 ```
 POSTGRES_DB=selene_bananas_db
 POSTGRES_USER=selene
 POSTGRES_PASSWORD=selene123
 POSTGRES_PORT=54320
-DATABASE_URL=postgres://<...>?sslmode=disable
 ```
-3. Run `docker-compose up` to launch the application.
+3. Ensure the files for the`TLS_CERT_FILE` and `TLS_KEY_FILE` environment variables are located in the project folder.
+1. Run `docker-compose up` to launch the application.
 1. Access application by opening <http://localhost:8000>.
-

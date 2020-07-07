@@ -17,10 +17,15 @@ services:
     container_name: "selene-bananas-web"
     env_file: ./.env
     ports:
-      - "${PORT}:8000" # port 8000 on container maps to PORT on docker host
+      - "${HTTPS_PORT}:8000" # port 8000 on container maps to HTTPS_PORT on docker host
+      - "${HTTP_PORT}:8001"  # port 8001 on container maps to HTTP_PORT on docker host
     environment:
-      - PORT=8000
+      - HTTPS_PORT=8000
+      - HTTP_PORT=8001
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB}?sslmode=disable
+    volumes:
+      - ${PWD}/${TLS_CERT_FILE}:/app/${TLS_CERT_FILE}
+      - ${PWD}/${TLS_KEY_FILE}:/app/${TLS_KEY_FILE}
     depends_on:
       db:
         condition: service_healthy
