@@ -66,9 +66,9 @@ func TestHandleFileVersion(t *testing.T) {
 
 func TestHandleHTTP(t *testing.T) {
 	handleHTTPTests := []struct {
-		httpURI    string
-		httpsAddr  string
-		want       string
+		httpURI   string
+		httpsAddr string
+		want      string
 	}{
 		{
 			httpURI:   "http://example.com",

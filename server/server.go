@@ -256,11 +256,11 @@ func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) error {
 	var err error
 	switch r.URL.Path {
-	case "/", "/manifest.json":
+	case "/", "/manifest.json", "/init.js":
 		s.handleFile(s.serveTemplate(r.URL.Path), false)(w, r)
 	case "/wasm_exec.js", "/main.wasm":
 		s.handleFile(s.serveFile("."+r.URL.Path), true)(w, r)
-	case "/robots.txt", "/init.js", "/service-worker.js", "/favicon.ico", "/favicon-192.png", "/favicon-512.png":
+	case "/robots.txt", "/favicon.ico", "/favicon-192.png", "/favicon-512.png":
 		s.handleFile(s.serveFile("resources"+r.URL.Path), false)(w, r)
 	case "/lobby":
 		err = s.handleLobby(w, r)
@@ -324,16 +324,12 @@ func (s Server) serveTemplate(name string) http.HandlerFunc {
 					return
 				}
 			}
-		case "/manifest.json":
+		default:
 			if _, err := t.ParseFiles("resources" + name); err != nil {
 				s.log.Printf("parsing manifest template: %v", err)
 				s.httpError(w, http.StatusInternalServerError)
 				return
 			}
-		default:
-			s.log.Printf("unknown template: %v", name)
-			s.httpError(w, http.StatusInternalServerError)
-			return
 		}
 		if err := t.Execute(w, s.data); err != nil {
 			s.log.Printf("rendering template: %v", err)
