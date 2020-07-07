@@ -1,7 +1,7 @@
 # Ignore everything
 *
 
-# Necessary files whitelist
+# Necessary files
 !cmd
 !db
 !game
