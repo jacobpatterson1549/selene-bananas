@@ -36,7 +36,7 @@ serve: install
 serve-tcp: install
 	sudo setcap 'cap_net_bind_service=+ep' main
 	export $(shell \
-		echo $(shellgrep -s -v '^#' .env | xargs) \
+		echo $(shell grep -s -v '^#' .env | xargs) \
 		" HTTP_PORT=80 HTTPS_PORT=443" \
 		) && \
 		sudo -E ./main

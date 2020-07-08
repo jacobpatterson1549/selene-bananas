@@ -118,7 +118,13 @@ func (cfg Config) NewServer() (*Server, error) {
 		Colors:      cfg.ColorConfig,
 	}
 	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
+	if cfg.HTTPSPort <= 0 {
+		return nil, fmt.Errorf("invalid https port: %v", cfg.HTTPSPort)
+	}
 	httpAddr := fmt.Sprintf(":%d", cfg.HTTPPort)
+	if cfg.HTTPPort <= 0 {
+		httpAddr = ""
+	}
 	httpsServeMux := new(http.ServeMux)
 	httpsServer := &http.Server{
 		Addr:    httpsAddr,
@@ -173,26 +179,38 @@ func (cfg Config) validate() error {
 // When the HTTP/HTTPS servers stop, errors are logged to the error channel.
 func (s Server) Run(ctx context.Context) <-chan error {
 	errC := make(chan error, 2)
-	go s.runHTTPServer(ctx, errC)
-	go s.runHTTPSServer(ctx, errC)
+	validHTTPAddr := len(s.httpServer.Addr) > 0
+	go s.runHTTPServer(ctx, errC, validHTTPAddr)
+	go s.runHTTPSServer(ctx, errC, validHTTPAddr)
 	return errC
 }
 
-func (s Server) runHTTPServer(ctx context.Context, errC chan<- error) {
+func (s Server) runHTTPServer(ctx context.Context, errC chan<- error, validHTTPAddr bool) {
+	if !validHTTPAddr {
+		return
+	}
 	errC <- s.httpServer.ListenAndServe()
 }
 
-func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
-	if _, err := tls.LoadX509KeyPair(s.tlsCertFile, s.tlsKeyFile); err != nil {
-		s.log.Printf("Problem loading tls certificate: %v", err)
-		s.log.Printf("Use http server at https://127.0.0.1%v%v<TOKEN> to handle ACME Challenges.", s.httpServer.Addr, acmeHeader)
-		return
-	}
+func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error, runTLS bool) {
 	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
 	go s.lobby.Run(lobbyCtx)
 	s.httpsServer.RegisterOnShutdown(lobbyCancelFunc)
-	s.log.Printf("statring https server at at https://127.0.0.1%v", s.httpsServer.Addr)
-	errC <- s.httpsServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile)
+	s.log.Printf("starting https server at at https://127.0.0.1%v", s.httpsServer.Addr)
+	switch {
+	case runTLS:
+		if _, err := tls.LoadX509KeyPair(s.tlsCertFile, s.tlsKeyFile); err != nil {
+			s.log.Printf("Problem loading tls certificate: %v", err)
+			s.log.Printf("Use http server at https://127.0.0.1%v%v<TOKEN> to handle ACME Challenges.", s.httpServer.Addr, acmeHeader)
+			return
+		}
+		errC <- s.httpsServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile)
+	default:
+		if len(s.tlsCertFile) != 0 || len(s.tlsKeyFile) != 0 {
+			s.log.Printf("Ignoring TLS_CERT_FILE/TLS_KEY_FILE variables since PORT was specified, using automated certificate management.")
+		}
+		errC <- s.httpsServer.ListenAndServe()
+	}
 }
 
 // Stop asks the server to shutdown and waits for the shutdown to complete.
@@ -238,6 +256,10 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
+	if r.TLS == nil {
+		s.handleHTTP(w, r)
+		return
+	}
 	var err error
 	switch r.Method {
 	case "GET":

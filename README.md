@@ -86,6 +86,8 @@ TLS_KEY_FILE=127.0.0.1-key.pem
 
 By default, the server will run on ports 80 and 443 for http and https traffic.  All http traffic is redirected to https.  To override the ports, use the HTTP_PORT and HTTPS_PORT flags.
 
+If the server handles HTTPS by providing its own certificate, use the `PORT` variable to specify the https port.  When POST is defined, no HTTP server will be started from `HTTP_PORT` and certificates are not read from the `TLS_CERT_FILE` and `TLS_KEY_FILE`.
+
 ##### Local Default TCP HTTP Ports
 
 Run `make serve-tcp` to run on port 80 for HTTP and port 443 for HTTPS (default TCP ports).  Using these ports requires `sudo` (root) access.
