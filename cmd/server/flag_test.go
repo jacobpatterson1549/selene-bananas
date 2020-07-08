@@ -14,6 +14,9 @@ func TestNewMainFlags(t *testing.T) {
 		want    mainFlags
 	}{
 		{ // defaults
+			want: mainFlags{
+				cacheSec: defaultCacheSec,
+			},
 		},
 		{ // all command line
 			osArgs: []string{

@@ -73,21 +73,21 @@ func (m *mainFlags) newFlagSet(osLookupEnvFunc func(string) (string, bool), port
 		}
 		return ""
 	}
-	envValueInt := func(key string) int {
+	envValueInt := func(key string, defaultValue int) int {
 		v1 := envValue(key)
 		if v2, err := strconv.Atoi(v1); err == nil {
 			return v2
 		}
-		return 0
+		return defaultValue
 	}
 	envPresent := func(key string) bool {
 		_, ok := osLookupEnvFunc(key)
 		return ok
 	}
 	fs.StringVar(&m.databaseURL, "data-source", envValue(environmentVariableDatabaseURL), "The data source to the PostgreSQL database (connection URI).")
-	fs.IntVar(&m.httpPort, "http-port", envValueInt(environmentVariableHTTPPort), "The TCP port for server http requests.  All traffic is redirected to the https port.")
-	fs.IntVar(&m.httpsPort, "https-port", envValueInt(environmentVariableHTTPSPort), "The TCP port for server https requests.")
-	fs.IntVar(portOverride, "port", envValueInt(environmentVariablePort), "The single port to run the server on.  Overrides the -https-port flag.  Causes the server to not handle http requests, ignoring -http-port.")
+	fs.IntVar(&m.httpPort, "http-port", envValueInt(environmentVariableHTTPPort, 0), "The TCP port for server http requests.  All traffic is redirected to the https port.")
+	fs.IntVar(&m.httpsPort, "https-port", envValueInt(environmentVariableHTTPSPort, 0), "The TCP port for server https requests.")
+	fs.IntVar(portOverride, "port", envValueInt(environmentVariablePort, 0), "The single port to run the server on.  Overrides the -https-port flag.  Causes the server to not handle http requests, ignoring -http-port.")
 	fs.StringVar(&m.wordsFile, "words-file", envValue(environmentVariableWordsFile), "The list of valid lower-case words that can be used.")
 	fs.StringVar(&m.versionFile, "version-file", envValue(environmentVariableVersionFile), "A file containing the version key (the first word).  Used to bust previously cached files.  Change each time a new version of the server is run.")
 	fs.StringVar(&m.challengeToken, "acme-challenge-token", envValue(environmentVariableChallengeToken), "The ACME HTTP-01 Challenge token used to get a certificate.")
@@ -96,7 +96,7 @@ func (m *mainFlags) newFlagSet(osLookupEnvFunc func(string) (string, bool), port
 	fs.StringVar(&m.tlsKeyFile, "tls-key-file", envValue(environmentVariableTLSKeyFile), "The absolute path of the key file to use for TLS.")
 	fs.BoolVar(&m.debugGame, "debug-game", envPresent(environmentVariableDebugGame), "Logs game message types in the console if present.")
 	fs.BoolVar(&m.noTLSRedirect, "no-tls-redirect", envPresent(environmentVariableNoTLSRedirect), "Disables HTTPS redirection from http if present.")
-	fs.IntVar(&m.cacheSec, "cache-sec", envValueInt(environmentVariableCacheSec), "The number of seconds static assets are cached, such as javascript files.")
+	fs.IntVar(&m.cacheSec, "cache-sec", envValueInt(environmentVariableCacheSec, defaultCacheSec), "The number of seconds static assets are cached, such as javascript files.")
 	return fs
 }
 
