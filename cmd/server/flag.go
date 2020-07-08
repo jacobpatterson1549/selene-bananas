@@ -8,31 +8,32 @@ import (
 )
 
 const (
-	environmentVariableHTTPPort        = "HTTP_PORT"
-	environmentVariableHTTPSPort       = "HTTPS_PORT"
-	environmentVariableDatabaseURL     = "DATABASE_URL"
-	environmentVariableWordsFile       = "WORDS_FILE"
-	environmentVariableVersionFile     = "VERSION_FILE"
-	environmentVariableDebugGame       = "DEBUG_GAME_MESSAGES"
-	environmentVariableCacheSec        = "CACHE_SECONDS"
-	environmentVariableChallengeToken  = "ACME_CHALLENGE_TOKEN"
-	environmentVariableChallengeKey    = "ACME_CHALLENGE_KEY"
-	environmentVariableTLSCertFile     = "TLS_CERT_FILE"
-	environmentVariableTLSKeyFile      = "TLS_KEY_FILE"
+	environmentVariableHTTPPort       = "HTTP_PORT"
+	environmentVariableHTTPSPort      = "HTTPS_PORT"
+	environmentVariablePort           = "PORT"
+	environmentVariableDatabaseURL    = "DATABASE_URL"
+	environmentVariableWordsFile      = "WORDS_FILE"
+	environmentVariableVersionFile    = "VERSION_FILE"
+	environmentVariableDebugGame      = "DEBUG_GAME_MESSAGES"
+	environmentVariableCacheSec       = "CACHE_SECONDS"
+	environmentVariableChallengeToken = "ACME_CHALLENGE_TOKEN"
+	environmentVariableChallengeKey   = "ACME_CHALLENGE_KEY"
+	environmentVariableTLSCertFile    = "TLS_CERT_FILE"
+	environmentVariableTLSKeyFile     = "TLS_KEY_FILE"
 )
 
 type mainFlags struct {
-	httpPort        int
-	httpsPort       int
-	databaseURL     string
-	wordsFile       string
-	versionFile     string
-	challengeToken  string
-	challengeKey    string
-	tlsCertFile     string
-	tlsKeyFile      string
-	debugGame       bool
-	cacheSec        int
+	httpPort       int
+	httpsPort      int
+	databaseURL    string
+	wordsFile      string
+	versionFile    string
+	challengeToken string
+	challengeKey   string
+	tlsCertFile    string
+	tlsKeyFile     string
+	debugGame      bool
+	cacheSec       int
 }
 
 const (
@@ -60,38 +61,38 @@ func usage(fs *flag.FlagSet) {
 }
 
 // newFlagSet creates a flagSet that populates the specified mainFlags.
-func (m *mainFlags) newFlagSet(osLookupEnvFunc func(string) (string, bool)) *flag.FlagSet {
+func (m *mainFlags) newFlagSet(osLookupEnvFunc func(string) (string, bool), portOverride *int) *flag.FlagSet {
 	fs := flag.NewFlagSet("main", flag.ExitOnError)
 	fs.Usage = func() { usage(fs) }
-
-	envOrDefault := func(key, defaultValue string) string {
+	envValue := func(key string) string {
 		if envValue, ok := osLookupEnvFunc(key); ok {
 			return envValue
 		}
-		return defaultValue
+		return ""
 	}
-	envOrDefaultInt := func(key string, defaultValue int) int {
-		v1 := envOrDefault(key, string(defaultValue))
+	envValueInt := func(key string) int {
+		v1 := envValue(key)
 		if v2, err := strconv.Atoi(v1); err == nil {
 			return v2
 		}
-		return defaultValue
+		return 0
 	}
 	envPresent := func(key string) bool {
 		_, ok := osLookupEnvFunc(key)
 		return ok
 	}
-	fs.StringVar(&m.databaseURL, "data-source", envOrDefault(environmentVariableDatabaseURL, ""), "The data source to the PostgreSQL database (connection URI).")
-	fs.IntVar(&m.httpPort, "http-port", envOrDefaultInt(environmentVariableHTTPPort, 80), "The TCP port for server http requests.  All traffic is redirected to the https port.")
-	fs.IntVar(&m.httpsPort, "https-port", envOrDefaultInt(environmentVariableHTTPSPort, 443), "The TCP port for server https requests.")
-	fs.StringVar(&m.wordsFile, "words-file", envOrDefault(environmentVariableWordsFile, ""), "The list of valid lower-case words that can be used.")
-	fs.StringVar(&m.versionFile, "version-file", envOrDefault(environmentVariableVersionFile, ""), "A file containing the version key (the first word).  Used to bust previously cached files.  Change each time a new version of the server is run.")
-	fs.StringVar(&m.challengeToken, "acme-challenge-token", envOrDefault(environmentVariableChallengeToken, ""), "The ACME HTTP-01 Challenge token used to get a certificate.")
-	fs.StringVar(&m.challengeKey, "acme-challenge-key", envOrDefault(environmentVariableChallengeKey, ""), "The ACME HTTP-01 Challenge key used to get a certificate.")
-	fs.StringVar(&m.tlsCertFile, "tls-cert-file", envOrDefault(environmentVariableTLSCertFile, ""), "The absolute path of the certificate file to use for TLS.")
-	fs.StringVar(&m.tlsKeyFile, "tls-key-file", envOrDefault(environmentVariableTLSKeyFile, ""), "The absolute path of the key file to use for TLS.")
+	fs.StringVar(&m.databaseURL, "data-source", envValue(environmentVariableDatabaseURL), "The data source to the PostgreSQL database (connection URI).")
+	fs.IntVar(&m.httpPort, "http-port", envValueInt(environmentVariableHTTPPort), "The TCP port for server http requests.  All traffic is redirected to the https port.")
+	fs.IntVar(&m.httpsPort, "https-port", envValueInt(environmentVariableHTTPSPort), "The TCP port for server https requests.")
+	fs.IntVar(portOverride, "port", envValueInt(environmentVariablePort), "The single port to run the server on.  Overrides the -https-port flag.  Causes the server to not handle http requests, ignoring -http-port.")
+	fs.StringVar(&m.wordsFile, "words-file", envValue(environmentVariableWordsFile), "The list of valid lower-case words that can be used.")
+	fs.StringVar(&m.versionFile, "version-file", envValue(environmentVariableVersionFile), "A file containing the version key (the first word).  Used to bust previously cached files.  Change each time a new version of the server is run.")
+	fs.StringVar(&m.challengeToken, "acme-challenge-token", envValue(environmentVariableChallengeToken), "The ACME HTTP-01 Challenge token used to get a certificate.")
+	fs.StringVar(&m.challengeKey, "acme-challenge-key", envValue(environmentVariableChallengeKey), "The ACME HTTP-01 Challenge key used to get a certificate.")
+	fs.StringVar(&m.tlsCertFile, "tls-cert-file", envValue(environmentVariableTLSCertFile), "The absolute path of the certificate file to use for TLS.")
+	fs.StringVar(&m.tlsKeyFile, "tls-key-file", envValue(environmentVariableTLSKeyFile), "The absolute path of the key file to use for TLS.")
 	fs.BoolVar(&m.debugGame, "debug-game", envPresent(environmentVariableDebugGame), "Logs game message types in the console if present.")
-	fs.IntVar(&m.cacheSec, "cache-sec", envOrDefaultInt(environmentVariableCacheSec, defaultCacheSec), "The number of seconds static assets are cached, such as javascript files.")
+	fs.IntVar(&m.cacheSec, "cache-sec", envValueInt(environmentVariableCacheSec), "The number of seconds static assets are cached, such as javascript files.")
 	return fs
 }
 
@@ -104,7 +105,12 @@ func newMainFlags(osArgs []string, osLookupEnvFunc func(string) (string, bool)) 
 	}
 	programArgs := osArgs[1:]
 	var m mainFlags
-	fs := m.newFlagSet(osLookupEnvFunc)
+	var portOverride int
+	fs := m.newFlagSet(osLookupEnvFunc, &portOverride)
 	fs.Parse(programArgs)
+	if portOverride != 0 {
+		m.httpsPort = portOverride
+		m.httpPort = -1
+	}
 	return m
 }
