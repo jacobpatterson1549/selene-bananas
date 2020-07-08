@@ -50,6 +50,7 @@ func usage(fs *flag.FlagSet) {
 		environmentVariableWordsFile,
 		environmentVariableVersionFile,
 		environmentVariableDebugGame,
+		environmentVariableNoTLSRedirect,
 		environmentVariableCacheSec,
 		environmentVariableChallengeToken,
 		environmentVariableChallengeKey,

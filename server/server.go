@@ -242,7 +242,7 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if !s.noTLSRedirect {
+	if s.noTLSRedirect {
 		return
 	}
 	host := r.Host
