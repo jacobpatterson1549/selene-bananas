@@ -56,19 +56,20 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	}
 	cc := colorConfig()
 	cfg := server.Config{
-		HTTPPort:    m.httpPort,
-		HTTPSPort:   m.httpsPort,
-		Log:         log,
-		Tokenizer:   tokenizer,
-		UserDao:     ud,
-		LobbyCfg:    *lobbyCfg,
-		StopDur:     time.Second,
-		CacheSec:    m.cacheSec,
-		Version:     v,
-		Challenge:   challenge,
-		TLSCertFile: m.tlsCertFile,
-		TLSKeyFile:  m.tlsKeyFile,
-		ColorConfig: cc,
+		HTTPPort:      m.httpPort,
+		HTTPSPort:     m.httpsPort,
+		Log:           log,
+		Tokenizer:     tokenizer,
+		UserDao:       ud,
+		LobbyCfg:      *lobbyCfg,
+		StopDur:       time.Second,
+		CacheSec:      m.cacheSec,
+		Version:       v,
+		Challenge:     challenge,
+		TLSCertFile:   m.tlsCertFile,
+		TLSKeyFile:    m.tlsKeyFile,
+		ColorConfig:   cc,
+		NoTLSRedirect: m.noTLSRedirect,
 	}
 	return &cfg, nil
 }

@@ -21,19 +21,20 @@ import (
 type (
 	// Server runs the site
 	Server struct {
-		data        interface{}
-		log         *log.Logger
-		tokenizer   Tokenizer
-		userDao     *db.UserDao
-		lobby       *lobby.Lobby
-		httpsServer *http.Server
-		httpServer  *http.Server
-		stopDur     time.Duration
-		cacheSec    int
-		version     string
-		challenge   Challenge
-		tlsCertFile string
-		tlsKeyFile  string
+		data          interface{}
+		log           *log.Logger
+		tokenizer     Tokenizer
+		userDao       *db.UserDao
+		lobby         *lobby.Lobby
+		httpsServer   *http.Server
+		httpServer    *http.Server
+		stopDur       time.Duration
+		cacheSec      int
+		version       string
+		challenge     Challenge
+		tlsCertFile   string
+		tlsKeyFile    string
+		noTLSRedirect bool
 	}
 
 	// Config contains fields which describe the server
@@ -64,6 +65,8 @@ type (
 		TLSKeyFile string
 		// ColorConfig contains the colors to use on the site.
 		ColorConfig ColorConfig
+		// NoTLSRedirect disables redirection to https from http when true.
+		NoTLSRedirect bool
 	}
 
 	// ColorConfig represents the colors on the site.
@@ -140,19 +143,20 @@ func (cfg Config) NewServer() (*Server, error) {
 		return nil, err
 	}
 	s := Server{
-		data:        data,
-		log:         cfg.Log,
-		tokenizer:   cfg.Tokenizer,
-		userDao:     cfg.UserDao,
-		lobby:       lobby,
-		httpsServer: httpsServer,
-		httpServer:  httpServer,
-		stopDur:     cfg.StopDur,
-		cacheSec:    cfg.CacheSec,
-		version:     cfg.Version,
-		challenge:   cfg.Challenge,
-		tlsCertFile: cfg.TLSCertFile,
-		tlsKeyFile:  cfg.TLSKeyFile,
+		data:          data,
+		log:           cfg.Log,
+		tokenizer:     cfg.Tokenizer,
+		userDao:       cfg.UserDao,
+		lobby:         lobby,
+		httpsServer:   httpsServer,
+		httpServer:    httpServer,
+		stopDur:       cfg.StopDur,
+		cacheSec:      cfg.CacheSec,
+		version:       cfg.Version,
+		challenge:     cfg.Challenge,
+		tlsCertFile:   cfg.TLSCertFile,
+		tlsKeyFile:    cfg.TLSKeyFile,
+		noTLSRedirect: cfg.NoTLSRedirect,
 	}
 	httpsServeMux.HandleFunc("/", s.handleHTTPS)
 	httpServeMux.HandleFunc("/", s.handleHTTP)
@@ -201,7 +205,7 @@ func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error, runTLS bo
 	case runTLS:
 		if _, err := tls.LoadX509KeyPair(s.tlsCertFile, s.tlsKeyFile); err != nil {
 			s.log.Printf("Problem loading tls certificate: %v", err)
-			s.log.Printf("Use http server at https://127.0.0.1%v%v<TOKEN> to handle ACME Challenges.", s.httpServer.Addr, acmeHeader)
+			s.log.Printf("Use http server at http://127.0.0.1%v%v<TOKEN> to handle ACME Challenges.", s.httpServer.Addr, acmeHeader)
 			return
 		}
 		errC <- s.httpsServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile)
@@ -238,6 +242,9 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	if !s.noTLSRedirect {
+		return
+	}
 	host := r.Host
 	if strings.Contains(host, ":") {
 		var err error
@@ -256,7 +263,7 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
-	if r.TLS == nil {
+	if !s.noTLSRedirect && r.TLS == nil {
 		s.handleHTTP(w, r)
 		return
 	}

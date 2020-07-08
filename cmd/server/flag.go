@@ -15,6 +15,7 @@ const (
 	environmentVariableWordsFile      = "WORDS_FILE"
 	environmentVariableVersionFile    = "VERSION_FILE"
 	environmentVariableDebugGame      = "DEBUG_GAME_MESSAGES"
+	environmentVariableNoTLSRedirect  = "NO_TLS_REDIRECT"
 	environmentVariableCacheSec       = "CACHE_SECONDS"
 	environmentVariableChallengeToken = "ACME_CHALLENGE_TOKEN"
 	environmentVariableChallengeKey   = "ACME_CHALLENGE_KEY"
@@ -33,6 +34,7 @@ type mainFlags struct {
 	tlsCertFile    string
 	tlsKeyFile     string
 	debugGame      bool
+	noTLSRedirect  bool
 	cacheSec       int
 }
 
@@ -92,6 +94,7 @@ func (m *mainFlags) newFlagSet(osLookupEnvFunc func(string) (string, bool), port
 	fs.StringVar(&m.tlsCertFile, "tls-cert-file", envValue(environmentVariableTLSCertFile), "The absolute path of the certificate file to use for TLS.")
 	fs.StringVar(&m.tlsKeyFile, "tls-key-file", envValue(environmentVariableTLSKeyFile), "The absolute path of the key file to use for TLS.")
 	fs.BoolVar(&m.debugGame, "debug-game", envPresent(environmentVariableDebugGame), "Logs game message types in the console if present.")
+	fs.BoolVar(&m.noTLSRedirect, "no-tls-redirect", envPresent(environmentVariableNoTLSRedirect), "Disables HTTPS redirection from http if present.")
 	fs.IntVar(&m.cacheSec, "cache-sec", envValueInt(environmentVariableCacheSec), "The number of seconds static assets are cached, such as javascript files.")
 	return fs
 }
