@@ -1,4 +1,4 @@
-.PHONY: all test-wasm test install serve clean
+.PHONY: all test-wasm test install serve serve-tcp clean
 
 all: install
 
