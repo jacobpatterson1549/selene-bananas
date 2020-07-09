@@ -24,8 +24,7 @@ func (Challenge) isFor(path string) bool {
 }
 
 // handle writes the challenge to the response.
-// The concatenation of the token, a peroid, and the key.
-// The url of the request is not validated.
+// Writes the concatenation of the token, a peroid, and the key.
 func (c Challenge) handle(w http.ResponseWriter, r *http.Request) error {
 	if !c.isFor(r.URL.Path) || r.URL.Path[len(acmeHeader):] != c.Token {
 		return fmt.Errorf("path '%v' is not for challenge", r.URL.Path)
