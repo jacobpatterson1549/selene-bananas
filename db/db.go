@@ -12,8 +12,7 @@ type (
 	// Database contains methods to create, read, update, and delete data
 	Database interface {
 		queryRow(ctx context.Context, q sqlQuery) row
-		exec(ctx context.Context, q sqlQuery) (sql.Result, error)
-		execTransaction(ctx context.Context, queries []sqlQuery) error
+		exec(ctx context.Context, queries ...sqlQuery) error
 	}
 
 	sqlDatabase struct {
@@ -60,23 +59,25 @@ func NewPostgresDatabase(databaseURL string) (Database, error) {
 	return sqlDatabase{db: sqlDb}, nil
 }
 
+// query returns the row referenced by the query
 func (s sqlDatabase) queryRow(ctx context.Context, q sqlQuery) row {
 	return s.db.QueryRowContext(ctx, q.sql(), q.args()...)
 }
 
-func (s sqlDatabase) exec(ctx context.Context, q sqlQuery) (sql.Result, error) {
-	return s.db.ExecContext(ctx, q.sql(), q.args()...)
-}
-
-func (s sqlDatabase) execTransaction(ctx context.Context, queries []sqlQuery) error {
+// exec evaluates multiple queries in a transaction, ensuring each execSQLFunction one only updates one row.
+func (s sqlDatabase) exec(ctx context.Context, queries ...sqlQuery) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("beginning transaction: %w", err)
 	}
 	for i, q := range queries {
 		result, err := tx.ExecContext(ctx, q.sql(), q.args()...)
-		if e, ok := q.(execSQLFunction); ok {
-			err = e.expectSingleRowAffected(result)
+		if f, ok := q.(execSQLFunction); err != nil && ok {
+			var n int64
+			n, err = result.RowsAffected()
+			if err == nil && n != 1 {
+				err = fmt.Errorf("expected to update 1 row, but updated %d when calling %s", n, f.name)
+			}
 		}
 		if err != nil {
 			err = fmt.Errorf("executing query %v: %w", i, err)
@@ -90,17 +91,6 @@ func (s sqlDatabase) execTransaction(ctx context.Context, queries []sqlQuery) er
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("committing transaction: %w", err)
-	}
-	return nil
-}
-
-func (f execSQLFunction) expectSingleRowAffected(r sql.Result) error {
-	rows, err := r.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows != 1 {
-		return fmt.Errorf("expected to update 1 row, but updated %d when calling %s", rows, f.name)
 	}
 	return nil
 }

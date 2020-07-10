@@ -58,7 +58,7 @@ func (ud UserDao) Setup(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("creating setup query: %w", err)
 	}
-	if err = ud.db.execTransaction(ctx, queries); err != nil {
+	if err = ud.db.exec(ctx, queries...); err != nil {
 		return fmt.Errorf("running setup query: %w", err)
 	}
 	return nil
@@ -73,12 +73,8 @@ func (ud UserDao) Create(ctx context.Context, u User) error {
 		return err
 	}
 	q := newExecSQLFunction("user_create", u.Username, hashedPassword)
-	result, err := ud.db.exec(ctx, q)
-	if err != nil {
+	if err := ud.db.exec(ctx, q); err != nil {
 		return fmt.Errorf("creating user: %w", err)
-	}
-	if err := q.expectSingleRowAffected(result); err != nil {
-		return fmt.Errorf("user exists: %w", err)
 	}
 	return nil
 }
@@ -121,11 +117,7 @@ func (ud UserDao) UpdatePassword(ctx context.Context, u User, newP string) error
 		return fmt.Errorf("checking password: %w", err)
 	}
 	q := newExecSQLFunction("user_update_password", u.Username, hashedPassword)
-	result, err := ud.db.exec(ctx, q)
-	if err != nil {
-		return fmt.Errorf("updating user password: %w", err)
-	}
-	if err := q.expectSingleRowAffected(result); err != nil {
+	if err := ud.db.exec(ctx, q); err != nil {
 		return fmt.Errorf("updating user password: %w", err)
 	}
 	return nil
@@ -140,7 +132,7 @@ func (ud UserDao) UpdatePointsIncrement(ctx context.Context, usernames []string,
 		pointsDelta := f(u)
 		queries[i] = newExecSQLFunction("user_update_points_increment", u, pointsDelta)
 	}
-	if err := ud.db.execTransaction(ctx, queries); err != nil {
+	if err := ud.db.exec(ctx, queries...); err != nil {
 		return fmt.Errorf("incrementing user points: %w", err)
 	}
 	return nil
@@ -154,11 +146,7 @@ func (ud UserDao) Delete(ctx context.Context, u User) error {
 		return err
 	}
 	q := newExecSQLFunction("user_delete", u.Username)
-	result, err := ud.db.exec(ctx, q)
-	if err != nil {
-		return fmt.Errorf("deleting user: %w", err)
-	}
-	if q.expectSingleRowAffected(result); err != nil {
+	if err := ud.db.exec(ctx, q); err != nil {
 		return fmt.Errorf("deleting user: %w", err)
 	}
 	return nil

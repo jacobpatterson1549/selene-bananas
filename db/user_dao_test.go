@@ -55,42 +55,32 @@ func TestNewUserDao(t *testing.T) {
 
 func TestSetup(t *testing.T) {
 	setupTests := []struct {
-		db           Database
-		readFileFunc func(filename string) ([]byte, error)
-		wantErr      bool
+		readFileErr error
+		execFuncErr error
+		wantErr     bool
 	}{
 		{
-			readFileFunc: func(filename string) ([]byte, error) {
-				return nil, fmt.Errorf("mock read file error")
-			},
-			wantErr: true,
+			readFileErr: fmt.Errorf("mock read file error"),
+			wantErr:     true,
 		},
 		{
-			db: mockDatabase{
-				execTransactionFunc: func(ctx context.Context, queries []sqlQuery) error {
-					return fmt.Errorf("exec transaction error")
-				},
-			},
-			readFileFunc: func(filename string) ([]byte, error) {
-				return []byte("SELECT 1;"), nil
-			},
-			wantErr: true,
+			execFuncErr: fmt.Errorf("exec transaction error"),
+			wantErr:     true,
 		},
 		{
-			db: mockDatabase{
-				execTransactionFunc: func(ctx context.Context, queries []sqlQuery) error {
-					return nil
-				},
-			},
-			readFileFunc: func(filename string) ([]byte, error) {
-				return []byte("SELECT 1;"), nil
-			},
+			// [all ok]
 		},
 	}
 	for i, test := range setupTests {
 		ud := UserDao{
-			db:           test.db,
-			readFileFunc: test.readFileFunc,
+			db: mockDatabase{
+				execFunc: func(ctx context.Context, queries ...sqlQuery) error {
+					return test.execFuncErr
+				},
+			},
+			readFileFunc: func(filename string) ([]byte, error) {
+				return []byte("SELECT 1;"), test.readFileErr
+			},
 		}
 		ctx := context.Background()
 		err := ud.Setup(ctx)
@@ -99,6 +89,55 @@ func TestSetup(t *testing.T) {
 			if !test.wantErr {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
+		case test.wantErr:
+			t.Errorf("Test %v: expected error", i)
+		}
+	}
+}
+
+func TestCreate(t *testing.T) {
+	createTests := []struct {
+		userHashPasswordErr error
+		dbExecErr error
+		wantErr bool
+	}{
+		{
+			userHashPasswordErr: fmt.Errorf("problem hashing password"),
+			wantErr: true,
+		},
+		{
+			
+			dbExecErr: fmt.Errorf("problem executing user create"),
+			wantErr: true,
+		},
+		{
+			// [all ok] 
+		},
+	}
+	for i, test := range createTests {
+		u:= User{
+			ph: mockPasswordHandler{
+				hashFunc: func() ([]byte, error) {
+					return []byte("hashed password"), test.userHashPasswordErr
+				},
+			},
+		}
+		ud := UserDao{
+			db: mockDatabase{
+				execFunc: func(ctx context.Context, queries ...sqlQuery) error {
+					return test.dbExecErr
+				},
+			},
+		}
+		ctx := context.Background()
+		err := ud.Create(ctx, u)
+		switch {
+		case err != nil:
+			if !test.wantErr {
+				t.Errorf("Test %v: unexpected error: %v", i, err)
+			}
+		case test.wantErr:
+			t.Errorf("Test %v: expected error", i)
 		}
 	}
 }

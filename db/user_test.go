@@ -4,6 +4,21 @@ import (
 	"testing"
 )
 
+type (
+	mockPasswordHandler struct {
+		hashFunc      func() ([]byte, error)
+		isCorrectFunc func(hash []byte) (bool, error)
+	}
+)
+
+func (ph mockPasswordHandler) hash() ([]byte, error) {
+	return ph.hashFunc()
+}
+
+func (ph mockPasswordHandler) isCorrect(hashedPassword []byte) (bool, error) {
+	return ph.isCorrectFunc(hashedPassword)
+}
+
 func TestIsValidateUsername(t *testing.T) {
 	isValidTests := []struct {
 		username string
