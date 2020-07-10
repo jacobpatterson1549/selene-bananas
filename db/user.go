@@ -15,8 +15,8 @@ type (
 	}
 
 	passwordHandler interface {
-		hash() ([]byte, error)
-		isCorrect(hashedPassword []byte) (bool, error)
+		hash(password string) ([]byte, error)
+		isCorrect(hashedPassword []byte, password string) (bool, error)
 	}
 )
 
@@ -28,10 +28,11 @@ func NewUser(u, p string) (*User, error) {
 	if err := validatePassword(p); err != nil {
 		return nil, err
 	}
+	bph := newBcryptPasswordHandler()
 	user := User{
 		Username: u,
 		password: p,
-		ph:       bcryptPassword(p),
+		ph:       bph,
 	}
 	return &user, nil
 }
@@ -64,7 +65,7 @@ func validatePassword(p string) error {
 
 // hashPassword creates a byte hash of the password that should be secure.
 func (u User) hashPassword() ([]byte, error) {
-	hashedPassword, err := u.ph.hash()
+	hashedPassword, err := u.ph.hash(u.password)
 	if err != nil {
 		return nil, fmt.Errorf("hashing password: %w", err)
 	}
@@ -73,7 +74,7 @@ func (u User) hashPassword() ([]byte, error) {
 
 // isCorrectPassword returns whether or not the hashed form of the password is correct, returning an error if a problem occurs checking it.
 func (u User) isCorrectPassword(hashedPassword []byte) (bool, error) {
-	ok, err := u.ph.isCorrect(hashedPassword)
+	ok, err := u.ph.isCorrect(hashedPassword, u.password)
 	if err != nil {
 		return false, fmt.Errorf("checking to see if password is correct: %w", err)
 	}

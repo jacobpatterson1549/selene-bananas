@@ -107,7 +107,6 @@ func (ud UserDao) UpdatePassword(ctx context.Context, u User, newP string) error
 	if err := validatePassword(newP); err != nil {
 		return err
 	}
-	u.password = newP
 	hashedPassword, err := u.hashPassword()
 	if err != nil {
 		return err

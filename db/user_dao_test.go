@@ -117,8 +117,8 @@ func TestUserDaoCreate(t *testing.T) {
 	for i, test := range createTests {
 		u := User{
 			ph: mockPasswordHandler{
-				hashFunc: func() ([]byte, error) {
-					return []byte("hashed password"), test.userHashPasswordErr
+				hashFunc: func(password string) ([]byte, error) {
+					return []byte(password), test.userHashPasswordErr
 				},
 			},
 		}
@@ -170,7 +170,7 @@ func TestUserDaoRead(t *testing.T) {
 	for i, test := range readTests {
 		u := User{
 			ph: mockPasswordHandler{
-				isCorrectFunc: func(hashedPassword []byte) (bool, error) {
+				isCorrectFunc: func(hashedPassword []byte, password string) (bool, error) {
 					return !test.incorrectPassword, test.isCorrectPasswordErr
 				},
 			},
@@ -201,6 +201,95 @@ func TestUserDaoRead(t *testing.T) {
 			t.Errorf("Test %v: expected error", i)
 		case test.want != got:
 			t.Errorf("Test %v:\nwanted: %v\ngot:    : %v", i, test.want, got)
+		}
+	}
+}
+
+func TestUserDaoUpdatePassword(t *testing.T) {
+	updatePasswordTests := []struct {
+		oldP            string
+		dbP             string
+		newP            string // TODO: mock password validation
+		hashPasswordErr error
+		dbExecErr       error
+		wantErr         bool
+	}{
+		{
+			newP:    "tinyP",
+			wantErr: true,
+		},
+		{
+			newP:            "TOP_s3cr3t",
+			hashPasswordErr: fmt.Errorf("problem hashing password"),
+			wantErr:         true,
+		},
+		{
+			oldP:    "homer_S!mps0n",
+			dbP:     "el+bart0_rulZ",
+			newP:    "TOP_s3cr3t",
+			wantErr: true,
+		},
+		{
+			oldP:    "homer_S!mps0n", // ensure the old password is compared to what is in the database
+			dbP:     "el+bart0_rulZ",
+			newP:    "el+bart0_rulZ",
+			wantErr: true,
+		},
+		{
+			oldP:      "homer_S!mps0n",
+			dbP:       "homer_S!mps0n",
+			newP:      "TOP_s3cr3t",
+			dbExecErr: fmt.Errorf("problem updating password"),
+			wantErr:   true,
+		},
+		{
+			oldP: "homer_S!mps0n",
+			dbP:  "homer_S!mps0n",
+			newP: "TOP_s3cr3t",
+			// [all ok]
+		},
+	}
+	for i, test := range updatePasswordTests {
+		u := User{
+			password: test.oldP,
+			ph: mockPasswordHandler{
+				hashFunc: func(password string) ([]byte, error) {
+					return []byte(password), test.hashPasswordErr
+				},
+				isCorrectFunc: func(hashedPassword []byte, password string) (bool, error) {
+					return reflect.DeepEqual(hashedPassword, []byte(password)), nil
+				},
+			},
+		}
+		r := mockRow{
+			ScanFunc: func(dest ...interface{}) error {
+				if len(dest) == 3 {
+					if d, ok := dest[1].(*string); ok {
+						*d = test.dbP
+					}
+				}
+				return nil
+			},
+		}
+		ud := UserDao{
+			db: mockDatabase{
+				queryRowFunc: func(ctx context.Context, q sqlQuery) row {
+					return r
+				},
+				execFunc: func(ctx context.Context, queries ...sqlQuery) error {
+					return test.dbExecErr
+				},
+			},
+		}
+		ctx := context.Background()
+		err := ud.UpdatePassword(ctx, u, test.newP)
+		switch {
+		case err != nil:
+			if !test.wantErr {
+				t.Errorf("Test %v: unexpected error: %v", i, err)
+			}
+		case test.wantErr:
+			t.Errorf("Test %v: expected error", i)
 		}
 	}
 }
