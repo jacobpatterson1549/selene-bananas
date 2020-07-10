@@ -293,3 +293,57 @@ func TestUserDaoUpdatePassword(t *testing.T) {
 		}
 	}
 }
+
+func TestUserDaoDelete(t *testing.T) {
+	deleteTests := []struct {
+		readErr   error
+		dbExecErr error
+		wantErr   bool
+	}{
+		{
+			readErr: fmt.Errorf("problem reading user"),
+			wantErr: true,
+		},
+		{
+			dbExecErr: fmt.Errorf("problem deleting user"),
+			wantErr:   true,
+		},
+		{
+			// [all ok]
+		},
+	}
+	for i, test := range deleteTests {
+		u := User{
+			ph: mockPasswordHandler{
+				isCorrectFunc: func(hashedPassword []byte, password string) (bool, error) {
+					return true, nil
+				},
+			},
+		}
+		r := mockRow{
+			ScanFunc: func(dest ...interface{}) error {
+				return test.readErr
+			},
+		}
+		ud := UserDao{
+			db: mockDatabase{
+				queryRowFunc: func(ctx context.Context, q sqlQuery) row {
+					return r
+				},
+				execFunc: func(ctx context.Context, queries ...sqlQuery) error {
+					return test.dbExecErr
+				},
+			},
+		}
+		ctx := context.Background()
+		err := ud.Delete(ctx, u)
+		switch {
+		case err != nil:
+			if !test.wantErr {
+				t.Errorf("Test %v: unexpected error: %v", i, err)
+			}
+		case test.wantErr:
+			t.Errorf("Test %v: expected error", i)
+		}
+	}
+}

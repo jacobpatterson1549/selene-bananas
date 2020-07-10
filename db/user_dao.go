@@ -140,8 +140,8 @@ func (ud UserDao) UpdatePointsIncrement(ctx context.Context, usernames []string,
 func (ud UserDao) Delete(ctx context.Context, u User) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, ud.queryPeriod)
 	defer cancelFunc()
-	if _, err := ud.Read(ctx, u); err != nil { // check password
-		return err
+	if _, err := ud.Read(ctx, u); err != nil {
+		return fmt.Errorf("checking password: %w", err)
 	}
 	q := newExecSQLFunction("user_delete", u.Username)
 	if err := ud.db.exec(ctx, q); err != nil {
