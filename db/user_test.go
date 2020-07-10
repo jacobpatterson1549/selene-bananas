@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestIsValidUsername(t *testing.T) {
+func TestIsValidateUsername(t *testing.T) {
 	isValidTests := []struct {
 		username string
 		want     bool
@@ -17,7 +17,7 @@ func TestIsValidUsername(t *testing.T) {
 		{"abcdefghijklmnopqrstuvwxyzabcdefg", false}, // 33
 	}
 	for i, test := range isValidTests {
-		_, err := newUsername(test.username)
+		err := validateUsername(test.username)
 		got := err == nil
 		if test.want != got {
 			t.Errorf("Test %v: wanted username to be valid for '%v' to be %v, but got %v", i, test.username, test.want, got)
@@ -25,7 +25,7 @@ func TestIsValidUsername(t *testing.T) {
 	}
 }
 
-func TestIsValid(t *testing.T) {
+func TestValidatePassword(t *testing.T) {
 	isValidTests := []struct {
 		password string
 		want     bool
@@ -38,7 +38,7 @@ func TestIsValid(t *testing.T) {
 		{"abcdefghijklmnopqrstuvwxyzabcdefg", true}, // 33
 	}
 	for i, test := range isValidTests {
-		_, err := newPassword(test.password)
+		err := validatePassword(test.password)
 		got := err == nil
 		if test.want != got {
 			t.Errorf("Test %v: wanted password to be valid for '%v' to be %v, but got %v", i, test.password, test.want, got)

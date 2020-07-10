@@ -68,7 +68,7 @@ func (ud UserDao) Setup(ctx context.Context) error {
 func (ud UserDao) Create(ctx context.Context, u User) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, ud.queryPeriod)
 	defer cancelFunc()
-	hashedPassword, err := u.password.hash()
+	hashedPassword, err := u.hashPassword()
 	if err != nil {
 		return err
 	}
@@ -94,8 +94,8 @@ func (ud UserDao) Read(ctx context.Context, u User) (User, error) {
 	if err != nil {
 		return u2, fmt.Errorf("reading user: %w", err)
 	}
-	hp := hashedPassword(u2.password)
-	isCorrect, err := u.password.isCorrect(hp)
+	hashedPassword := []byte(u2.password)
+	isCorrect, err := u.isCorrectPassword(hashedPassword)
 	switch {
 	case err != nil:
 		return u3, fmt.Errorf("reading user: %w", err)
@@ -109,11 +109,11 @@ func (ud UserDao) Read(ctx context.Context, u User) (User, error) {
 func (ud UserDao) UpdatePassword(ctx context.Context, u User, newP string) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, ud.queryPeriod)
 	defer cancelFunc()
-	p, err := newPassword(newP)
-	if err != nil {
+	if err := validatePassword(newP); err != nil {
 		return err
 	}
-	hashedPassword, err := p.hash()
+	u.password = newP
+	hashedPassword, err := u.hashPassword()
 	if err != nil {
 		return err
 	}
