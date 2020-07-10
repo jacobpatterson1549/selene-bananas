@@ -30,7 +30,7 @@ type (
 // NewUserDao creates a UserDao on the specified database
 func (cfg UserDaoConfig) NewUserDao() (*UserDao, error) {
 	if err := cfg.validate(); err != nil {
-		return nil, fmt.Errorf("validating user dao creation: %w", err) // TODO: Change all validation error messages to be formatted like this.
+		return nil, fmt.Errorf("creating user dao: validation: %w", err)
 	}
 	ud := UserDao{
 		db:           cfg.DB,

@@ -105,7 +105,7 @@ type (
 // NewServer creates a Server from the Config
 func (cfg Config) NewServer() (*Server, error) {
 	if err := cfg.validate(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating server: validation: %w", err)
 	}
 	data := struct {
 		Name        string

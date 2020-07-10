@@ -67,7 +67,7 @@ type (
 // NewLobby creates a new game lobby
 func (cfg Config) NewLobby() (*Lobby, error) {
 	if err := cfg.validate(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating lobby: validation: %w", err)
 	}
 	u := new(websocket.Upgrader)
 	l := Lobby{

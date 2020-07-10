@@ -36,7 +36,7 @@ const (
 // New creates a new board with the unused tiles.
 func (cfg Config) New(unusedTiles []tile.Tile) (*Board, error) {
 	if err := cfg.Validate(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating board: validation: %w", err)
 	}
 	unusedTilesByID := make(map[tile.ID]tile.Tile, len(unusedTiles))
 	unusedTileIDs := make([]tile.ID, len(unusedTiles))

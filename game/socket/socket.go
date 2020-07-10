@@ -52,7 +52,7 @@ type (
 // NewSocket creates a socket
 func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) (*Socket, error) {
 	if err := cfg.validate(conn, playerName); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating socket: validation: %w", err)
 	}
 	s := Socket{
 		debug:          cfg.Debug,

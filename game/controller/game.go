@@ -77,7 +77,7 @@ const (
 // NewGame creates a new game and runs it
 func (cfg Config) NewGame(id game.ID) (*Game, error) {
 	if err := cfg.validate(id); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating game: validation: %w", err)
 	}
 	tileLetters := cfg.TileLetters
 	if len(tileLetters) == 0 {
