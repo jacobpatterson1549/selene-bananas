@@ -11,9 +11,9 @@ import (
 type (
 	// Database contains methods to create, read, update, and delete data
 	Database interface {
-		queryRow(ctx context.Context, query string, args ...interface{}) row
-		exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-		begin(ctx context.Context) (transaction, error)
+		queryRow(ctx context.Context, q sqlQuery) row
+		exec(ctx context.Context, q sqlQuery) (sql.Result, error)
+		execTransaction(ctx context.Context, queries []sqlQuery) error
 	}
 
 	sqlDatabase struct {
@@ -60,31 +60,16 @@ func NewPostgresDatabase(databaseURL string) (Database, error) {
 	return sqlDatabase{db: sqlDb}, nil
 }
 
-func (s sqlDatabase) queryRow(ctx context.Context, query string, args ...interface{}) row {
-	return s.db.QueryRowContext(ctx, query, args...)
+func (s sqlDatabase) queryRow(ctx context.Context, q sqlQuery) row {
+	return s.db.QueryRowContext(ctx, q.sql(), q.args()...)
 }
 
-func (s sqlDatabase) exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	return s.db.ExecContext(ctx, query, args...)
+func (s sqlDatabase) exec(ctx context.Context, q sqlQuery) (sql.Result, error) {
+	return s.db.ExecContext(ctx, q.sql(), q.args()...)
 }
 
-func (s sqlDatabase) begin(ctx context.Context) (transaction, error) {
-	return s.db.BeginTx(ctx, nil)
-}
-
-func (f execSQLFunction) expectSingleRowAffected(r sql.Result) error {
-	rows, err := r.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows != 1 {
-		return fmt.Errorf("expected to update 1 row, but updated %d when calling %s", rows, f.name)
-	}
-	return nil
-}
-
-func execTransaction(ctx context.Context, d Database, queries []sqlQuery) error {
-	tx, err := d.begin(ctx)
+func (s sqlDatabase) execTransaction(ctx context.Context, queries []sqlQuery) error {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("beginning transaction: %w", err)
 	}
@@ -105,6 +90,17 @@ func execTransaction(ctx context.Context, d Database, queries []sqlQuery) error 
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("committing transaction: %w", err)
+	}
+	return nil
+}
+
+func (f execSQLFunction) expectSingleRowAffected(r sql.Result) error {
+	rows, err := r.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows != 1 {
+		return fmt.Errorf("expected to update 1 row, but updated %d when calling %s", rows, f.name)
 	}
 	return nil
 }

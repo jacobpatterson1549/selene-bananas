@@ -30,7 +30,7 @@ type (
 // NewUserDao creates a UserDao on the specified database
 func (cfg UserDaoConfig) NewUserDao() (*UserDao, error) {
 	if err := cfg.validate(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("validating user dao creation: %w", err) // TODO: Change all validation error messages to be formatted like this.
 	}
 	ud := UserDao{
 		db:           cfg.DB,
@@ -54,12 +54,11 @@ func (cfg UserDaoConfig) validate() error {
 func (ud UserDao) Setup(ctx context.Context) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, ud.queryPeriod)
 	defer cancelFunc()
-	sqlQueries, err := ud.setupSQLQueries()
+	queries, err := ud.setupSQLQueries()
 	if err != nil {
-		return err
+		return fmt.Errorf("creating setup query: %w", err)
 	}
-	err = execTransaction(ctx, ud.db, sqlQueries)
-	if err != nil {
+	if err = ud.db.execTransaction(ctx, queries); err != nil {
 		return fmt.Errorf("running setup query: %w", err)
 	}
 	return nil
@@ -73,13 +72,12 @@ func (ud UserDao) Create(ctx context.Context, u User) error {
 	if err != nil {
 		return err
 	}
-	sqlFunction := newExecSQLFunction("user_create", u.Username, hashedPassword)
-	result, err := ud.db.exec(ctx, sqlFunction.sql(), sqlFunction.args()...)
+	q := newExecSQLFunction("user_create", u.Username, hashedPassword)
+	result, err := ud.db.exec(ctx, q)
 	if err != nil {
 		return fmt.Errorf("creating user: %w", err)
 	}
-	err = sqlFunction.expectSingleRowAffected(result)
-	if err != nil {
+	if err := q.expectSingleRowAffected(result); err != nil {
 		return fmt.Errorf("user exists: %w", err)
 	}
 	return nil
@@ -89,8 +87,8 @@ func (ud UserDao) Create(ctx context.Context, u User) error {
 func (ud UserDao) Read(ctx context.Context, u User) (User, error) {
 	ctx, cancelFunc := context.WithTimeout(ctx, ud.queryPeriod)
 	defer cancelFunc()
-	sqlFunction := newQuerySQLFunction("user_read", []string{"username", "password", "points"}, u.Username)
-	row := ud.db.queryRow(ctx, sqlFunction.sql(), sqlFunction.args()...)
+	q := newQuerySQLFunction("user_read", []string{"username", "password", "points"}, u.Username)
+	row := ud.db.queryRow(ctx, q)
 	var u2, u3 User
 	err := row.Scan(&u2.Username, &u2.password, &u2.Points)
 	if err != nil {
@@ -100,7 +98,7 @@ func (ud UserDao) Read(ctx context.Context, u User) (User, error) {
 	isCorrect, err := u.password.isCorrect(hp)
 	switch {
 	case err != nil:
-		return u3, err
+		return u3, fmt.Errorf("reading user: %w", err)
 	case !isCorrect:
 		return u3, fmt.Errorf("incorrect password")
 	}
@@ -119,15 +117,18 @@ func (ud UserDao) UpdatePassword(ctx context.Context, u User, newP string) error
 	if err != nil {
 		return err
 	}
-	if _, err := ud.Read(ctx, u); err != nil { // check password
-		return err
+	if _, err := ud.Read(ctx, u); err != nil {
+		return fmt.Errorf("checking password: %w", err)
 	}
-	sqlFunction := newExecSQLFunction("user_update_password", u.Username, hashedPassword)
-	result, err := ud.db.exec(ctx, sqlFunction.sql(), sqlFunction.args()...)
+	q := newExecSQLFunction("user_update_password", u.Username, hashedPassword)
+	result, err := ud.db.exec(ctx, q)
 	if err != nil {
 		return fmt.Errorf("updating user password: %w", err)
 	}
-	return sqlFunction.expectSingleRowAffected(result)
+	if err := q.expectSingleRowAffected(result); err != nil {
+		return fmt.Errorf("updating user password: %w", err)
+	}
+	return nil
 }
 
 // UpdatePointsIncrement increments the points for multiple users
@@ -139,7 +140,10 @@ func (ud UserDao) UpdatePointsIncrement(ctx context.Context, usernames []string,
 		pointsDelta := f(u)
 		queries[i] = newExecSQLFunction("user_update_points_increment", u, pointsDelta)
 	}
-	return execTransaction(ctx, ud.db, queries)
+	if err := ud.db.execTransaction(ctx, queries); err != nil {
+		return fmt.Errorf("incrementing user points: %w", err)
+	}
+	return nil
 }
 
 // Delete removes a user
@@ -149,12 +153,15 @@ func (ud UserDao) Delete(ctx context.Context, u User) error {
 	if _, err := ud.Read(ctx, u); err != nil { // check password
 		return err
 	}
-	sqlFunction := newExecSQLFunction("user_delete", u.Username)
-	result, err := ud.db.exec(ctx, sqlFunction.sql(), sqlFunction.args()...)
+	q := newExecSQLFunction("user_delete", u.Username)
+	result, err := ud.db.exec(ctx, q)
 	if err != nil {
 		return fmt.Errorf("deleting user: %w", err)
 	}
-	return sqlFunction.expectSingleRowAffected(result)
+	if q.expectSingleRowAffected(result); err != nil {
+		return fmt.Errorf("deleting user: %w", err)
+	}
+	return nil
 }
 
 func (ud UserDao) setupSQLQueries() ([]sqlQuery, error) {
