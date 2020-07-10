@@ -85,18 +85,17 @@ func (ud UserDao) Read(ctx context.Context, u User) (User, error) {
 	defer cancelFunc()
 	q := newQuerySQLFunction("user_read", []string{"username", "password", "points"}, u.Username)
 	row := ud.db.queryRow(ctx, q)
-	var u2, u3 User
-	err := row.Scan(&u2.Username, &u2.password, &u2.Points)
-	if err != nil {
-		return u2, fmt.Errorf("reading user: %w", err)
+	var u2 User
+	if err := row.Scan(&u2.Username, &u2.password, &u2.Points); err != nil {
+		return User{}, fmt.Errorf("reading user: %w", err)
 	}
 	hashedPassword := []byte(u2.password)
 	isCorrect, err := u.isCorrectPassword(hashedPassword)
 	switch {
 	case err != nil:
-		return u3, fmt.Errorf("reading user: %w", err)
+		return User{}, fmt.Errorf("reading user: %w", err)
 	case !isCorrect:
-		return u3, fmt.Errorf("incorrect password")
+		return User{}, fmt.Errorf("incorrect password")
 	}
 	return u2, nil
 }

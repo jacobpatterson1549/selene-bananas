@@ -53,7 +53,7 @@ func TestNewUserDao(t *testing.T) {
 	}
 }
 
-func TestSetup(t *testing.T) {
+func TestUserDaoSetup(t *testing.T) {
 	setupTests := []struct {
 		readFileErr error
 		execFuncErr error
@@ -95,27 +95,27 @@ func TestSetup(t *testing.T) {
 	}
 }
 
-func TestCreate(t *testing.T) {
+func TestUserDaoCreate(t *testing.T) {
 	createTests := []struct {
 		userHashPasswordErr error
-		dbExecErr error
-		wantErr bool
+		dbExecErr           error
+		wantErr             bool
 	}{
 		{
 			userHashPasswordErr: fmt.Errorf("problem hashing password"),
-			wantErr: true,
+			wantErr:             true,
 		},
 		{
-			
+
 			dbExecErr: fmt.Errorf("problem executing user create"),
-			wantErr: true,
+			wantErr:   true,
 		},
 		{
-			// [all ok] 
+			// [all ok]
 		},
 	}
 	for i, test := range createTests {
-		u:= User{
+		u := User{
 			ph: mockPasswordHandler{
 				hashFunc: func() ([]byte, error) {
 					return []byte("hashed password"), test.userHashPasswordErr
@@ -138,6 +138,69 @@ func TestCreate(t *testing.T) {
 			}
 		case test.wantErr:
 			t.Errorf("Test %v: expected error", i)
+		}
+	}
+}
+
+func TestUserDaoRead(t *testing.T) {
+	readTests := []struct {
+		rowScanErr           error
+		dbExecErr            error
+		incorrectPassword    bool
+		isCorrectPasswordErr error
+		want                 User
+		wantErr              bool
+	}{
+		{
+			rowScanErr: fmt.Errorf("problem reading user row"),
+			wantErr:    true,
+		},
+		{
+			isCorrectPasswordErr: fmt.Errorf("problem checking password"),
+			wantErr:              true,
+		},
+		{
+			incorrectPassword: true,
+			wantErr:           true,
+		},
+		{
+			// [all ok]
+		},
+	}
+	for i, test := range readTests {
+		u := User{
+			ph: mockPasswordHandler{
+				isCorrectFunc: func(hashedPassword []byte) (bool, error) {
+					return !test.incorrectPassword, test.isCorrectPasswordErr
+				},
+			},
+		}
+		r := mockRow{
+			ScanFunc: func(dest ...interface{}) error {
+				return test.rowScanErr
+			},
+		}
+		ud := UserDao{
+			db: mockDatabase{
+				queryRowFunc: func(ctx context.Context, q sqlQuery) row {
+					return r
+				},
+				execFunc: func(ctx context.Context, queries ...sqlQuery) error {
+					return test.dbExecErr
+				},
+			},
+		}
+		ctx := context.Background()
+		got, err := ud.Read(ctx, u)
+		switch {
+		case err != nil:
+			if !test.wantErr {
+				t.Errorf("Test %v: unexpected error: %v", i, err)
+			}
+		case test.wantErr:
+			t.Errorf("Test %v: expected error", i)
+		case test.want != got:
+			t.Errorf("Test %v:\nwanted: %v\ngot:    : %v", i, test.want, got)
 		}
 	}
 }
