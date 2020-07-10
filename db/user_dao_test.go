@@ -294,6 +294,82 @@ func TestUserDaoUpdatePassword(t *testing.T) {
 	}
 }
 
+func TestUserDaoUpdatePointsIncrement(t *testing.T) {
+	updatePointsIncrementTests := []struct {
+		usernamePoints map[string]int
+		dbExecErr      error
+		wantErr        bool
+	}{
+		{
+			dbExecErr: fmt.Errorf("problem updating users' points"),
+			wantErr:   true,
+		},
+		{
+			usernamePoints: map[string]int{
+				"selene": 7,
+				"fred":   1,
+				"barney": 2,
+			},
+			// [all ok]
+		},
+	}
+	checkUpdateQueries := func(usernamePoints map[string]int, queries []sqlQuery) error {
+		updatedUsernames := make(map[string]struct{}, len(usernamePoints))
+		for i, q := range queries {
+			args := q.args()
+			u, ok := args[0].(string)
+			if !ok {
+				return fmt.Errorf("Test %v: arg0 was not a string", i)
+			}
+			p2, ok := args[1].(int)
+			if !ok {
+				return fmt.Errorf("query %v: arg1 was not an int", i)
+			}
+			p1, ok := usernamePoints[u]
+			switch {
+			case !ok:
+				return fmt.Errorf("query %v: unexpected username: %v", i, u)
+			case p1 != p2:
+				return fmt.Errorf("query %v: wanted to update points for %v to %v, got: %v ", i, u, p1, p2)
+			}
+			updatedUsernames[u] = struct{}{}
+		}
+		if len(usernamePoints) != len(updatedUsernames) {
+			return fmt.Errorf("wanted to update %v users, got %v", len(usernamePoints), len(updatedUsernames))
+		}
+		return nil
+	}
+	for i, test := range updatePointsIncrementTests {
+		ud := UserDao{
+			db: mockDatabase{
+				execFunc: func(ctx context.Context, queries ...sqlQuery) error {
+					if test.dbExecErr != nil {
+						return test.dbExecErr
+					}
+					return checkUpdateQueries(test.usernamePoints, queries)
+				},
+			},
+		}
+		ctx := context.Background()
+		usernames := make([]string, 0, len(test.usernamePoints))
+		for u := range test.usernamePoints {
+			usernames = append(usernames, u)
+		}
+		f := func(username string) int {
+			return test.usernamePoints[username]
+		}
+		err := ud.UpdatePointsIncrement(ctx, usernames, f)
+		switch {
+		case err != nil:
+			if !test.wantErr {
+				t.Errorf("Test %v: unexpected error: %v", i, err)
+			}
+		case test.wantErr:
+			t.Errorf("Test %v: expected error", i)
+		}
+	}
+}
+
 func TestUserDaoDelete(t *testing.T) {
 	deleteTests := []struct {
 		readErr   error
