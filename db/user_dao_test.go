@@ -209,7 +209,7 @@ func TestUserDaoUpdatePassword(t *testing.T) {
 	updatePasswordTests := []struct {
 		oldP            string
 		dbP             string
-		newP            string // TODO: mock password validation
+		newP            string
 		hashPasswordErr error
 		dbExecErr       error
 		wantErr         bool
