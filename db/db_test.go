@@ -6,23 +6,23 @@ import (
 
 type (
 	mockDatabase struct {
-		queryRowFunc func(ctx context.Context, q sqlQuery) row
-		execFunc     func(ctx context.Context, queries ...sqlQuery) error
+		queryFunc func(ctx context.Context, q query) scanner
+		execFunc  func(ctx context.Context, queries ...query) error
 	}
 
-	mockRow struct {
+	mockScanner struct {
 		ScanFunc func(dest ...interface{}) error
 	}
 )
 
-func (d mockDatabase) queryRow(ctx context.Context, q sqlQuery) row {
-	return d.queryRowFunc(ctx, q)
+func (d mockDatabase) query(ctx context.Context, q query) scanner {
+	return d.queryFunc(ctx, q)
 }
 
-func (d mockDatabase) exec(ctx context.Context, queries ...sqlQuery) error {
+func (d mockDatabase) exec(ctx context.Context, queries ...query) error {
 	return d.execFunc(ctx, queries...)
 }
 
-func (r mockRow) Scan(dest ...interface{}) error {
-	return r.ScanFunc(dest...)
+func (s mockScanner) Scan(dest ...interface{}) error {
+	return s.ScanFunc(dest...)
 }

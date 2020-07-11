@@ -32,11 +32,11 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	if len(m.databaseURL) == 0 {
 		return nil, fmt.Errorf("missing data-source uri")
 	}
-	d, err := db.NewPostgresDatabase(m.databaseURL)
+	db, err := db.NewSQLDatabase("postgres", m.databaseURL)
 	if err != nil {
 		return nil, err
 	}
-	userDaoCfg := userDaoConfig(d)
+	userDaoCfg := userDaoConfig(db)
 	ud, err := userDaoCfg.NewUserDao()
 	if err != nil {
 		return nil, err

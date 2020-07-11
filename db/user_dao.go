@@ -72,7 +72,7 @@ func (ud UserDao) Create(ctx context.Context, u User) error {
 	if err != nil {
 		return err
 	}
-	q := newExecSQLFunction("user_create", u.Username, hashedPassword)
+	q := newSQLExecFunction("user_create", u.Username, hashedPassword)
 	if err := ud.db.exec(ctx, q); err != nil {
 		return fmt.Errorf("creating user: %w", err)
 	}
@@ -83,8 +83,8 @@ func (ud UserDao) Create(ctx context.Context, u User) error {
 func (ud UserDao) Read(ctx context.Context, u User) (User, error) {
 	ctx, cancelFunc := context.WithTimeout(ctx, ud.queryPeriod)
 	defer cancelFunc()
-	q := newQuerySQLFunction("user_read", []string{"username", "password", "points"}, u.Username)
-	row := ud.db.queryRow(ctx, q)
+	q := newSQLQueryFunction("user_read", []string{"username", "password", "points"}, u.Username)
+	row := ud.db.query(ctx, q)
 	var u2 User
 	if err := row.Scan(&u2.Username, &u2.password, &u2.Points); err != nil {
 		return User{}, fmt.Errorf("reading user: %w", err)
@@ -114,7 +114,7 @@ func (ud UserDao) UpdatePassword(ctx context.Context, u User, newP string) error
 	if _, err := ud.Read(ctx, u); err != nil {
 		return fmt.Errorf("checking password: %w", err)
 	}
-	q := newExecSQLFunction("user_update_password", u.Username, hashedPassword)
+	q := newSQLExecFunction("user_update_password", u.Username, hashedPassword)
 	if err := ud.db.exec(ctx, q); err != nil {
 		return fmt.Errorf("updating user password: %w", err)
 	}
@@ -125,10 +125,10 @@ func (ud UserDao) UpdatePassword(ctx context.Context, u User, newP string) error
 func (ud UserDao) UpdatePointsIncrement(ctx context.Context, usernames []string, f UserPointsIncrementFunc) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, ud.queryPeriod)
 	defer cancelFunc()
-	queries := make([]sqlQuery, len(usernames))
+	queries := make([]query, len(usernames))
 	for i, u := range usernames {
 		pointsDelta := f(u)
-		queries[i] = newExecSQLFunction("user_update_points_increment", u, pointsDelta)
+		queries[i] = newSQLExecFunction("user_update_points_increment", u, pointsDelta)
 	}
 	if err := ud.db.exec(ctx, queries...); err != nil {
 		return fmt.Errorf("incrementing user points: %w", err)
@@ -143,23 +143,23 @@ func (ud UserDao) Delete(ctx context.Context, u User) error {
 	if _, err := ud.Read(ctx, u); err != nil {
 		return fmt.Errorf("checking password: %w", err)
 	}
-	q := newExecSQLFunction("user_delete", u.Username)
+	q := newSQLExecFunction("user_delete", u.Username)
 	if err := ud.db.exec(ctx, q); err != nil {
 		return fmt.Errorf("deleting user: %w", err)
 	}
 	return nil
 }
 
-func (ud UserDao) setupSQLQueries() ([]sqlQuery, error) {
+func (ud UserDao) setupSQLQueries() ([]query, error) {
 	filenames := []string{"s", "_create", "_read", "_update_password", "_update_points_increment", "_delete"}
-	queries := make([]sqlQuery, len(filenames))
+	queries := make([]query, len(filenames))
 	for i, n := range filenames {
 		f := fmt.Sprintf("resources/sql/user%s.sql", n)
 		b, err := ud.readFileFunc(f)
 		if err != nil {
 			return nil, fmt.Errorf("reading setup file %v: %w", f, err)
 		}
-		queries[i] = execSQLRaw{string(b)}
+		queries[i] = sqlExecRaw{string(b)}
 	}
 	return queries, nil
 }

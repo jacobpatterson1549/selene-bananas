@@ -74,12 +74,12 @@ func TestUserDaoSetup(t *testing.T) {
 	for i, test := range setupTests {
 		ud := UserDao{
 			db: mockDatabase{
-				execFunc: func(ctx context.Context, queries ...sqlQuery) error {
+				execFunc: func(ctx context.Context, queries ...query) error {
 					return test.execFuncErr
 				},
 			},
 			readFileFunc: func(filename string) ([]byte, error) {
-				return []byte("SELECT 1;"), test.readFileErr
+				return []byte("SETUP;"), test.readFileErr
 			},
 		}
 		ctx := context.Background()
@@ -124,7 +124,7 @@ func TestUserDaoCreate(t *testing.T) {
 		}
 		ud := UserDao{
 			db: mockDatabase{
-				execFunc: func(ctx context.Context, queries ...sqlQuery) error {
+				execFunc: func(ctx context.Context, queries ...query) error {
 					return test.dbExecErr
 				},
 			},
@@ -175,17 +175,17 @@ func TestUserDaoRead(t *testing.T) {
 				},
 			},
 		}
-		r := mockRow{
+		s := mockScanner{
 			ScanFunc: func(dest ...interface{}) error {
 				return test.rowScanErr
 			},
 		}
 		ud := UserDao{
 			db: mockDatabase{
-				queryRowFunc: func(ctx context.Context, q sqlQuery) row {
-					return r
+				queryFunc: func(ctx context.Context, q query) scanner {
+					return s
 				},
-				execFunc: func(ctx context.Context, queries ...sqlQuery) error {
+				execFunc: func(ctx context.Context, queries ...query) error {
 					return test.dbExecErr
 				},
 			},
@@ -261,7 +261,7 @@ func TestUserDaoUpdatePassword(t *testing.T) {
 				},
 			},
 		}
-		r := mockRow{
+		s := mockScanner{
 			ScanFunc: func(dest ...interface{}) error {
 				if len(dest) == 3 {
 					if d, ok := dest[1].(*string); ok {
@@ -273,10 +273,10 @@ func TestUserDaoUpdatePassword(t *testing.T) {
 		}
 		ud := UserDao{
 			db: mockDatabase{
-				queryRowFunc: func(ctx context.Context, q sqlQuery) row {
-					return r
+				queryFunc: func(ctx context.Context, q query) scanner {
+					return s
 				},
-				execFunc: func(ctx context.Context, queries ...sqlQuery) error {
+				execFunc: func(ctx context.Context, queries ...query) error {
 					return test.dbExecErr
 				},
 			},
@@ -313,7 +313,7 @@ func TestUserDaoUpdatePointsIncrement(t *testing.T) {
 			// [all ok]
 		},
 	}
-	checkUpdateQueries := func(usernamePoints map[string]int, queries []sqlQuery) error {
+	checkUpdateQueries := func(usernamePoints map[string]int, queries []query) error {
 		updatedUsernames := make(map[string]struct{}, len(usernamePoints))
 		for i, q := range queries {
 			args := q.args()
@@ -342,7 +342,7 @@ func TestUserDaoUpdatePointsIncrement(t *testing.T) {
 	for i, test := range updatePointsIncrementTests {
 		ud := UserDao{
 			db: mockDatabase{
-				execFunc: func(ctx context.Context, queries ...sqlQuery) error {
+				execFunc: func(ctx context.Context, queries ...query) error {
 					if test.dbExecErr != nil {
 						return test.dbExecErr
 					}
@@ -396,17 +396,17 @@ func TestUserDaoDelete(t *testing.T) {
 				},
 			},
 		}
-		r := mockRow{
+		s := mockScanner{
 			ScanFunc: func(dest ...interface{}) error {
 				return test.readErr
 			},
 		}
 		ud := UserDao{
 			db: mockDatabase{
-				queryRowFunc: func(ctx context.Context, q sqlQuery) row {
-					return r
+				queryFunc: func(ctx context.Context, q query) scanner {
+					return s
 				},
-				execFunc: func(ctx context.Context, queries ...sqlQuery) error {
+				execFunc: func(ctx context.Context, queries ...query) error {
 					return test.dbExecErr
 				},
 			},
