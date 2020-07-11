@@ -59,7 +59,7 @@ func (cfg TokenizerConfig) NewTokenizer() (Tokenizer, error) {
 func (j jwtTokenizer) Create(u db.User) (string, error) {
 	now := j.timeFunc()
 	expiresAt := now + j.validSec
-	claims := &jwtUserClaims{
+	claims := jwtUserClaims{
 		u.Points,
 		jwt.StandardClaims{
 			Subject:   string(u.Username),
@@ -82,9 +82,6 @@ func (j jwtTokenizer) ReadUsername(tokenString string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	jwtUserClaims, ok := token.Claims.(*jwtUserClaims)
-	if !ok {
-		return "", fmt.Errorf("wanted *jwtUserClaims, but got %T", token.Claims)
-	}
+	jwtUserClaims := token.Claims.(*jwtUserClaims)
 	return jwtUserClaims.Subject, nil
 }
