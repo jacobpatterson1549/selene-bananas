@@ -34,7 +34,7 @@ func NewJsEventFunc(fn func(event js.Value)) js.Func {
 	return NewJsEventFuncAsync(fn, false)
 }
 
-// NewJsEventFuncAsync performs similary to NewJsEventFunc, but calls the event-handling function asynchronously if async is true.
+// NewJsEventFuncAsync performs similarly to NewJsEventFunc, but calls the event-handling function asynchronously if async is true.
 func NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		event := args[0]
