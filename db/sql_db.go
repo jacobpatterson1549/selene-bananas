@@ -14,12 +14,12 @@ type (
 
 // NewSQLDatabase creates a database from a databaseURL
 func NewSQLDatabase(driverName, databaseURL string) (Database, error) {
-	sqlDb, err := sql.Open(driverName, databaseURL)
+	sqlDB, err := sql.Open(driverName, databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("opening database %w", err)
 	}
 	sDB := sqlDatabase{
-		db: sqlDb,
+		db: sqlDB,
 	}
 	return sDB, nil
 }
@@ -53,8 +53,7 @@ func (s sqlDatabase) exec(ctx context.Context, queries ...query) error {
 			return err
 		}
 	}
-	err = tx.Commit()
-	if err != nil {
+	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("committing transaction: %w", err)
 	}
 	return nil

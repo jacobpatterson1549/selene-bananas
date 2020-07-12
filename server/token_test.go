@@ -71,7 +71,7 @@ func TestReadUsername(t *testing.T) {
 			t.Errorf("Test %v: unexpected error: %v", i, err)
 			continue
 		}
-		readTokenizer := jwtTokenizer{
+		var readTokenizer Tokenizer = jwtTokenizer{
 			method:   test.readSigningMethod,
 			key:      []byte("secret"),
 			timeFunc: epochSecondsSupplier,
@@ -140,8 +140,7 @@ func TestCreateReadWithTime(t *testing.T) {
 				return -1
 			}
 		}
-		var tokenizer Tokenizer
-		tokenizer = jwtTokenizer{
+		var tokenizer Tokenizer = jwtTokenizer{
 			method:   jwt.SigningMethodHS256,
 			key:      []byte("secret"),
 			timeFunc: epochSecondsSupplier,
