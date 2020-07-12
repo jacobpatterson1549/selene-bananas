@@ -1,5 +1,6 @@
 // +build js,wasm
 
+// Package main initializes interactive frontend elements and runs as long as the webpage is open.
 package main
 
 import (
