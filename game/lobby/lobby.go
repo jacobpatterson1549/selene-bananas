@@ -232,7 +232,7 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 		ps.result <- fmt.Errorf(reason)
 	}
 	if len(l.sockets) >= l.maxSockets {
-		closeConnFunc(fmt.Sprintf("lobby full"))
+		closeConnFunc("lobby full")
 		return
 	}
 	if err != nil {

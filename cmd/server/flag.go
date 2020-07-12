@@ -57,9 +57,9 @@ func usage(fs *flag.FlagSet) {
 		environmentVariableTLSCertFile,
 		environmentVariableTLSKeyFile,
 	}
-	fmt.Fprintln(fs.Output(), "Starts the server")
-	fmt.Fprintln(fs.Output(), "Reads environment variables when possible:", fmt.Sprintf("[%s]", strings.Join(envVars, ",")))
-	fmt.Fprintln(fs.Output(), fmt.Sprintf("Usage of %s:", fs.Name()))
+	fmt.Fprintf(fs.Output(), "Runs the server\n")
+	fmt.Fprintf(fs.Output(), "Reads environment variables when possible: [%s]\n", strings.Join(envVars, ","))
+	fmt.Fprintf(fs.Output(), "Usage of %s:\n", fs.Name())
 	fs.PrintDefaults()
 }
 

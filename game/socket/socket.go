@@ -228,7 +228,7 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 	nowTime := time.Unix(now, 0)
 	deadline := nowTime.Add(period)
 	if err := refreshDeadlineFunc(deadline); err != nil {
-		err := fmt.Errorf("error refreshing ping/pong deadline: %w", err)
+		err = fmt.Errorf("error refreshing ping/pong deadline: %w", err)
 		s.log.Print(err)
 		return err
 	}
