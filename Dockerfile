@@ -22,6 +22,8 @@ RUN tar -cf - . | md5sum | cut -c -32 > /app/version && \
         go test -exec=/usr/local/go/misc/wasm/go_js_wasm_exec \
 			github.com/jacobpatterson1549/selene-bananas/ui/... --cover && \
     CGO_ENABLED=0 \
+        go test ./... --cover && \
+    CGO_ENABLED=0 \
         go test ./... -bench=. && \
     GOOS=js GOARCH=wasm \
         go build \

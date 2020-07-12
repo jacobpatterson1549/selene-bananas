@@ -1,4 +1,4 @@
-.PHONY: all test-wasm test install serve serve-tcp clean
+.PHONY: all test-wasm test bench install serve serve-tcp clean
 
 all: install
 
@@ -12,6 +12,9 @@ test-wasm:
 test:
 	go test $(shell go list ./...) --cover
 
+banch:
+	go test ./... -bench=WordChecker
+
 wasm_exec.js:
 	ln -fs \
 		$(GOROOT)/misc/wasm/wasm_exec.js \
@@ -22,7 +25,7 @@ main.wasm: test-wasm
 			-o main.wasm \
 			cmd/ui/*.go
 
-main: test
+main: test bench
 	go build \
 		-o main \
 		cmd/server/*.go
