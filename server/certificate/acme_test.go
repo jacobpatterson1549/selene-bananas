@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestIsForHTTP01Challenge(t *testing.T) {
+func TestChallengeIsFor(t *testing.T) {
 	isForTests := []struct {
 		path string
 		want bool
@@ -18,11 +18,11 @@ func TestIsForHTTP01Challenge(t *testing.T) {
 			path: "abc",
 		},
 		{
-			path: acmeHeader + "abc",
-			want: true,
+			path: "/not" + acmeHeader + "abc",
 		},
 		{
-			path: "/not" + acmeHeader + "abc",
+			path: acmeHeader + "abc",
+			want: true,
 		},
 	}
 	for i, test := range isForTests {
@@ -34,35 +34,45 @@ func TestIsForHTTP01Challenge(t *testing.T) {
 	}
 }
 
-func TestHandleChallenge(t *testing.T) {
-	c := Challenge{
-		Token: "abc",
-		Key:   "s3cr3t",
-	}
-	var w bytes.Buffer
-	path := acmeHeader + "abc"
-	c.Handle(&w, path)
+func TestChallengeHandle(t *testing.T) {
+	token := "abc"
+	key := "s3cr3t"
 	want := "abc.s3cr3t"
-	got := string(w.Bytes())
-	if want != got {
-		t.Errorf("different body:\nwanted: %v\ngot:    %v", want, got)
+	handleTests := []struct {
+		path   string
+		wantOk bool
+	}{
+		{
+			path: "/",
+		},
+		{
+			path: "/acme-challenge/" + token,
+		},
+		{
+			path: acmeHeader + "other" + token,
+		},
+		{
+			path:   acmeHeader + token,
+			wantOk: true,
+		},
 	}
-}
-
-func TestHandleBadChallengeToken(t *testing.T) {
 	c := Challenge{
-		Token: "abc",
-		Key:   "s3cr3t",
+		Token: token,
+		Key:   key,
 	}
-	invalidPaths := []string{
-		"/",
-		"/acme-challenge/abc",
-		acmeHeader + "othertoken",
-	}
-	for i, path := range invalidPaths {
+	for i, test := range handleTests {
 		var w bytes.Buffer
-		if err := c.Handle(&w, path); err == nil {
-			t.Errorf("Test %v: expected error when handling url with incorrect challenge token", i)
+		err := c.Handle(&w, test.path)
+		got := string(w.Bytes())
+		switch {
+		case err != nil:
+			if test.wantOk {
+				t.Errorf("Test %v: unexpected error: %v", i, err)
+			}
+		case !test.wantOk:
+			t.Errorf("Test %v: expected error", i)
+		case want != got:
+			t.Errorf("different body:\nwanted: %v\ngot:    %v", want, got)
 		}
 	}
 }
