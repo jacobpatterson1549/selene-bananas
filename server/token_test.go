@@ -37,25 +37,26 @@ func TestReadUsername(t *testing.T) {
 		creationSigningMethod jwt.SigningMethod
 		readSigningMethod     jwt.SigningMethod
 		want                  string
-		wantErr               bool
+		wantOk                bool
 	}{
 		{
 			user:                  db.User{Username: "selene"},
 			creationSigningMethod: jwt.SigningMethodHS256,
 			readSigningMethod:     jwt.SigningMethodHS256,
 			want:                  "selene",
+			wantOk:                true,
 		},
 		{
 			user:                  db.User{Username: "jacob"},
 			creationSigningMethod: jwt.SigningMethodHS512,
 			readSigningMethod:     jwt.SigningMethodHS512,
 			want:                  "jacob",
+			wantOk:                true,
 		},
 		{
 			user:                  db.User{Username: "selene"},
 			creationSigningMethod: jwt.SigningMethodHS512,
 			readSigningMethod:     jwt.SigningMethodHS256,
-			wantErr:               true,
 		},
 	}
 	jwt.TimeFunc = func() time.Time { return time.Unix(0, 0) }
@@ -79,9 +80,11 @@ func TestReadUsername(t *testing.T) {
 		got, err := readTokenizer.ReadUsername(tokenString)
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
+		case !test.wantOk:
+			t.Errorf("Test %v: expected error", i)
 		case test.want != got:
 			t.Errorf("Test %v: wanted %v, got %v", i, test.want, got)
 		}
@@ -93,38 +96,35 @@ func TestCreateReadWithTime(t *testing.T) {
 	readTests := []struct {
 		creationTime int64 // not before
 		readTime     int64 // not equal or after
-		wantErr      bool
+		wantOk       bool
 	}{
 		{
 			creationTime: 1,
 			readTime:     0,
-			wantErr:      true,
 		},
 		{
 			creationTime: 2,
 			readTime:     2,
-			wantErr:      false,
+			wantOk:       true,
 		},
 		{
 			creationTime: 3,
 			readTime:     5,
-			wantErr:      false,
+			wantOk:       true,
 		},
 		{
 			creationTime: 100,
 			readTime:     99 + validSecs,
-			wantErr:      false,
+			wantOk:       true,
 		},
 		// not working: https://github.com/dgrijalva/jwt-go/issues/340
 		// {
 		// 	creationTime: 100,
 		// 	readTime:     100 + validSecs,
-		// 	wantErr:      true,
 		// },
 		{
 			creationTime: 100,
 			readTime:     101 + validSecs,
-			wantErr:      true,
 		},
 	}
 	for i, test := range readTests {
@@ -150,19 +150,21 @@ func TestCreateReadWithTime(t *testing.T) {
 			now := epochSecondsSupplier()
 			return time.Unix(now, 0)
 		}
+		want := "selene"
 		u := db.User{
-			Username: "selene",
-			Points:   5,
+			Username: want,
 		}
-		tokenString, err := tokenizer.Create(u)
-		if err != nil {
-			t.Errorf("Test %v: unexpected error: %v", i, err)
-			continue
-		}
-		_, got := tokenizer.ReadUsername(tokenString)
-		gotErr := got != nil
-		if test.wantErr != gotErr {
-			t.Errorf("Test %v: wanted error: %v, but got %v (%v)", i, test.wantErr, gotErr, got)
+		tokenString, _ := tokenizer.Create(u)
+		got, err := tokenizer.ReadUsername(tokenString)
+		switch {
+		case err != nil:
+			if test.wantOk {
+				t.Errorf("Test %v: unexpected error: %v", i, err)
+			}
+		case !test.wantOk:
+			t.Errorf("Test %v: expected error", i)
+		case want != got:
+			t.Errorf("Test %v: wanted %v, got %v", i, want, got)
 		}
 	}
 }

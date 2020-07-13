@@ -65,22 +65,19 @@ func TestNewUser(t *testing.T) {
 	newUserTests := []struct {
 		username string
 		password string
-		wantErr  bool
+		wantOk   bool
 	}{
-		{
-			wantErr: true,
-		},
+		{},
 		{
 			username: "selene",
-			wantErr:  true,
 		},
 		{
 			password: "top_s3cr3t!",
-			wantErr:  true,
 		},
 		{
 			username: "selene",
 			password: "top_s3cr3t!",
+			wantOk:   true,
 		},
 	}
 	for i, test := range newUserTests {
@@ -88,11 +85,13 @@ func TestNewUser(t *testing.T) {
 		switch {
 		case err != nil:
 			switch {
-			case !test.wantErr:
+			case test.wantOk:
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			case u != nil:
 				t.Errorf("Test %v: expected nil user when error returned", i)
 			}
+		case !test.wantOk:
+			t.Errorf("Test %v: expected error", i)
 		case test.username != string(u.Username):
 			t.Errorf("Test %v: wanted user's username to be %v, but was %v", i, test.username, u.Username)
 		case test.password != string(u.password):

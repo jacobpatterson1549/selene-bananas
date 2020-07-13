@@ -15,19 +15,18 @@ func TestNewUserDao(t *testing.T) {
 	newUserDaoTests := []struct {
 		db           Database
 		readFileFunc func(filename string) ([]byte, error)
-		wantErr      bool
+		wantOk       bool
 	}{
 		{
 			readFileFunc: mockReadFileFunc,
-			wantErr:      true,
 		},
 		{
-			db:      mockDatabase,
-			wantErr: true,
+			db: mockDatabase,
 		},
 		{
 			db:           mockDatabase,
 			readFileFunc: mockReadFileFunc,
+			wantOk:       true,
 		},
 	}
 	for i, test := range newUserDaoTests {
@@ -38,10 +37,10 @@ func TestNewUserDao(t *testing.T) {
 		ud, err := cfg.NewUserDao()
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
-		case test.wantErr:
+		case !test.wantOk:
 			t.Errorf("Test %v: expected error", i)
 		case !reflect.DeepEqual(ud.db, test.db):
 			t.Errorf("Test %v: db not set", i)
@@ -55,18 +54,16 @@ func TestUserDaoSetup(t *testing.T) {
 	setupTests := []struct {
 		readFileErr error
 		execFuncErr error
-		wantErr     bool
+		wantOk      bool
 	}{
 		{
 			readFileErr: fmt.Errorf("mock read file error"),
-			wantErr:     true,
 		},
 		{
 			execFuncErr: fmt.Errorf("exec transaction error"),
-			wantErr:     true,
 		},
 		{
-			// [all ok]
+			wantOk: true,
 		},
 	}
 	for i, test := range setupTests {
@@ -84,10 +81,10 @@ func TestUserDaoSetup(t *testing.T) {
 		err := ud.Setup(ctx)
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
-		case test.wantErr:
+		case !test.wantOk:
 			t.Errorf("Test %v: expected error", i)
 		}
 	}
@@ -97,19 +94,17 @@ func TestUserDaoCreate(t *testing.T) {
 	createTests := []struct {
 		userHashPasswordErr error
 		dbExecErr           error
-		wantErr             bool
+		wantOk              bool
 	}{
 		{
 			userHashPasswordErr: fmt.Errorf("problem hashing password"),
-			wantErr:             true,
 		},
 		{
 
 			dbExecErr: fmt.Errorf("problem executing user create"),
-			wantErr:   true,
 		},
 		{
-			// [all ok]
+			wantOk: true,
 		},
 	}
 	for i, test := range createTests {
@@ -131,10 +126,10 @@ func TestUserDaoCreate(t *testing.T) {
 		err := ud.Create(ctx, u)
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
-		case test.wantErr:
+		case !test.wantOk:
 			t.Errorf("Test %v: expected error", i)
 		}
 	}
@@ -147,22 +142,19 @@ func TestUserDaoRead(t *testing.T) {
 		incorrectPassword    bool
 		isCorrectPasswordErr error
 		want                 User
-		wantErr              bool
+		wantOk               bool
 	}{
 		{
 			rowScanErr: fmt.Errorf("problem reading user row"),
-			wantErr:    true,
 		},
 		{
 			isCorrectPasswordErr: fmt.Errorf("problem checking password"),
-			wantErr:              true,
 		},
 		{
 			incorrectPassword: true,
-			wantErr:           true,
 		},
 		{
-			// [all ok]
+			wantOk: true,
 		},
 	}
 	for i, test := range readTests {
@@ -192,10 +184,10 @@ func TestUserDaoRead(t *testing.T) {
 		got, err := ud.Read(ctx, u)
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
-		case test.wantErr:
+		case !test.wantOk:
 			t.Errorf("Test %v: expected error", i)
 		case test.want != got:
 			t.Errorf("Test %v:\nwanted: %v\ngot:    : %v", i, test.want, got)
@@ -210,41 +202,36 @@ func TestUserDaoUpdatePassword(t *testing.T) {
 		newP            string
 		hashPasswordErr error
 		dbExecErr       error
-		wantErr         bool
+		wantOk          bool
 	}{
 		{
-			newP:    "tinyP",
-			wantErr: true,
+			newP: "tinyP",
 		},
 		{
 			newP:            "TOP_s3cr3t",
 			hashPasswordErr: fmt.Errorf("problem hashing password"),
-			wantErr:         true,
 		},
 		{
-			oldP:    "homer_S!mps0n",
-			dbP:     "el+bart0_rulZ",
-			newP:    "TOP_s3cr3t",
-			wantErr: true,
+			oldP: "homer_S!mps0n",
+			dbP:  "el+bart0_rulZ",
+			newP: "TOP_s3cr3t",
 		},
 		{
-			oldP:    "homer_S!mps0n", // ensure the old password is compared to what is in the database
-			dbP:     "el+bart0_rulZ",
-			newP:    "el+bart0_rulZ",
-			wantErr: true,
+			oldP: "homer_S!mps0n", // ensure the old password is compared to what is in the database
+			dbP:  "el+bart0_rulZ",
+			newP: "el+bart0_rulZ",
 		},
 		{
 			oldP:      "homer_S!mps0n",
 			dbP:       "homer_S!mps0n",
 			newP:      "TOP_s3cr3t",
 			dbExecErr: fmt.Errorf("problem updating password"),
-			wantErr:   true,
 		},
 		{
-			oldP: "homer_S!mps0n",
-			dbP:  "homer_S!mps0n",
-			newP: "TOP_s3cr3t",
-			// [all ok]
+			oldP:   "homer_S!mps0n",
+			dbP:    "homer_S!mps0n",
+			newP:   "TOP_s3cr3t",
+			wantOk: true,
 		},
 	}
 	for i, test := range updatePasswordTests {
@@ -283,10 +270,10 @@ func TestUserDaoUpdatePassword(t *testing.T) {
 		err := ud.UpdatePassword(ctx, u, test.newP)
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
-		case test.wantErr:
+		case !test.wantOk:
 			t.Errorf("Test %v: expected error", i)
 		}
 	}
@@ -296,11 +283,10 @@ func TestUserDaoUpdatePointsIncrement(t *testing.T) {
 	updatePointsIncrementTests := []struct {
 		usernamePoints map[string]int
 		dbExecErr      error
-		wantErr        bool
+		wantOk         bool
 	}{
 		{
 			dbExecErr: fmt.Errorf("problem updating users' points"),
-			wantErr:   true,
 		},
 		{
 			usernamePoints: map[string]int{
@@ -308,7 +294,7 @@ func TestUserDaoUpdatePointsIncrement(t *testing.T) {
 				"fred":   1,
 				"barney": 2,
 			},
-			// [all ok]
+			wantOk: true,
 		},
 	}
 	checkUpdateQueries := func(usernamePoints map[string]int, queries []query) error {
@@ -359,10 +345,10 @@ func TestUserDaoUpdatePointsIncrement(t *testing.T) {
 		err := ud.UpdatePointsIncrement(ctx, usernames, f)
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
-		case test.wantErr:
+		case !test.wantOk:
 			t.Errorf("Test %v: expected error", i)
 		}
 	}
@@ -372,18 +358,16 @@ func TestUserDaoDelete(t *testing.T) {
 	deleteTests := []struct {
 		readErr   error
 		dbExecErr error
-		wantErr   bool
+		wantOk    bool
 	}{
 		{
 			readErr: fmt.Errorf("problem reading user"),
-			wantErr: true,
 		},
 		{
 			dbExecErr: fmt.Errorf("problem deleting user"),
-			wantErr:   true,
 		},
 		{
-			// [all ok]
+			wantOk: true,
 		},
 	}
 	for i, test := range deleteTests {
@@ -413,10 +397,10 @@ func TestUserDaoDelete(t *testing.T) {
 		err := ud.Delete(ctx, u)
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
-		case test.wantErr:
+		case !test.wantOk:
 			t.Errorf("Test %v: expected error", i)
 		}
 	}

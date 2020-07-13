@@ -8,17 +8,15 @@ import (
 
 func TestGetUser(t *testing.T) {
 	getUserTests := []struct {
-		jwt     string
-		wantErr bool
-		want    userInfo
+		jwt    string
+		want   userInfo
+		wantOk bool
 	}{
 		{
-			jwt:     "onlyTWO.parts",
-			wantErr: true,
+			jwt: "onlyTWO.parts",
 		},
 		{
-			jwt:     "a.bad-jwt-!!!.c",
-			wantErr: true,
+			jwt: "a.bad-jwt-!!!.c",
 		},
 		{
 			jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwb2ludHMiOjE4LCJleHAiOjMxNTM2MDAwLCJzdWIiOiJzZWxlbmUifQ.C4w9IKwB3k3Db40R5FYdeqfg66gYCF7l5s821WlLuJY",
@@ -26,6 +24,7 @@ func TestGetUser(t *testing.T) {
 				username: "selene",
 				points:   18,
 			},
+			wantOk: true,
 		},
 	}
 	for i, test := range getUserTests {
@@ -33,11 +32,11 @@ func TestGetUser(t *testing.T) {
 		got, err := j.getUser()
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
-		case got == nil:
-			t.Errorf("Test %v: expected result to not be nil", i)
+		case !test.wantOk:
+			t.Errorf("Test %v: expected error", i)
 		case test.want != *got:
 			t.Errorf("Test %v:\nwanted %v\ngot    %v", i, test.want, *got)
 		}

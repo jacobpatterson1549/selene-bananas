@@ -8,41 +8,42 @@ import (
 
 func TestNewLetter(t *testing.T) {
 	newLetterTests := []struct {
-		ch      rune
-		want    letter
-		wantErr bool
+		ch     rune
+		want   letter
+		wantOk bool
 	}{
+		{},
 		{
-			ch:   'A',
-			want: 'A',
+			ch: 'a',
 		},
 		{
-			ch:   'Z',
-			want: 'Z',
+			ch: '_',
 		},
 		{
-			ch:   'L',
-			want: 'L',
+			ch:     'A',
+			want:   'A',
+			wantOk: true,
 		},
 		{
-			ch:      'a',
-			wantErr: true,
+			ch:     'Z',
+			want:   'Z',
+			wantOk: true,
 		},
 		{
-			ch:      '_',
-			wantErr: true,
-		},
-		{
-			wantErr: true,
+			ch:     'L',
+			want:   'L',
+			wantOk: true,
 		},
 	}
 	for i, test := range newLetterTests {
 		got, err := newLetter(test.ch)
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
+		case !test.wantOk:
+			t.Errorf("Test %v: expected error", i)
 		case test.want != got:
 			t.Errorf("Test %v: wanted %v, got %v", i, test.want, got)
 		}
@@ -72,25 +73,45 @@ func TestMarshalLetter(t *testing.T) {
 
 func TestUnmarshalLetter(t *testing.T) {
 	unmarshalLetterTests := []struct {
-		json    string
-		want    letter
-		wantErr bool
+		json   string
+		want   letter
+		wantOk bool
 	}{
-		{`"A"`, letter('A'), false},
-		{`"Z"`, letter('Z'), false},
-		{`"X"`, letter('X'), false},
-		{`"XYZ"`, letter('X'), true},
-		{`X`, 0, true},
-		{`"@"`, 0, true},
+		{
+			json: `"XYZ"`,
+		},
+		{
+			json: `X`,
+		},
+		{
+			json: `"@"`,
+		},
+		{
+			json:   `"A"`,
+			want:   letter('A'),
+			wantOk: true,
+		},
+		{
+			json:   `"Z"`,
+			want:   letter('Z'),
+			wantOk: true,
+		},
+		{
+			json:   `"X"`,
+			want:   letter('X'),
+			wantOk: true,
+		},
 	}
 	for i, test := range unmarshalLetterTests {
 		var got letter
 		err := json.Unmarshal([]byte(test.json), &got)
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
+		case !test.wantOk:
+			t.Errorf("Test %v: expected error", i)
 		case test.want != got:
 			t.Errorf("Test %v: wanted %v, got %v", i, test.want, got)
 		}

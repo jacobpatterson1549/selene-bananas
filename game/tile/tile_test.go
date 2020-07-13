@@ -6,30 +6,32 @@ import (
 
 func TestNew(t *testing.T) {
 	newTests := []struct {
-		id      ID
-		r       rune
-		wantErr bool
-		want    Tile
+		id     ID
+		r      rune
+		wantOk bool
+		want   Tile
 	}{
 		{
-			id:      3,
-			r:       'a',
-			wantErr: true,
+			id: 3,
+			r:  'a',
 		},
 		{
-			id:   3,
-			r:    'A',
-			want: Tile{ID: 3, Ch: 'A'},
+			id:     3,
+			r:      'A',
+			want:   Tile{ID: 3, Ch: 'A'},
+			wantOk: true,
 		},
 	}
 	for i, test := range newTests {
 		got, err := New(test.id, test.r)
 		switch {
 		case err != nil:
-			if got != nil || !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
-		case got == nil || test.want != *got:
+		case !test.wantOk:
+			t.Errorf("Test %v: expected error", i)
+		case test.want != *got:
 			t.Errorf("Test %v:\nwanted %v\ngot    %v", i, test.want, *got)
 		}
 	}

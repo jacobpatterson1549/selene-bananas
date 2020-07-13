@@ -302,18 +302,17 @@ func TestMoveTiles(t *testing.T) {
 	moveTilesErrTests := []struct {
 		tilePositions []tile.Position
 		board         Board
-		wantErr       bool
+		wantOk        bool
 		want          Board
 	}{
-		{
+		{ // hasTile == false
 			board: Board{
 				NumCols: 10,
 				NumRows: 10,
 			},
 			tilePositions: []tile.Position{{Tile: tile.Tile{ID: 1}}},
-			wantErr:       true, // hasTile == false
 		},
-		{
+		{ // tile moved twice
 			tilePositions: []tile.Position{
 				{Tile: tile.Tile{ID: 1}},
 				{Tile: tile.Tile{ID: 1}},
@@ -324,9 +323,8 @@ func TestMoveTiles(t *testing.T) {
 				NumCols:       10,
 				NumRows:       10,
 			},
-			wantErr: true, // tile moved twice
 		},
-		{
+		{ // tiles move to same position
 			tilePositions: []tile.Position{
 				{Tile: tile.Tile{ID: 1}},
 				{Tile: tile.Tile{ID: 2}},
@@ -340,9 +338,8 @@ func TestMoveTiles(t *testing.T) {
 				NumCols:       10,
 				NumRows:       10,
 			},
-			wantErr: true, // tiles move to same position
 		},
-		{
+		{ // tile already at desired location
 			tilePositions: []tile.Position{{Tile: tile.Tile{ID: 1}, X: 2, Y: 3}},
 			board: Board{
 				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}},
@@ -352,9 +349,8 @@ func TestMoveTiles(t *testing.T) {
 				NumCols:       10,
 				NumRows:       10,
 			},
-			wantErr: true, // tile already at desired location
 		},
-		{
+		{ // tile is moved off board
 			tilePositions: []tile.Position{{Tile: tile.Tile{ID: 1}, X: 2, Y: 99}},
 			board: Board{
 				UnusedTiles: map[tile.ID]tile.Tile{
@@ -364,7 +360,6 @@ func TestMoveTiles(t *testing.T) {
 				NumCols:       10,
 				NumRows:       10,
 			},
-			wantErr: true, // tile is moved off board
 		},
 		{
 			tilePositions: []tile.Position{{Tile: tile.Tile{ID: 1}, X: 2, Y: 3}},
@@ -390,15 +385,18 @@ func TestMoveTiles(t *testing.T) {
 				NumCols: 10,
 				NumRows: 10,
 			},
+			wantOk: true,
 		},
 	}
 	for i, test := range moveTilesErrTests {
 		err := test.board.MoveTiles(test.tilePositions)
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
+		case !test.wantOk:
+			t.Errorf("Test %v: expected error", i)
 		}
 	}
 }
@@ -407,18 +405,17 @@ func TestRemoveTile(t *testing.T) {
 	removeTileTests := []struct {
 		removeID tile.ID
 		board    Board
-		wantErr  bool
 		want     Board
+		wantOk   bool
 	}{
-		{
-			wantErr: true,
-		},
+		{},
 		{
 			removeID: 1,
 			board: Board{
 				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}},
 				UnusedTileIDs: []tile.ID{1},
 			},
+			wantOk: true,
 		},
 		{
 			removeID: 2,
@@ -432,6 +429,7 @@ func TestRemoveTile(t *testing.T) {
 				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}},
 				UnusedTileIDs: []tile.ID{1},
 			},
+			wantOk: true,
 		},
 		{
 			removeID: 3,
@@ -443,6 +441,7 @@ func TestRemoveTile(t *testing.T) {
 				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}, 5: {ID: 5}},
 				UnusedTileIDs: []tile.ID{1, 5},
 			},
+			wantOk: true,
 		},
 	}
 	for i, test := range removeTileTests {
@@ -452,9 +451,11 @@ func TestRemoveTile(t *testing.T) {
 		err := test.board.RemoveTile(tile)
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
+		case !test.wantOk:
+			t.Errorf("Test %v: expected error", i)
 		case !(reflect.DeepEqual(test.want.UnusedTiles, test.board.UnusedTiles) || (test.want.UnusedTiles == nil && len(test.board.UnusedTiles) == 0)),
 			!(reflect.DeepEqual(test.want.UnusedTileIDs, test.board.UnusedTileIDs) || (test.want.UnusedTileIDs == nil && len(test.board.UnusedTileIDs) == 0)),
 			!(reflect.DeepEqual(test.want.UsedTiles, test.board.UsedTiles) || (test.want.UsedTiles == nil && len(test.board.UsedTiles) == 0)),

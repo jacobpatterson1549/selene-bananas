@@ -25,20 +25,19 @@ func TestNewSQLDatabase(t *testing.T) {
 	newSQLDatabaseTests := []struct {
 		driverName  string
 		queryPeriod time.Duration
-		wantErr     bool
+		wantOk      bool
 	}{
 		{
 			driverName:  "imaginary_mock_" + mockDriverName,
 			queryPeriod: 1,
-			wantErr:     true,
 		},
 		{
 			driverName: mockDriverName,
-			wantErr:    true,
 		},
 		{
 			driverName:  mockDriverName,
 			queryPeriod: 1,
+			wantOk:      true,
 		},
 	}
 	for i, test := range newSQLDatabaseTests {
@@ -50,10 +49,10 @@ func TestNewSQLDatabase(t *testing.T) {
 		sqlDB, err := cfg.NewSQLDatabase()
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
-		case test.wantErr:
+		case !test.wantOk:
 			t.Errorf("Test %v: expected error", i)
 		case sqlDB == nil:
 			t.Errorf("Test %v: expected database to be set", i)
@@ -70,18 +69,16 @@ func TestDatabaseQueryRow(t *testing.T) {
 	queryTests := []struct {
 		cancelled bool
 		scanErr   error
-		wantErr   bool
+		wantOk    bool
 	}{
 		{
 			cancelled: true,
-			wantErr:   true,
 		},
 		{
 			scanErr: fmt.Errorf("problem reading user row"),
-			wantErr: true,
 		},
 		{
-			// [all ok]
+			wantOk: true,
 		},
 	}
 	for i, test := range queryTests {
@@ -141,10 +138,10 @@ func TestDatabaseQueryRow(t *testing.T) {
 		err := r.Scan(&got)
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
-		case test.wantErr:
+		case !test.wantOk:
 			t.Errorf("Test %v: expected error", i)
 		case want != got:
 			t.Errorf("Test %v: value not set correctly, wanted %v, got %v", i, want, got)
@@ -167,41 +164,34 @@ func TestDatabaseExec(t *testing.T) {
 		rollbackErr     error
 		commitErr       error
 		q               query
-		wantErr         bool
+		wantOk          bool
 	}{
 		{
 			cancelled: true,
-			wantErr:   true,
 		},
 		{
 			beginErr: fmt.Errorf("problem beginning transaction"),
-			wantErr:  true,
 		},
 		{
 			execErr: fmt.Errorf("problem executing transaction"),
-			wantErr: true,
 		},
 		{
 			rowsAffectedErr: fmt.Errorf("problem getting rows affected count"),
-			wantErr:         true,
 		},
 		{
 			rowsAffected: 0,
-			wantErr:      true,
 		},
 		{
 			rowsAffected: 2,
 			rollbackErr:  fmt.Errorf("problem rolling back transaction"),
-			wantErr:      true,
 		},
 		{
 			rowsAffected: 1,
 			commitErr:    fmt.Errorf("problem committing transaction"),
-			wantErr:      true,
 		},
 		{
 			rowsAffected: 1,
-			// [all ok]
+			wantOk:       true,
 		},
 	}
 	for i, test := range execTests {
@@ -268,10 +258,10 @@ func TestDatabaseExec(t *testing.T) {
 		err := db.exec(ctx, q)
 		switch {
 		case err != nil:
-			if !test.wantErr {
+			if test.wantOk {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
-		case test.wantErr:
+		case !test.wantOk:
 			t.Errorf("Test %v: expected error", i)
 		}
 	}
