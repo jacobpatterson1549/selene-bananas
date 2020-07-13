@@ -31,6 +31,8 @@ func TestNewMainFlags(t *testing.T) {
 				"-acme-challenge-key=8",
 				"-tls-cert-file=9",
 				"-tls-key-file=a",
+				"-no-tls-redirect",
+				"-version-file=c",
 			},
 			want: mainFlags{
 				httpPort:       1,
@@ -43,6 +45,8 @@ func TestNewMainFlags(t *testing.T) {
 				challengeKey:   "8",
 				tlsCertFile:    "9",
 				tlsKeyFile:     "a",
+				noTLSRedirect:  true,
+				versionFile:    "c",
 			},
 		},
 		{ // all environment variables
@@ -57,6 +61,8 @@ func TestNewMainFlags(t *testing.T) {
 				"ACME_CHALLENGE_KEY":   "8",
 				"TLS_CERT_FILE":        "9",
 				"TLS_KEY_FILE":         "a",
+				"NO_TLS_REDIRECT":      "",
+				"VERSION_FILE":         "c",
 			},
 			want: mainFlags{
 				httpPort:       1,
@@ -69,6 +75,8 @@ func TestNewMainFlags(t *testing.T) {
 				challengeKey:   "8",
 				tlsCertFile:    "9",
 				tlsKeyFile:     "a",
+				noTLSRedirect:  true,
+				versionFile:    "c",
 			},
 		},
 	}
@@ -89,7 +97,7 @@ func TestNewMainFlagsPortOverride(t *testing.T) {
 		"HTTP_PORT":     "1",
 		"HTTPS_PORT":    "2",
 		"PORT":          "3",
-		"CACHE_SECONDS": "0",
+		"CACHE_SECONDS": "0", // override default value
 	}
 	osLookupEnvFunc := func(key string) (string, bool) {
 		v, ok := envVars[key]
