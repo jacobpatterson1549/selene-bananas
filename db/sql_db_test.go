@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"testing"
+	"time"
 )
 
 var mockDriver *MockDriver
@@ -20,20 +21,52 @@ func init() {
 	mockDriver = new(MockDriver)
 	sql.Register(mockDriverName, mockDriver)
 }
-func TestNewPostgresDatabase(t *testing.T) {
-	if _, err := NewSQLDatabase("imaginaryDB", testDatabaseURL); err == nil {
-		t.Errorf("expeceted error when creating database for driver that is not registered")
+func TestNewSQLDatabase(t *testing.T) {
+	newSQLDatabaseTests := []struct {
+		driverName  string
+		queryPeriod time.Duration
+		wantErr     bool
+	}{
+		{
+			driverName:  "imaginary_mock_" + mockDriverName,
+			queryPeriod: 1,
+			wantErr:     true,
+		},
+		{
+			driverName: mockDriverName,
+			wantErr:    true,
+		},
+		{
+			driverName:  mockDriverName,
+			queryPeriod: 1,
+		},
 	}
-	db, err := NewSQLDatabase(mockDriverName, testDatabaseURL)
-	switch {
-	case err != nil:
-		t.Errorf("creating a new SQL Database should not cause an error with the mock driver")
-	case db == nil:
-		t.Errorf("expected non-nil Database")
+	for i, test := range newSQLDatabaseTests {
+		cfg := SQLDatabaseConfig{
+			DriverName:  test.driverName,
+			DatabaseURL: testDatabaseURL,
+			QueryPeriod: test.queryPeriod,
+		}
+		sqlDB, err := cfg.NewSQLDatabase()
+		switch {
+		case err != nil:
+			if !test.wantErr {
+				t.Errorf("Test %v: unexpected error: %v", i, err)
+			}
+		case test.wantErr:
+			t.Errorf("Test %v: expected error", i)
+		case sqlDB == nil:
+			t.Errorf("Test %v: expected database to be set", i)
+		}
 	}
 }
 
 func TestDatabaseQueryRow(t *testing.T) {
+	cfg := SQLDatabaseConfig{
+		DriverName:  mockDriverName,
+		DatabaseURL: testDatabaseURL,
+		QueryPeriod: 10 * time.Second, // test takes real time to run
+	}
 	queryTests := []struct {
 		cancelled bool
 		scanErr   error
@@ -102,7 +135,7 @@ func TestDatabaseQueryRow(t *testing.T) {
 			cols:      []string{"?column?"},
 			arguments: []interface{}{want},
 		}
-		db, _ := NewSQLDatabase(mockDriverName, testDatabaseURL)
+		db, _ := cfg.NewSQLDatabase()
 		r := db.query(ctx, q)
 		var got int
 		err := r.Scan(&got)
@@ -120,6 +153,11 @@ func TestDatabaseQueryRow(t *testing.T) {
 }
 
 func TestDatabaseExec(t *testing.T) {
+	cfg := SQLDatabaseConfig{
+		DriverName:  mockDriverName,
+		DatabaseURL: testDatabaseURL,
+		QueryPeriod: 10 * time.Second, // test takes real time to run
+	}
 	execTests := []struct {
 		cancelled       bool
 		beginErr        error
@@ -226,7 +264,7 @@ func TestDatabaseExec(t *testing.T) {
 				"Bilbo",
 			},
 		}
-		db, _ := NewSQLDatabase(mockDriverName, testDatabaseURL)
+		db, _ := cfg.NewSQLDatabase()
 		err := db.exec(ctx, q)
 		switch {
 		case err != nil:

@@ -5,48 +5,46 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
-	"time"
 )
 
 func TestNewUserDao(t *testing.T) {
+	var mockDatabase mockDatabase
+	mockReadFileFunc := func(filename string) ([]byte, error) {
+		return nil, nil
+	}
 	newUserDaoTests := []struct {
-		db          Database
-		queryPeriod time.Duration
-		wantErr     bool
+		db           Database
+		readFileFunc func(filename string) ([]byte, error)
+		wantErr      bool
 	}{
 		{
-			queryPeriod: 100,
-			wantErr:     true,
+			readFileFunc: mockReadFileFunc,
+			wantErr:      true,
 		},
 		{
-			db:      mockDatabase{},
+			db:      mockDatabase,
 			wantErr: true,
 		},
 		{
-			db:          mockDatabase{},
-			queryPeriod: -100,
-			wantErr:     true,
-		},
-		{
-			db:          mockDatabase{},
-			queryPeriod: 100,
+			db:           mockDatabase,
+			readFileFunc: mockReadFileFunc,
 		},
 	}
 	for i, test := range newUserDaoTests {
 		cfg := UserDaoConfig{
-			DB:          test.db,
-			QueryPeriod: test.queryPeriod,
+			DB:           test.db,
+			ReadFileFunc: test.readFileFunc,
 		}
 		ud, err := cfg.NewUserDao()
 		switch {
-		case err != nil, ud == nil:
+		case err != nil:
 			if !test.wantErr {
 				t.Errorf("Test %v: unexpected error: %v", i, err)
 			}
+		case test.wantErr:
+			t.Errorf("Test %v: expected error", i)
 		case !reflect.DeepEqual(ud.db, test.db):
 			t.Errorf("Test %v: db not set", i)
-		case ud.queryPeriod != test.queryPeriod:
-			t.Errorf("Test %v: queryPeriod not set", i)
 		case ud.readFileFunc == nil:
 			t.Errorf("Test %v: readFileFunc not set", i)
 		}

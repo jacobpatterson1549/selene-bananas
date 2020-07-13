@@ -3,15 +3,12 @@ package db
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"time"
 )
 
 type (
 	// UserDao contains CRUD operations for user-related information
 	UserDao struct {
 		db           Database
-		queryPeriod  time.Duration
 		readFileFunc func(filename string) ([]byte, error)
 	}
 
@@ -22,8 +19,8 @@ type (
 	UserDaoConfig struct {
 		// Debug is a flag that causes the socket to log the types non-ping/pong messages that are read/written
 		DB Database
-		// QueryPeriod is the amount of time that any database action can take before it should timeout
-		QueryPeriod time.Duration
+		// ReadFileFunc is used to fetch setup queries.
+		ReadFileFunc func(filename string) ([]byte, error)
 	}
 )
 
@@ -34,8 +31,7 @@ func (cfg UserDaoConfig) NewUserDao() (*UserDao, error) {
 	}
 	ud := UserDao{
 		db:           cfg.DB,
-		queryPeriod:  cfg.QueryPeriod,
-		readFileFunc: ioutil.ReadFile,
+		readFileFunc: cfg.ReadFileFunc,
 	}
 	return &ud, nil
 }
@@ -44,16 +40,14 @@ func (cfg UserDaoConfig) validate() error {
 	switch {
 	case cfg.DB == nil:
 		return fmt.Errorf("database required")
-	case cfg.QueryPeriod <= 0:
-		return fmt.Errorf("positive query period required")
+	case cfg.ReadFileFunc == nil:
+		return fmt.Errorf("read file func required")
 	}
 	return nil
 }
 
 // Setup initializes the tables and adds the functions
 func (ud UserDao) Setup(ctx context.Context) error {
-	ctx, cancelFunc := context.WithTimeout(ctx, ud.queryPeriod)
-	defer cancelFunc()
 	queries, err := ud.setupSQLQueries()
 	if err != nil {
 		return fmt.Errorf("creating setup query: %w", err)
@@ -66,8 +60,6 @@ func (ud UserDao) Setup(ctx context.Context) error {
 
 // Create adds a user
 func (ud UserDao) Create(ctx context.Context, u User) error {
-	ctx, cancelFunc := context.WithTimeout(ctx, ud.queryPeriod)
-	defer cancelFunc()
 	hashedPassword, err := u.hashPassword()
 	if err != nil {
 		return err
@@ -81,8 +73,6 @@ func (ud UserDao) Create(ctx context.Context, u User) error {
 
 // Read gets information such as points
 func (ud UserDao) Read(ctx context.Context, u User) (User, error) {
-	ctx, cancelFunc := context.WithTimeout(ctx, ud.queryPeriod)
-	defer cancelFunc()
 	q := newSQLQueryFunction("user_read", []string{"username", "password", "points"}, u.Username)
 	row := ud.db.query(ctx, q)
 	var u2 User
@@ -102,8 +92,6 @@ func (ud UserDao) Read(ctx context.Context, u User) (User, error) {
 
 // UpdatePassword sets the password of a user
 func (ud UserDao) UpdatePassword(ctx context.Context, u User, newP string) error {
-	ctx, cancelFunc := context.WithTimeout(ctx, ud.queryPeriod)
-	defer cancelFunc()
 	if err := validatePassword(newP); err != nil {
 		return err
 	}
@@ -123,8 +111,6 @@ func (ud UserDao) UpdatePassword(ctx context.Context, u User, newP string) error
 
 // UpdatePointsIncrement increments the points for multiple users
 func (ud UserDao) UpdatePointsIncrement(ctx context.Context, usernames []string, f UserPointsIncrementFunc) error {
-	ctx, cancelFunc := context.WithTimeout(ctx, ud.queryPeriod)
-	defer cancelFunc()
 	queries := make([]query, len(usernames))
 	for i, u := range usernames {
 		pointsDelta := f(u)
@@ -138,8 +124,6 @@ func (ud UserDao) UpdatePointsIncrement(ctx context.Context, usernames []string,
 
 // Delete removes a user
 func (ud UserDao) Delete(ctx context.Context, u User) error {
-	ctx, cancelFunc := context.WithTimeout(ctx, ud.queryPeriod)
-	defer cancelFunc()
 	if _, err := ud.Read(ctx, u); err != nil {
 		return fmt.Errorf("checking password: %w", err)
 	}

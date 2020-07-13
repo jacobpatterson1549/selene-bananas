@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -32,11 +33,11 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	if len(m.databaseURL) == 0 {
 		return nil, fmt.Errorf("missing data-source uri")
 	}
-	db, err := db.NewSQLDatabase("postgres", m.databaseURL)
+	sqlDB, err := sqlDatabase(m)
 	if err != nil {
 		return nil, err
 	}
-	userDaoCfg := userDaoConfig(db)
+	userDaoCfg := userDaoConfig(sqlDB)
 	ud, err := userDaoCfg.NewUserDao()
 	if err != nil {
 		return nil, err
@@ -101,20 +102,33 @@ func tokenizerConfig(rand *rand.Rand, timeFunc func() int64) server.TokenizerCon
 	return cfg
 }
 
+func sqlDatabase(m mainFlags) (db.Database, error) {
+	cfg := db.SQLDatabaseConfig{
+		DriverName:  "postgres",
+		DatabaseURL: m.databaseURL,
+		QueryPeriod: 5 * time.Second,
+	}
+	db, err := cfg.NewSQLDatabase()
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
+}
+
 func userDaoConfig(d db.Database) db.UserDaoConfig {
 	cfg := db.UserDaoConfig{
-		DB:          d,
-		QueryPeriod: 5 * time.Second,
+		DB:           d,
+		ReadFileFunc: ioutil.ReadFile,
 	}
 	return cfg
 }
 
 func lobbyConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud *db.UserDao, timeFunc func() int64) (*lobby.Config, error) {
 	gameCfg, err := gameConfig(m, log, rand, ud, timeFunc)
-	socketCfg := socketConfig(m, log, timeFunc)
 	if err != nil {
 		return nil, err
 	}
+	socketCfg := socketConfig(m, log, timeFunc)
 	cfg := lobby.Config{
 		Debug:      m.debugGame,
 		Log:        log,
