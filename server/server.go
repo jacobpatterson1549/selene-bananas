@@ -16,6 +16,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
 	"github.com/jacobpatterson1549/selene-bananas/game/lobby"
+	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
 )
 
 type (
@@ -31,7 +32,7 @@ type (
 		stopDur       time.Duration
 		cacheSec      int
 		version       string
-		challenge     Challenge
+		challenge     certificate.Challenge
 		tlsCertFile   string
 		tlsKeyFile    string
 		noTLSRedirect bool
@@ -58,7 +59,7 @@ type (
 		// Version is used to bust caches of files from older server version
 		Version string
 		// Challenge is the ACME HTTP-01 Challenge used to get a certificate
-		Challenge Challenge
+		Challenge certificate.Challenge
 		// The public HTTPS certificate file.
 		TLSCertFile string
 		// The private HTTPS key file.
@@ -205,7 +206,6 @@ func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error, runTLS bo
 	case runTLS:
 		if _, err := tls.LoadX509KeyPair(s.tlsCertFile, s.tlsKeyFile); err != nil {
 			s.log.Printf("Problem loading tls certificate: %v", err)
-			s.log.Printf("Use http server at http://127.0.0.1%v%v<TOKEN> to handle ACME Challenges.", s.httpServer.Addr, acmeHeader)
 			return
 		}
 		errC <- s.httpsServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile)
@@ -235,8 +235,8 @@ func (s Server) Stop(ctx context.Context) error {
 }
 
 func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
-	if s.challenge.isFor(r.URL.Path) {
-		if err := s.challenge.handle(w, r); err != nil {
+	if s.challenge.IsFor(r.URL.Path) {
+		if err := s.challenge.Handle(w, r.URL.Path); err != nil {
 			s.log.Printf("serving acme challenge: %v", err)
 			s.httpError(w, http.StatusInternalServerError)
 		}

@@ -17,6 +17,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/socket"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/server"
+	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
 	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
 )
 
@@ -51,7 +52,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		return nil, err
 	}
 	v := version(m, log)
-	challenge := server.Challenge{
+	c := certificate.Challenge{
 		Token: m.challengeToken,
 		Key:   m.challengeKey,
 	}
@@ -66,7 +67,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		StopDur:       time.Second,
 		CacheSec:      m.cacheSec,
 		Version:       v,
-		Challenge:     challenge,
+		Challenge:     c,
 		TLSCertFile:   m.tlsCertFile,
 		TLSKeyFile:    m.tlsKeyFile,
 		ColorConfig:   cc,

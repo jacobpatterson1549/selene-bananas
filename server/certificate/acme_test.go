@@ -1,8 +1,7 @@
-package server
+package certificate
 
 import (
-	"io/ioutil"
-	"net/http/httptest"
+	"bytes"
 	"testing"
 )
 
@@ -23,12 +22,12 @@ func TestIsForHTTP01Challenge(t *testing.T) {
 			want: true,
 		},
 		{
-			path: "/.NOTT-known/acme-challenge/abc",
+			path: "/not" + acmeHeader + "abc",
 		},
 	}
 	for i, test := range isForTests {
 		var c Challenge
-		got := c.isFor(test.path)
+		got := c.IsFor(test.path)
 		if test.want != got {
 			t.Errorf("test %v: wanted %v when path = %v", i, test.want, test.path)
 		}
@@ -40,15 +39,11 @@ func TestHandleChallenge(t *testing.T) {
 		Token: "abc",
 		Key:   "s3cr3t",
 	}
-	r := httptest.NewRequest("", acmeHeader+"abc", nil)
-	w := httptest.NewRecorder()
-
-	c.handle(w, r)
-
-	resp := w.Result()
-	b, _ := ioutil.ReadAll(resp.Body)
+	var w bytes.Buffer
+	path := acmeHeader + "abc"
+	c.Handle(&w, path)
 	want := "abc.s3cr3t"
-	got := string(b)
+	got := string(w.Bytes())
 	if want != got {
 		t.Errorf("different body:\nwanted: %v\ngot:    %v", want, got)
 	}
@@ -65,10 +60,8 @@ func TestHandleBadChallengeToken(t *testing.T) {
 		acmeHeader + "othertoken",
 	}
 	for i, path := range invalidPaths {
-		r := httptest.NewRequest("", path, nil)
-		w := httptest.NewRecorder()
-
-		if err := c.handle(w, r); err == nil {
+		var w bytes.Buffer
+		if err := c.Handle(&w, path); err == nil {
 			t.Errorf("Test %v: expected error when handling url with incorrect challenge token", i)
 		}
 	}
