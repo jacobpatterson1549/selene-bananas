@@ -1,4 +1,5 @@
-package server
+// Package auth contains code to ensure users are authorized to use the server after they have logged in.
+package auth
 
 import (
 	"fmt"

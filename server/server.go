@@ -16,6 +16,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
 	"github.com/jacobpatterson1549/selene-bananas/game/lobby"
+	"github.com/jacobpatterson1549/selene-bananas/server/auth"
 	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
 )
 
@@ -24,7 +25,7 @@ type (
 	Server struct {
 		data          interface{}
 		log           *log.Logger
-		tokenizer     Tokenizer
+		tokenizer     auth.Tokenizer
 		userDao       *db.UserDao
 		lobby         *lobby.Lobby
 		httpsServer   *http.Server
@@ -47,7 +48,7 @@ type (
 		// Log is used to log errors and other information
 		Log *log.Logger
 		// Tokenizer is used to generate and parse session tokens
-		Tokenizer Tokenizer
+		Tokenizer auth.Tokenizer
 		// UserDao is used to track different users
 		UserDao *db.UserDao
 		// LobbyCfg is used to create a game lobby

@@ -17,6 +17,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/socket"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/server"
+	"github.com/jacobpatterson1549/selene-bananas/server/auth"
 	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
 	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
 )
@@ -93,9 +94,9 @@ func colorConfig() server.ColorConfig {
 	return cc
 }
 
-func tokenizerConfig(rand *rand.Rand, timeFunc func() int64) server.TokenizerConfig {
+func tokenizerConfig(rand *rand.Rand, timeFunc func() int64) auth.TokenizerConfig {
 	var tokenValidDurationSec int64 = int64((24 * time.Hour).Seconds()) // 1 day
-	cfg := server.TokenizerConfig{
+	cfg := auth.TokenizerConfig{
 		Rand:     rand,
 		TimeFunc: timeFunc,
 		ValidSec: tokenValidDurationSec,
