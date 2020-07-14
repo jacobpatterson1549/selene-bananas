@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -94,12 +95,12 @@ func colorConfig() server.ColorConfig {
 	return cc
 }
 
-func tokenizerConfig(rand *rand.Rand, timeFunc func() int64) auth.TokenizerConfig {
+func tokenizerConfig(keyReader io.Reader, timeFunc func() int64) auth.TokenizerConfig {
 	var tokenValidDurationSec int64 = int64((24 * time.Hour).Seconds()) // 1 day
 	cfg := auth.TokenizerConfig{
-		Rand:     rand,
-		TimeFunc: timeFunc,
-		ValidSec: tokenValidDurationSec,
+		KeyReader: keyReader,
+		TimeFunc:  timeFunc,
+		ValidSec:  tokenValidDurationSec,
 	}
 	return cfg
 }

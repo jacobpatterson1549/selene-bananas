@@ -1,8 +1,8 @@
 package auth
 
 import (
-	"math/rand"
-	"reflect"
+	"bytes"
+	"fmt"
 	"testing"
 	"time"
 
@@ -170,19 +170,24 @@ func TestCreateReadWithTime(t *testing.T) {
 }
 
 func TestNewTokenizer(t *testing.T) {
-	src := rand.NewSource(0) // make the key predictable
-	rand := rand.New(src)
+	badCfg := TokenizerConfig{
+		KeyReader: errorReader{fmt.Errorf("problem reading key")},
+	}
+	if _, err := badCfg.NewTokenizer(); err == nil {
+		t.Errorf("expected error creating tokenizer with bad key reader")
+	}
+	key := []byte("secret")
+	keyReader := bytes.NewReader(key)
 	timeFunc := func() int64 { return 20 }
 	validSec := int64(3600)
 	cfg := TokenizerConfig{
-		Rand:     rand,
-		TimeFunc: timeFunc,
-		ValidSec: validSec,
+		KeyReader: keyReader,
+		TimeFunc:  timeFunc,
+		ValidSec:  validSec,
 	}
-	wantKey := []byte{1, 148, 253, 194, 250, 47, 252, 192, 65, 211, 255, 18, 4, 91, 115, 200, 110, 79, 249, 95, 246, 98, 165, 238, 232, 42, 189, 244, 74, 45, 11, 117, 251, 24, 13, 175, 72, 167, 158, 224, 177, 13, 57, 70, 81, 133, 15, 212, 161, 120, 137, 46, 226, 133, 236, 225, 81, 20, 85, 120, 8, 117, 214, 78}
 	want := jwtTokenizer{
 		method:   jwt.SigningMethodHS256,
-		key:      wantKey,
+		key:      key,
 		timeFunc: timeFunc,
 		validSec: validSec,
 	}
@@ -194,9 +199,17 @@ func TestNewTokenizer(t *testing.T) {
 	case !ok:
 		t.Errorf("expected jwtTokenizer, got %T", got)
 	case want.method != gotJWT.method,
-		!reflect.DeepEqual(want.key, gotJWT.key),
-		gotJWT.timeFunc == nil, // '!=' and reflect.DeepEquals do not work with non-nil functions
+		want.key == nil,
+		gotJWT.timeFunc == nil,
 		want.validSec != gotJWT.validSec:
 		t.Errorf("not equal:\nwanted %v\ngot    %v", want, got)
 	}
+}
+
+type errorReader struct {
+	readErr error
+}
+
+func (r errorReader) Read(p []byte) (n int, err error) {
+	return 0, r.readErr
 }

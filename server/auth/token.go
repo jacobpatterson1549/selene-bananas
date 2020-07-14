@@ -3,7 +3,7 @@ package auth
 
 import (
 	"fmt"
-	"math/rand"
+	"io"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/jacobpatterson1549/selene-bananas/db"
@@ -18,8 +18,8 @@ type (
 
 	// TokenizerConfig contains fields which describe a Tokenizer
 	TokenizerConfig struct {
-		// Rand is used to generate token keys
-		Rand *rand.Rand
+		// KeyReader is used to generate token keys
+		KeyReader io.Reader
 		// TimeFunc is a function which should supply the current time since the unix epoch.
 		// Used to set the the length of time the token is valid
 		TimeFunc func() int64
@@ -43,8 +43,7 @@ type (
 // NewTokenizer creates a Tokenizer that users the random number generator to generate tokens
 func (cfg TokenizerConfig) NewTokenizer() (Tokenizer, error) {
 	key := make([]byte, 64)
-	_, err := cfg.Rand.Read(key)
-	if err != nil {
+	if _, err := cfg.KeyReader.Read(key); err != nil {
 		return nil, fmt.Errorf("generating Tokenizer key: %w", err)
 	}
 	t := jwtTokenizer{
