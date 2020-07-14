@@ -199,8 +199,9 @@ func (s Server) runHTTPServer(ctx context.Context, errC chan<- error, validHTTPA
 }
 
 func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error, runTLS bool) {
-	ctx, cancelFunc := context.WithCancel(ctx)
-	s.httpsServer.RegisterOnShutdown(cancelFunc)
+	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
+	go s.lobby.Run(lobbyCtx)
+	s.httpsServer.RegisterOnShutdown(lobbyCancelFunc)
 	s.log.Printf("starting https server at at https://127.0.0.1%v", s.httpsServer.Addr)
 	switch {
 	case runTLS:
@@ -215,7 +216,6 @@ func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error, runTLS bo
 		}
 		errC <- s.httpsServer.ListenAndServe()
 	}
-	go s.lobby.Run(ctx)
 }
 
 // Stop asks the server to shutdown and waits for the shutdown to complete.
