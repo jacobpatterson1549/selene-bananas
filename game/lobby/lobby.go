@@ -194,7 +194,6 @@ func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 		cancelFunc()
 	}
 	writeMessages := make(chan game.Message)
-	go g.Run(ctx, removeGameFunc, writeMessages, l.gameMessages)
 	mh := messageHandler{
 		writeMessages: writeMessages,
 		CancelFunc:    cancelFunc,
@@ -208,6 +207,7 @@ func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 		NumCols:    m.NumCols,
 		NumRows:    m.NumRows,
 	}
+	go g.Run(ctx, removeGameFunc, writeMessages, l.gameMessages)
 }
 
 // removeGame removes a game from the messageHandlers
@@ -244,13 +244,12 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 		closeConnFunc(fmt.Sprintf("creating socket: %v", err))
 		return
 	}
-	socketCtx, cancelFunc := context.WithCancel(ctx)
+	ctx, cancelFunc := context.WithCancel(ctx)
 	removeSocketFunc := func() {
 		l.removeSocket(ps.PlayerName)
 		cancelFunc()
 	}
 	writeMessages := make(chan game.Message)
-	go s.Run(socketCtx, removeSocketFunc, l.socketMessages, writeMessages)
 	mh := messageHandler{
 		writeMessages: writeMessages,
 		CancelFunc:    cancelFunc,
@@ -267,6 +266,7 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 	}
 	writeMessages <- m
 	ps.result <- nil
+	go s.Run(ctx, removeSocketFunc, l.socketMessages, writeMessages)
 }
 
 // removeSocket removes a socket from the messageHandlers

@@ -97,8 +97,8 @@ func (cfg Config) validate(conn *websocket.Conn, playerName game.PlayerName) err
 func (s *Socket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, readMessages chan<- game.Message, writeMessages <-chan game.Message) {
 	readCtx, readCancelFunc := context.WithCancel(ctx)
 	writeCtx, writeCancelFunc := context.WithCancel(ctx)
-	go s.readMessages(readCtx, removeSocketFunc, writeCancelFunc, readMessages)
 	s.writeMessages(writeCtx, readCancelFunc, writeMessages)
+	go s.readMessages(readCtx, removeSocketFunc, writeCancelFunc, readMessages)
 }
 
 // readMessages receives messages from the connected socket and writes the to the messages channel
