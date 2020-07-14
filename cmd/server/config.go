@@ -83,7 +83,7 @@ func colorConfig() server.ColorConfig {
 		CanvasPrimary: "#000000",
 		CanvasDrag:    "#0000ff",
 		CanvasTile:    "#f0d0b5",
-		LogError:      "#008000",
+		LogError:      "#ff0000",
 		LogWarning:    "#ff8000",
 		LogChat:       "#008000",
 		TabBackground: "#ffffc2",
