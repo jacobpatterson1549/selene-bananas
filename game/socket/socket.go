@@ -49,6 +49,8 @@ type (
 	}
 )
 
+var errSocketClosed = fmt.Errorf("socket closed")
+
 // NewSocket creates a socket
 func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) (*Socket, error) {
 	if err := cfg.validate(conn, playerName); err != nil {
@@ -114,10 +116,15 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 		m, err := s.readMessage()
 		select {
 		case <-ctx.Done():
+			CloseConn(s.conn, "server shut down")
 			return
 		default:
 			if err != nil {
-				s.log.Printf("reading socket messages stopped for %v: %v", s.playerName, err)
+				if err != errSocketClosed {
+					reason := fmt.Sprintf("reading socket messages stopped for %v: %v", s.playerName, err)
+					s.log.Print(reason)
+					CloseConn(s.conn, reason)
+				}
 				return
 			}
 		}
@@ -132,17 +139,19 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 	pingTicker := time.NewTicker(s.pingPeriod)
 	httpPingTicker := time.NewTicker(s.httpPingPeriod)
 	idleTicker := time.NewTicker(s.idlePeriod)
+	var closeReason string
 	defer func() {
 		pingTicker.Stop()
 		httpPingTicker.Stop()
 		idleTicker.Stop()
 		readCancelFunc()
-
+		CloseConn(s.conn, closeReason)
 	}()
 	var err error
 	for { // BLOCKS;	``
 		select {
 		case <-ctx.Done():
+			closeReason = "server shutting down"
 			return
 		case m := <-messages:
 			err = s.writeMessage(m)
@@ -154,13 +163,16 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 			})
 		case <-idleTicker.C:
 			if !s.active {
-				CloseConn(s.conn, "closing socket due to inactivity")
+				closeReason = "closing socket due to inactivity"
 				return
 			}
 			s.active = false
 		}
 		if err != nil {
-			s.log.Printf("writing socket messages stopped for %v: %v", s.playerName, err)
+			if err != errSocketClosed {
+				closeReason = fmt.Sprintf("writing socket messages stopped for %v: %v", s.playerName, err)
+				s.log.Print(closeReason)
+			}
 			return
 		}
 	}
@@ -173,7 +185,7 @@ func (s *Socket) readMessage() (*game.Message, error) {
 		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
 			return nil, fmt.Errorf("unexpected socket closure: %v", err)
 		}
-		return nil, fmt.Errorf("socket closed")
+		return nil, errSocketClosed
 	}
 	if s.debug {
 		s.log.Printf("socket reading message with type %v", m.Type)

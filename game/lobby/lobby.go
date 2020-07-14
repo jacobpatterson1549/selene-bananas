@@ -225,23 +225,23 @@ func (l *Lobby) removeGame(id game.ID) {
 // addSocket creates and adds the playerSocket to the socket messageHandlers and returns the merged inbound message and error channels
 func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 	conn, err := l.upgrader.Upgrade(ps.ResponseWriter, ps.Request, nil)
-	closeConnFunc := func(reason string) {
-		if conn != nil {
-			socket.CloseConn(conn, reason)
+	defer func() {
+		if err != nil && conn != nil {
+			socket.CloseConn(conn, err.Error())
 		}
-		ps.result <- fmt.Errorf(reason)
-	}
+		ps.result <- err
+	}()
 	if len(l.sockets) >= l.maxSockets {
-		closeConnFunc("lobby full")
+		err = fmt.Errorf("lobby full")
 		return
 	}
 	if err != nil {
-		closeConnFunc(fmt.Sprintf("upgrading to websocket connection: %v", err))
+		err = fmt.Errorf("upgrading to websocket connection: %v", err)
 		return
 	}
 	s, err := l.socketCfg.NewSocket(conn, ps.PlayerName)
 	if err != nil {
-		closeConnFunc(fmt.Sprintf("creating socket: %v", err))
+		err = fmt.Errorf("creating socket: %v", err)
 		return
 	}
 	socketCtx, cancelFunc := context.WithCancel(ctx)
@@ -266,7 +266,6 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 		GameInfos: infos,
 	}
 	writeMessages <- m
-	ps.result <- nil
 }
 
 // removeSocket removes a socket from the messageHandlers
