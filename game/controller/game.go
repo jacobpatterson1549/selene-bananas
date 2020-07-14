@@ -197,13 +197,13 @@ func (g *Game) handleMessage(ctx context.Context, m game.Message, out chan<- gam
 		*active = true
 	}
 	if err != nil {
-		g.log.Printf("game error: %v", err)
 		var mt game.MessageType
 		switch err.(type) {
 		case gameWarning:
 			mt = game.SocketWarning
 		default:
 			mt = game.SocketError
+			g.log.Printf("game error: %v", err)
 		}
 		out <- game.Message{
 			Type:       mt,
@@ -213,7 +213,15 @@ func (g *Game) handleMessage(ctx context.Context, m game.Message, out chan<- gam
 	}
 }
 
-func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- game.Message) error {
+func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- game.Message) (err error) {
+	defer func() {
+		if err != nil {
+			out <- game.Message{
+				Type:       game.Leave,
+				PlayerName: m.PlayerName,
+			}
+		}
+	}()
 	_, ok := g.players[m.PlayerName]
 	switch {
 	case ok:

@@ -167,13 +167,22 @@ func (l *Lobby) handleGameMessage(ctx context.Context, m game.Message) {
 // createGame creates and adds the a game to the lobby if there is room.
 // The player sending the message also joins it.
 func (l *Lobby) createGame(ctx context.Context, m game.Message) {
-	if len(l.games) >= l.maxGames {
-		m = game.Message{
-			Type:       game.SocketWarning,
-			PlayerName: m.PlayerName,
-			Info:       fmt.Sprintf("the maximum number of games have already been created (%v)", l.maxGames),
+	var err error
+	defer func() {
+		if err != nil {
+			l.sendSocketMessage(game.Message{
+				Type:       game.Leave,
+				PlayerName: m.PlayerName,
+			})
+			l.sendSocketMessage(game.Message{
+				Type:       game.SocketError,
+				PlayerName: m.PlayerName,
+				Info:       err.Error(),
+			})
 		}
-		l.sendSocketMessage(m)
+	}()
+	if len(l.games) >= l.maxGames {
+		err = fmt.Errorf("the maximum number of games have already been created (%v)", l.maxGames)
 		return
 	}
 	var id game.ID = 1
@@ -185,7 +194,6 @@ func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 	}
 	g, err := l.gameCfg.NewGame(id)
 	if err != nil {
-		l.sendSocketErrorMessage(m, err.Error())
 		return
 	}
 	ctx, cancelFunc := context.WithCancel(ctx)
