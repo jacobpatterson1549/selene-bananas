@@ -15,7 +15,7 @@ type (
 )
 
 const (
-	// acmeHeader is the path of the endpoint to serve the token.key at
+	// acmeHeader is the path of the endpoint to serve the challenge at.
 	acmeHeader = "/.well-known/acme-challenge/"
 )
 
@@ -25,7 +25,7 @@ func (Challenge) IsFor(path string) bool {
 }
 
 // Handle writes the challenge to the response.
-// Writes the concatenation of the token, a peroid, and the key.
+// Writes the concatenation of the token, a period, and the key.
 func (c Challenge) Handle(w io.Writer, path string) error {
 	if !c.IsFor(path) || path[len(acmeHeader):] != c.Token {
 		return fmt.Errorf("path '%v' is not for challenge", path)
