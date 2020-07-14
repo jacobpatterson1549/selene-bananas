@@ -2,6 +2,8 @@ package certificate
 
 import (
 	"bytes"
+	"fmt"
+	"io"
 	"testing"
 )
 
@@ -39,8 +41,9 @@ func TestChallengeHandle(t *testing.T) {
 	key := "s3cr3t"
 	want := "abc.s3cr3t"
 	handleTests := []struct {
-		path   string
-		wantOk bool
+		path     string
+		writeErr error
+		wantOk   bool
 	}{
 		{
 			path: "/",
@@ -52,6 +55,10 @@ func TestChallengeHandle(t *testing.T) {
 			path: acmeHeader + "other" + token,
 		},
 		{
+			path:     acmeHeader + token,
+			writeErr: fmt.Errorf("write error"),
+		},
+		{
 			path:   acmeHeader + token,
 			wantOk: true,
 		},
@@ -61,9 +68,13 @@ func TestChallengeHandle(t *testing.T) {
 		Key:   key,
 	}
 	for i, test := range handleTests {
-		var w bytes.Buffer
+		var b bytes.Buffer
+		w := errorWriter{
+			writeErr: test.writeErr,
+			Writer:   &b,
+		}
 		err := c.Handle(&w, test.path)
-		got := string(w.Bytes())
+		got := string(b.Bytes())
 		switch {
 		case err != nil:
 			if test.wantOk {
@@ -75,4 +86,16 @@ func TestChallengeHandle(t *testing.T) {
 			t.Errorf("different body:\nwanted: %v\ngot:    %v", want, got)
 		}
 	}
+}
+
+type errorWriter struct {
+	writeErr error
+	io.Writer
+}
+
+func (w errorWriter) Write(p []byte) (n int, err error) {
+	if w.writeErr != nil {
+		return 0, w.writeErr
+	}
+	return w.Writer.Write(p)
 }
