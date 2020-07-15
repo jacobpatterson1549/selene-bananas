@@ -235,7 +235,7 @@ func (s *Socket) handleInfo(m game.Message) {
 }
 
 // httpPing submits the small ping form to keep the server's http handling active.
-func (Socket) httpPing() {
+func (s *Socket) httpPing() {
 	pingFormElement := dom.QuerySelector("form.ping")
 	pingFormElement.Call("requestSubmit")
 }

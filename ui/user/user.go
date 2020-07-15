@@ -78,7 +78,7 @@ func (u *User) login(token string) {
 		u.log.Error("getting user from jwt: " + err.Error())
 		return
 	}
-	setUsernamesReadOnly(string(ui.username))
+	u.setUsernamesReadOnly(string(ui.username))
 	dom.SetValue("input.points", strconv.Itoa(ui.points))
 	dom.SetCheckedQuery("#tab-lobby", true)
 	dom.SetCheckedQuery(".has-login", true)
@@ -93,7 +93,7 @@ func (u *User) logoutButton(event js.Value) {
 func (u *User) Logout() {
 	u.Socket.Close()
 	dom.SetCheckedQuery(".has-login", false)
-	setUsernamesReadOnly("")
+	u.setUsernamesReadOnly("")
 	dom.SetCheckedQuery("#tab-login-user", true)
 }
 
@@ -150,7 +150,7 @@ func (u User) Username() string {
 	return ui.username
 }
 
-func (u User) updateConfirmPassword(event js.Value) {
+func (u *User) updateConfirmPassword(event js.Value) {
 	password1InputElement := event.Get("target")
 	password2InputElement := password1InputElement.
 		Get("parentElement").
@@ -167,7 +167,7 @@ func (u User) escapePassword(p string) string {
 }
 
 // setUsernamesReadOnly sets all of the username inputs to readonly with the specified username if it is not empty, otherwise, it removes the readonly attribute.
-func setUsernamesReadOnly(username string) {
+func (u *User) setUsernamesReadOnly(username string) {
 	body := dom.QuerySelector("body")
 	usernameElements := dom.QuerySelectorAll(body, "input.username")
 	for _, usernameElement := range usernameElements {
