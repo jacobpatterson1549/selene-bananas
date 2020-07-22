@@ -21,7 +21,8 @@ type (
 		playerName     game.PlayerName
 		gameID         game.ID // mutable
 		active         bool
-		pongPeriod     time.Duration
+		readWait       time.Duration
+		writeWait      time.Duration
 		pingPeriod     time.Duration
 		idlePeriod     time.Duration
 		httpPingPeriod time.Duration
@@ -36,11 +37,10 @@ type (
 		// TimeFunc is a function which should supply the current time since the unix epoch.
 		// Used to set ping/pong deadlines
 		TimeFunc func() int64
-		// PongPeriod is the amount of time that between messages that can bass before the connection is invalid
-		PongPeriod time.Duration
-		// PingPeriod is the amount of time between sending ping messages to the connection to keep it active
-		// Should be less than pongPeriod
-		PingPeriod time.Duration
+		// ReadWait is the amout of time that can pass between recieving client  messages before timing out.
+		ReadWait time.Duration
+		// WriteWait is the amout of time that the socket can take to write a message.
+		WriteWait time.Duration
 		// IdlePeroid is the amount of time that can pass between handling messages that are not pings before the connection is idle and will be disconnected
 		IdlePeriod time.Duration
 		// HTTPPingPeriod is the amount of time between sending requests for the connection to send a http ping on a different socket
@@ -56,14 +56,16 @@ func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) (*
 	if err := cfg.validate(conn, playerName); err != nil {
 		return nil, fmt.Errorf("creating socket: validation: %w", err)
 	}
+	pingPeriod := cfg.ReadWait * 9 / 10
 	s := Socket{
 		debug:          cfg.Debug,
 		log:            cfg.Log,
 		conn:           conn,
 		timeFunc:       cfg.TimeFunc,
 		playerName:     playerName,
-		pongPeriod:     cfg.PongPeriod,
-		pingPeriod:     cfg.PingPeriod,
+		readWait:       cfg.ReadWait,
+		writeWait:      cfg.WriteWait,
+		pingPeriod:     pingPeriod,
 		idlePeriod:     cfg.IdlePeriod,
 		httpPingPeriod: cfg.HTTPPingPeriod,
 	}
@@ -76,18 +78,18 @@ func (cfg Config) validate(conn *websocket.Conn, playerName game.PlayerName) err
 		return fmt.Errorf("log required")
 	case conn == nil:
 		return fmt.Errorf("websocket connection required")
+	case cfg.TimeFunc == nil:
+		return fmt.Errorf("time func required required")
 	case len(playerName) == 0:
 		return fmt.Errorf("player name required")
-	case cfg.PongPeriod <= 0:
-		return fmt.Errorf("positive pong period required")
-	case cfg.PingPeriod <= 0:
-		return fmt.Errorf("positive ping period required")
+	case cfg.ReadWait <= 0:
+		return fmt.Errorf("positive read wait period required")
+	case cfg.WriteWait <= 0:
+		return fmt.Errorf("positive write wait period required")
 	case cfg.IdlePeriod <= 0:
 		return fmt.Errorf("positive idle period required")
 	case cfg.HTTPPingPeriod <= 0:
 		return fmt.Errorf("positive http ping period required")
-	case cfg.PingPeriod >= cfg.PongPeriod:
-		return fmt.Errorf("ping period must be less than pong period")
 	}
 	return nil
 }
@@ -111,7 +113,7 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 		writeCancelFunc()
 		s.conn.Close()
 	}()
-	s.conn.SetPongHandler(s.refreshReadDeadline)
+	// s.conn.SetPongHandler(s.refreshReadDeadline)
 	for { // BLOCKS
 		m, err := s.readMessage()
 		select {
@@ -228,11 +230,11 @@ func (s *Socket) writePing() error {
 }
 
 func (s *Socket) refreshReadDeadline(appData string) error {
-	return s.refreshDeadline(s.conn.SetReadDeadline, s.pongPeriod)
+	return s.refreshDeadline(s.conn.SetReadDeadline, s.readWait)
 }
 
 func (s *Socket) refreshWriteDeadline() error {
-	return s.refreshDeadline(s.conn.SetWriteDeadline, s.pingPeriod)
+	return s.refreshDeadline(s.conn.SetWriteDeadline, s.writeWait)
 }
 
 func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {

@@ -183,8 +183,8 @@ func socketConfig(m mainFlags, log *log.Logger, timeFunc func() int64) socket.Co
 		Debug:          m.debugGame,
 		Log:            log,
 		TimeFunc:       timeFunc,
-		PongPeriod:     20 * time.Second,
-		PingPeriod:     16 * time.Second,
+		ReadWait:       60 * time.Second,
+		WriteWait:      10 * time.Second,
 		IdlePeriod:     15 * time.Minute,
 		HTTPPingPeriod: 10 * time.Minute,
 	}
