@@ -40,7 +40,7 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	canvas.Socket = socket // [circular reference]
 	game.Socket = socket   // [circular reference]
 	lobby.Socket = socket  // [circular reference]
-	initBeforeUnloadFn(cancelFunc)
+	initBeforeUnloadFn(cancelFunc, wg)
 	enableInteraction()
 }
 
@@ -107,13 +107,15 @@ func initSocket(ctx context.Context, wg *sync.WaitGroup, log *log.Log, user *use
 	return socket
 }
 
-func initBeforeUnloadFn(cancelFunc context.CancelFunc) {
+func initBeforeUnloadFn(cancelFunc context.CancelFunc, wg *sync.WaitGroup) {
+	wg.Add(1)
 	var fn js.Func
 	fn = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		// args[0].Call("preventDefault") // debug in other browsers
 		// args[0].Set("returnValue", "") // debug in chromium
 		cancelFunc()
 		fn.Release()
+		wg.Done()
 		return nil
 	})
 	global := js.Global()

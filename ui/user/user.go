@@ -60,14 +60,12 @@ func (cfg Config) New(httpClient *http.Client) *User {
 
 // InitDom regesters user dom functions.
 func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
-	logout := dom.NewJsEventFunc(u.logoutButton)
-	request := dom.NewJsEventFuncAsync(u.request, true)
-	updateConfirmPassword := dom.NewJsEventFunc(u.updateConfirmPassword)
-	dom.RegisterFunc("user", "logout", logout)
-	dom.RegisterFunc("user", "request", request)
-	dom.RegisterFunc("user", "updateConfirmPattern", updateConfirmPassword)
-	go dom.ReleaseJsFuncsOnDone(ctx, wg, logout, request, updateConfirmPassword)
+	jsFuncs := map[string]js.Func{
+		"logout":               dom.NewJsEventFunc(u.logoutButton),
+		"request":              dom.NewJsEventFuncAsync(u.request, true),
+		"updateConfirmPattern": dom.NewJsEventFunc(u.updateConfirmPassword),
+	}
+	dom.RegisterFuncs(ctx, wg, "user", jsFuncs)
 }
 
 func (u *User) login(token string) {

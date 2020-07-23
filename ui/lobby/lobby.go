@@ -47,12 +47,11 @@ func (cfg Config) New() *Lobby {
 
 // InitDom regesters lobby dom functions
 func (l *Lobby) InitDom(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
-	connect := dom.NewJsEventFuncAsync(l.connect, true)
-	leave := dom.NewJsFunc(l.leave)
-	dom.RegisterFunc("lobby", "connect", connect)
-	dom.RegisterFunc("lobby", "leave", leave)
-	go dom.ReleaseJsFuncsOnDone(ctx, wg, connect, leave)
+	jsFuncs := map[string]js.Func{
+		"connect": dom.NewJsEventFuncAsync(l.connect, true),
+		"leave":   dom.NewJsFunc(l.leave),
+	}
+	dom.RegisterFuncs(ctx, wg, "lobby", jsFuncs)
 }
 
 // connect makes an BLOCKING request to connect to the lobby.

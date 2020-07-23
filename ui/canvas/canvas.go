@@ -166,57 +166,63 @@ func (c *Canvas) TileLength(tileLength int) {
 
 // InitDom regesters canvas dom functions.
 func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
-	redraw := dom.NewJsFunc(c.Redraw)
-	swapTile := dom.NewJsFunc(c.StartSwap)
-	mousePP := c.newPixelPosition()
-	mouseDownFunc := func(event js.Value) {
-		c.MoveStart(mousePP.fromMouse(event))
+	jsFuncs := map[string]js.Func{
+		"redraw":   dom.NewJsFunc(c.Redraw),
+		"swapTile": dom.NewJsFunc(c.StartSwap),
 	}
-	mouseUpFunc := func(event js.Value) {
-		c.MoveEnd(mousePP.fromMouse(event))
-	}
-	mouseMoveFunc := func(event js.Value) {
-		c.MoveCursor(mousePP.fromMouse(event))
-	}
-	touchPP := c.newPixelPosition()
-	touchStartFunc := func(event js.Value) {
-		c.MoveStart(touchPP.fromTouch(event))
-	}
-	touchEndFunc := func(event js.Value) {
-		// the event has no touches, use previous touchPos
-		c.MoveEnd(*touchPP)
-	}
-	touchMoveFunc := func(event js.Value) {
-		c.MoveCursor(touchPP.fromTouch(event))
-	}
-	dom.RegisterFunc("canvas", "redraw", redraw)
-	dom.RegisterFunc("canvas", "swapTile", swapTile)
-	mouseDown := c.registerEventListener("mousedown", mouseDownFunc)
-	mouseUp := c.registerEventListener("mouseup", mouseUpFunc)
-	mouseMove := c.registerEventListener("mousemove", mouseMoveFunc)
-	touchStart := c.registerEventListener("touchstart", touchStartFunc)
-	touchEnd := c.registerEventListener("touchend", touchEndFunc)
-	touchMove := c.registerEventListener("touchmove", touchMoveFunc)
-	go dom.ReleaseJsFuncsOnDone(ctx, wg, redraw, swapTile, mouseDown, mouseUp, mouseMove, touchStart, touchEnd, touchMove)
+	dom.RegisterFuncs(ctx, wg, "canvas", jsFuncs)
+	c.registerEventListeners(ctx, wg)
 }
 
-// registerEventListener adds an event listener to the canvas element
-func (c *Canvas) registerEventListener(fnName string, fn func(event js.Value)) js.Func {
-	jsFunc := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		event := args[0]
-		fn(event)
-		return nil
-	})
-	args := []interface{}{
-		fnName,
-		jsFunc,
-		map[string]interface{}{
-			"passive": false,
+func (c *Canvas) createCanvasEventFuncs() map[string]func(event js.Value) {
+	mousePP := c.newPixelPosition()
+	touchPP := c.newPixelPosition()
+	funcs := map[string]func(event js.Value){
+		"mousedown": func(event js.Value) {
+			c.MoveStart(mousePP.fromMouse(event))
+		},
+		"mouseup": func(event js.Value) {
+			c.MoveEnd(mousePP.fromMouse(event))
+		},
+		"mousemove": func(event js.Value) {
+			c.MoveCursor(mousePP.fromMouse(event))
+		},
+		"touchstart": func(event js.Value) {
+			c.MoveStart(touchPP.fromTouch(event))
+		},
+		"touchend": func(event js.Value) {
+			// the event has no touches, use previous touchPos
+			c.MoveEnd(*touchPP)
+		},
+		"touchmove": func(event js.Value) {
+			c.MoveCursor(touchPP.fromTouch(event))
 		},
 	}
-	c.element.Call("addEventListener", args...)
-	return jsFunc
+	return funcs
+}
+
+// registerEventListeners adds an event listener to the canvas element
+func (c *Canvas) registerEventListeners(ctx context.Context, wg *sync.WaitGroup) {
+	funcs := c.createCanvasEventFuncs()
+	jsFuncs := make(map[string]js.Func, len(funcs))
+	for fnName, fn := range funcs {
+		jsFunc := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			event := args[0]
+			fn(event)
+			return nil
+		})
+		args := []interface{}{
+			fnName,
+			jsFunc,
+			map[string]interface{}{
+				"passive": false,
+			},
+		}
+		c.element.Call("addEventListener", args...)
+		jsFuncs[fnName] = jsFunc
+	}
+	wg.Add(1)
+	go dom.ReleaseJsFuncsOnDone(ctx, wg, jsFuncs)
 }
 
 // Redraw draws the canvas

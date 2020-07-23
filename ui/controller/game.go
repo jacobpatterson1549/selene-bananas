@@ -52,28 +52,19 @@ func (cfg GameConfig) NewGame() *Game {
 
 // InitDom regesters game dom functions.
 func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
-	create := dom.NewJsFunc(g.Create)
-	join := dom.NewJsEventFunc(g.join)
-	leave := dom.NewJsFunc(g.Leave)
-	delete := dom.NewJsFunc(g.Delete)
-	start := dom.NewJsFunc(g.Start)
-	finish := dom.NewJsFunc(g.Finish)
-	snagTile := dom.NewJsFunc(g.SnagTile)
-	sendChat := dom.NewJsEventFunc(g.sendChat)
-	resizeTiles := dom.NewJsFunc(g.resizeTiles)
-	refreshTileLength := dom.NewJsFunc(g.refreshTileLength)
-	dom.RegisterFunc("game", "create", create)
-	dom.RegisterFunc("game", "join", join)
-	dom.RegisterFunc("game", "leave", leave)
-	dom.RegisterFunc("game", "delete", delete)
-	dom.RegisterFunc("game", "start", start)
-	dom.RegisterFunc("game", "finish", finish)
-	dom.RegisterFunc("game", "snagTile", snagTile)
-	dom.RegisterFunc("game", "sendChat", sendChat)
-	dom.RegisterFunc("game", "resizeTiles", resizeTiles)
-	dom.RegisterFunc("game", "refreshTileLength", refreshTileLength)
-	go dom.ReleaseJsFuncsOnDone(ctx, wg, join, leave, delete, start, finish, snagTile, sendChat, resizeTiles, refreshTileLength)
+	jsFuncs := map[string]js.Func{
+		"create":            dom.NewJsFunc(g.Create),
+		"join":              dom.NewJsEventFunc(g.join),
+		"leave":             dom.NewJsFunc(g.Leave),
+		"delete":            dom.NewJsFunc(g.Delete),
+		"start":             dom.NewJsFunc(g.Start),
+		"finish":            dom.NewJsFunc(g.Finish),
+		"snagTile":          dom.NewJsFunc(g.SnagTile),
+		"sendChat":          dom.NewJsEventFunc(g.sendChat),
+		"resizeTiles":       dom.NewJsFunc(g.resizeTiles),
+		"refreshTileLength": dom.NewJsFunc(g.refreshTileLength),
+	}
+	dom.RegisterFuncs(ctx, wg, "game", jsFuncs)
 }
 
 // Create clears the tiles and asks the server for a new game to join

@@ -6,6 +6,7 @@ package log
 import (
 	"context"
 	"sync"
+	"syscall/js"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
@@ -18,10 +19,10 @@ type (
 
 // InitDom regesters log dom functions.
 func (l *Log) InitDom(ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
-	clear := dom.NewJsFunc(l.Clear)
-	dom.RegisterFunc("log", "clear", clear)
-	go dom.ReleaseJsFuncsOnDone(ctx, wg, clear)
+	jsFuncs := map[string]js.Func{
+		"clear": dom.NewJsFunc(l.Clear),
+	}
+	dom.RegisterFuncs(ctx, wg, "log", jsFuncs)
 }
 
 // Info logs an info-styled message.

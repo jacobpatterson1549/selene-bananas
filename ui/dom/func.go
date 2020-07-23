@@ -8,16 +8,20 @@ import (
 	"syscall/js"
 )
 
-// RegisterFunc sets the function as a field on the parent.
+// RegisterFuncs sets the function as fields on the parent.
 // The parent object is created if it does not exist.
-func RegisterFunc(parentName, fnName string, fn js.Func) {
+func RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func) {
 	global := js.Global()
 	parent := global.Get(parentName)
 	if parent.IsUndefined() {
 		parent = js.ValueOf(make(map[string]interface{}))
 		global.Set(parentName, parent)
 	}
-	parent.Set(fnName, fn)
+	for fnName, fn := range jsFuncs {
+		parent.Set(fnName, fn)
+	}
+	wg.Add(1)
+	go ReleaseJsFuncsOnDone(ctx, wg, jsFuncs)
 }
 
 // NewJsFunc creates a new javascript function from the provided function.
@@ -51,7 +55,7 @@ func NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
 
 // ReleaseJsFuncsOnDone releases the jsFuncs and decrements the waitgroup when the context is done.
 // This function should be called on a separate goroutine.
-func ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs ...js.Func) {
+func ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func) {
 	<-ctx.Done() // BLOCKING
 	for _, f := range jsFuncs {
 		f.Release()

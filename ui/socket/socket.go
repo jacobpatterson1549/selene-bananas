@@ -66,7 +66,13 @@ func (cfg Config) New() *Socket {
 // InitDom regesters socket dom functions.
 func (s *Socket) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
-	go dom.ReleaseJsFuncsOnDone(ctx, wg, s.jsFuncs.onOpen, s.jsFuncs.onClose, s.jsFuncs.onError, s.jsFuncs.onMessage)
+	go s.releaseJsFuncsOnDone(ctx, wg)
+}
+
+func (s *Socket) releaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup) {
+	<-ctx.Done() // BLOCKING
+	s.releaseWebSocketJsFuncs()
+	wg.Done()
 }
 
 func (s *Socket) releaseWebSocketJsFuncs() {
