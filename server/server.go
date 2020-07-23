@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -251,8 +252,8 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 		var err error
 		host, _, err = net.SplitHostPort(host)
 		if err != nil {
-			message := "could not redirect to https: " + err.Error()
-			http.Error(w, message, http.StatusInternalServerError)
+			err := fmt.Errorf("could not redirect to https: %w", err)
+			s.handleError(w, err)
 			return
 		}
 	}
@@ -264,27 +265,21 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
-	if !s.noTLSRedirect && r.TLS == nil {
+	if r.TLS == nil && !s.noTLSRedirect {
 		s.handleHTTP(w, r)
 		return
 	}
-	var err error
 	switch r.Method {
 	case "GET":
-		err = s.handleHTTPSGet(w, r)
+		s.handleHTTPSGet(w, r)
 	case "POST":
-		err = s.handleHTTPSPost(w, r)
+		s.handleHTTPSPost(w, r)
 	default:
 		s.httpError(w, http.StatusMethodNotAllowed)
 	}
-	if err != nil {
-		s.log.Printf("server error: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
 }
 
-func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) error {
-	var err error
+func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/", "/manifest.json", "/init.js":
 		s.handleFile(s.serveTemplate(r.URL.Path), false)(w, r)
@@ -293,18 +288,17 @@ func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) error {
 	case "/robots.txt", "/favicon.ico", "/favicon-192.png", "/favicon-512.png":
 		s.handleFile(s.serveFile("resources"+r.URL.Path), false)(w, r)
 	case "/lobby":
-		err = s.handleLobby(w, r)
+		s.handleLobby(w, r)
 	case "/ping":
-		err = s.handleHTTPPing(w, r)
+		s.handleHTTPPing(w, r)
 	case "/monitor":
-		err = s.handleMonitor(w, r)
+		s.handleMonitor(w, r)
 	default:
 		s.httpError(w, http.StatusNotFound)
 	}
-	return err
 }
 
-func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) error {
+func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var tokenUsername string
 	switch r.URL.Path {
@@ -315,55 +309,60 @@ func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			s.log.Print(err)
 			s.httpError(w, http.StatusForbidden)
-			return nil
+			return
 		}
 	}
 	switch r.URL.Path {
 	case "/user_create":
-		err = s.handleUserCreate(w, r)
+		s.handleUserCreate(w, r)
 	case "/user_login":
-		err = s.handleUserLogin(w, r)
+		s.handleUserLogin(w, r)
 	case "/user_update_password":
-		err = s.handleUserUpdatePassword(w, r, tokenUsername)
+		s.handleUserUpdatePassword(w, r, tokenUsername)
 	case "/user_delete":
-		err = s.handleUserDelete(w, r, tokenUsername)
+		s.handleUserDelete(w, r, tokenUsername)
 	default:
 		s.httpError(w, http.StatusNotFound)
 	}
-	return err
 }
 
 func (s Server) serveTemplate(name string) http.HandlerFunc {
-	if name == "/" {
-		name = "/main.html"
-	}
-	t := template.New(name[1:])
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch name {
-		case "/main.html":
-			templateFileGlobs := []string{
-				"resources/html/**/*.html",
-				"resources/fa/*.svg",
-				"resources/main.css",
-				"resources/init.js",
-			}
-			for _, g := range templateFileGlobs {
-				if _, err := t.ParseGlob(g); err != nil {
-					s.log.Printf("globbing template files: %v", err)
-					s.httpError(w, http.StatusInternalServerError)
-					return
+	var (
+		t         *template.Template
+		filenames []string
+	)
+	switch name {
+	case "/":
+		t = template.New("main.html")
+		templateFileGlobs := []string{
+			"resources/html/**/*.html",
+			"resources/fa/*.svg",
+			"resources/main.css",
+			"resources/init.js",
+		}
+		for _, g := range templateFileGlobs {
+			matches, err := filepath.Glob(g)
+			if err != nil {
+				return func(w http.ResponseWriter, r *http.Request) {
+					s.handleError(w, err)
 				}
 			}
-		default:
-			if _, err := t.ParseFiles("resources" + name); err != nil {
-				s.log.Printf("parsing manifest template: %v", err)
-				s.httpError(w, http.StatusInternalServerError)
-				return
-			}
+			filenames = append(filenames, matches...)
+		}
+	default:
+		t = template.New(name[1:])
+		filenames = append(filenames, "resources"+name)
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := t.ParseFiles(filenames...); err != nil {
+			err := fmt.Errorf("parsing manifest template: %v", err)
+			s.handleError(w, err)
+			return
 		}
 		if err := t.Execute(w, s.data); err != nil {
-			s.log.Printf("rendering template: %v", err)
-			s.httpError(w, http.StatusInternalServerError)
+			err := fmt.Errorf("rendering template: %v", err)
+			s.handleError(w, err)
+			return
 		}
 	}
 }
@@ -391,39 +390,42 @@ func (s Server) handleFile(fn http.HandlerFunc, checkVersion bool) http.HandlerF
 			w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
 		}
 		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			w.Header().Set("Content-Encoding", "gzip")
 			w2 := gzip.NewWriter(w)
 			defer w2.Close()
 			w = wrappedResponseWriter{
 				Writer:         w2,
 				ResponseWriter: w,
 			}
+			w.Header().Set("Content-Encoding", "gzip")
 		}
 		fn(w, r)
 	}
 }
 
-func (s Server) handleLobby(w http.ResponseWriter, r *http.Request) error {
+func (s Server) handleLobby(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.FormValue("access_token")
 	tokenUsername, err := s.tokenizer.ReadUsername(tokenString)
 	if err != nil {
 		s.log.Printf("reading username from token: %v", err)
 		s.httpError(w, http.StatusUnauthorized)
-		return nil
+		return
 	}
-	return s.handleUserJoinLobby(w, r, tokenUsername)
+	s.handleUserJoinLobby(w, r, tokenUsername)
 }
 
-func (s Server) handleHTTPPing(w http.ResponseWriter, r *http.Request) error {
+func (s Server) handleHTTPPing(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.readTokenUsername(r); err != nil {
-		s.log.Print(err)
-		s.httpError(w, http.StatusForbidden)
+		s.handleError(w, err)
 	}
-	return nil
 }
 
 func (Server) httpError(w http.ResponseWriter, statusCode int) {
 	http.Error(w, http.StatusText(statusCode), statusCode)
+}
+
+func (s Server) handleError(w http.ResponseWriter, err error) {
+	s.log.Printf("server error: %v", err)
+	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
 func (s Server) readTokenUsername(r *http.Request) (string, error) {
