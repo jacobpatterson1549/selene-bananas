@@ -36,12 +36,22 @@ func TestRefreshBoard(t *testing.T) {
 		NumCols: 20,
 		NumRows: 10,
 	}
-	t1, _ := tile.New(1, 'A')
-	t2, _ := tile.New(2, 'B')
-	board, _ := boardCfg.New([]tile.Tile{
+	t1, err := tile.New(1, 'A')
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	t2, err := tile.New(2, 'B')
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	unusedTiles := []tile.Tile{
 		*t1,
 		*t2,
-	})
+	}
+	board, err := boardCfg.New(unusedTiles)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 	board.MoveTiles([]tile.Position{
 		{
 			Tile: *t1,

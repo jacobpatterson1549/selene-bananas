@@ -132,10 +132,13 @@ func TestDatabaseQueryRow(t *testing.T) {
 			cols:      []string{"?column?"},
 			arguments: []interface{}{want},
 		}
-		db, _ := cfg.NewSQLDatabase()
+		db, err := cfg.NewSQLDatabase()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
 		r := db.query(ctx, q)
 		var got int
-		err := r.Scan(&got)
+		err = r.Scan(&got)
 		switch {
 		case err != nil:
 			if test.wantOk {
@@ -254,8 +257,11 @@ func TestDatabaseExec(t *testing.T) {
 				"Bilbo",
 			},
 		}
-		db, _ := cfg.NewSQLDatabase()
-		err := db.exec(ctx, q)
+		db, err := cfg.NewSQLDatabase()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		err = db.exec(ctx, q)
 		switch {
 		case err != nil:
 			if test.wantOk {
