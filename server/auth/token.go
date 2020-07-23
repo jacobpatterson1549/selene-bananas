@@ -6,13 +6,12 @@ import (
 	"io"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/jacobpatterson1549/selene-bananas/db"
 )
 
 type (
 	// Tokenizer creates and reads tokens from http traffic.
 	Tokenizer interface {
-		Create(u db.User) (string, error)
+		Create(username string, points int) (string, error)
 		ReadUsername(tokenString string) (string, error)
 	}
 
@@ -56,13 +55,13 @@ func (cfg TokenizerConfig) NewTokenizer() (Tokenizer, error) {
 }
 
 // Create converts a user to a token string
-func (j jwtTokenizer) Create(u db.User) (string, error) {
+func (j jwtTokenizer) Create(username string, points int) (string, error) {
 	now := j.timeFunc()
 	expiresAt := now + j.validSec
 	claims := jwtUserClaims{
-		u.Points,
+		points,
 		jwt.StandardClaims{
-			Subject:   string(u.Username),
+			Subject:   username,
 			NotBefore: now,
 			ExpiresAt: expiresAt,
 		},

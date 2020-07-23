@@ -37,7 +37,7 @@ func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "incorrect username/password", http.StatusUnauthorized)
 		return
 	}
-	token, err := s.tokenizer.Create(u2)
+	token, err := s.tokenizer.Create(u2.Username, u2.Points)
 	if err != nil {
 		s.handleError(w, err)
 		return

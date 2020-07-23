@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/jacobpatterson1549/selene-bananas/db"
 )
 
 func TestCreate(t *testing.T) {
@@ -17,12 +16,8 @@ func TestCreate(t *testing.T) {
 		timeFunc: func() int64 { return 0 },
 		validSec: 365 * 24 * 60 * 60,
 	}
-	u := db.User{
-		Username: "selene",
-		Points:   18,
-	}
 	want := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwb2ludHMiOjE4LCJleHAiOjMxNTM2MDAwLCJzdWIiOiJzZWxlbmUifQ.X95h7cYKsUvmIT3yuhnxB0QjUNIgFKUNz-lD-d5GYhg"
-	got, err := tokenizer.Create(u)
+	got, err := tokenizer.Create("selene", 18)
 	switch {
 	case err != nil:
 		t.Errorf("unexpected error: %v", err)
@@ -33,28 +28,28 @@ func TestCreate(t *testing.T) {
 
 func TestReadUsername(t *testing.T) {
 	readTests := []struct {
-		user                  db.User
+		username              string
 		creationSigningMethod jwt.SigningMethod
 		readSigningMethod     jwt.SigningMethod
 		want                  string
 		wantOk                bool
 	}{
 		{
-			user:                  db.User{Username: "selene"},
+			username:              "selene",
 			creationSigningMethod: jwt.SigningMethodHS256,
 			readSigningMethod:     jwt.SigningMethodHS256,
 			want:                  "selene",
 			wantOk:                true,
 		},
 		{
-			user:                  db.User{Username: "jacob"},
+			username:              "jacob",
 			creationSigningMethod: jwt.SigningMethodHS512,
 			readSigningMethod:     jwt.SigningMethodHS512,
 			want:                  "jacob",
 			wantOk:                true,
 		},
 		{
-			user:                  db.User{Username: "selene"},
+			username:              "selene",
 			creationSigningMethod: jwt.SigningMethodHS512,
 			readSigningMethod:     jwt.SigningMethodHS256,
 		},
@@ -67,7 +62,7 @@ func TestReadUsername(t *testing.T) {
 			key:      []byte("secret"),
 			timeFunc: epochSecondsSupplier,
 		}
-		tokenString, err := creationTokenizer.Create(test.user)
+		tokenString, err := creationTokenizer.Create(test.username, 0)
 		if err != nil {
 			t.Errorf("Test %v: unexpected error: %v", i, err)
 			continue
@@ -151,10 +146,7 @@ func TestCreateReadWithTime(t *testing.T) {
 			return time.Unix(now, 0)
 		}
 		want := "selene"
-		u := db.User{
-			Username: want,
-		}
-		tokenString, _ := tokenizer.Create(u)
+		tokenString, _ := tokenizer.Create(want, 0)
 		got, err := tokenizer.ReadUsername(tokenString)
 		switch {
 		case err != nil:
