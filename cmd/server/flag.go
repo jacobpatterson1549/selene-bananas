@@ -75,10 +75,11 @@ func (m *mainFlags) newFlagSet(osLookupEnvFunc func(string) (string, bool), port
 	}
 	envValueInt := func(key string, defaultValue int) int {
 		v1 := envValue(key)
-		if v2, err := strconv.Atoi(v1); err == nil {
-			return v2
+		v2, err := strconv.Atoi(v1)
+		if err != nil {
+			return defaultValue
 		}
-		return defaultValue
+		return v2
 	}
 	envPresent := func(key string) bool {
 		_, ok := osLookupEnvFunc(key)
