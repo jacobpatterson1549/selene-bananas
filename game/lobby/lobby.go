@@ -100,7 +100,8 @@ func (cfg Config) validate() error {
 }
 
 // AddUser adds a user to the lobby, it opens a new websocket (player) for the username
-func (l *Lobby) AddUser(playerName game.PlayerName, w http.ResponseWriter, r *http.Request) error {
+func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request) error {
+	playerName := game.PlayerName(username)
 	result := make(chan error)
 	ps := playerSocket{
 		PlayerName:     playerName,
@@ -116,9 +117,11 @@ func (l *Lobby) AddUser(playerName game.PlayerName, w http.ResponseWriter, r *ht
 }
 
 // RemoveUser removes the user from the lobby and a game, if any
-func (l *Lobby) RemoveUser(playerName game.PlayerName) {
+func (l *Lobby) RemoveUser(username string) {
+	playerName := game.PlayerName(username)
 	l.socketMessages <- game.Message{
-		Type: game.PlayerDelete,
+		Type:       game.PlayerDelete,
+		PlayerName: playerName,
 	}
 }
 
