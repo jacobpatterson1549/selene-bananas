@@ -11,11 +11,11 @@ type (
 	}
 )
 
-func (ph mockPasswordHandler) hash(password string) ([]byte, error) {
+func (ph mockPasswordHandler) Hash(password string) ([]byte, error) {
 	return ph.hashFunc(password)
 }
 
-func (ph mockPasswordHandler) isCorrect(hashedPassword []byte, password string) (bool, error) {
+func (ph mockPasswordHandler) IsCorrect(hashedPassword []byte, password string) (bool, error) {
 	return ph.isCorrectFunc(hashedPassword, password)
 }
 
