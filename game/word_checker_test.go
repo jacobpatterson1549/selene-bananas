@@ -34,11 +34,8 @@ func TestWords(t *testing.T) {
 			want[w] = struct{}{}
 		}
 		r := strings.NewReader(test.wordsToRead)
-		wc, err := NewWordChecker(r)
-		switch {
-		case err != nil:
-			t.Errorf("unexpected error: %v", err)
-		case !reflect.DeepEqual(want, wc.words):
+		wc := NewWordChecker(r)
+		if !reflect.DeepEqual(want, wc.words) {
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, want, wc.words)
 		}
 	}
@@ -50,10 +47,7 @@ func BenchmarkAmericanEnglishLarge(b *testing.B) {
 	if err != nil {
 		b.Fatalf("could not open wordsFile: %v", err)
 	}
-	wc, err := NewWordChecker(f)
-	if err != nil {
-		b.Fatalf("unexpected error: %v", err)
-	}
+	wc := NewWordChecker(f)
 	want := 114064
 	got := len(wc.words)
 	if want != got {
@@ -87,24 +81,11 @@ func TestCheck(t *testing.T) {
 		},
 	}
 	r := strings.NewReader("apple bat car")
-	wc, err := NewWordChecker(r)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	wc := NewWordChecker(r)
 	for i, test := range checkTests {
 		got := wc.Check(test.word)
 		if test.want != got {
 			t.Errorf("Test %v: wanted %v, but got %v for word %v - valid words are %v", i, test.want, got, test.word, wc.words)
 		}
-	}
-}
-
-func TestNewWordCheckerNilReader(t *testing.T) {
-	got, err := NewWordChecker(nil)
-	switch {
-	case err == nil:
-		t.Error("expected error, but got none")
-	case got != nil:
-		t.Errorf("expected nil, got %v", got)
 	}
 }

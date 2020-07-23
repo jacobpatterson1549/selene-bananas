@@ -148,7 +148,7 @@ func gameConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud *db.UserDao, t
 	if err != nil {
 		return nil, err
 	}
-	wc, err := game.NewWordChecker(wordsFile)
+	wc := game.NewWordChecker(wordsFile)
 	if err != nil {
 		return nil, err
 	}
