@@ -91,7 +91,7 @@ func (s *Socket) Connect(event js.Value) error {
 	if err != nil {
 		return err
 	}
-	url := s.getWebSocketURL(*f)
+	url := s.webSocketURL(*f)
 	s.releaseWebSocketJsFuncs()
 	errC := make(chan error, 1)
 	s.jsFuncs.onOpen = dom.NewJsFunc(s.onOpen(errC))
@@ -107,7 +107,7 @@ func (s *Socket) Connect(event js.Value) error {
 }
 
 // getWebSocketURL creates a websocket url from the form, changing it's scheme and adding an access_token.
-func (s *Socket) getWebSocketURL(f dom.Form) string {
+func (s *Socket) webSocketURL(f dom.Form) string {
 	switch f.URL.Scheme {
 	case "http":
 		f.URL.Scheme = "ws"
@@ -123,7 +123,7 @@ func (s *Socket) getWebSocketURL(f dom.Form) string {
 // onMessage is called when the websocket opens.
 func (s *Socket) onOpen(errC chan<- error) func() {
 	return func() {
-		dom.SetCheckedQuery(".has-websocket", true)
+		dom.SetChecked(".has-websocket", true)
 		errC <- nil
 	}
 }
@@ -142,9 +142,9 @@ func (s *Socket) closeWebSocket() {
 	s.webSocket.Set("onerror", nil)
 	s.webSocket.Set("onmessage", nil)
 	s.releaseWebSocketJsFuncs()
-	dom.SetCheckedQuery(".has-websocket", false)
-	dom.SetCheckedQuery(".has-game", false)
-	dom.SetCheckedQuery("#tab-lobby", true)
+	dom.SetChecked(".has-websocket", false)
+	dom.SetChecked(".has-game", false)
+	dom.SetChecked("#tab-lobby", true)
 }
 
 // onMessage is called when the websocket encounters an unexpected error.

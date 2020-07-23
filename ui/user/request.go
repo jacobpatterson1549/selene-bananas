@@ -73,7 +73,7 @@ func (r request) do() (*http.Response, error) {
 	if err != nil {
 		return nil, errors.New("creating request: " + err.Error())
 	}
-	if dom.GetCheckedQuery(".has-login") {
+	if dom.Checked(".has-login") {
 		jwt := r.user.JWT()
 		httpRequest.Header.Set("Authorization", "Bearer "+jwt)
 	}

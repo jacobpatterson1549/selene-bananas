@@ -22,7 +22,7 @@ func TestReleaseWebSocketJsFuncs(t *testing.T) {
 	s.releaseWebSocketJsFuncs()
 }
 
-func TestGetWebSocketURL(t *testing.T) {
+func TestWebSocketURL(t *testing.T) {
 	getWebSocketURLTests := []struct {
 		url  string
 		jwt  string
@@ -55,7 +55,7 @@ func TestGetWebSocketURL(t *testing.T) {
 		s := Socket{
 			user: &mu,
 		}
-		got := s.getWebSocketURL(f)
+		got := s.webSocketURL(f)
 		if test.want != got {
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
 		}

@@ -25,21 +25,21 @@ func QuerySelectorAll(document js.Value, query string) []js.Value {
 	return values
 }
 
-// SetCheckedQuery sets the checked property of the element.
-func SetCheckedQuery(query string, checked bool) {
-	element := QuerySelector(query)
-	element.Set("checked", checked)
-}
-
-// GetCheckedQuery returns whether the element has a checked value of true.
-func GetCheckedQuery(query string) bool {
+// Checked returns whether the element has a checked value of true.
+func Checked(query string) bool {
 	element := QuerySelector(query)
 	checked := element.Get("checked")
 	return checked.Bool()
 }
 
-// GetValue gets the value of the input element.
-func GetValue(query string) string {
+// SetChecked sets the checked property of the element.
+func SetChecked(query string, checked bool) {
+	element := QuerySelector(query)
+	element.Set("checked", checked)
+}
+
+// Value gets the value of the input element.
+func Value(query string) string {
 	element := QuerySelector(query)
 	value := element.Get("value")
 	return value.String()

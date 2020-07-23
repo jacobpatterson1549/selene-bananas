@@ -29,7 +29,7 @@ func TestGetUser(t *testing.T) {
 	}
 	for i, test := range getUserTests {
 		j := jwt(test.jwt)
-		got, err := j.getUser()
+		got, err := j.userInfo()
 		switch {
 		case err != nil:
 			if test.wantOk {

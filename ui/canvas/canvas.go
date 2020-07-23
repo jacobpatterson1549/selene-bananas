@@ -613,15 +613,15 @@ func (s *selection) setMoveState(ms moveState) {
 	s.moveState = ms
 	switch ms {
 	case none:
-		dom.SetCheckedQuery(".game>.canvas>.move-state.none", true)
+		dom.SetChecked(".game>.canvas>.move-state.none", true)
 	case swap:
-		dom.SetCheckedQuery(".game>.canvas>.move-state.swap", true)
+		dom.SetChecked(".game>.canvas>.move-state.swap", true)
 	case rect:
-		dom.SetCheckedQuery(".game>.canvas>.move-state.rect", true)
+		dom.SetChecked(".game>.canvas>.move-state.rect", true)
 	case drag:
-		dom.SetCheckedQuery(".game>.canvas>.move-state.drag", true)
+		dom.SetChecked(".game>.canvas>.move-state.drag", true)
 	case grab:
-		dom.SetCheckedQuery(".game>.canvas>.move-state.grab", true)
+		dom.SetChecked(".game>.canvas>.move-state.grab", true)
 	}
 }
 

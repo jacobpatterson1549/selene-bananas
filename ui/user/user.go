@@ -71,15 +71,15 @@ func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 func (u *User) login(token string) {
 	dom.SetValue(".jwt", token)
 	j := jwt(token)
-	ui, err := j.getUser()
+	ui, err := j.userInfo()
 	if err != nil {
 		u.log.Error("getting user from jwt: " + err.Error())
 		return
 	}
 	u.setUsernamesReadOnly(string(ui.username))
 	dom.SetValue("input.points", strconv.Itoa(ui.points))
-	dom.SetCheckedQuery("#tab-lobby", true)
-	dom.SetCheckedQuery(".has-login", true)
+	dom.SetChecked("#tab-lobby", true)
+	dom.SetChecked(".has-login", true)
 }
 
 func (u *User) logoutButton(event js.Value) {
@@ -90,12 +90,12 @@ func (u *User) logoutButton(event js.Value) {
 // Logout logs out the user
 func (u *User) Logout() {
 	u.Socket.Close()
-	dom.SetCheckedQuery(".has-login", false)
+	dom.SetChecked(".has-login", false)
 	u.setUsernamesReadOnly("")
-	dom.SetCheckedQuery("#tab-login-user", true)
+	dom.SetChecked("#tab-login-user", true)
 }
 
-func (j jwt) getUser() (*userInfo, error) {
+func (j jwt) userInfo() (*userInfo, error) {
 	parts := strings.Split(string(j), ".")
 	if len(parts) != 3 {
 		return nil, errors.New("expected 3 jwt parts")
@@ -134,14 +134,14 @@ func (j jwt) getUser() (*userInfo, error) {
 
 // JWT gets the value of the jwt input.
 func (u User) JWT() string {
-	return dom.GetValue(".jwt")
+	return dom.Value(".jwt")
 }
 
 // Username returns the username of the logged in user.
 // If any problem occurs, an empty string is returned.
 func (u User) Username() string {
 	j := jwt(u.JWT())
-	ui, err := j.getUser()
+	ui, err := j.userInfo()
 	if err != nil {
 		return ""
 	}

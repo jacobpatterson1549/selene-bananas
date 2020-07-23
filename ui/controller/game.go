@@ -94,8 +94,8 @@ func (g *Game) join(event js.Value) {
 
 // Leave changes the view for game by hiding it.
 func (g *Game) Leave() {
-	dom.SetCheckedQuery(".has-game", false)
-	dom.SetCheckedQuery("#tab-lobby", true)
+	dom.SetChecked(".has-game", false)
+	dom.SetChecked("#tab-lobby", true)
 }
 
 // Delete removes everyone from the game and deletes it.
@@ -254,12 +254,12 @@ func (g *Game) resetTiles() {
 }
 
 func (g *Game) refreshTileLength() {
-	tileLengthStr := dom.GetValue(".tile-length-slider")
+	tileLengthStr := dom.Value(".tile-length-slider")
 	dom.SetValue(".tile-length-display", tileLengthStr)
 }
 
 func (g *Game) resizeTiles() {
-	tileLengthStr := dom.GetValue(".tile-length-slider")
+	tileLengthStr := dom.Value(".tile-length-slider")
 	tileLength, err := strconv.Atoi(tileLengthStr)
 	if err != nil {
 		g.log.Error("retrieving tile size: " + err.Error())
@@ -274,8 +274,8 @@ func (g *Game) resizeTiles() {
 
 // setTabActive performs the actions need to activate the game tab and create or join a game.
 func (g *Game) setTabActive(m game.Message) {
-	dom.SetCheckedQuery(".has-game", true)
-	dom.SetCheckedQuery("#tab-game", true)
+	dom.SetChecked(".has-game", true)
+	dom.SetChecked("#tab-game", true)
 	// the tab now has a size, so update the canvas and board
 	g.canvas.UpdateSize()
 	cfg := board.Config{
