@@ -146,7 +146,7 @@ func TestCreateReadWithTime(t *testing.T) {
 			return time.Unix(now, 0)
 		}
 		want := "selene"
-		tokenString, _ := tokenizer.Create(want, 0)
+		tokenString, _ := tokenizer.Create(want, 32)
 		got, err := tokenizer.ReadUsername(tokenString)
 		switch {
 		case err != nil:

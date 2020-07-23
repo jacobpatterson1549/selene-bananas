@@ -58,13 +58,14 @@ func (cfg TokenizerConfig) NewTokenizer() (Tokenizer, error) {
 func (j jwtTokenizer) Create(username string, points int) (string, error) {
 	now := j.timeFunc()
 	expiresAt := now + j.validSec
+	stdClaims := jwt.StandardClaims{
+		Subject:   username,
+		NotBefore: now,
+		ExpiresAt: expiresAt,
+	}
 	claims := jwtUserClaims{
-		points,
-		jwt.StandardClaims{
-			Subject:   username,
-			NotBefore: now,
-			ExpiresAt: expiresAt,
-		},
+		Points:         points,
+		StandardClaims: stdClaims,
 	}
 	token := jwt.NewWithClaims(j.method, claims)
 	return token.SignedString(j.key)
@@ -72,15 +73,17 @@ func (j jwtTokenizer) Create(username string, points int) (string, error) {
 
 // Read extracts the username from the token string
 func (j jwtTokenizer) ReadUsername(tokenString string) (string, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &jwtUserClaims{}, func(t *jwt.Token) (interface{}, error) {
-		if t.Method != j.method {
-			return nil, fmt.Errorf("incorrect authorization signing method")
-		}
-		return j.key, nil
-	})
-	if err != nil {
+	var claims jwtUserClaims
+	if _, err := jwt.ParseWithClaims(tokenString, &claims, j.keyFunc); err != nil {
 		return "", err
 	}
-	jwtUserClaims := token.Claims.(*jwtUserClaims)
-	return jwtUserClaims.Subject, nil
+	return claims.Subject, nil
+}
+
+// keyFunc ensures the key type (method) of the token is correct before returning the key.
+func (j jwtTokenizer) keyFunc(t *jwt.Token) (interface{}, error) {
+	if t.Method != j.method {
+		return nil, fmt.Errorf("incorrect authorization signing method")
+	}
+	return j.key, nil
 }
