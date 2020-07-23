@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	crypto_rand "crypto/rand"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -27,8 +28,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	timeFunc := func() int64 {
 		return time.Now().UTC().Unix()
 	}
-	rand := rand.New(rand.NewSource(timeFunc()))
-	tokenizerCfg := tokenizerConfig(rand, timeFunc)
+	tokenizerCfg := tokenizerConfig(crypto_rand.Reader, timeFunc)
 	tokenizer, err := tokenizerCfg.NewTokenizer()
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	if err != nil {
 		return nil, err
 	}
-	lobbyCfg, err := lobbyConfig(m, log, rand, ud, timeFunc)
+	lobbyCfg, err := lobbyConfig(m, log, ud, timeFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -126,8 +126,8 @@ func userDaoConfig(d db.Database) db.UserDaoConfig {
 	return cfg
 }
 
-func lobbyConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud *db.UserDao, timeFunc func() int64) (*lobby.Config, error) {
-	gameCfg, err := gameConfig(m, log, rand, ud, timeFunc)
+func lobbyConfig(m mainFlags, log *log.Logger, ud *db.UserDao, timeFunc func() int64) (*lobby.Config, error) {
+	gameCfg, err := gameConfig(m, log, ud, timeFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func lobbyConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud *db.UserDao, 
 	return &cfg, nil
 }
 
-func gameConfig(m mainFlags, log *log.Logger, rand *rand.Rand, ud *db.UserDao, timeFunc func() int64) (*controller.Config, error) {
+func gameConfig(m mainFlags, log *log.Logger, ud *db.UserDao, timeFunc func() int64) (*controller.Config, error) {
 	wordsFile, err := os.Open(m.wordsFile)
 	if err != nil {
 		return nil, err
