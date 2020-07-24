@@ -307,14 +307,11 @@ func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 
 // handleHTTPSPost checks authentication and calls handlers for POST endpoints.
 func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
-	var err error
-	var tokenUsername string
 	switch r.URL.Path {
 	case "/user_create", "/user_login":
 		// [unauthenticated]
 	default:
-		tokenUsername, err = s.readTokenUsername(r)
-		if err != nil {
+		if err := s.checkTokenUsername(r); err != nil {
 			s.log.Print(err)
 			s.httpError(w, http.StatusForbidden)
 			return
@@ -326,9 +323,9 @@ func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
 	case "/user_login":
 		s.handleUserLogin(w, r)
 	case "/user_update_password":
-		s.handleUserUpdatePassword(w, r, tokenUsername)
+		s.handleUserUpdatePassword(w, r)
 	case "/user_delete":
-		s.handleUserDelete(w, r, tokenUsername)
+		s.handleUserDelete(w, r)
 	default:
 		s.httpError(w, http.StatusNotFound)
 	}
@@ -425,7 +422,7 @@ func (s Server) handleLobby(w http.ResponseWriter, r *http.Request) {
 
 // handleHTTPPing ensures the ping is for a valid user.
 func (s Server) handleHTTPPing(w http.ResponseWriter, r *http.Request) {
-	if _, err := s.readTokenUsername(r); err != nil {
+	if err := s.checkTokenUsername(r); err != nil {
 		s.handleError(w, err)
 	}
 }
@@ -441,22 +438,22 @@ func (s Server) handleError(w http.ResponseWriter, err error) {
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
-// readTokenUsername gets the username from the token, returning an error if the authorization is invalid or does not match 
-func (s Server) readTokenUsername(r *http.Request) (string, error) {
+// checkTokenUsername ensures the username in the authorization header matches that in the username form value.
+func (s Server) checkTokenUsername(r *http.Request) error {
 	authorization := r.Header.Get("Authorization")
 	if len(authorization) < 7 || authorization[:7] != "Bearer " {
-		return "", fmt.Errorf("invalid authorization header: %v", authorization)
+		return fmt.Errorf("invalid authorization header: %v", authorization)
 	}
 	tokenString := authorization[7:]
 	tokenUsername, err := s.tokenizer.ReadUsername(tokenString)
 	if err != nil {
-		return "", err
+		return err
 	}
 	formUsername := r.FormValue("username")
-	if string(tokenUsername) != formUsername {
-		return "", fmt.Errorf("username not same as token username")
+	if tokenUsername != formUsername {
+		return fmt.Errorf("username not same as token username")
 	}
-	return tokenUsername, nil
+	return nil
 }
 
 // Write delegates the write to the wrapped writer.

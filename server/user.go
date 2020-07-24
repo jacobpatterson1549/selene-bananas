@@ -61,7 +61,8 @@ func (s Server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, user
 }
 
 // handleUserUpdatePassword updates the user's password.
-func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request, username string) {
+func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request) {
+	username := r.FormValue("username")
 	password := r.FormValue("password")
 	newPassword := r.FormValue("password_confirm")
 	u, err := db.NewUser(username, password)
@@ -78,7 +79,8 @@ func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request,
 }
 
 // handleUserDelete deletes the user from the database.
-func (s Server) handleUserDelete(w http.ResponseWriter, r *http.Request, username string) {
+func (s Server) handleUserDelete(w http.ResponseWriter, r *http.Request) {
+	username := r.FormValue("username")
 	password := r.FormValue("password")
 	u, err := db.NewUser(username, password)
 	if err != nil {
