@@ -66,7 +66,9 @@ func usage(fs *flag.FlagSet) {
 // newFlagSet creates a flagSet that populates the specified mainFlags.
 func (m *mainFlags) newFlagSet(osLookupEnvFunc func(string) (string, bool), portOverride *int) *flag.FlagSet {
 	fs := flag.NewFlagSet("main", flag.ExitOnError)
-	fs.Usage = func() { usage(fs) }
+	fs.Usage = func() {
+		usage(fs) // [lazy evaluation]
+	}
 	envValue := func(key string) string {
 		if envValue, ok := osLookupEnvFunc(key); ok {
 			return envValue

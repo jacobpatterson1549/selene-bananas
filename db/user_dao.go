@@ -73,7 +73,12 @@ func (ud UserDao) Create(ctx context.Context, u User) error {
 
 // Read gets information such as points.
 func (ud UserDao) Read(ctx context.Context, u User) (*User, error) {
-	q := newSQLQueryFunction("user_read", []string{"username", "password", "points"}, u.Username)
+	cols := []string{
+		"username",
+		"password",
+		"points",
+	}
+	q := newSQLQueryFunction("user_read", cols, u.Username)
 	row := ud.db.query(ctx, q)
 	var u2 User
 	if err := row.Scan(&u2.Username, &u2.password, &u2.Points); err != nil {
@@ -135,7 +140,14 @@ func (ud UserDao) Delete(ctx context.Context, u User) error {
 }
 
 func (ud UserDao) setupSQLQueries() ([]query, error) {
-	filenames := []string{"s", "_create", "_read", "_update_password", "_update_points_increment", "_delete"}
+	filenames := []string{
+		"s",
+		"_create",
+		"_read",
+		"_update_password",
+		"_update_points_increment",
+		"_delete",
+	}
 	queries := make([]query, len(filenames))
 	for i, n := range filenames {
 		f := fmt.Sprintf("resources/sql/user%s.sql", n)
@@ -143,7 +155,8 @@ func (ud UserDao) setupSQLQueries() ([]query, error) {
 		if err != nil {
 			return nil, fmt.Errorf("reading setup file %v: %w", f, err)
 		}
-		queries[i] = sqlExecRaw{string(b)}
+		q := sqlExecRaw(string(b))
+		queries[i] = q
 	}
 	return queries, nil
 }

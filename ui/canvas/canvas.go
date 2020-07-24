@@ -118,7 +118,9 @@ func (cfg Config) New(board *board.Board, parentDiv, element *js.Value) *Canvas 
 	mainColor := divColor(".mainColor")
 	dragColor := divColor(".dragColor")
 	tileColor := divColor(".tileColor")
-	ctx := jsContext{&contextElement}
+	ctx := jsContext{
+		ctx: &contextElement,
+	}
 	c := Canvas{
 		log:   cfg.Log,
 		ctx:   &ctx,

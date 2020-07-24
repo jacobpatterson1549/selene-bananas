@@ -229,7 +229,7 @@ func (b Board) usedTileWordsY() []string {
 			usedTilesXy[xi][int(y)] = t
 		}
 	}
-	return b.usedTileWordsZ(usedTilesXy, func(tp tile.Position) int { return int(tp.Y) })
+	return b.usedTileWordsZ(usedTilesXy, tilePositionY)
 }
 
 // usedTileWordsX computes all the horizontal words formed by used tiles.
@@ -245,7 +245,17 @@ func (b Board) usedTileWordsX() []string {
 			usedTilesYx[yi][xi] = t
 		}
 	}
-	return b.usedTileWordsZ(usedTilesYx, func(tp tile.Position) int { return int(tp.X) })
+	return b.usedTileWordsZ(usedTilesYx, tilePositionX)
+}
+
+// tilePositionY returns the y position of thhe tile as an int.
+func tilePositionY(tp tile.Position) int {
+	return int(tp.Y)
+}
+
+// tilePositionX returns the x position of thhe tile as an int.
+func tilePositionX(tp tile.Position) int {
+	return int(tp.X)
 }
 
 // keyedUsedWords aggregates the words in the direction specified by ord into a map of words foreach row in the tiles

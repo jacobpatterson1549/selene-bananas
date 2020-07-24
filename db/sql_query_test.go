@@ -83,7 +83,7 @@ func TestSQLExecFunctionCmd(t *testing.T) {
 }
 
 func TestSQLRawCmd(t *testing.T) {
-	r := sqlExecRaw{"DELETE FROM rings"}
+	r := sqlExecRaw("DELETE FROM rings")
 	want := "DELETE FROM rings"
 	got := r.cmd()
 	if want != got {
@@ -128,7 +128,7 @@ func TestSQLExecArgs(t *testing.T) {
 }
 
 func TestSQLRawArgs(t *testing.T) {
-	r := sqlExecRaw{"DELETE FROM rings"}
+	r := sqlExecRaw("DELETE FROM rings")
 	got := r.args()
 	if got != nil {
 		t.Errorf("raw sql should not have arguments, got %v", got)

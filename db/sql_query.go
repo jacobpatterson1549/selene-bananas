@@ -17,9 +17,7 @@ type (
 		arguments []interface{}
 	}
 
-	sqlExecRaw struct {
-		sqlRaw string
-	}
+	sqlExecRaw string
 )
 
 func newSQLQueryFunction(name string, cols []string, args ...interface{}) *sqlQueryFunction {
@@ -56,7 +54,7 @@ func (e sqlExecFunction) cmd() string {
 }
 
 func (r sqlExecRaw) cmd() string {
-	return r.sqlRaw
+	return string(r)
 }
 
 func (q sqlQueryFunction) args() []interface{} {
