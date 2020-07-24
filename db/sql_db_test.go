@@ -166,7 +166,7 @@ func TestDatabaseExec(t *testing.T) {
 		rowsAffected    int64
 		rollbackErr     error
 		commitErr       error
-		q               query
+		rawQuery        bool
 		wantOk          bool
 	}{
 		{
@@ -196,6 +196,10 @@ func TestDatabaseExec(t *testing.T) {
 			rowsAffected: 1,
 			wantOk:       true,
 		},
+		{
+			rawQuery: true,
+			wantOk:   true,
+		},
 	}
 	for i, test := range execTests {
 		ctx := context.Background()
@@ -219,6 +223,9 @@ func TestDatabaseExec(t *testing.T) {
 				return nil
 			},
 			NumInputFunc: func() int {
+				if test.rawQuery {
+					return 0
+				}
 				return 2
 			},
 			ExecFunc: func(args []driver.Value) (driver.Result, error) {
@@ -250,18 +257,24 @@ func TestDatabaseExec(t *testing.T) {
 		mockDriver.OpenFunc = func(name string) (driver.Conn, error) {
 			return mockConn, nil
 		}
-		q := sqlExecFunction{
-			name: "UPDATE hobbits SET age = ? WHERE first_name = ?;",
-			arguments: []interface{}{
-				111,
-				"Bilbo",
-			},
+		var q query
+		switch {
+		case test.rawQuery:
+			q = sqlExecRaw("CREATE TABLE hobbits ( full_name VARCHAR(64) );")
+		default:
+			q = sqlExecFunction{
+				name: "UPDATE hobbits SET age = ? WHERE first_name = ?;",
+				arguments: []interface{}{
+					111,
+					"Bilbo",
+				},
+			}
 		}
 		db, err := cfg.NewSQLDatabase()
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		err = db.exec(ctx, &q)
+		err = db.exec(ctx, q)
 		switch {
 		case err != nil:
 			if test.wantOk {
