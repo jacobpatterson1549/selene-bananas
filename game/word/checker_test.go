@@ -1,4 +1,4 @@
-package game
+package word
 
 import (
 	"os"
@@ -34,9 +34,11 @@ func TestWords(t *testing.T) {
 			want[w] = struct{}{}
 		}
 		r := strings.NewReader(test.wordsToRead)
-		wc := NewWordChecker(r)
-		if !reflect.DeepEqual(want, wc.words) {
-			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, want, wc.words)
+		c := NewChecker(r)
+		lm := c.(lowercaseMap)
+		got := map[string]struct{}(lm)
+		if !reflect.DeepEqual(want, got) {
+			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, want, got)
 		}
 	}
 }
@@ -47,9 +49,9 @@ func BenchmarkAmericanEnglishLarge(b *testing.B) {
 	if err != nil {
 		b.Fatalf("could not open wordsFile: %v", err)
 	}
-	wc := NewWordChecker(f)
+	lm := NewChecker(f).(lowercaseMap)
 	want := 114064
-	got := len(wc.words)
+	got := len(lm)
 	if want != got {
 		note := "NOTE: this might be flaky, but it ensures that a large number of words can be loaded."
 		b.Errorf("wanted %v words, got %v\n%v", want, got, note)
@@ -81,11 +83,11 @@ func TestCheck(t *testing.T) {
 		},
 	}
 	r := strings.NewReader("apple bat car")
-	wc := NewWordChecker(r)
+	c := NewChecker(r)
 	for i, test := range checkTests {
-		got := wc.Check(test.word)
+		got := c.Check(test.word)
 		if test.want != got {
-			t.Errorf("Test %v: wanted %v, but got %v for word %v - valid words are %v", i, test.want, got, test.word, wc.words)
+			t.Errorf("Test %v: wanted %v, but got %v for word %v - valid words are %v", i, test.want, got, test.word, c)
 		}
 	}
 }

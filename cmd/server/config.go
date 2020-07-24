@@ -18,6 +18,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/game/socket"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
+	"github.com/jacobpatterson1549/selene-bananas/game/word"
 	"github.com/jacobpatterson1549/selene-bananas/server"
 	"github.com/jacobpatterson1549/selene-bananas/server/auth"
 	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
@@ -149,7 +150,7 @@ func gameConfig(m mainFlags, log *log.Logger, ud *db.UserDao, timeFunc func() in
 	if err != nil {
 		return nil, err
 	}
-	wc := game.NewWordChecker(wordsFile)
+	wordChecker := word.NewChecker(wordsFile)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +172,7 @@ func gameConfig(m mainFlags, log *log.Logger, ud *db.UserDao, timeFunc func() in
 		MaxPlayers:             8,
 		NumNewTiles:            21,
 		TileLetters:            "",
-		Words:                  *wc,
+		WordChecker:           wordChecker,
 		IdlePeriod:             60 * time.Minute,
 		ShuffleUnusedTilesFunc: shuffleUnusedTilesFunc,
 		ShufflePlayersFunc:     shufflePlayersFunc,

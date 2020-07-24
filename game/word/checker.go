@@ -1,4 +1,5 @@
-package game
+// Package word handles checking words in the game.
+package word
 
 import (
 	"bufio"
@@ -8,31 +9,32 @@ import (
 )
 
 type (
-	// WordChecker can be used to check if words are valid.
-	WordChecker struct {
-		words map[string]struct{}
+	// Checker can be used to check if words are valid.
+	Checker interface {
+		Check(word string) bool
 	}
+
+	// lowercaseMap implements the Checker interface.
+	lowercaseMap map[string]struct{}
 )
 
-// NewWordChecker consumes the lower case words in the reader to use for checking and creates a new WordChecker.
-func NewWordChecker(r io.Reader) *WordChecker {
-	words := make(map[string]struct{})
+// NewChecker consumes the lower case words in the reader to use for checking and creates a new Checker.
+func NewChecker(r io.Reader) Checker {
+	lm := make(lowercaseMap)
 	scanner := bufio.NewScanner(r)
 	scanner.Split(scanLowerWords)
 	for scanner.Scan() {
 		rawWord := scanner.Text()
-		words[rawWord] = struct{}{}
+		lm[rawWord] = struct{}{}
 	}
-	wc := WordChecker{
-		words: words,
-	}
-	return &wc
+	return lm
 }
 
 // Check determines whether or not the word is valid.
-func (wc WordChecker) Check(word string) bool {
+// Words are converted to lowercase before checking.
+func (lm lowercaseMap) Check(word string) bool {
 	lowerWord := strings.ToLower(word)
-	_, ok := wc.words[lowerWord]
+	_, ok := lm[lowerWord]
 	return ok
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
+	"github.com/jacobpatterson1549/selene-bananas/game/word"
 )
 
 type (
@@ -28,7 +29,7 @@ type (
 		numNewTiles            int
 		tileLetters            string
 		unusedTiles            []tile.Tile
-		words                  game.WordChecker
+		wordChecker            word.Checker
 		idlePeriod             time.Duration
 		shuffleUnusedTilesFunc func(tiles []tile.Tile)
 		shufflePlayersFunc     func(playerNames []game.PlayerName)
@@ -54,8 +55,8 @@ type (
 		// If a letter should occur on multiple tiles, it sh be present multiple times.
 		// For example, the TileLetters "AABCCC" will be used to initialize a game with two As, 1 B, and 3 Cs.
 		TileLetters string
-		// Words is the WordChecker used to validate players' words when they try to finish the game.
-		Words game.WordChecker
+		// WordChecker is used to validate players' words when they try to finish the game.
+		WordChecker word.Checker
 		// IdlePeroid is the amount of time that can pass between non-BoardRefresh messages before the game is idle and will delete itself.
 		IdlePeriod time.Duration
 		// ShuffleUnusedTilesFunc is used to shuffle unused tiles when initializing the game and after tiles are swapped.
@@ -95,7 +96,7 @@ func (cfg Config) NewGame(id game.ID) (*Game, error) {
 		maxPlayers:             cfg.MaxPlayers,
 		numNewTiles:            cfg.NumNewTiles,
 		tileLetters:            tileLetters,
-		words:                  cfg.Words,
+		wordChecker:            cfg.WordChecker,
 		idlePeriod:             cfg.IdlePeriod,
 		players:                make(map[game.PlayerName]*player),
 		shuffleUnusedTilesFunc: cfg.ShuffleUnusedTilesFunc,
@@ -347,7 +348,7 @@ func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- 
 	usedWords := p.UsedTileWords()
 	var invalidWords []string
 	for _, w := range usedWords {
-		if !g.words.Check(w) {
+		if !g.wordChecker.Check(w) {
 			invalidWords = append(invalidWords, w)
 		}
 	}
