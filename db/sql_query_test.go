@@ -23,7 +23,7 @@ func TestNewSQLQueryFunction(t *testing.T) {
 		"read_hobbits",
 		[]string{"first_name", "last_name"},
 		"baggins", "gamgee", "brandybuck", "took")
-	if !reflect.DeepEqual(want, got) {
+	if !reflect.DeepEqual(want, *got) {
 		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
 	}
 }
@@ -42,7 +42,7 @@ func TestNewSQLExecFunction(t *testing.T) {
 		"elf",
 		"dwarf",
 		"man")
-	if !reflect.DeepEqual(want, got) {
+	if !reflect.DeepEqual(want, *got) {
 		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
 	}
 }

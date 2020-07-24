@@ -189,7 +189,7 @@ func TestUserDaoRead(t *testing.T) {
 			}
 		case !test.wantOk:
 			t.Errorf("Test %v: expected error", i)
-		case test.want != got:
+		case test.want != *got:
 			t.Errorf("Test %v:\nwanted: %v\ngot:    : %v", i, test.want, got)
 		}
 	}

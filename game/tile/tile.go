@@ -29,8 +29,9 @@ func New(id ID, r rune) (*Tile, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Tile{
+	t := Tile{
 		ID: id,
 		Ch: ch,
-	}, nil
+	}
+	return &t, nil
 }

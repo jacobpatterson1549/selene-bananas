@@ -72,22 +72,22 @@ func (ud UserDao) Create(ctx context.Context, u User) error {
 }
 
 // Read gets information such as points.
-func (ud UserDao) Read(ctx context.Context, u User) (User, error) {
+func (ud UserDao) Read(ctx context.Context, u User) (*User, error) {
 	q := newSQLQueryFunction("user_read", []string{"username", "password", "points"}, u.Username)
 	row := ud.db.query(ctx, q)
 	var u2 User
 	if err := row.Scan(&u2.Username, &u2.password, &u2.Points); err != nil {
-		return User{}, fmt.Errorf("reading user: %w", err)
+		return nil, fmt.Errorf("reading user: %w", err)
 	}
 	hashedPassword := []byte(u2.password)
 	isCorrect, err := u.isCorrectPassword(hashedPassword)
 	switch {
 	case err != nil:
-		return User{}, fmt.Errorf("reading user: %w", err)
+		return nil, fmt.Errorf("reading user: %w", err)
 	case !isCorrect:
-		return User{}, fmt.Errorf("incorrect password")
+		return nil, fmt.Errorf("incorrect password")
 	}
-	return u2, nil
+	return &u2, nil
 }
 
 // UpdatePassword sets the password of a user.

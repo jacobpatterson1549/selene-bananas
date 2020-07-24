@@ -22,19 +22,21 @@ type (
 	}
 )
 
-func newSQLQueryFunction(name string, cols []string, args ...interface{}) sqlQueryFunction {
-	return sqlQueryFunction{
+func newSQLQueryFunction(name string, cols []string, args ...interface{}) *sqlQueryFunction {
+	q := sqlQueryFunction{
 		name:      name,
 		cols:      cols,
 		arguments: args,
 	}
+	return &q
 }
 
-func newSQLExecFunction(name string, args ...interface{}) sqlExecFunction {
-	return sqlExecFunction{
+func newSQLExecFunction(name string, args ...interface{}) *sqlExecFunction {
+	e := sqlExecFunction{
 		name:      name,
 		arguments: args,
 	}
+	return &e
 }
 
 func (q sqlQueryFunction) cmd() string {
