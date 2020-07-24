@@ -12,12 +12,9 @@ import (
 type (
 	// player stores the board and other player-specific data for each player in the game.
 	player struct {
-		winPoints
+		winPoints int
 		board.Board
 	}
-
-	// winPoints is the number of points the player will get if they win the game.
-	winPoints int
 )
 
 // decrementWinPoints decreases the win points by 1.  The winPoints are never dreased to below 2.

@@ -10,8 +10,8 @@ import (
 
 func TestDecrementWinPoints(t *testing.T) {
 	decrementWinPointsTests := []struct {
-		winPoints winPoints
-		want      winPoints
+		winPoints int
+		want      int
 	}{
 		{},
 		{1, 1},

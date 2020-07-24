@@ -517,7 +517,7 @@ func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName game.Play
 	userPointsIncrementFunc := func(u string) int {
 		if string(u) == string(winningPlayerName) {
 			p := g.players[winningPlayerName]
-			return int(p.winPoints)
+			return p.winPoints
 		}
 		return 1
 	}
