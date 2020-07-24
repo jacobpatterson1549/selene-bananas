@@ -86,8 +86,8 @@ func NewWebSocket(url string) js.Value {
 	return webSocket.New(url)
 }
 
-// GetColor returns the text color of the element after css has been applied.
-func GetColor(element js.Value) string {
+// Color returns the text color of the element after css has been applied.
+func Color(element js.Value) string {
 	global := js.Global()
 	computedStyle := global.Call("getComputedStyle", element)
 	color := computedStyle.Get("color")

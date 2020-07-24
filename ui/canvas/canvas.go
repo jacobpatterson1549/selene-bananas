@@ -112,7 +112,7 @@ func (cfg Config) New(board *board.Board, parentDiv, element *js.Value) *Canvas 
 	contextElement := element.Call("getContext", "2d")
 	divColor := func(query string) string {
 		div := element.Call("querySelector", query)
-		color := dom.GetColor(div)
+		color := dom.Color(div)
 		return color
 	}
 	mainColor := divColor(".mainColor")
