@@ -174,7 +174,7 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	c.registerEventListeners(ctx, wg)
 }
 
-func (c *Canvas) createCanvasEventFuncs() map[string]func(event js.Value) {
+func (c *Canvas) createEventFuncs() map[string]func(event js.Value) {
 	mousePP := c.newPixelPosition()
 	touchPP := c.newPixelPosition()
 	funcs := map[string]func(event js.Value){
@@ -203,26 +203,26 @@ func (c *Canvas) createCanvasEventFuncs() map[string]func(event js.Value) {
 
 // registerEventListeners adds an event listener to the canvas element
 func (c *Canvas) registerEventListeners(ctx context.Context, wg *sync.WaitGroup) {
-	funcs := c.createCanvasEventFuncs()
+	funcs := c.createEventFuncs()
 	jsFuncs := make(map[string]js.Func, len(funcs))
+	options := map[string]interface{}{
+		"passive": false,
+	}
 	for fnName, fn := range funcs {
-		jsFunc := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			event := args[0]
-			fn(event)
-			return nil
-		})
-		args := []interface{}{
-			fnName,
-			jsFunc,
-			map[string]interface{}{
-				"passive": false,
-			},
-		}
-		c.element.Call("addEventListener", args...)
+		jsFunc := c.createEventJsFunc(fnName, fn)
+		c.element.Call("addEventListener", fnName, jsFunc, options)
 		jsFuncs[fnName] = jsFunc
 	}
 	wg.Add(1)
 	go dom.ReleaseJsFuncsOnDone(ctx, wg, jsFuncs)
+}
+
+func (Canvas) createEventJsFunc(fnName string, fn func(event js.Value)) js.Func {
+	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		event := args[0]
+		fn(event)
+		return nil
+	})
 }
 
 // Redraw draws the canvas
