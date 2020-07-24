@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
-	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/controller"
 	"github.com/jacobpatterson1549/selene-bananas/game/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/game/socket"
@@ -159,9 +158,9 @@ func gameConfig(m mainFlags, log *log.Logger, ud *db.UserDao, timeFunc func() in
 			tiles[i], tiles[j] = tiles[j], tiles[i]
 		})
 	}
-	shufflePlayersFunc := func(sockets []game.PlayerName) {
-		rand.Shuffle(len(sockets), func(i, j int) {
-			sockets[i], sockets[j] = sockets[j], sockets[i]
+	shufflePlayerNamesFunc := func(playerNames []string) {
+		rand.Shuffle(len(playerNames), func(i, j int) {
+			playerNames[i], playerNames[j] = playerNames[j], playerNames[i]
 		})
 	}
 	cfg := controller.Config{
@@ -172,10 +171,10 @@ func gameConfig(m mainFlags, log *log.Logger, ud *db.UserDao, timeFunc func() in
 		MaxPlayers:             8,
 		NumNewTiles:            21,
 		TileLetters:            "",
-		WordChecker:           wordChecker,
+		WordChecker:            wordChecker,
 		IdlePeriod:             60 * time.Minute,
 		ShuffleUnusedTilesFunc: shuffleUnusedTilesFunc,
-		ShufflePlayersFunc:     shufflePlayersFunc,
+		ShufflePlayerNamesFunc: shufflePlayerNamesFunc,
 	}
 	return &cfg, nil
 }

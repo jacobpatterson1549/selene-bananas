@@ -23,8 +23,8 @@ type (
 		maxSockets     int
 		socketCfg      socket.Config
 		gameCfg        controller.Config
-		sockets        map[game.PlayerName]messageHandler
-		games          map[game.ID]gameMessageHandler
+		sockets        map[string]messageHandler
+		games          map[int]gameMessageHandler
 		addSockets     chan playerSocket
 		socketMessages chan game.Message
 		gameMessages   chan game.Message
@@ -48,7 +48,7 @@ type (
 
 	// playerSocket ise used to add players from http requests.
 	playerSocket struct {
-		game.PlayerName
+		playerName string
 		http.ResponseWriter
 		*http.Request
 		result chan<- error
@@ -81,8 +81,8 @@ func (cfg Config) NewLobby() (*Lobby, error) {
 		maxSockets:     cfg.MaxSockets,
 		gameCfg:        cfg.GameCfg,
 		socketCfg:      cfg.SocketCfg,
-		sockets:        make(map[game.PlayerName]messageHandler, cfg.MaxSockets),
-		games:          make(map[game.ID]gameMessageHandler, cfg.MaxGames),
+		sockets:        make(map[string]messageHandler, cfg.MaxSockets),
+		games:          make(map[int]gameMessageHandler, cfg.MaxGames),
 		addSockets:     make(chan playerSocket),
 		socketMessages: make(chan game.Message),
 		gameMessages:   make(chan game.Message),
@@ -105,10 +105,9 @@ func (cfg Config) validate() error {
 
 // AddUser adds a user to the lobby, it opens a new websocket (player) for the username.
 func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request) error {
-	playerName := game.PlayerName(username)
 	result := make(chan error)
 	ps := playerSocket{
-		PlayerName:     playerName,
+		playerName:     username,
 		ResponseWriter: w,
 		Request:        r,
 		result:         result,
@@ -122,10 +121,9 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 
 // RemoveUser removes the user from the lobby and a game, if any.
 func (l *Lobby) RemoveUser(username string) {
-	playerName := game.PlayerName(username)
 	l.socketMessages <- game.Message{
 		Type:       game.PlayerDelete,
-		PlayerName: playerName,
+		PlayerName: username,
 	}
 }
 
@@ -194,7 +192,7 @@ func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 		err = fmt.Errorf("the maximum number of games have already been created (%v)", l.maxGames)
 		return
 	}
-	var id game.ID = 1
+	id := 1
 	for existingID := range l.games {
 		if existingID != id {
 			break
@@ -228,7 +226,7 @@ func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 }
 
 // removeGame removes a game from the messageHandlers.
-func (l *Lobby) removeGame(id game.ID) {
+func (l *Lobby) removeGame(id int) {
 	mh, ok := l.games[id]
 	if !ok {
 		l.log.Printf("no game to remove with id %v", id)
@@ -256,14 +254,14 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 		err = fmt.Errorf("upgrading to websocket connection: %v", err)
 		return
 	}
-	s, err := l.socketCfg.NewSocket(conn, ps.PlayerName)
+	s, err := l.socketCfg.NewSocket(conn, ps.playerName)
 	if err != nil {
 		err = fmt.Errorf("creating socket: %v", err)
 		return
 	}
 	socketCtx, cancelFunc := context.WithCancel(ctx)
 	removeSocketFunc := func() {
-		l.removeSocket(ps.PlayerName)
+		l.removeSocket(ps.playerName)
 		cancelFunc()
 	}
 	writeMessages := make(chan game.Message)
@@ -272,11 +270,11 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 		writeMessages: writeMessages,
 		CancelFunc:    cancelFunc,
 	}
-	if _, ok := l.sockets[ps.PlayerName]; ok {
-		l.log.Printf("message handler for %v already exists, replacing", ps.PlayerName)
-		l.removeSocket(ps.PlayerName)
+	if _, ok := l.sockets[ps.playerName]; ok {
+		l.log.Printf("message handler for %v already exists, replacing", ps.playerName)
+		l.removeSocket(ps.playerName)
 	}
-	l.sockets[ps.PlayerName] = mh
+	l.sockets[ps.playerName] = mh
 	infos := l.gameInfos()
 	m := game.Message{
 		Type:      game.Infos,
@@ -286,13 +284,13 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 }
 
 // removeSocket removes a socket from the messageHandlers.
-func (l *Lobby) removeSocket(pn game.PlayerName) {
-	mh, ok := l.sockets[pn]
+func (l *Lobby) removeSocket(playerName string) {
+	mh, ok := l.sockets[playerName]
 	if !ok {
-		l.log.Printf("no socket to remove for %v", pn)
+		l.log.Printf("no socket to remove for %v", playerName)
 		return
 	}
-	delete(l.sockets, pn)
+	delete(l.sockets, playerName)
 	mh.CancelFunc()
 }
 

@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/jacobpatterson1549/selene-bananas/game"
 )
 
 func TestNewSocket(t *testing.T) {
 	log := log.New(ioutil.Discard, "test", log.LstdFlags)
 	conn := new(websocket.Conn)
 	timeFunc := func() int64 { return 0 }
-	playerName := game.PlayerName("selene")
+	playerName := "selene"
 	cfg := Config{
 		Log:            log,
 		TimeFunc:       timeFunc,

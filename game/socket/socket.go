@@ -18,8 +18,8 @@ type (
 		log            *log.Logger
 		conn           *websocket.Conn
 		timeFunc       func() int64
-		playerName     game.PlayerName
-		gameID         game.ID // mutable
+		playerName     string
+		gameID         int // mutable
 		active         bool
 		readWait       time.Duration
 		writeWait      time.Duration
@@ -52,7 +52,7 @@ type (
 var errSocketClosed = fmt.Errorf("socket closed")
 
 // NewSocket creates a socket
-func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) (*Socket, error) {
+func (cfg Config) NewSocket(conn *websocket.Conn, playerName string) (*Socket, error) {
 	if err := cfg.validate(conn, playerName); err != nil {
 		return nil, fmt.Errorf("creating socket: validation: %w", err)
 	}
@@ -73,7 +73,7 @@ func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) (*
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(conn *websocket.Conn, playerName game.PlayerName) error {
+func (cfg Config) validate(conn *websocket.Conn, playerName string) error {
 	switch {
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")
