@@ -9,6 +9,7 @@ import (
 
 func TestNewUserDao(t *testing.T) {
 	var mockDatabase mockDatabase
+	var sqlDatabase sqlDatabase
 	mockReadFileFunc := func(filename string) ([]byte, error) {
 		return nil, nil
 	}
@@ -25,6 +26,10 @@ func TestNewUserDao(t *testing.T) {
 		},
 		{
 			db:           mockDatabase,
+			readFileFunc: mockReadFileFunc,
+		},
+		{
+			db:           sqlDatabase,
 			readFileFunc: mockReadFileFunc,
 			wantOk:       true,
 		},

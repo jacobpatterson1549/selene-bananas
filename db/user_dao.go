@@ -43,6 +43,9 @@ func (cfg UserDaoConfig) validate() error {
 	case cfg.ReadFileFunc == nil:
 		return fmt.Errorf("read file func required")
 	}
+	if _, ok := cfg.DB.(sqlDatabase); !ok {
+		return fmt.Errorf("only sql database is supported")
+	}
 	return nil
 }
 
