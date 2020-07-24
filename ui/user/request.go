@@ -40,17 +40,16 @@ func (u *User) request(event js.Value) {
 			return
 		}
 	}
-	response, err := r.do()
+	resp, err := r.do()
 	switch {
 	case err != nil:
 		u.log.Error("making http request: " + err.Error())
 		return
-	case response.StatusCode >= 400:
-		u.log.Error(response.Status)
-		u.Logout()
+	case resp.StatusCode >= 400:
+		u.handleResponseError(resp)
 		return
 	case r.handler != nil:
-		r.handler(response.Body)
+		r.handler(resp.Body)
 	}
 }
 
@@ -124,4 +123,17 @@ func (u *User) newRequest(f dom.Form) (*request, error) {
 		handler:   handler,
 	}
 	return &r, nil
+}
+
+func (u *User) handleResponseError(resp *http.Response) {
+	u.Logout()
+	u.log.Error(resp.Status)
+	defer resp.Body.Close()
+	message, err := ioutil.ReadAll(resp.Body)
+	switch {
+	case err != nil:
+		u.log.Error("reading error response body: " + err.Error())
+	case len(message) > 0:
+		u.log.Error(string(message))
+	}
 }
