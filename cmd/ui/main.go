@@ -55,7 +55,7 @@ func initUser(ctx context.Context, wg *sync.WaitGroup, log *log.Log) *user.User 
 		Log: log,
 	}
 	httpClient := http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 10 * time.Second,
 	}
 	user := cfg.New(&httpClient)
 	user.InitDom(ctx, wg)
