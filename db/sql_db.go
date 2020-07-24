@@ -65,7 +65,7 @@ func (s sqlDatabase) exec(ctx context.Context, queries ...query) error {
 	}
 	for i, q := range queries {
 		result, err := tx.ExecContext(ctx, q.cmd(), q.args()...)
-		if f, ok := q.(sqlExecFunction); err == nil && ok {
+		if f, ok := q.(*sqlExecFunction); err == nil && ok {
 			var n int64
 			n, err = result.RowsAffected()
 			if err == nil && n != 1 {

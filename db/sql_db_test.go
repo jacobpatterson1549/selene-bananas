@@ -261,7 +261,7 @@ func TestDatabaseExec(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		err = db.exec(ctx, q)
+		err = db.exec(ctx, &q)
 		switch {
 		case err != nil:
 			if test.wantOk {
