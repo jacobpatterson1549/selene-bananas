@@ -20,21 +20,21 @@ type (
 	sqlExecRaw string
 )
 
-func newSQLQueryFunction(name string, cols []string, args ...interface{}) *sqlQueryFunction {
+func newSQLQueryFunction(name string, cols []string, args ...interface{}) sqlQueryFunction {
 	q := sqlQueryFunction{
 		name:      name,
 		cols:      cols,
 		arguments: args,
 	}
-	return &q
+	return q
 }
 
-func newSQLExecFunction(name string, args ...interface{}) *sqlExecFunction {
+func newSQLExecFunction(name string, args ...interface{}) sqlExecFunction {
 	e := sqlExecFunction{
 		name:      name,
 		arguments: args,
 	}
-	return &e
+	return e
 }
 
 func (q sqlQueryFunction) cmd() string {
