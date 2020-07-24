@@ -10,14 +10,17 @@ import (
 )
 
 type (
+	// player stores the board and other player-specific data for each player in the game.
 	player struct {
 		winPoints
 		board.Board
 	}
 
+	// winPoints is the number of points the player will get if they win the game.
 	winPoints int
 )
 
+// decrementWinPoints decreases the win points by 1.  The winPoints are never dreased to below 2.
 func (p *player) decrementWinPoints() {
 	if p.winPoints > 2 {
 		p.winPoints--

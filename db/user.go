@@ -8,7 +8,7 @@ import (
 )
 
 type (
-	// User contains information for each player
+	// User contains information for each player.
 	User struct {
 		Username string
 		password string
@@ -74,7 +74,8 @@ func (u User) hashPassword() ([]byte, error) {
 	return hashedPassword, nil
 }
 
-// isCorrectPassword returns whether or not the hashed form of the password is correct, returning an error if a problem occurs checking it.
+// isCorrectPassword returns whether or not the hashed form of the password is correct,
+// returning an error if a problem occurs while checking it.
 func (u User) isCorrectPassword(hashedPassword []byte) (bool, error) {
 	ok, err := u.ph.IsCorrect(hashedPassword, u.password)
 	if err != nil {

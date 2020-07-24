@@ -1,4 +1,4 @@
-// Package controller handles the logic to run the game
+// Package controller handles the logic to run the game.
 package controller
 
 import (
@@ -15,7 +15,7 @@ import (
 )
 
 type (
-	// Game contains the logic to play a tile-base word-forming game between users
+	// Game contains the logic to play a tile-base word-forming game between users.
 	Game struct {
 		debug                  bool
 		log                    *log.Logger
@@ -34,47 +34,49 @@ type (
 		shufflePlayersFunc     func(playerNames []game.PlayerName)
 	}
 
-	// Config contiains the properties to create similar games
+	// Config contiains the properties to create similar games.
 	Config struct {
-		// Debug is a flag that causes the game to log the types messages that are read
+		// Debug is a flag that causes the game to log the types messages that are read.
 		Debug bool
-		// Log is used to log errors and other information
+		// Log is used to log errors and other information.
 		Log *log.Logger
 		// TimeFunc is a function which should supply the current time since the unix epoch.
-		// Used for the created at timestamp
+		// Used for the created at timestamp.
 		TimeFunc func() int64
-		// UserDao is used to increment the points for players when the game is finished
+		// UserDao is used to increment the points for players when the game is finished.
 		UserDao *db.UserDao
-		// MaxPlayers is the maximum number of players that can be part of the game
+		// MaxPlayers is the maximum number of players that can be part of the game.
 		MaxPlayers int
-		// NumNewTiles is the number of new tiles each player starts the game with
+		// NumNewTiles is the number of new tiles each player starts the game with.
 		NumNewTiles int
-		// TileLetters is a string of all the upper case letters that can be used in the game
+		// TileLetters is a string of all the upper case letters that can be used in the game.
 		// If not specified, the default 144 letters will be used.
 		// If a letter should occur on multiple tiles, it sh be present multiple times.
 		// For example, the TileLetters "AABCCC" will be used to initialize a game with two As, 1 B, and 3 Cs.
 		TileLetters string
-		// Words is the WordChecker used to validate players' words when they try to finish the game
+		// Words is the WordChecker used to validate players' words when they try to finish the game.
 		Words game.WordChecker
-		// IdlePeroid is the amount of time that can pass between non-BoardRefresh messages before the game is idle and will delete itself
+		// IdlePeroid is the amount of time that can pass between non-BoardRefresh messages before the game is idle and will delete itself.
 		IdlePeriod time.Duration
-		// ShuffleUnusedTilesFunc is used to shuffle unused tiles when initializing the game and after tiles are swapped
+		// ShuffleUnusedTilesFunc is used to shuffle unused tiles when initializing the game and after tiles are swapped.
 		ShuffleUnusedTilesFunc func(tiles []tile.Tile)
 		// ShufflePlayersFunc is used to shuffle the order of players when giving tiles after a snag
 		// The snagging player should always get a new tile.  Other players will get a tile, if possible.
 		ShufflePlayersFunc func(playerNames []game.PlayerName)
 	}
 
-	messageHandler func(context.Context, game.Message, chan<- game.Message) error
+	// messageHandler is a function which handles game messages, returning responses to the output channel.
+	messageHandler func(ctx context.Context, m game.Message, out chan<- game.Message) error
 )
 
 const (
+	// gameWarningNotInProgress is a shared warning to alert users of an invalid game state.
 	gameWarningNotInProgress gameWarning = "game has not started or is finished"
 	// defaultTileLetters is the default if not specified
 	defaultTileLetters = "AAAAAAAAAAAAABBBCCCDDDDDDEEEEEEEEEEEEEEEEEEFFFGGGGHHHIIIIIIIIIIIIJJKKLLLLLMMMNNNNNNNNOOOOOOOOOOOPPPQQRRRRRRRRRSSSSSSTTTTTTTTTUUUUUUVVVWWWXXYYYZZ"
 )
 
-// NewGame creates a new game and runs it
+// NewGame creates a new game and runs it.
 func (cfg Config) NewGame(id game.ID) (*Game, error) {
 	if err := cfg.validate(id); err != nil {
 		return nil, fmt.Errorf("creating game: validation: %w", err)
@@ -105,6 +107,7 @@ func (cfg Config) NewGame(id game.ID) (*Game, error) {
 	return &g, nil
 }
 
+// validate ensures the configuration has no errors.
 func (cfg Config) validate(id game.ID) error {
 	switch {
 	case cfg.Log == nil:
@@ -129,7 +132,7 @@ func (cfg Config) validate(id game.ID) error {
 	return nil
 }
 
-// initialize unusedTiles from tileLetters or defaultTileLetters and shuffles them
+// initialize unusedTiles from tileLetters or defaultTileLetters and shuffles them.
 func (g *Game) initializeUnusedTiles() error {
 	g.unusedTiles = make([]tile.Tile, len(g.tileLetters))
 	for i, ch := range g.tileLetters {
@@ -182,6 +185,7 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 	}
 }
 
+// handleMessage handles the message with the appropriate message handler.
 func (g *Game) handleMessage(ctx context.Context, m game.Message, out chan<- game.Message, active *bool, messageHandlers map[game.MessageType]messageHandler) {
 	if g.debug {
 		g.log.Printf("game reading message with type %v", m.Type)
@@ -213,6 +217,7 @@ func (g *Game) handleMessage(ctx context.Context, m game.Message, out chan<- gam
 	}
 }
 
+// handleGameJoin adds the player from the message to the game.
 func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- game.Message) (err error) {
 	defer func() {
 		if err != nil {
@@ -274,6 +279,7 @@ func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- ga
 	return nil
 }
 
+// handleGameDelete sends game leave messages to all players in the game.
 func (g *Game) handleGameDelete(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	for n := range g.players {
 		out <- game.Message{
@@ -285,6 +291,7 @@ func (g *Game) handleGameDelete(ctx context.Context, m game.Message, out chan<- 
 	return nil
 }
 
+// handleGameStatusChange changes the status of the game.
 func (g *Game) handleGameStatusChange(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	switch g.status {
 	case game.NotStarted:
@@ -302,6 +309,7 @@ func (g *Game) handleGameStatusChange(ctx context.Context, m game.Message, out c
 	return nil
 }
 
+// handleGameStart starts the game.
 func (g *Game) handleGameStart(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	if m.GameStatus != game.InProgress {
 		return gameWarning("can only set game status to started")
@@ -320,6 +328,8 @@ func (g *Game) handleGameStart(ctx context.Context, m game.Message, out chan<- g
 	return nil
 }
 
+// handleGameStart tries to finish the game for the player sending the message by checking to see if the player wins.
+// If the player has won, game cleanup logic is triggered.
 func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	p := g.players[m.PlayerName]
 	switch {
@@ -367,6 +377,8 @@ func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- 
 	return nil
 }
 
+// handleGameSnag adds a tile to all the players.
+// The order that the players recieve their tiles is randomized, some players may not recieve tiles if there are none left.
 func (g *Game) handleGameSnag(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	switch {
 	case g.status != game.InProgress:
@@ -415,6 +427,7 @@ func (g *Game) handleGameSnag(ctx context.Context, m game.Message, out chan<- ga
 	return nil
 }
 
+// handleGameSwap swaps a tile for the player for three others, if possible.
 func (g *Game) handleGameSwap(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	switch {
 	case g.status != game.InProgress:
@@ -459,6 +472,7 @@ func (g *Game) handleGameSwap(ctx context.Context, m game.Message, out chan<- ga
 	return nil
 }
 
+// handleGameTilesMoved updates the player's board.
 func (g *Game) handleGameTilesMoved(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	switch {
 	case g.status != game.InProgress:
@@ -468,6 +482,7 @@ func (g *Game) handleGameTilesMoved(ctx context.Context, m game.Message, out cha
 	return p.MoveTiles(m.TilePositions)
 }
 
+// handleBoardRefresh sends the player's board back to the player.
 func (g *Game) handleBoardRefresh(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	cfg := board.Config{
 		NumCols: m.NumCols,
@@ -482,6 +497,7 @@ func (g *Game) handleBoardRefresh(ctx context.Context, m game.Message, out chan<
 	return nil
 }
 
+// handleGameChat sends a chat message from a player to everyone in the game.
 func (g *Game) handleGameChat(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	info := fmt.Sprintf("%v : %v", m.PlayerName, m.Info)
 	for n := range g.players {
@@ -494,6 +510,8 @@ func (g *Game) handleGameChat(ctx context.Context, m game.Message, out chan<- ga
 	return nil
 }
 
+// updateUserPoints updates the points for users in the game after a player has won.
+// The wining player gets their winPoints value, while others get a single participation point.
 func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName game.PlayerName) error {
 	users := g.playerNames()
 	userPointsIncrementFunc := func(u string) int {
@@ -506,6 +524,7 @@ func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName game.Play
 	return g.userDao.UpdatePointsIncrement(ctx, users, userPointsIncrementFunc)
 }
 
+// playerNames returns an array of the player name strings.
 func (g Game) playerNames() []string {
 	playerNames := make([]string, 0, len(g.players))
 	for n := range g.players {

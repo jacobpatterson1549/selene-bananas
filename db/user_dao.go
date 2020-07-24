@@ -6,25 +6,25 @@ import (
 )
 
 type (
-	// UserDao contains CRUD operations for user-related information
+	// UserDao contains CRUD operations for user-related information.
 	UserDao struct {
 		db           Database
 		readFileFunc func(filename string) ([]byte, error)
 	}
 
-	// UserPointsIncrementFunc is used to determine how much to increment the points for a username
+	// UserPointsIncrementFunc is used to determine how much to increment the points for a username.
 	UserPointsIncrementFunc func(username string) int
 
-	// UserDaoConfig contains commonly shared UserDao properties
+	// UserDaoConfig contains commonly shared UserDao properties.
 	UserDaoConfig struct {
-		// Debug is a flag that causes the socket to log the types non-ping/pong messages that are read/written
+		// Debug is a flag that causes the socket to log the types non-ping/pong messages that are read/written.
 		DB Database
 		// ReadFileFunc is used to fetch setup queries.
 		ReadFileFunc func(filename string) ([]byte, error)
 	}
 )
 
-// NewUserDao creates a UserDao on the specified database
+// NewUserDao creates a UserDao on the specified database.
 func (cfg UserDaoConfig) NewUserDao() (*UserDao, error) {
 	if err := cfg.validate(); err != nil {
 		return nil, fmt.Errorf("creating user dao: validation: %w", err)
@@ -46,7 +46,7 @@ func (cfg UserDaoConfig) validate() error {
 	return nil
 }
 
-// Setup initializes the tables and adds the functions
+// Setup initializes the tables and adds the functions.
 func (ud UserDao) Setup(ctx context.Context) error {
 	queries, err := ud.setupSQLQueries()
 	if err != nil {
@@ -58,7 +58,7 @@ func (ud UserDao) Setup(ctx context.Context) error {
 	return nil
 }
 
-// Create adds a user
+// Create adds a user.
 func (ud UserDao) Create(ctx context.Context, u User) error {
 	hashedPassword, err := u.hashPassword()
 	if err != nil {
@@ -71,7 +71,7 @@ func (ud UserDao) Create(ctx context.Context, u User) error {
 	return nil
 }
 
-// Read gets information such as points
+// Read gets information such as points.
 func (ud UserDao) Read(ctx context.Context, u User) (User, error) {
 	q := newSQLQueryFunction("user_read", []string{"username", "password", "points"}, u.Username)
 	row := ud.db.query(ctx, q)
@@ -90,7 +90,7 @@ func (ud UserDao) Read(ctx context.Context, u User) (User, error) {
 	return u2, nil
 }
 
-// UpdatePassword sets the password of a user
+// UpdatePassword sets the password of a user.
 func (ud UserDao) UpdatePassword(ctx context.Context, u User, newP string) error {
 	if err := validatePassword(newP); err != nil {
 		return err
@@ -109,7 +109,7 @@ func (ud UserDao) UpdatePassword(ctx context.Context, u User, newP string) error
 	return nil
 }
 
-// UpdatePointsIncrement increments the points for multiple users
+// UpdatePointsIncrement increments the points for multiple users.
 func (ud UserDao) UpdatePointsIncrement(ctx context.Context, usernames []string, f UserPointsIncrementFunc) error {
 	queries := make([]query, len(usernames))
 	for i, u := range usernames {
@@ -122,7 +122,7 @@ func (ud UserDao) UpdatePointsIncrement(ctx context.Context, usernames []string,
 	return nil
 }
 
-// Delete removes a user
+// Delete removes a user.
 func (ud UserDao) Delete(ctx context.Context, u User) error {
 	if _, err := ud.Read(ctx, u); err != nil {
 		return fmt.Errorf("checking password: %w", err)

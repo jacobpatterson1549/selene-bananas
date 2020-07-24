@@ -1,7 +1,7 @@
 package game
 
 type (
-	// Info contains information about a game
+	// Info contains information about a game.
 	Info struct {
 		// ID is unique among the other games that currently exist.
 		ID ID `json:"id"`

@@ -24,6 +24,7 @@ Each player in the lobby should have two (2) goroutines to read and write websoc
 Each game in the lobby runs on a single (1) goroutine.
 `
 
+// handleMonitor writes runtime information to the response
 func (s Server) handleMonitor(w http.ResponseWriter, r *http.Request) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)

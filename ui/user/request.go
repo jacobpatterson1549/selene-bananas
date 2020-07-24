@@ -14,6 +14,7 @@ import (
 )
 
 type (
+	// request handles http communication with the server through forms.
 	request struct {
 		user      *User
 		form      dom.Form
@@ -53,6 +54,7 @@ func (u *User) request(event js.Value) {
 	}
 }
 
+// do actually makes the request.
 func (r request) do() (*http.Response, error) {
 	var httpRequest *http.Request
 	var err error

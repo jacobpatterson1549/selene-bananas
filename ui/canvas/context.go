@@ -7,6 +7,7 @@ import (
 )
 
 type (
+	// jsContext implements the canvas context interface for javascript values.
 	jsContext struct {
 		ctx *js.Value
 	}

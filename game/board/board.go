@@ -311,7 +311,7 @@ func (b Board) addSeenTileIDs(x, y int, t tile.Tile, seenTileIds map[tile.ID]str
 	}
 }
 
-// addSurroundingSeenTileID calls addSeenTilesIds for the tile at the location, if it exists
+// addSurroundingSeenTileID calls addSeenTilesIds for the tile at the location, if it exists.
 func (b *Board) addSurroundingSeenTileID(x, y int, seenTileIds map[tile.ID]struct{}) {
 	if yTiles, ok := b.UsedTileLocs[tile.X(x)]; ok { // x is valid
 		if t2, ok := yTiles[tile.Y(y)]; ok { // y is valid

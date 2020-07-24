@@ -61,13 +61,14 @@ func (cfg Config) New(httpClient *http.Client) *User {
 // InitDom regesters user dom functions.
 func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
-		"logout":               dom.NewJsEventFunc(u.logoutButton),
+		"logout":               dom.NewJsEventFunc(u.logoutButtonClick),
 		"request":              dom.NewJsEventFuncAsync(u.request, true),
 		"updateConfirmPattern": dom.NewJsEventFunc(u.updateConfirmPassword),
 	}
 	dom.RegisterFuncs(ctx, wg, "user", jsFuncs)
 }
 
+// login handles requesting a login when the login button is clicked.
 func (u *User) login(token string) {
 	dom.SetValue(".jwt", token)
 	j := jwt(token)
@@ -82,12 +83,13 @@ func (u *User) login(token string) {
 	dom.SetChecked(".has-login", true)
 }
 
-func (u *User) logoutButton(event js.Value) {
+// logoutButtonClick handles logging out the user when the button has been clicked.
+func (u *User) logoutButtonClick(event js.Value) {
 	u.Logout()
 	u.log.Clear()
 }
 
-// Logout logs out the user
+// Logout logs out the user.
 func (u *User) Logout() {
 	u.Socket.Close()
 	dom.SetChecked(".has-login", false)
@@ -95,6 +97,7 @@ func (u *User) Logout() {
 	dom.SetChecked("#tab-login-user", true)
 }
 
+// userInfo retrieves the user information from the token.
 func (j jwt) userInfo() (*userInfo, error) {
 	parts := strings.Split(string(j), ".")
 	if len(parts) != 3 {
@@ -148,6 +151,7 @@ func (u User) Username() string {
 	return ui.username
 }
 
+// updateConfirmPassword updates the pattern of the password confirm input to expect the content of the password input.
 func (u *User) updateConfirmPassword(event js.Value) {
 	password1InputElement := event.Get("target")
 	password2InputElement := password1InputElement.

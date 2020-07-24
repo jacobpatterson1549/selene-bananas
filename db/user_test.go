@@ -27,7 +27,7 @@ func TestIsValidateUsername(t *testing.T) {
 		{"", false}, // too short (< 1)
 		{"selene", true},
 		{"username", true},
-		{"username123", false}, // invalid chars (letters)
+		{"username123", false}, // invalid chars (numbers)
 		{"abcdefghijklmnopqrstuvwxyzabcdef", true},   // 32
 		{"abcdefghijklmnopqrstuvwxyzabcdefg", false}, // 33
 	}

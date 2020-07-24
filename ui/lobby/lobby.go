@@ -45,7 +45,7 @@ func (cfg Config) New() *Lobby {
 	return &l
 }
 
-// InitDom regesters lobby dom functions
+// InitDom regesters lobby dom functions.
 func (l *Lobby) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
 		"connect": dom.NewJsEventFuncAsync(l.connect, true),
@@ -55,7 +55,7 @@ func (l *Lobby) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 // connect makes an BLOCKING request to connect to the lobby.
-// It is expected that the server will respond with a game infos message
+// It is expected that the server will respond with a game infos message.
 func (l *Lobby) connect(event js.Value) {
 	err := l.Socket.Connect(event)
 	if err != nil {

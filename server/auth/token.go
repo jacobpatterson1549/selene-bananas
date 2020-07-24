@@ -15,17 +15,18 @@ type (
 		ReadUsername(tokenString string) (string, error)
 	}
 
-	// TokenizerConfig contains fields which describe a Tokenizer
+	// TokenizerConfig contains fields which describe a Tokenizer.
 	TokenizerConfig struct {
 		// KeyReader is used to generate token keys
 		KeyReader io.Reader
 		// TimeFunc is a function which should supply the current time since the unix epoch.
-		// Used to set the the length of time the token is valid
+		// This is used for setting token lifespan.
 		TimeFunc func() int64
-		// ValidSec is the length of time the token is valid from the issuing time, in seconds
+		// ValidSec is the length of time the token is valid from the issuing time, in seconds.
 		ValidSec int64
 	}
 
+	// jwtTokenizer implements the Tokenizer interface for java web tokens.
 	jwtTokenizer struct {
 		method   jwt.SigningMethod
 		key      interface{}
@@ -33,13 +34,14 @@ type (
 		validSec int64
 	}
 
+	// jwtUserClaims appends user points to the standard jwt claims.
 	jwtUserClaims struct {
 		Points             int `json:"points"`
 		jwt.StandardClaims     // username stored in Subject ("sub") field
 	}
 )
 
-// NewTokenizer creates a Tokenizer that users the random number generator to generate tokens
+// NewTokenizer creates a Tokenizer that users the random number generator to generate tokens.
 func (cfg TokenizerConfig) NewTokenizer() (Tokenizer, error) {
 	key := make([]byte, 64)
 	if _, err := cfg.KeyReader.Read(key); err != nil {
@@ -54,7 +56,7 @@ func (cfg TokenizerConfig) NewTokenizer() (Tokenizer, error) {
 	return t, nil
 }
 
-// Create converts a user to a token string
+// Create converts a user to a token string.
 func (j jwtTokenizer) Create(username string, points int) (string, error) {
 	now := j.timeFunc()
 	expiresAt := now + j.validSec
@@ -71,7 +73,7 @@ func (j jwtTokenizer) Create(username string, points int) (string, error) {
 	return token.SignedString(j.key)
 }
 
-// Read extracts the username from the token string
+// Read extracts the username from the token string.
 func (j jwtTokenizer) ReadUsername(tokenString string) (string, error) {
 	var claims jwtUserClaims
 	if _, err := jwt.ParseWithClaims(tokenString, &claims, j.keyFunc); err != nil {

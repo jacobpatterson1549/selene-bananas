@@ -1,4 +1,4 @@
-// Package certificate contains code related to managing Transport Layer Security for HTTPS connections
+// Package certificate contains code related to managing Transport Layer Security for HTTPS connections.
 package certificate
 
 import (
@@ -7,7 +7,7 @@ import (
 )
 
 type (
-	// Challenge token and key used to get a TLS certificate using the ACME HTTP-01
+	// Challenge token and key used to get a TLS certificate using the ACME HTTP-01.
 	Challenge struct {
 		Token string
 		Key   string

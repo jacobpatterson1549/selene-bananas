@@ -1,6 +1,6 @@
 // +build js,wasm
 
-// Package canvas contains the logic to draw the game
+// Package canvas contains the logic to draw the game.
 package canvas
 
 import (
@@ -17,7 +17,7 @@ import (
 )
 
 type (
-	// Canvas is the object which draws the game
+	// Canvas is the object which draws the game.
 	Canvas struct {
 		log        *log.Log
 		ctx        Context
@@ -34,13 +34,13 @@ type (
 		dragColor  string
 	}
 
-	// Config contains the parameters to create a Canvas
+	// Config contains the parameters to create a Canvas.
 	Config struct {
 		Log        *log.Log
 		TileLength int
 	}
 
-	// Context handles the drawing of the canvas
+	// Context handles the drawing of the canvas.
 	Context interface {
 		SetFont(name string)
 		SetLineWidth(width float64)
@@ -52,10 +52,10 @@ type (
 		StrokeRect(x, y, width, height int)
 	}
 
-	// moveState represents the type of move being made by the cursor
+	// moveState represents the type of move being made by the cursor.
 	moveState int
 
-	// draw contains the drawing properties for the canvas
+	// draw contains the drawing properties for the canvas.
 	drawMetrics struct {
 		width      int
 		height     int
@@ -67,7 +67,7 @@ type (
 		numCols    int
 	}
 
-	// selection represents what the cursor has done for the current move
+	// selection represents what the cursor has done for the current move.
 	selection struct {
 		moveState moveState
 		tiles     map[tile.ID]tileSelection
@@ -76,14 +76,14 @@ type (
 		end       pixelPosition
 	}
 
-	// pixelPosition represents a location on the canvas
+	// pixelPosition represents a location on the canvas.
 	pixelPosition struct {
 		log *log.Log
 		x   int
 		y   int
 	}
 
-	// tileSelection represents a tile that the cursor/touch is on
+	// tileSelection represents a tile that the cursor/touch is on.
 	// If no negative tilePositions were allowed, a negative X could signify isUsed=false and the Y could be the index, but this would silently be bug-ridden if negative positions were ever allowed.
 	tileSelection struct {
 		used  bool
@@ -158,8 +158,8 @@ func (c *Canvas) UpdateSize() {
 	c.ctx.SetLineWidth(float64(c.draw.tileLength) / 10)
 }
 
-// TileLength sets the drawing size of the tiles length/height.
-func (c *Canvas) TileLength(tileLength int) {
+// SetTileLength sets the drawing size of the tiles length/height.
+func (c *Canvas) SetTileLength(tileLength int) {
 	c.draw.tileLength = tileLength
 	c.UpdateSize()
 }
@@ -174,6 +174,23 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	c.registerEventListeners(ctx, wg)
 }
 
+// registerEventListeners adds an event listener to the canvas element.
+func (c *Canvas) registerEventListeners(ctx context.Context, wg *sync.WaitGroup) {
+	funcs := c.createEventFuncs()
+	jsFuncs := make(map[string]js.Func, len(funcs))
+	options := map[string]interface{}{
+		"passive": false,
+	}
+	for fnName, fn := range funcs {
+		jsFunc := c.createEventJsFunc(fnName, fn)
+		c.element.Call("addEventListener", fnName, jsFunc, options)
+		jsFuncs[fnName] = jsFunc
+	}
+	wg.Add(1)
+	go dom.ReleaseJsFuncsOnDone(ctx, wg, jsFuncs)
+}
+
+// createEventFuncs creates the event listener functions for mouse/touch interaction.
 func (c *Canvas) createEventFuncs() map[string]func(event js.Value) {
 	mousePP := c.newPixelPosition()
 	touchPP := c.newPixelPosition()
@@ -201,22 +218,8 @@ func (c *Canvas) createEventFuncs() map[string]func(event js.Value) {
 	return funcs
 }
 
-// registerEventListeners adds an event listener to the canvas element
-func (c *Canvas) registerEventListeners(ctx context.Context, wg *sync.WaitGroup) {
-	funcs := c.createEventFuncs()
-	jsFuncs := make(map[string]js.Func, len(funcs))
-	options := map[string]interface{}{
-		"passive": false,
-	}
-	for fnName, fn := range funcs {
-		jsFunc := c.createEventJsFunc(fnName, fn)
-		c.element.Call("addEventListener", fnName, jsFunc, options)
-		jsFuncs[fnName] = jsFunc
-	}
-	wg.Add(1)
-	go dom.ReleaseJsFuncsOnDone(ctx, wg, jsFuncs)
-}
-
+// createEventJsFunc creates a jsFunc from the function.
+// This is not inlined to prevent the runtime from overwriting all functions with the last one.
 func (Canvas) createEventJsFunc(fnName string, fn func(event js.Value)) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		event := args[0]
@@ -250,14 +253,15 @@ func (c *Canvas) Redraw() {
 	}
 }
 
-// GameStatus sets the gameStatus for the canvas.  The canvas is redrawn afterwards to clean up drawing artifacts
-func (c *Canvas) GameStatus(s game.Status) {
+// SetGameStatus sets the gameStatus for the canvas.  The canvas is redrawn afterwards to clean up drawing artifacts
+func (c *Canvas) SetGameStatus(s game.Status) {
 	c.gameStatus = s
 	c.selection.setMoveState(none)
 	c.selection.tiles = map[tile.ID]tileSelection{}
 	c.Redraw()
 }
 
+// drawUsedTiles pants the unused tiles.
 func (c *Canvas) drawUnusedTiles(fromSelection bool) {
 	for i, id := range c.board.UnusedTileIDs {
 		x := c.draw.unusedMin.x + i*c.draw.tileLength
@@ -267,6 +271,7 @@ func (c *Canvas) drawUnusedTiles(fromSelection bool) {
 	}
 }
 
+// drawUsedTiles pants the used tiles.
 func (c *Canvas) drawUsedTiles(fromSelection bool) {
 	for xCol, yUsedTileLocs := range c.board.UsedTileLocs {
 		for yRow, t := range yUsedTileLocs {
@@ -277,6 +282,8 @@ func (c *Canvas) drawUsedTiles(fromSelection bool) {
 	}
 }
 
+// drawTile paints the tile at the specified top-left coordinate.
+// The fromSelection flag specifies whether tiles from the selection or those not from the selection are being drawn.
 func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
 	lineColor := c.mainColor
 	switch {
@@ -303,6 +310,7 @@ func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
 	c.ctx.FillText(t.Ch.String(), x+c.draw.textOffset, y+c.draw.tileLength-c.draw.textOffset)
 }
 
+// drawSelectionRectangle draws the outline of the selection.
 func (c *Canvas) drawSelectionRectangle() {
 	minX, maxX := sort(c.selection.start.x, c.selection.end.x)
 	minY, maxY := sort(c.selection.start.y, c.selection.end.y)
@@ -396,7 +404,7 @@ func (c *Canvas) MoveEnd(pp pixelPosition) {
 	}
 }
 
-// StartSwap start a swap move
+// StartSwap start a swap move.
 func (c *Canvas) StartSwap() {
 	c.log.Info("click a tile to swap for three others from the pile")
 	c.selection.setMoveState(swap)
@@ -404,7 +412,7 @@ func (c *Canvas) StartSwap() {
 	c.Redraw()
 }
 
-// swap trades a tile for some new ones
+// swap trades a tile for some new ones.
 func (c *Canvas) swap() {
 	endTS := c.tileSelection(c.selection.end)
 	endTileWasSelected := func() bool {
@@ -425,7 +433,7 @@ func (c *Canvas) swap() {
 	})
 }
 
-// getTileSelection returns the tile at the specified coordinates on the canvas or nil if none exists
+// getTileSelection returns the tile at the specified coordinates on the canvas or nil if none exists.
 func (c Canvas) tileSelection(pp pixelPosition) *tileSelection {
 	switch {
 	case c.draw.unusedMin.x <= pp.x && pp.x < c.draw.unusedMin.x+len(c.board.UnusedTileIDs)*c.draw.tileLength &&
@@ -456,6 +464,7 @@ func (c Canvas) tileSelection(pp pixelPosition) *tileSelection {
 	return nil
 }
 
+// calculateSelectedTiles determines which tiles are selected from the selection.
 func (c Canvas) calculateSelectedTiles() map[tile.ID]tileSelection {
 	minX, maxX := sort(c.selection.start.x, c.selection.end.x)
 	minY, maxY := sort(c.selection.start.y, c.selection.end.y)
@@ -471,6 +480,7 @@ func (c Canvas) calculateSelectedTiles() map[tile.ID]tileSelection {
 	}
 }
 
+// calculateSelectedUnusedTiles determines which unused tiles are selected from the selection.
 func (c Canvas) calculateSelectedUnusedTiles(minX, maxX, minY, maxY int) map[tile.ID]tileSelection {
 	switch {
 	case maxX < c.draw.unusedMin.x,
@@ -499,6 +509,7 @@ func (c Canvas) calculateSelectedUnusedTiles(minX, maxX, minY, maxY int) map[til
 	return tiles
 }
 
+// calculateSelectedUsedTiles determines which used tiles are selected from the selection.
 func (c Canvas) calculateSelectedUsedTiles(minX, maxX, minY, maxY int) map[tile.ID]tileSelection {
 	switch {
 	case maxX < c.draw.usedMin.x,
@@ -529,6 +540,7 @@ func (c Canvas) calculateSelectedUsedTiles(minX, maxX, minY, maxY int) map[tile.
 	return tileIds
 }
 
+// moveSelectedTiles determines what tiles to move from the selection, changes the local board, and sends the update to the server.
 func (c *Canvas) moveSelectedTiles() {
 	tilePositions := c.selectionTilePositions()
 	if len(tilePositions) == 0 {
@@ -566,6 +578,7 @@ func (c Canvas) selectionTilePositions() []tile.Position {
 	}
 }
 
+// selectionUsedTilePositions computes the unused tile positions of the selection.
 func (c Canvas) selectionUnusedTilePositions(startTS tileSelection, endC, endR int) []tile.Position {
 	if endR < 0 || c.draw.numRows <= endR {
 		return []tile.Position{}
@@ -588,6 +601,7 @@ func (c Canvas) selectionUnusedTilePositions(startTS tileSelection, endC, endR i
 	return tilePositions
 }
 
+// selectionUsedTilePositions computes the used tile positions of the selection.
 func (c Canvas) selectionUsedTilePositions(startTS tileSelection, endC, endR int) []tile.Position {
 	tilePositions := make([]tile.Position, 0, len(c.selection.tiles))
 	deltaC := endC - int(startTS.x)
@@ -609,6 +623,7 @@ func (c Canvas) selectionUsedTilePositions(startTS tileSelection, endC, endR int
 	return tilePositions
 }
 
+// setMoveState updates the moveState and checks the appropriate dom element for it.
 func (s *selection) setMoveState(ms moveState) {
 	s.moveState = ms
 	switch ms {
@@ -625,6 +640,8 @@ func (s *selection) setMoveState(ms moveState) {
 	}
 }
 
+// inRect determines if the specified coordinates are in the rectangle.
+// The left and top edges (min-valued) are inclusive and the right and bottom (max-valued) edges are exclusive.
 func (s selection) inRect(x, y int) bool {
 	minX, maxX := sort(s.start.x, s.end.x)
 	minY, maxY := sort(s.start.y, s.end.y)

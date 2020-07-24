@@ -1,7 +1,7 @@
 package game
 
 type (
-	// Status is the state of the game
+	// Status is the state of the game.
 	Status int
 )
 

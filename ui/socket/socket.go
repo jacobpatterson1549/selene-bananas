@@ -69,12 +69,14 @@ func (s *Socket) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	go s.releaseJsFuncsOnDone(ctx, wg)
 }
 
+// releaseJsFuncsOnDone waits for the context to be done before releasing the event listener functions.
 func (s *Socket) releaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup) {
 	<-ctx.Done() // BLOCKING
 	s.releaseWebSocketJsFuncs()
 	wg.Done()
 }
 
+// releaseWebSocketJsFuncs releases the event listener functions.
 func (s *Socket) releaseWebSocketJsFuncs() {
 	s.jsFuncs.onOpen.Release()
 	s.jsFuncs.onClose.Release()
@@ -136,6 +138,7 @@ func (s *Socket) onClose(event js.Value) {
 	s.closeWebSocket()
 }
 
+// closeWebSocket releases the event listeners, unregisters them, and does some dom cleanup.
 func (s *Socket) closeWebSocket() {
 	s.webSocket.Set("onopen", nil)
 	s.webSocket.Set("onclose", nil)

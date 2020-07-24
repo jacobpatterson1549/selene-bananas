@@ -5,9 +5,10 @@ import (
 	"fmt"
 )
 
-// letter is the value of a tile
+// letter is the value of a tile.
 type letter rune
 
+// newLetter creates a letter from the rune.
 func newLetter(r rune) (letter, error) {
 	if r < 'A' || 'Z' < r {
 		return 0, fmt.Errorf("letter must be uppercase and between A and Z: %v", r)
@@ -15,16 +16,17 @@ func newLetter(r rune) (letter, error) {
 	return letter(r), nil
 }
 
+// String returns the letter as a string.
 func (l letter) String() string {
 	return string(l)
 }
 
-// MarshalJSON has special handling to marshal the letters to strings
+// MarshalJSON has special handling to marshal the letters to strings.
 func (l letter) MarshalJSON() ([]byte, error) {
 	return json.Marshal(string(l))
 }
 
-// UnmarshalJSON has special handling to unmarshalling tiles from strings
+// UnmarshalJSON has special handling to unmarshalling tiles from strings.
 func (l *letter) UnmarshalJSON(b []byte) error {
 	var s string
 	err := json.Unmarshal(b, &s)

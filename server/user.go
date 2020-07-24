@@ -7,6 +7,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/db"
 )
 
+// handleUserCreate creates a user, adding it to the database.
 func (s Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password_confirm")
@@ -22,6 +23,7 @@ func (s Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleUserLogin signs a user in, writing the token to the response.
 func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
@@ -49,6 +51,7 @@ func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleUserJoinLobby adds the user to the lobby.
 func (s Server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, username string) {
 	if err := s.lobby.AddUser(username, w, r); err != nil {
 		err = fmt.Errorf("websocket error: %w", err)
@@ -57,6 +60,7 @@ func (s Server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, user
 	}
 }
 
+// handleUserUpdatePassword updates the user's password.
 func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request, username string) {
 	password := r.FormValue("password")
 	newPassword := r.FormValue("password_confirm")
@@ -73,6 +77,7 @@ func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request,
 	s.lobby.RemoveUser(username)
 }
 
+// handleUserDelete deletes the user from the database.
 func (s Server) handleUserDelete(w http.ResponseWriter, r *http.Request, username string) {
 	password := r.FormValue("password")
 	u, err := db.NewUser(username, password)

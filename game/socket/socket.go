@@ -72,6 +72,7 @@ func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) (*
 	return &s, nil
 }
 
+// validate ensures the configuration has no errors.
 func (cfg Config) validate(conn *websocket.Conn, playerName game.PlayerName) error {
 	switch {
 	case cfg.Log == nil:
@@ -94,7 +95,7 @@ func (cfg Config) validate(conn *websocket.Conn, playerName game.PlayerName) err
 	return nil
 }
 
-// Run writes Socket messages to the messages channel and reads incoming messages on separate goroutines
+// Run writes Socket messages to the messages channel and reads incoming messages on separate goroutines.
 // The Socket runs until the connection fails for an unexpected reason or a message is received on the "done"< channel.
 // Messages the socket receives are sent to the provided channel.
 // Messages the socket sends are consumed from the returned channel.
@@ -105,15 +106,15 @@ func (s *Socket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, r
 	s.writeMessages(writeCtx, readCancelFunc, writeMessages)
 }
 
-// readMessages receives messages from the connected socket and writes the to the messages channel
-// messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel
+// readMessages receives messages from the connected socket and writes the to the messages channel.
+// messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel.
 func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancelFunc context.CancelFunc, messages chan<- game.Message) {
 	defer func() {
 		removeSocketFunc()
 		writeCancelFunc()
 		s.conn.Close()
 	}()
-	// s.conn.SetPongHandler(s.refreshReadDeadline)
+	// s.conn.SetPongHandler(s.refreshReadDeadline) // TODO
 	for { // BLOCKS
 		m, err := s.readMessage()
 		select {
@@ -135,8 +136,8 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 	}
 }
 
-// writeMessages sends messages added to the messages channel to the connected socket
-// messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel
+// writeMessages sends messages added to the messages channel to the connected socket.
+// messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel.
 func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.CancelFunc, messages <-chan game.Message) {
 	pingTicker := time.NewTicker(s.pingPeriod)
 	httpPingTicker := time.NewTicker(s.httpPingPeriod)
@@ -150,7 +151,7 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 		CloseConn(s.conn, closeReason)
 	}()
 	var err error
-	for { // BLOCKS;	``
+	for { // BLOCKS
 		select {
 		case <-ctx.Done():
 			closeReason = "server shutting down"
@@ -180,10 +181,10 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 	}
 }
 
+// readMessage reads the next message from the connection.
 func (s *Socket) readMessage() (*game.Message, error) {
 	var m game.Message
-	err := s.conn.ReadJSON(&m)
-	if err != nil {
+	if err := s.conn.ReadJSON(&m); err != nil { // BLOCKING
 		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
 			return nil, fmt.Errorf("unexpected socket closure: %v", err)
 		}
@@ -199,6 +200,7 @@ func (s *Socket) readMessage() (*game.Message, error) {
 	return &m, nil
 }
 
+// writeMessage writes a message to the connection.
 func (s *Socket) writeMessage(m game.Message) error {
 	if s.debug {
 		s.log.Printf("socket writing message with type %v", m.Type)
@@ -209,8 +211,7 @@ func (s *Socket) writeMessage(m game.Message) error {
 	case game.Delete, game.Leave:
 		s.gameID = 0
 	}
-	err := s.conn.WriteJSON(m)
-	if err != nil {
+	if err := s.conn.WriteJSON(m); err != nil {
 		return fmt.Errorf("writing socket message: %v", err)
 	}
 	if m.Type == game.PlayerDelete {
@@ -219,6 +220,7 @@ func (s *Socket) writeMessage(m game.Message) error {
 	return nil
 }
 
+// writePing writes a ping message to the connection.
 func (s *Socket) writePing() error {
 	if err := s.refreshWriteDeadline(); err != nil {
 		return err
@@ -229,14 +231,17 @@ func (s *Socket) writePing() error {
 	return nil
 }
 
+// refreshReadDeadline is called when the read wait needs to be refreshed.
 func (s *Socket) refreshReadDeadline(appData string) error {
 	return s.refreshDeadline(s.conn.SetReadDeadline, s.readWait)
 }
 
+// refreshWriteDeadline is called when the write wait needs to be refreshed.
 func (s *Socket) refreshWriteDeadline() error {
 	return s.refreshDeadline(s.conn.SetWriteDeadline, s.writeWait)
 }
 
+// refreshDeadline is called when a wait needs to be refreshed.
 func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
 	now := s.timeFunc()
 	nowTime := time.Unix(now, 0)
@@ -249,7 +254,7 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 	return nil
 }
 
-// CloseConn closes the websocket connection without reporting any errors
+// CloseConn closes the websocket connection without reporting any errors.
 func CloseConn(conn *websocket.Conn, reason string) {
 	data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
 	conn.WriteMessage(websocket.CloseMessage, data)

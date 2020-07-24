@@ -67,7 +67,7 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	dom.RegisterFuncs(ctx, wg, "game", jsFuncs)
 }
 
-// Create clears the tiles and asks the server for a new game to join
+// Create clears the tiles and asks the server for a new game to join.
 func (g *Game) Create() {
 	m := game.Message{
 		Type: game.Create,
@@ -145,7 +145,7 @@ func (g *Game) sendChat(event js.Value) {
 	})
 }
 
-// replacegameTiles completely replaces the games used and unused tiles
+// replacegameTiles completely replaces the games used and unused tiles.
 func (g *Game) replaceGameTiles(m game.Message) {
 	g.resetTiles()
 	for _, tp := range m.TilePositions {
@@ -158,7 +158,7 @@ func (g *Game) replaceGameTiles(m game.Message) {
 	g.addUnusedTiles(m)
 }
 
-// addUnusedTilesappends new tiles onto the game
+// addUnusedTilesappends new tiles onto the game.
 func (g *Game) addUnusedTiles(m game.Message) {
 	tileStrings := make([]string, len(m.Tiles))
 	for i, t := range m.Tiles {
@@ -221,7 +221,7 @@ func (g *Game) updateStatus(m game.Message) {
 	dom.SetButtonDisabled(".game>.actions>.swap", swapDisabled)
 	dom.SetButtonDisabled(".game>.actions>.start", startDisabled)
 	dom.SetButtonDisabled(".game>.actions>.finish", finishDisabled)
-	g.canvas.GameStatus(m.GameStatus)
+	g.canvas.SetGameStatus(m.GameStatus)
 }
 
 // updateTilesLeft updates the TilesLeft label.  Other labels are updated if there are no tiles left.
@@ -239,6 +239,7 @@ func (g *Game) updateTilesLeft(m game.Message) {
 	}
 }
 
+// updatePlayers sets the players list display from the message.
 func (g *Game) updatePlayers(m game.Message) {
 	if len(m.GamePlayers) > 0 {
 		players := strings.Join(m.GamePlayers, ",")
@@ -246,6 +247,7 @@ func (g *Game) updatePlayers(m game.Message) {
 	}
 }
 
+// resetTiles clears the tiles on the board.
 func (g *Game) resetTiles() {
 	g.board.UnusedTiles = make(map[tile.ID]tile.Tile)
 	g.board.UnusedTileIDs = make([]tile.ID, 0)
@@ -253,11 +255,13 @@ func (g *Game) resetTiles() {
 	g.board.UsedTileLocs = make(map[tile.X]map[tile.Y]tile.Tile)
 }
 
+// refreshTileLength updates the displayed tile length number.
 func (g *Game) refreshTileLength() {
 	tileLengthStr := dom.Value(".tile-length-slider")
 	dom.SetValue(".tile-length-display", tileLengthStr)
 }
 
+// resizeTiles changes the tile size of the board to be the value of the slider.
 func (g *Game) resizeTiles() {
 	tileLengthStr := dom.Value(".tile-length-slider")
 	tileLength, err := strconv.Atoi(tileLengthStr)
@@ -265,11 +269,11 @@ func (g *Game) resizeTiles() {
 		g.log.Error("retrieving tile size: " + err.Error())
 		return
 	}
-	g.canvas.TileLength(tileLength)
+	g.canvas.SetTileLength(tileLength)
 	m := game.Message{
 		Type: game.BoardSize,
 	}
-	g.boardSize(m)
+	g.setBoardSize(m)
 }
 
 // setTabActive performs the actions need to activate the game tab and create or join a game.
@@ -287,11 +291,11 @@ func (g *Game) setTabActive(m game.Message) {
 		g.Leave()
 		return
 	}
-	g.boardSize(m)
+	g.setBoardSize(m)
 }
 
-// boardSize updates the board size due to a recent canvas update, adds the updated size to the message, and sends it.
-func (g *Game) boardSize(m game.Message) {
+// setBoardSize updates the board size due to a recent canvas update, adds the updated size to the message, and sends it.
+func (g *Game) setBoardSize(m game.Message) {
 	g.board.NumCols = g.canvas.NumCols()
 	g.board.NumRows = g.canvas.NumRows()
 	g.resetTiles()

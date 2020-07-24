@@ -28,7 +28,8 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	timeFunc := func() int64 {
 		return time.Now().UTC().Unix()
 	}
-	tokenizerCfg := tokenizerConfig(crypto_rand.Reader, timeFunc)
+	keyReader := crypto_rand.Reader
+	tokenizerCfg := tokenizerConfig(keyReader, timeFunc)
 	tokenizer, err := tokenizerCfg.NewTokenizer()
 	if err != nil {
 		return nil, err

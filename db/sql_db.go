@@ -24,7 +24,7 @@ type (
 	}
 )
 
-// NewSQLDatabase creates a database from a databaseURL
+// NewSQLDatabase creates a database from a databaseURL.
 func (cfg SQLDatabaseConfig) NewSQLDatabase() (Database, error) {
 	sqlDB, err := cfg.validate()
 	if err != nil {
@@ -48,7 +48,7 @@ func (cfg SQLDatabaseConfig) validate() (*sql.DB, error) {
 	return sqlDB, nil
 }
 
-// query returns the row referenced by the query
+// query returns the row referenced by the query.
 func (s sqlDatabase) query(ctx context.Context, q query) scanner {
 	ctx, cancelFunc := context.WithTimeout(ctx, s.queryPeriod)
 	defer cancelFunc()

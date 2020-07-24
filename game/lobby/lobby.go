@@ -46,6 +46,7 @@ type (
 		SocketCfg socket.Config
 	}
 
+	// playerSocket ise used to add players from http requests.
 	playerSocket struct {
 		game.PlayerName
 		http.ResponseWriter
@@ -53,18 +54,20 @@ type (
 		result chan<- error
 	}
 
+	// messageHandler is a channel that can write game messages and be cancelled.
 	messageHandler struct {
 		writeMessages chan<- game.Message
 		context.CancelFunc
 	}
 
+	// gameMessageHandler is a messageHandler with a game info field.
 	gameMessageHandler struct {
 		info game.Info
 		messageHandler
 	}
 )
 
-// NewLobby creates a new game lobby
+// NewLobby creates a new game lobby.
 func (cfg Config) NewLobby() (*Lobby, error) {
 	if err := cfg.validate(); err != nil {
 		return nil, fmt.Errorf("creating lobby: validation: %w", err)
@@ -87,6 +90,7 @@ func (cfg Config) NewLobby() (*Lobby, error) {
 	return &l, nil
 }
 
+// validate ensures the configuration has no errors.
 func (cfg Config) validate() error {
 	switch {
 	case cfg.Log == nil:
@@ -99,7 +103,7 @@ func (cfg Config) validate() error {
 	return nil
 }
 
-// AddUser adds a user to the lobby, it opens a new websocket (player) for the username
+// AddUser adds a user to the lobby, it opens a new websocket (player) for the username.
 func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request) error {
 	playerName := game.PlayerName(username)
 	result := make(chan error)
@@ -116,7 +120,7 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 	return nil
 }
 
-// RemoveUser removes the user from the lobby and a game, if any
+// RemoveUser removes the user from the lobby and a game, if any.
 func (l *Lobby) RemoveUser(username string) {
 	playerName := game.PlayerName(username)
 	l.socketMessages <- game.Message{
@@ -141,6 +145,7 @@ func (l *Lobby) Run(ctx context.Context) {
 	}
 }
 
+// handleSocketMessage sends the message from the socket to the game or performs special handling.
 func (l *Lobby) handleSocketMessage(ctx context.Context, m game.Message) {
 	if l.debug {
 		l.log.Printf("lobby reading socket message with type %v", m.Type)
@@ -155,6 +160,7 @@ func (l *Lobby) handleSocketMessage(ctx context.Context, m game.Message) {
 	}
 }
 
+// handleGameMessage sends the message from the game to the socket for the player or performs special handling.
 func (l *Lobby) handleGameMessage(ctx context.Context, m game.Message) {
 	if l.debug {
 		l.log.Printf("lobby reading game message with type %v", m.Type)
@@ -221,7 +227,7 @@ func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 	}
 }
 
-// removeGame removes a game from the messageHandlers
+// removeGame removes a game from the messageHandlers.
 func (l *Lobby) removeGame(id game.ID) {
 	mh, ok := l.games[id]
 	if !ok {
@@ -233,7 +239,7 @@ func (l *Lobby) removeGame(id game.ID) {
 	l.gameInfosChanged()
 }
 
-// addSocket creates and adds the playerSocket to the socket messageHandlers and returns the merged inbound message and error channels
+// addSocket creates and adds the playerSocket to the socket messageHandlers and returns the merged inbound message and error channels.
 func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 	conn, err := l.upgrader.Upgrade(ps.ResponseWriter, ps.Request, nil)
 	defer func() {
@@ -279,7 +285,7 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 	writeMessages <- m
 }
 
-// removeSocket removes a socket from the messageHandlers
+// removeSocket removes a socket from the messageHandlers.
 func (l *Lobby) removeSocket(pn game.PlayerName) {
 	mh, ok := l.sockets[pn]
 	if !ok {
@@ -290,7 +296,7 @@ func (l *Lobby) removeSocket(pn game.PlayerName) {
 	mh.CancelFunc()
 }
 
-// sends a message to the game with the id specified in the message's GameID field
+// sendGameMessage sends a message to the game with the id specified in the message's GameID field.
 func (l *Lobby) sendGameMessage(m game.Message) {
 	gmh, ok := l.games[m.GameID]
 	if !ok {
@@ -300,6 +306,7 @@ func (l *Lobby) sendGameMessage(m game.Message) {
 	gmh.writeMessages <- m
 }
 
+// sendSocketMessage sends a message to the socket for the player the message is for.
 func (l *Lobby) sendSocketMessage(m game.Message) {
 	smh, ok := l.sockets[m.PlayerName]
 	if !ok {
@@ -309,7 +316,7 @@ func (l *Lobby) sendSocketMessage(m game.Message) {
 	smh.writeMessages <- m
 }
 
-// sendSocketErrorMessage sends the info to the player of the specified message
+// sendSocketErrorMessage sends the info to the player of the specified message.
 func (l *Lobby) sendSocketErrorMessage(m game.Message, info string) {
 	smh, ok := l.sockets[m.PlayerName]
 	if !ok {
@@ -323,7 +330,7 @@ func (l *Lobby) sendSocketErrorMessage(m game.Message, info string) {
 	}
 }
 
-// gameInfos gets the gameInfos for the lobby
+// gameInfos gets the gameInfos for the lobby.
 func (l Lobby) gameInfos() []game.Info {
 	infos := make([]game.Info, 0, len(l.games))
 	for _, mh := range l.games {
@@ -332,7 +339,7 @@ func (l Lobby) gameInfos() []game.Info {
 	return infos
 }
 
-// handleGameInfo updates the game info for the game
+// handleGameInfo updates the game info for the game.
 func (l *Lobby) handleGameInfoChanged(m game.Message) {
 	if len(m.GameInfos) != 1 {
 		log.Printf("expected 1 gameInfo to have changed, got %v", len(m.GameInfos))
@@ -349,6 +356,7 @@ func (l *Lobby) handleGameInfoChanged(m game.Message) {
 	l.gameInfosChanged()
 }
 
+// gameInfosChanged notifies all sockets that the game infos have changed by sending them the new infos.
 func (l Lobby) gameInfosChanged() {
 	infos := l.gameInfos()
 	m := game.Message{

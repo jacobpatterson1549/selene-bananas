@@ -8,13 +8,13 @@ import (
 )
 
 type (
-	// WordChecker can be used to check if words are valid
+	// WordChecker can be used to check if words are valid.
 	WordChecker struct {
 		words map[string]struct{}
 	}
 )
 
-// NewWordChecker consumes the lower case words in the reader to use for checking and creates a new WordChecker
+// NewWordChecker consumes the lower case words in the reader to use for checking and creates a new WordChecker.
 func NewWordChecker(r io.Reader) *WordChecker {
 	words := make(map[string]struct{})
 	scanner := bufio.NewScanner(r)
@@ -29,15 +29,15 @@ func NewWordChecker(r io.Reader) *WordChecker {
 	return &wc
 }
 
-// Check determines whether or not the word is valid
+// Check determines whether or not the word is valid.
 func (wc WordChecker) Check(word string) bool {
 	lowerWord := strings.ToLower(word)
 	_, ok := wc.words[lowerWord]
 	return ok
 }
 
-// scanLowercaseWords is a bufio.SplitFunc that returns the first only-lowercase word
-// derived from bufio.ScanWords, but simplified to only handle ascii
+// scanLowercaseWords is a bufio.SplitFunc that returns the first only-lowercase word.
+// Derived from bufio.ScanWords, but simplified to only handle ASCII.
 func scanLowerWords(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	start, end := 0, 0
 	skipUntilSpace := false

@@ -166,6 +166,7 @@ func (cfg Config) NewServer() (*Server, error) {
 	return &s, nil
 }
 
+// validate ensures the configuration has no errors.
 func (cfg Config) validate() error {
 	switch {
 	case cfg.Log == nil:
@@ -192,6 +193,8 @@ func (s Server) Run(ctx context.Context) <-chan error {
 	return errC
 }
 
+// runHTTPSServer runs the http server, adding the return error to the channel when done.
+// The server is not run if the HTTP address is not valid.
 func (s Server) runHTTPServer(ctx context.Context, errC chan<- error, validHTTPAddr bool) {
 	if !validHTTPAddr {
 		return
@@ -199,6 +202,7 @@ func (s Server) runHTTPServer(ctx context.Context, errC chan<- error, validHTTPA
 	errC <- s.httpServer.ListenAndServe()
 }
 
+// runHTTPSServer runs the https server in regards to the conviguration, adding the return error to the channel when done.
 func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error, runTLS bool) {
 	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
 	go s.lobby.Run(lobbyCtx)
@@ -236,6 +240,7 @@ func (s Server) Stop(ctx context.Context) error {
 	return nil
 }
 
+// handleHTTPS handles http endpoints.
 func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	if s.challenge.IsFor(r.URL.Path) {
 		if err := s.challenge.Handle(w, r.URL.Path); err != nil {
@@ -264,6 +269,7 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, httpsURI, http.StatusTemporaryRedirect)
 }
 
+// handleHTTPS handles https endpoints.
 func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 	if r.TLS == nil && !s.noTLSRedirect {
 		s.handleHTTP(w, r)
@@ -279,6 +285,7 @@ func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleHTTPSGet calls handlers for GET endpoints.
 func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/", "/manifest.json", "/init.js":
@@ -298,6 +305,7 @@ func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleHTTPSPost checks authentication and calls handlers for POST endpoints.
 func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var tokenUsername string
@@ -326,6 +334,7 @@ func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// sereveTemplate servers the file from the data-driven template.
 func (s Server) serveTemplate(name string) http.HandlerFunc {
 	var (
 		t         *template.Template
@@ -367,7 +376,7 @@ func (s Server) serveTemplate(name string) http.HandlerFunc {
 	}
 }
 
-// serveFile serves the file from the filesystem
+// serveFile serves the file from the filesystem.
 func (Server) serveFile(name string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, name)
@@ -402,6 +411,7 @@ func (s Server) handleFile(fn http.HandlerFunc, checkVersion bool) http.HandlerF
 	}
 }
 
+// handleLobby adds the user to the lobby.
 func (s Server) handleLobby(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.FormValue("access_token")
 	tokenUsername, err := s.tokenizer.ReadUsername(tokenString)
@@ -413,21 +423,25 @@ func (s Server) handleLobby(w http.ResponseWriter, r *http.Request) {
 	s.handleUserJoinLobby(w, r, tokenUsername)
 }
 
+// handleHTTPPing ensures the ping is for a valid user.
 func (s Server) handleHTTPPing(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.readTokenUsername(r); err != nil {
 		s.handleError(w, err)
 	}
 }
 
+// httpError writes the error status code.
 func (Server) httpError(w http.ResponseWriter, statusCode int) {
 	http.Error(w, http.StatusText(statusCode), statusCode)
 }
 
+// handleError logs and writes the error as an internal server error (500).
 func (s Server) handleError(w http.ResponseWriter, err error) {
 	s.log.Printf("server error: %v", err)
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 
+// readTokenUsername gets the username from the token, returning an error if the authorization is invalid or does not match 
 func (s Server) readTokenUsername(r *http.Request) (string, error) {
 	authorization := r.Header.Get("Authorization")
 	if len(authorization) < 7 || authorization[:7] != "Bearer " {
@@ -445,6 +459,7 @@ func (s Server) readTokenUsername(r *http.Request) (string, error) {
 	return tokenUsername, nil
 }
 
+// Write delegates the write to the wrapped writer.
 func (wrw wrappedResponseWriter) Write(p []byte) (n int, err error) {
 	return wrw.Writer.Write(p)
 }
