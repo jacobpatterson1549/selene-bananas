@@ -26,7 +26,7 @@ func (p *player) decrementWinPoints() {
 
 // refreshBoard builds a message with the state of the board.
 // The board config is used to reside the board, moving tiles that would not lie in the previous board's space to the unused area.
-func (p *player) refreshBoard(cfg board.Config, g Game, playerName string) (*game.Message, error) {
+func (p *player) refreshBoard(cfg board.Config, g Game, n game.PlayerName) (*game.Message, error) {
 	usedTilePositions := make([]tile.Position, 0, len(p.UsedTiles))
 	var movedTiles []tile.Tile
 	for _, tp := range p.UsedTiles {
@@ -59,7 +59,7 @@ func (p *player) refreshBoard(cfg board.Config, g Game, playerName string) (*gam
 	}
 	m := game.Message{
 		Type:          game.Join,
-		PlayerName:    playerName,
+		PlayerName:    n,
 		Tiles:         unusedTiles,
 		TilePositions: usedTilePositions,
 		TilesLeft:     len(g.unusedTiles),

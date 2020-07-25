@@ -3,6 +3,7 @@ package controller
 import (
 	"testing"
 
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
@@ -67,7 +68,7 @@ func TestRefreshBoard(t *testing.T) {
 	p := player{
 		Board: *board,
 	}
-	playerName := "selene"
+	playerName := game.PlayerName("selene")
 	var game Game
 	m, err := p.refreshBoard(boardCfg, game, playerName)
 	switch {

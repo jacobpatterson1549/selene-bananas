@@ -20,11 +20,11 @@ type (
 	Game struct {
 		debug                  bool
 		log                    *log.Logger
-		id                     int
+		id                     game.ID
 		createdAt              int64
 		status                 game.Status
 		userDao                *db.UserDao
-		players                map[string]*player
+		players                map[game.PlayerName]*player
 		maxPlayers             int
 		numNewTiles            int
 		tileLetters            string
@@ -32,7 +32,7 @@ type (
 		wordChecker            word.Checker
 		idlePeriod             time.Duration
 		shuffleUnusedTilesFunc func(tiles []tile.Tile)
-		shufflePlayersFunc     func(playerNames []string)
+		shufflePlayersFunc     func(playerNames []game.PlayerName)
 	}
 
 	// Config contiains the properties to create similar games.
@@ -61,9 +61,9 @@ type (
 		IdlePeriod time.Duration
 		// ShuffleUnusedTilesFunc is used to shuffle unused tiles when initializing the game and after tiles are swapped.
 		ShuffleUnusedTilesFunc func(tiles []tile.Tile)
-		// ShufflePlayersNameFunc is used to shuffle the order of players when giving tiles after a snag
+		// ShufflePlayersFunc is used to shuffle the order of players when giving tiles after a snag
 		// The snagging player should always get a new tile.  Other players will get a tile, if possible.
-		ShufflePlayerNamesFunc func(playerNames []string)
+		ShufflePlayersFunc func(playerNames []game.PlayerName)
 	}
 
 	// messageHandler is a function which handles game messages, returning responses to the output channel.
@@ -78,7 +78,7 @@ const (
 )
 
 // NewGame creates a new game and runs it.
-func (cfg Config) NewGame(id int) (*Game, error) {
+func (cfg Config) NewGame(id game.ID) (*Game, error) {
 	if err := cfg.validate(id); err != nil {
 		return nil, fmt.Errorf("creating game: validation: %w", err)
 	}
@@ -98,9 +98,9 @@ func (cfg Config) NewGame(id int) (*Game, error) {
 		tileLetters:            tileLetters,
 		wordChecker:            cfg.WordChecker,
 		idlePeriod:             cfg.IdlePeriod,
-		players:                make(map[string]*player),
+		players:                make(map[game.PlayerName]*player),
 		shuffleUnusedTilesFunc: cfg.ShuffleUnusedTilesFunc,
-		shufflePlayersFunc:     cfg.ShufflePlayerNamesFunc,
+		shufflePlayersFunc:     cfg.ShufflePlayersFunc,
 	}
 	if err := g.initializeUnusedTiles(); err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (cfg Config) NewGame(id int) (*Game, error) {
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(id int) error {
+func (cfg Config) validate(id game.ID) error {
 	switch {
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")
@@ -125,7 +125,7 @@ func (cfg Config) validate(id int) error {
 		return fmt.Errorf("positive idle period required")
 	case cfg.ShuffleUnusedTilesFunc == nil:
 		return fmt.Errorf("function to shuffle tiles required")
-	case cfg.ShufflePlayerNamesFunc == nil:
+	case cfg.ShufflePlayersFunc == nil:
 		return fmt.Errorf("function to shuffle player draw order required")
 	case (len(cfg.TileLetters) != 0 && len(cfg.TileLetters) < cfg.NumNewTiles) || len(defaultTileLetters) < cfg.NumNewTiles:
 		return fmt.Errorf("not enough tiles for a single player to join the game")
@@ -387,8 +387,8 @@ func (g *Game) handleGameSnag(ctx context.Context, m game.Message, out chan<- ga
 	case len(g.unusedTiles) == 0:
 		return gameWarning("no tiles left to snag, use what you have to finish")
 	}
-	snagPlayerMessages := make(map[string]game.Message, len(g.players))
-	snagPlayerNames := make([]string, 1, len(g.players))
+	snagPlayerMessages := make(map[game.PlayerName]game.Message, len(g.players))
+	snagPlayerNames := make([]game.PlayerName, 1, len(g.players))
 	snagPlayerNames[0] = m.PlayerName
 	for n2 := range g.players {
 		if m.PlayerName != n2 {
@@ -513,10 +513,10 @@ func (g *Game) handleGameChat(ctx context.Context, m game.Message, out chan<- ga
 
 // updateUserPoints updates the points for users in the game after a player has won.
 // The wining player gets their winPoints value, while others get a single participation point.
-func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName string) error {
+func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName game.PlayerName) error {
 	users := g.playerNames()
 	userPointsIncrementFunc := func(u string) int {
-		if u == winningPlayerName {
+		if string(u) == string(winningPlayerName) {
 			p := g.players[winningPlayerName]
 			return p.winPoints
 		}
@@ -528,8 +528,8 @@ func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName string) e
 // playerNames returns an array of the player name strings.
 func (g Game) playerNames() []string {
 	playerNames := make([]string, 0, len(g.players))
-	for playerName := range g.players {
-		playerNames = append(playerNames, playerName)
+	for n := range g.players {
+		playerNames = append(playerNames, string(n))
 	}
 	sort.Strings(playerNames)
 	return playerNames

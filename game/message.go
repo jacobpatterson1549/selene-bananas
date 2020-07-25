@@ -16,12 +16,12 @@ type (
 		TilePositions []tile.Position `json:"tilePositions,omitempty"`
 		TilesLeft     int             `json:"tilesLeft,omitempty"`
 		GameInfos     []Info          `json:"gameInfos,omitempty"`
-		GameID        int             `json:"gameID,omitempty"`
+		GameID        ID              `json:"gameID,omitempty"`
 		GameStatus    Status          `json:"gameStatus,omitempty"`
 		GamePlayers   []string        `json:"gamePlayers,omitempty"`
 		NumCols       int             `json:"c,omitempty"`
 		NumRows       int             `json:"r,omitempty"`
-		PlayerName    string          `json:"-"`
+		PlayerName    PlayerName      `json:"-"`
 	}
 )
 

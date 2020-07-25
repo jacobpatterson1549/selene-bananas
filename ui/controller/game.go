@@ -87,7 +87,7 @@ func (g *Game) join(event js.Value) {
 	}
 	m := game.Message{
 		Type:   game.Join,
-		GameID: id,
+		GameID: game.ID(id),
 	}
 	g.setTabActive(m)
 }

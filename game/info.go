@@ -1,11 +1,10 @@
-// Package game contains communication structures for the game controller, lobby, and socket to use.
 package game
 
 type (
 	// Info contains information about a game.
 	Info struct {
 		// ID is unique among the other games that currently exist.
-		ID int `json:"id"`
+		ID ID `json:"id"`
 		// Status is the state of the game.
 		Status Status `json:"status"`
 		// Players is a list of the names of players in the game.
