@@ -114,7 +114,7 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 		writeCancelFunc()
 		s.conn.Close()
 	}()
-	// s.conn.SetPongHandler(s.refreshReadDeadline) // TODO
+	s.conn.SetPongHandler(s.refreshReadDeadline)
 	for { // BLOCKS
 		m, err := s.readMessage()
 		select {
