@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestWords(t *testing.T) {
+func TestNewChecker(t *testing.T) {
 	wordsTests := []struct {
 		wordsToRead string
 		wantWords   []string
@@ -43,7 +43,7 @@ func TestWords(t *testing.T) {
 	}
 }
 
-func BenchmarkAmericanEnglishLarge(b *testing.B) {
+func BenchmarkNewCheckerAmericanEnglishLarge(b *testing.B) {
 	wordsFile := "/usr/share/dict/american-english-large"
 	f, err := os.Open(wordsFile)
 	if err != nil {
