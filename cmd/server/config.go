@@ -169,7 +169,7 @@ func gameConfig(m mainFlags, log *log.Logger, ud *db.UserDao, timeFunc func() in
 		MaxPlayers:             8,
 		NumNewTiles:            21,
 		TileLetters:            "",
-		WordChecker:           wordChecker,
+		WordChecker:            wordChecker,
 		IdlePeriod:             60 * time.Minute,
 		ShuffleUnusedTilesFunc: shuffleUnusedTilesFunc,
 		ShufflePlayersFunc:     shufflePlayersFunc,

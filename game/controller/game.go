@@ -379,7 +379,7 @@ func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- 
 }
 
 // handleGameSnag adds a tile to all the players.
-// The order that the players recieve their tiles is randomized, some players may not recieve tiles if there are none left.
+// The order that the players receive their tiles is randomized, some players may not receive tiles if there are none left.
 func (g *Game) handleGameSnag(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	switch {
 	case g.status != game.InProgress:

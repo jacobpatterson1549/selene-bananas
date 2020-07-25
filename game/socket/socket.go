@@ -37,7 +37,7 @@ type (
 		// TimeFunc is a function which should supply the current time since the unix epoch.
 		// Used to set ping/pong deadlines
 		TimeFunc func() int64
-		// ReadWait is the amout of time that can pass between recieving client  messages before timing out.
+		// ReadWait is the amout of time that can pass between receiving client messages before timing out.
 		ReadWait time.Duration
 		// WriteWait is the amout of time that the socket can take to write a message.
 		WriteWait time.Duration
