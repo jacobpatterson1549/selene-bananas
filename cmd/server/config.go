@@ -150,9 +150,6 @@ func gameConfig(m mainFlags, log *log.Logger, ud *db.UserDao, timeFunc func() in
 		return nil, err
 	}
 	wordChecker := word.NewChecker(wordsFile)
-	if err != nil {
-		return nil, err
-	}
 	shuffleUnusedTilesFunc := func(tiles []tile.Tile) {
 		rand.Shuffle(len(tiles), func(i, j int) {
 			tiles[i], tiles[j] = tiles[j], tiles[i]

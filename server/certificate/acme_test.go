@@ -74,7 +74,7 @@ func TestChallengeHandle(t *testing.T) {
 			Writer:   &b,
 		}
 		err := c.Handle(&w, test.path)
-		got := string(b.Bytes())
+		got := b.String()
 		switch {
 		case err != nil:
 			if test.wantOk {

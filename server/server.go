@@ -257,7 +257,7 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 		var err error
 		host, _, err = net.SplitHostPort(host)
 		if err != nil {
-			err := fmt.Errorf("could not redirect to https: %w", err)
+			err = fmt.Errorf("could not redirect to https: %w", err)
 			s.handleError(w, err)
 			return
 		}
@@ -361,12 +361,12 @@ func (s Server) serveTemplate(name string) http.HandlerFunc {
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, err := t.ParseFiles(filenames...); err != nil {
-			err := fmt.Errorf("parsing manifest template: %v", err)
+			err = fmt.Errorf("parsing manifest template: %v", err)
 			s.handleError(w, err)
 			return
 		}
 		if err := t.Execute(w, s.data); err != nil {
-			err := fmt.Errorf("rendering template: %v", err)
+			err = fmt.Errorf("rendering template: %v", err)
 			s.handleError(w, err)
 			return
 		}

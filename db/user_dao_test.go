@@ -8,8 +8,8 @@ import (
 )
 
 func TestNewUserDao(t *testing.T) {
-	var mockDatabase mockDatabase
-	var sqlDatabase sqlDatabase
+	var mockDB mockDatabase
+	var sqlDB sqlDatabase
 	mockReadFileFunc := func(filename string) ([]byte, error) {
 		return nil, nil
 	}
@@ -22,14 +22,14 @@ func TestNewUserDao(t *testing.T) {
 			readFileFunc: mockReadFileFunc,
 		},
 		{
-			db: mockDatabase,
+			db: mockDB,
 		},
 		{
-			db:           mockDatabase,
+			db:           mockDB,
 			readFileFunc: mockReadFileFunc,
 		},
 		{
-			db:           sqlDatabase,
+			db:           sqlDB,
 			readFileFunc: mockReadFileFunc,
 			wantOk:       true,
 		},
