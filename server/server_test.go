@@ -182,3 +182,17 @@ func TestCheckTokenUsername(t *testing.T) {
 		}
 	}
 }
+
+func TestHTTPError(t *testing.T) {
+	w := httptest.NewRecorder()
+	var s Server
+	want := 400
+	s.httpError(w, want)
+	got := w.Code
+	switch {
+	case want != got:
+		t.Errorf("wanted error message to contain %v, got %v", want, got)
+	case w.Body.Len() <= 1: // ends in \n character
+		t.Error("wanted messages in body")
+	}
+}
