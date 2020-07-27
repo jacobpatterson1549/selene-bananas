@@ -276,14 +276,12 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 
 // handleHTTPS handles https endpoints.
 func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
-	if r.TLS == nil && !s.noTLSRedirect {
+	switch {
+	case r.TLS == nil && !s.noTLSRedirect:
 		s.handleHTTP(w, r)
-		return
-	}
-	switch r.Method {
-	case "GET":
+	case r.Method == "GET":
 		s.handleHTTPSGet(w, r)
-	case "POST":
+	case r.Method == "POST":
 		s.handleHTTPSPost(w, r)
 	default:
 		s.httpError(w, http.StatusMethodNotAllowed)
