@@ -1,11 +1,14 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -193,6 +196,26 @@ func TestHTTPError(t *testing.T) {
 	case want != got:
 		t.Errorf("wanted error message to contain %v, got %v", want, got)
 	case w.Body.Len() <= 1: // ends in \n character
-		t.Error("wanted messages in body")
+		t.Errorf("wanted status code info for error (%v) in body", want)
+	}
+}
+
+func TestHandleError(t *testing.T) {
+	var buf bytes.Buffer
+	w := httptest.NewRecorder()
+	err := fmt.Errorf("mock error")
+	s := Server{
+		log: log.New(&buf, "", log.LstdFlags),
+	}
+	want := 500
+	s.handleError(w, err)
+	got := w.Code
+	switch {
+	case want != got:
+		t.Errorf("wanted error message to contain %v, got %v", want, got)
+	case !strings.Contains(w.Body.String(), err.Error()):
+		t.Errorf("wanted message in body (%v), but got %v", err.Error(), w.Body.String())
+	case !strings.Contains(buf.String(), err.Error()):
+		t.Errorf("wanted message in log (%v), but got %v", err.Error(), buf.String())
 	}
 }

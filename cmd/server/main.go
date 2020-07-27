@@ -2,7 +2,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -16,20 +15,13 @@ import (
 
 func main() {
 	m := newMainFlags(os.Args, os.LookupEnv)
-	log := newLog()
+	log := log.New(os.Stdout, "", log.LstdFlags)
 	ctx := context.Background()
 	server, err := createServer(ctx, m, log)
 	if err != nil {
 		log.Fatal(err)
 	}
 	runServer(ctx, *server, log)
-}
-
-func newLog() *log.Logger {
-	var buf bytes.Buffer
-	log := log.New(&buf, "", log.LstdFlags)
-	log.SetOutput(os.Stdout)
-	return log
 }
 
 func createServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Server, error) {
