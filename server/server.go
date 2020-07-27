@@ -187,29 +187,34 @@ func (cfg Config) validate() error {
 // When the HTTP/HTTPS servers stop, errors are logged to the error channel.
 func (s Server) Run(ctx context.Context) <-chan error {
 	errC := make(chan error, 2)
-	validHTTPAddr := len(s.httpServer.Addr) > 0
-	go s.runHTTPServer(ctx, errC, validHTTPAddr)
-	go s.runHTTPSServer(ctx, errC, validHTTPAddr)
+	go s.runHTTPServer(ctx, errC)
+	go s.runHTTPSServer(ctx, errC)
 	return errC
+}
+
+// validHTTPAddr determines if the HTTP address is valid.
+// If the HTTP address is valid, the HTTP server should be started to redirect to HTTPS and handle certificate creation.
+func (s Server) validHTTPAddr() bool {
+	return len(s.httpServer.Addr) > 0
 }
 
 // runHTTPSServer runs the http server, adding the return error to the channel when done.
 // The server is not run if the HTTP address is not valid.
-func (s Server) runHTTPServer(ctx context.Context, errC chan<- error, validHTTPAddr bool) {
-	if !validHTTPAddr {
+func (s Server) runHTTPServer(ctx context.Context, errC chan<- error) {
+	if !s.validHTTPAddr() {
 		return
 	}
 	errC <- s.httpServer.ListenAndServe()
 }
 
 // runHTTPSServer runs the https server in regards to the conviguration, adding the return error to the channel when done.
-func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error, runTLS bool) {
+func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
 	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
 	go s.lobby.Run(lobbyCtx)
 	s.httpsServer.RegisterOnShutdown(lobbyCancelFunc)
 	s.log.Printf("starting https server at at https://127.0.0.1%v", s.httpsServer.Addr)
 	switch {
-	case runTLS:
+	case s.validHTTPAddr():
 		if _, err := tls.LoadX509KeyPair(s.tlsCertFile, s.tlsKeyFile); err != nil {
 			s.log.Printf("Problem loading tls certificate: %v", err)
 			return
