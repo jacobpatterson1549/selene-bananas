@@ -10,17 +10,19 @@ import (
 
 // handleMonitor writes runtime information to the response.
 func (s Server) handleMonitor(w http.ResponseWriter, r *http.Request) {
-	s.writeMemoryStats(w)
+	m := new(runtime.MemStats)
+	runtime.ReadMemStats(m)
+	hasTLS := s.validHTTPAddr()
+	p := pprof.Lookup("goroutine")
+	writeMemoryStats(w, m)
 	writeLn(w)
-	s.writeGoroutineExpectations(w)
+	writeGoroutineExpectations(w, hasTLS)
 	writeLn(w)
-	s.writeGoroutineStackTraces(w)
+	writeGoroutineStackTraces(w, p)
 }
 
 // writeMemoryStats writes the memory runtime statistics of the server.
-func (Server) writeMemoryStats(w io.Writer) {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
+func writeMemoryStats(w io.Writer, m *runtime.MemStats) {
 	writeLn(w, "--- Memory Stats ---")
 	writeLn(w, "Alloc (bytes on heap)", m.Alloc)
 	writeLn(w, "TotalAlloc (total heap size)", m.TotalAlloc)
@@ -29,10 +31,10 @@ func (Server) writeMemoryStats(w io.Writer) {
 }
 
 // writeGoroutineExpectations writes a message about the expected goroutines.
-func (s Server) writeGoroutineExpectations(w io.Writer) {
+func writeGoroutineExpectations(w io.Writer, hasTLS bool) {
 	writeLn(w, "--- Goroutine Expectations ---")
 	switch {
-	case s.validHTTPAddr():
+	case hasTLS:
 		writeLn(w, "Ten (10) goroutines are expected on an idling server.")
 		writeLn(w, "Note that the first two goroutines create extra threads for each tls connection.")
 		writeLn(w, "* a goroutine listening for interrupt/termination signals so the server can stop gracefully")
@@ -53,10 +55,9 @@ func (s Server) writeGoroutineExpectations(w io.Writer) {
 }
 
 // writeGoroutineStackTraces writes the goroutine runitme profile's stack traces.
-func (Server) writeGoroutineStackTraces(w io.Writer) {
-	goroutineProfiles := pprof.Lookup("goroutine")
-	writeLn(w, "--- Goroutine Stack Sraces ---")
-	goroutineProfiles.WriteTo(w, 1)
+func writeGoroutineStackTraces(w io.Writer, p *pprof.Profile) {
+	writeLn(w, "--- Goroutine Stack Traces ---")
+	p.WriteTo(w, 1)
 }
 
 // writeLn writes the interfaces, followed by a newline, to the writer.

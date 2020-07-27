@@ -1,25 +1,36 @@
 package server
 
 import (
-	"net/http"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 )
 
-func TestGroutineExpectations(t *testing.T) {
-	var servers [2]Server
-	var numExpectations [2]int
-	for i, httpAddr := range [2]string{"", ":8001"} {
-		servers[i] = Server{
-			httpServer: &http.Server{
-				Addr: httpAddr,
-			},
+func TestWriteMemoryStats(t *testing.T) {
+	m := runtime.MemStats{
+		Alloc:      9,
+		TotalAlloc: 8,
+		Sys:        7,
+		Mallocs:    6,
+		Frees:      5,
+	}
+	var w strings.Builder
+	writeMemoryStats(&w, &m)
+	got := w.String()
+	for i, v := range []string{"9", "8", "7", "1"} {
+		want := " " + v + "\n" // no negatives or trailing digits
+		if !strings.Contains(got, want) {
+			t.Errorf("Test %v: wanted memory stats output to contain %v:\n%v", i, want, got)
 		}
 	}
-	for i, server := range servers {
+}
+
+func TestWriteGoroutineExpectations(t *testing.T) {
+	var numExpectations [2]int
+	for i, hasTLS := range []bool{true, false} {
 		var w strings.Builder
-		server.writeGoroutineExpectations(&w)
+		writeGoroutineExpectations(&w, hasTLS)
 		expectations := w.String()
 		lines := strings.Split(expectations, "\n")
 		for _, e := range lines {
