@@ -1,11 +1,26 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"testing"
 )
+
+type mockTokenizer struct {
+	CreateFunc       func(username string, points int) (string, error)
+	ReadUsernameFunc func(tokenString string) (string, error)
+}
+
+func (t mockTokenizer) Create(username string, points int) (string, error) {
+	return t.CreateFunc(username, points)
+}
+
+func (t mockTokenizer) ReadUsername(tokenString string) (string, error) {
+	return t.ReadUsernameFunc(tokenString)
+}
 
 func TestHandleFileVersion(t *testing.T) {
 	handleFileVersionTests := []struct {
@@ -103,6 +118,67 @@ func TestHandleHTTP(t *testing.T) {
 		got := w.Header().Get("Location")
 		if test.want != got {
 			t.Errorf("test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
+		}
+	}
+}
+
+func TestCheckTokenUsername(t *testing.T) {
+	want := "selene"
+	checkTokenUsernameTests := []struct {
+		authorizationHeader  string
+		tokenUsername        string
+		readTokenUsernameErr error
+		formUsername         string
+		wantOk               bool
+	}{
+		{},
+		{
+			authorizationHeader: "bad bearer token",
+		},
+		{
+			authorizationHeader: "Bearer EVIL",
+		},
+		{
+			authorizationHeader:  "Bearer GOOD",
+			readTokenUsernameErr: fmt.Errorf("tokenizer error"),
+		},
+		{
+			authorizationHeader: "Bearer GOOD",
+			formUsername:        "alice",
+		},
+		{
+			authorizationHeader: "Bearer GOOD",
+			formUsername:        want,
+			wantOk:              true,
+		},
+	}
+	for i, test := range checkTokenUsernameTests {
+		s := Server{
+			tokenizer: mockTokenizer{
+				ReadUsernameFunc: func(tokenString string) (string, error) {
+					if test.readTokenUsernameErr != nil {
+						return "", test.readTokenUsernameErr
+					}
+					return want, nil
+				},
+			},
+		}
+		r := http.Request{
+			Header: http.Header{
+				"Authorization": {test.authorizationHeader},
+			},
+			Form: url.Values{
+				"username": {test.formUsername},
+			},
+		}
+		err := s.checkTokenUsername(&r)
+		switch {
+		case err != nil:
+			if test.wantOk {
+				t.Errorf("Test %v: unexpected error: %v", i, err)
+			}
+		case !test.wantOk:
+			t.Errorf("Test %v: expected error", i)
 		}
 	}
 }
