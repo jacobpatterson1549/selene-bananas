@@ -60,14 +60,12 @@ func TestHandleFileVersion(t *testing.T) {
 			},
 		},
 	}
-	okHandler := func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}
+	h := func(w http.ResponseWriter, r *http.Request) {}
 	for i, test := range handleFileVersionTests {
 		s := Server{
 			version: test.version,
 		}
-		fileHandler := s.handleFile(okHandler, true)
+		fileHandler := s.handleFile(h, true)
 		r := httptest.NewRequest("", test.url, nil)
 		w := httptest.NewRecorder()
 		fileHandler(w, r)
@@ -79,6 +77,33 @@ func TestHandleFileVersion(t *testing.T) {
 		case !reflect.DeepEqual(test.wantHeader, gotHeader):
 			t.Errorf("Test %v: different headers:\nwanted %+v\ngot    %v", i, test.wantHeader, gotHeader)
 		}
+	}
+}
+
+func TestHandleFile(t *testing.T) {
+	s := Server{
+		cacheSec: 44,
+	}
+	w := httptest.NewRecorder()
+	r := http.Request{
+		Header: http.Header{
+			"Accept-Encoding": {"gzip"},
+		},
+	}
+	handlerCalled := false
+	h := func(w http.ResponseWriter, r *http.Request) {
+		handlerCalled = true
+		fmt.Fprint(w, "test gzipped message")
+	}
+	fileHandler := s.handleFile(h, false)
+	fileHandler(w, &r)
+	switch {
+	case !strings.Contains(w.Header().Get("Cache-Control"), "max-age"):
+		t.Error("missing cache response header")
+	case w.Header().Get("Content-Encoding") != "gzip":
+		t.Error("missing gzip response header")
+	case !handlerCalled:
+		t.Error("wanted handler to be called")
 	}
 }
 
