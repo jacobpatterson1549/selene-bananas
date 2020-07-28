@@ -1,4 +1,4 @@
-package db
+package user
 
 import (
 	"testing"
@@ -81,7 +81,7 @@ func TestNewUser(t *testing.T) {
 		},
 	}
 	for i, test := range newUserTests {
-		u, err := NewUser(test.username, test.password)
+		u, err := New(test.username, test.password)
 		switch {
 		case err != nil:
 			switch {

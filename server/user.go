@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/jacobpatterson1549/selene-bananas/db"
+	"github.com/jacobpatterson1549/selene-bananas/db/user"
 )
 
 // handleUserCreate creates a user, adding it to the database.
 func (s Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password_confirm")
-	u, err := db.NewUser(username, password)
+	u, err := user.New(username, password)
 	if err != nil {
 		s.handleError(w, err)
 		return
@@ -27,7 +27,7 @@ func (s Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	u, err := db.NewUser(username, password)
+	u, err := user.New(username, password)
 	if err != nil {
 		s.handleError(w, err)
 		return
@@ -65,7 +65,7 @@ func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request)
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	newPassword := r.FormValue("password_confirm")
-	u, err := db.NewUser(username, password)
+	u, err := user.New(username, password)
 	if err != nil {
 		s.handleError(w, err)
 		return
@@ -82,7 +82,7 @@ func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request)
 func (s Server) handleUserDelete(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	u, err := db.NewUser(username, password)
+	u, err := user.New(username, password)
 	if err != nil {
 		s.handleError(w, err)
 		return

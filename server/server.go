@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jacobpatterson1549/selene-bananas/db"
+	"github.com/jacobpatterson1549/selene-bananas/db/user"
 	"github.com/jacobpatterson1549/selene-bananas/game/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/server/auth"
 	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
@@ -27,7 +27,7 @@ type (
 		data          interface{}
 		log           *log.Logger
 		tokenizer     auth.Tokenizer
-		userDao       *db.UserDao
+		userDao       *user.Dao
 		lobby         *lobby.Lobby
 		httpsServer   *http.Server
 		httpServer    *http.Server
@@ -51,7 +51,7 @@ type (
 		// Tokenizer is used to generate and parse session tokens
 		Tokenizer auth.Tokenizer
 		// UserDao is used to track different users
-		UserDao *db.UserDao
+		UserDao *user.Dao
 		// LobbyCfg is used to create a game lobby
 		LobbyCfg lobby.Config
 		// StopDur is the maximum duration the server should take to shutdown gracefully

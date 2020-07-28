@@ -1,4 +1,5 @@
-package db
+// Package user contains handles the state of users.
+package user
 
 import (
 	"fmt"
@@ -22,8 +23,8 @@ type (
 	}
 )
 
-// NewUser creates a new user with the specified name and password.
-func NewUser(u, p string) (*User, error) {
+// New creates a new user with the specified name and password.
+func New(u, p string) (*User, error) {
 	if err := validateUsername(u); err != nil {
 		return nil, err
 	}

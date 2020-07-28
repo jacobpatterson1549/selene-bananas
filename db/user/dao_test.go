@@ -1,20 +1,24 @@
-package db
+package user
 
 import (
 	"context"
 	"fmt"
 	"reflect"
 	"testing"
+
+	"github.com/jacobpatterson1549/selene-bananas/db"
+	"github.com/jacobpatterson1549/selene-bananas/db/dbtest"
+	"github.com/jacobpatterson1549/selene-bananas/db/sql"
 )
 
-func TestNewUserDao(t *testing.T) {
-	var mockDB mockDatabase
-	var sqlDB sqlDatabase
+func TestNewDao(t *testing.T) {
+	var mockDB dbtest.MockDatabase
+	var sqlDB sql.Database
 	mockReadFileFunc := func(filename string) ([]byte, error) {
 		return nil, nil
 	}
-	newUserDaoTests := []struct {
-		db           Database
+	newDaoTests := []struct {
+		db           db.Database
 		readFileFunc func(filename string) ([]byte, error)
 		wantOk       bool
 	}{
@@ -34,12 +38,12 @@ func TestNewUserDao(t *testing.T) {
 			wantOk:       true,
 		},
 	}
-	for i, test := range newUserDaoTests {
-		cfg := UserDaoConfig{
+	for i, test := range newDaoTests {
+		cfg := DaoConfig{
 			DB:           test.db,
 			ReadFileFunc: test.readFileFunc,
 		}
-		ud, err := cfg.NewUserDao()
+		d, err := cfg.NewDao()
 		switch {
 		case err != nil:
 			if test.wantOk {
@@ -47,15 +51,15 @@ func TestNewUserDao(t *testing.T) {
 			}
 		case !test.wantOk:
 			t.Errorf("Test %v: expected error", i)
-		case !reflect.DeepEqual(ud.db, test.db):
+		case !reflect.DeepEqual(d.db, test.db):
 			t.Errorf("Test %v: db not set", i)
-		case ud.readFileFunc == nil:
+		case d.readFileFunc == nil:
 			t.Errorf("Test %v: readFileFunc not set", i)
 		}
 	}
 }
 
-func TestUserDaoSetup(t *testing.T) {
+func TestDaoSetup(t *testing.T) {
 	setupTests := []struct {
 		readFileErr error
 		execFuncErr error
@@ -72,9 +76,9 @@ func TestUserDaoSetup(t *testing.T) {
 		},
 	}
 	for i, test := range setupTests {
-		ud := UserDao{
-			db: mockDatabase{
-				execFunc: func(ctx context.Context, queries ...query) error {
+		d := Dao{
+			db: dbtest.MockDatabase{
+				ExecFunc: func(ctx context.Context, queries ...db.Query) error {
 					return test.execFuncErr
 				},
 			},
@@ -83,7 +87,7 @@ func TestUserDaoSetup(t *testing.T) {
 			},
 		}
 		ctx := context.Background()
-		err := ud.Setup(ctx)
+		err := d.Setup(ctx)
 		switch {
 		case err != nil:
 			if test.wantOk {
@@ -95,7 +99,7 @@ func TestUserDaoSetup(t *testing.T) {
 	}
 }
 
-func TestUserDaoCreate(t *testing.T) {
+func TestDaoCreate(t *testing.T) {
 	createTests := []struct {
 		userHashPasswordErr error
 		dbExecErr           error
@@ -120,15 +124,15 @@ func TestUserDaoCreate(t *testing.T) {
 				},
 			},
 		}
-		ud := UserDao{
-			db: mockDatabase{
-				execFunc: func(ctx context.Context, queries ...query) error {
+		d := Dao{
+			db: dbtest.MockDatabase{
+				ExecFunc: func(ctx context.Context, queries ...db.Query) error {
 					return test.dbExecErr
 				},
 			},
 		}
 		ctx := context.Background()
-		err := ud.Create(ctx, u)
+		err := d.Create(ctx, u)
 		switch {
 		case err != nil:
 			if test.wantOk {
@@ -140,7 +144,7 @@ func TestUserDaoCreate(t *testing.T) {
 	}
 }
 
-func TestUserDaoRead(t *testing.T) {
+func TestDaoRead(t *testing.T) {
 	readTests := []struct {
 		rowScanErr           error
 		dbExecErr            error
@@ -170,23 +174,23 @@ func TestUserDaoRead(t *testing.T) {
 				},
 			},
 		}
-		s := mockScanner{
+		s := dbtest.MockScanner{
 			ScanFunc: func(dest ...interface{}) error {
 				return test.rowScanErr
 			},
 		}
-		ud := UserDao{
-			db: mockDatabase{
-				queryFunc: func(ctx context.Context, q query) scanner {
+		d := Dao{
+			db: dbtest.MockDatabase{
+				QueryFunc: func(ctx context.Context, q db.Query) db.Scanner {
 					return s
 				},
-				execFunc: func(ctx context.Context, queries ...query) error {
+				ExecFunc: func(ctx context.Context, queries ...db.Query) error {
 					return test.dbExecErr
 				},
 			},
 		}
 		ctx := context.Background()
-		got, err := ud.Read(ctx, u)
+		got, err := d.Read(ctx, u)
 		switch {
 		case err != nil:
 			if test.wantOk {
@@ -200,7 +204,7 @@ func TestUserDaoRead(t *testing.T) {
 	}
 }
 
-func TestUserDaoUpdatePassword(t *testing.T) {
+func TestDaoUpdatePassword(t *testing.T) {
 	updatePasswordTests := []struct {
 		oldP            string
 		dbP             string
@@ -251,7 +255,7 @@ func TestUserDaoUpdatePassword(t *testing.T) {
 				},
 			},
 		}
-		s := mockScanner{
+		s := dbtest.MockScanner{
 			ScanFunc: func(dest ...interface{}) error {
 				if len(dest) == 3 {
 					if d, ok := dest[1].(*string); ok {
@@ -261,18 +265,18 @@ func TestUserDaoUpdatePassword(t *testing.T) {
 				return nil
 			},
 		}
-		ud := UserDao{
-			db: mockDatabase{
-				queryFunc: func(ctx context.Context, q query) scanner {
+		d := Dao{
+			db: dbtest.MockDatabase{
+				QueryFunc: func(ctx context.Context, q db.Query) db.Scanner {
 					return s
 				},
-				execFunc: func(ctx context.Context, queries ...query) error {
+				ExecFunc: func(ctx context.Context, queries ...db.Query) error {
 					return test.dbExecErr
 				},
 			},
 		}
 		ctx := context.Background()
-		err := ud.UpdatePassword(ctx, u, test.newP)
+		err := d.UpdatePassword(ctx, u, test.newP)
 		switch {
 		case err != nil:
 			if test.wantOk {
@@ -284,7 +288,7 @@ func TestUserDaoUpdatePassword(t *testing.T) {
 	}
 }
 
-func TestUserDaoUpdatePointsIncrement(t *testing.T) {
+func TestDaoUpdatePointsIncrement(t *testing.T) {
 	updatePointsIncrementTests := []struct {
 		usernamePoints map[string]int
 		dbExecErr      error
@@ -302,10 +306,10 @@ func TestUserDaoUpdatePointsIncrement(t *testing.T) {
 			wantOk: true,
 		},
 	}
-	checkUpdateQueries := func(usernamePoints map[string]int, queries []query) error {
+	checkUpdateQueries := func(usernamePoints map[string]int, queries []db.Query) error {
 		updatedUsernames := make(map[string]struct{}, len(usernamePoints))
 		for i, q := range queries {
-			args := q.args()
+			args := q.Args()
 			u, ok := args[0].(string)
 			if !ok {
 				return fmt.Errorf("Test %v: arg0 was not a string", i)
@@ -329,9 +333,9 @@ func TestUserDaoUpdatePointsIncrement(t *testing.T) {
 		return nil
 	}
 	for i, test := range updatePointsIncrementTests {
-		ud := UserDao{
-			db: mockDatabase{
-				execFunc: func(ctx context.Context, queries ...query) error {
+		d := Dao{
+			db: dbtest.MockDatabase{
+				ExecFunc: func(ctx context.Context, queries ...db.Query) error {
 					if test.dbExecErr != nil {
 						return test.dbExecErr
 					}
@@ -340,7 +344,7 @@ func TestUserDaoUpdatePointsIncrement(t *testing.T) {
 			},
 		}
 		ctx := context.Background()
-		err := ud.UpdatePointsIncrement(ctx, test.usernamePoints)
+		err := d.UpdatePointsIncrement(ctx, test.usernamePoints)
 		switch {
 		case err != nil:
 			if test.wantOk {
@@ -352,7 +356,7 @@ func TestUserDaoUpdatePointsIncrement(t *testing.T) {
 	}
 }
 
-func TestUserDaoDelete(t *testing.T) {
+func TestDaoDelete(t *testing.T) {
 	deleteTests := []struct {
 		readErr   error
 		dbExecErr error
@@ -376,23 +380,23 @@ func TestUserDaoDelete(t *testing.T) {
 				},
 			},
 		}
-		s := mockScanner{
+		s := dbtest.MockScanner{
 			ScanFunc: func(dest ...interface{}) error {
 				return test.readErr
 			},
 		}
-		ud := UserDao{
-			db: mockDatabase{
-				queryFunc: func(ctx context.Context, q query) scanner {
+		d := Dao{
+			db: dbtest.MockDatabase{
+				QueryFunc: func(ctx context.Context, q db.Query) db.Scanner {
 					return s
 				},
-				execFunc: func(ctx context.Context, queries ...query) error {
+				ExecFunc: func(ctx context.Context, queries ...db.Query) error {
 					return test.dbExecErr
 				},
 			},
 		}
 		ctx := context.Background()
-		err := ud.Delete(ctx, u)
+		err := d.Delete(ctx, u)
 		switch {
 		case err != nil:
 			if test.wantOk {

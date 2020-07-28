@@ -1,12 +1,12 @@
-package db
+package sql
 
 import (
 	"reflect"
 	"testing"
 )
 
-func TestNewSQLQueryFunction(t *testing.T) {
-	want := sqlQueryFunction{
+func TestNewQueryFunction(t *testing.T) {
+	want := QueryFunction{
 		name: "read_hobbits",
 		cols: []string{
 			"first_name",
@@ -19,7 +19,7 @@ func TestNewSQLQueryFunction(t *testing.T) {
 			"took",
 		},
 	}
-	got := newSQLQueryFunction(
+	got := NewQueryFunction(
 		"read_hobbits",
 		[]string{"first_name", "last_name"},
 		"baggins", "gamgee", "brandybuck", "took")
@@ -28,8 +28,8 @@ func TestNewSQLQueryFunction(t *testing.T) {
 	}
 }
 
-func TestNewSQLExecFunction(t *testing.T) {
-	want := sqlExecFunction{
+func TestNewExecFunction(t *testing.T) {
+	want := ExecFunction{
 		name: "delete_rings",
 		arguments: []interface{}{
 			"elf",
@@ -37,7 +37,7 @@ func TestNewSQLExecFunction(t *testing.T) {
 			"man",
 		},
 	}
-	got := newSQLExecFunction(
+	got := NewExecFunction(
 		"delete_rings",
 		"elf",
 		"dwarf",
@@ -47,8 +47,8 @@ func TestNewSQLExecFunction(t *testing.T) {
 	}
 }
 
-func TestSQLQueryFunctionCmd(t *testing.T) {
-	q := sqlQueryFunction{
+func TestQueryFunctionCmd(t *testing.T) {
+	q := QueryFunction{
 		name: "read_hobbits",
 		cols: []string{
 			"whole_name",
@@ -60,14 +60,14 @@ func TestSQLQueryFunctionCmd(t *testing.T) {
 		},
 	}
 	want := "SELECT whole_name, age FROM read_hobbits($1, $2)"
-	got := q.cmd()
+	got := q.Cmd()
 	if want != got {
 		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
 	}
 }
 
-func TestSQLExecFunctionCmd(t *testing.T) {
-	e := sqlExecFunction{
+func TestExecFunctionCmd(t *testing.T) {
+	e := ExecFunction{
 		name: "kill_orcs",
 		arguments: []interface{}{
 			"minas ithil",
@@ -76,23 +76,23 @@ func TestSQLExecFunctionCmd(t *testing.T) {
 		},
 	}
 	want := "SELECT kill_orcs($1, $2, $3)"
-	got := e.cmd()
+	got := e.Cmd()
 	if want != got {
 		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
 	}
 }
 
-func TestSQLRawCmd(t *testing.T) {
-	r := sqlExecRaw("DELETE FROM rings")
+func TestRawQueryCmd(t *testing.T) {
+	r := RawQuery("DELETE FROM rings")
 	want := "DELETE FROM rings"
-	got := r.cmd()
+	got := r.Cmd()
 	if want != got {
 		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
 	}
 }
 
-func TestSQLQueryArgs(t *testing.T) {
-	q := sqlQueryFunction{
+func TestQueryFunctionArgs(t *testing.T) {
+	q := QueryFunction{
 		arguments: []interface{}{
 			111,
 			"hobbit",
@@ -102,14 +102,14 @@ func TestSQLQueryArgs(t *testing.T) {
 		111,
 		"hobbit",
 	}
-	got := q.args()
+	got := q.Args()
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
 	}
 }
 
-func TestSQLExecArgs(t *testing.T) {
-	q := sqlQueryFunction{
+func TestExecFunctionArgs(t *testing.T) {
+	e := ExecFunction{
 		arguments: []interface{}{
 			false,
 			"hobbit",
@@ -121,15 +121,15 @@ func TestSQLExecArgs(t *testing.T) {
 		"hobbit",
 		33,
 	}
-	got := q.args()
+	got := e.Args()
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
 	}
 }
 
-func TestSQLRawArgs(t *testing.T) {
-	r := sqlExecRaw("DELETE FROM rings")
-	got := r.args()
+func TestRawQueryArgs(t *testing.T) {
+	r := RawQuery("DELETE FROM rings")
+	got := r.Args()
 	if got != nil {
 		t.Errorf("raw sql should not have arguments, got %v", got)
 	}

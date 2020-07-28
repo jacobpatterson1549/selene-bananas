@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
+	"github.com/jacobpatterson1549/selene-bananas/db/sql"
+	"github.com/jacobpatterson1549/selene-bananas/db/user"
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/controller"
 	"github.com/jacobpatterson1549/selene-bananas/game/lobby"
@@ -43,7 +45,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		return nil, err
 	}
 	userDaoCfg := userDaoConfig(sqlDB)
-	ud, err := userDaoCfg.NewUserDao()
+	ud, err := userDaoCfg.NewDao()
 	if err != nil {
 		return nil, err
 	}
@@ -108,27 +110,27 @@ func tokenizerConfig(keyReader io.Reader, timeFunc func() int64) auth.TokenizerC
 }
 
 func sqlDatabase(m mainFlags) (db.Database, error) {
-	cfg := db.SQLDatabaseConfig{
+	cfg := sql.DatabaseConfig{
 		DriverName:  "postgres",
 		DatabaseURL: m.databaseURL,
 		QueryPeriod: 5 * time.Second,
 	}
-	db, err := cfg.NewSQLDatabase()
+	db, err := cfg.NewDatabase()
 	if err != nil {
 		return nil, err
 	}
 	return db, nil
 }
 
-func userDaoConfig(d db.Database) db.UserDaoConfig {
-	cfg := db.UserDaoConfig{
+func userDaoConfig(d db.Database) user.DaoConfig {
+	cfg := user.DaoConfig{
 		DB:           d,
 		ReadFileFunc: ioutil.ReadFile,
 	}
 	return cfg
 }
 
-func lobbyConfig(m mainFlags, log *log.Logger, ud *db.UserDao, timeFunc func() int64) (*lobby.Config, error) {
+func lobbyConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*lobby.Config, error) {
 	gameCfg, err := gameConfig(m, log, ud, timeFunc)
 	if err != nil {
 		return nil, err
@@ -145,7 +147,7 @@ func lobbyConfig(m mainFlags, log *log.Logger, ud *db.UserDao, timeFunc func() i
 	return &cfg, nil
 }
 
-func gameConfig(m mainFlags, log *log.Logger, ud *db.UserDao, timeFunc func() int64) (*controller.Config, error) {
+func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*controller.Config, error) {
 	wordsFile, err := os.Open(m.wordsFile)
 	if err != nil {
 		return nil, err

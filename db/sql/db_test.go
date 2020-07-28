@@ -1,4 +1,4 @@
-package db
+package sql
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	"io"
 	"testing"
 	"time"
+
+	"github.com/jacobpatterson1549/selene-bananas/db"
 )
 
 var mockDriver *MockDriver
@@ -41,12 +43,12 @@ func TestNewSQLDatabase(t *testing.T) {
 		},
 	}
 	for i, test := range newSQLDatabaseTests {
-		cfg := SQLDatabaseConfig{
+		cfg := DatabaseConfig{
 			DriverName:  test.driverName,
 			DatabaseURL: testDatabaseURL,
 			QueryPeriod: test.queryPeriod,
 		}
-		sqlDB, err := cfg.NewSQLDatabase()
+		sqlDB, err := cfg.NewDatabase()
 		switch {
 		case err != nil:
 			if test.wantOk {
@@ -61,7 +63,7 @@ func TestNewSQLDatabase(t *testing.T) {
 }
 
 func TestDatabaseQueryRow(t *testing.T) {
-	cfg := SQLDatabaseConfig{
+	cfg := DatabaseConfig{
 		DriverName:  mockDriverName,
 		DatabaseURL: testDatabaseURL,
 		QueryPeriod: 10 * time.Second, // test takes real time to run
@@ -127,16 +129,16 @@ func TestDatabaseQueryRow(t *testing.T) {
 		mockDriver.OpenFunc = func(name string) (driver.Conn, error) {
 			return mockConn, nil
 		}
-		q := sqlQueryFunction{
+		q := QueryFunction{
 			name:      "SELECT ?;",
 			cols:      []string{"?column?"},
 			arguments: []interface{}{want},
 		}
-		db, err := cfg.NewSQLDatabase()
+		db, err := cfg.NewDatabase()
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		r := db.query(ctx, q)
+		r := db.Query(ctx, q)
 		var got int
 		err = r.Scan(&got)
 		switch {
@@ -153,7 +155,7 @@ func TestDatabaseQueryRow(t *testing.T) {
 }
 
 func TestDatabaseExec(t *testing.T) {
-	cfg := SQLDatabaseConfig{
+	cfg := DatabaseConfig{
 		DriverName:  mockDriverName,
 		DatabaseURL: testDatabaseURL,
 		QueryPeriod: 10 * time.Second, // test takes real time to run
@@ -257,12 +259,12 @@ func TestDatabaseExec(t *testing.T) {
 		mockDriver.OpenFunc = func(name string) (driver.Conn, error) {
 			return mockConn, nil
 		}
-		var q query
+		var q db.Query
 		switch {
 		case test.rawQuery:
-			q = sqlExecRaw("CREATE TABLE hobbits ( full_name VARCHAR(64) );")
+			q = RawQuery("CREATE TABLE hobbits ( full_name VARCHAR(64) );")
 		default:
-			q = sqlExecFunction{
+			q = ExecFunction{
 				name: "UPDATE hobbits SET age = ? WHERE first_name = ?;",
 				arguments: []interface{}{
 					111,
@@ -270,11 +272,11 @@ func TestDatabaseExec(t *testing.T) {
 				},
 			}
 		}
-		db, err := cfg.NewSQLDatabase()
+		db, err := cfg.NewDatabase()
 		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
-		err = db.exec(ctx, q)
+		err = db.Exec(ctx, q)
 		switch {
 		case err != nil:
 			if test.wantOk {
