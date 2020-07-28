@@ -27,6 +27,7 @@ import (
 	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
 )
 
+// serverConfig creates the server configuration.
 func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Config, error) {
 	timeFunc := func() int64 {
 		return time.Now().UTC().Unix()
@@ -35,29 +36,31 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	tokenizerCfg := tokenizerConfig(keyReader, timeFunc)
 	tokenizer, err := tokenizerCfg.NewTokenizer()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating authentication tokenizer: %w", err)
 	}
 	if len(m.databaseURL) == 0 {
 		return nil, fmt.Errorf("missing data-source uri")
 	}
 	sqlDB, err := sqlDatabase(m)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating SQL database: %w", err)
 	}
 	userDaoCfg := userDaoConfig(sqlDB)
 	ud, err := userDaoCfg.NewDao()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating user dao: %w", err)
 	}
-	err = ud.Setup(ctx)
-	if err != nil {
-		return nil, err
+	if err := ud.Setup(ctx); err != nil {
+		return nil, fmt.Errorf("setting up user dao: %w", err)
 	}
 	lobbyCfg, err := lobbyConfig(m, log, ud, timeFunc)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating lobby config: %w", err)
 	}
-	v := version(m, log)
+	v, err := version(m)
+	if err != nil {
+		return nil, fmt.Errorf("creating build version: %w", err)
+	}
 	c := certificate.Challenge{
 		Token: m.challengeToken,
 		Key:   m.challengeKey,
@@ -82,6 +85,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	return &cfg, nil
 }
 
+// colorConfig creates the color config for the css.
 func colorConfig() server.ColorConfig {
 	cc := server.ColorConfig{
 		CanvasPrimary: "#000000",
@@ -99,6 +103,7 @@ func colorConfig() server.ColorConfig {
 	return cc
 }
 
+// tokenizerConfig creates the configuration for authentication token reader/writer.
 func tokenizerConfig(keyReader io.Reader, timeFunc func() int64) auth.TokenizerConfig {
 	var tokenValidDurationSec int64 = int64((24 * time.Hour).Seconds()) // 1 day
 	cfg := auth.TokenizerConfig{
@@ -109,19 +114,17 @@ func tokenizerConfig(keyReader io.Reader, timeFunc func() int64) auth.TokenizerC
 	return cfg
 }
 
+// sqlDatabase creates a SQL database to persist user information.
 func sqlDatabase(m mainFlags) (db.Database, error) {
 	cfg := sql.DatabaseConfig{
 		DriverName:  "postgres",
 		DatabaseURL: m.databaseURL,
 		QueryPeriod: 5 * time.Second,
 	}
-	db, err := cfg.NewDatabase()
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
+	return cfg.NewDatabase()
 }
 
+// userDaoConfig creates a user dao configuration.
 func userDaoConfig(d db.Database) user.DaoConfig {
 	cfg := user.DaoConfig{
 		DB:           d,
@@ -130,10 +133,11 @@ func userDaoConfig(d db.Database) user.DaoConfig {
 	return cfg
 }
 
+// lobbyConfig creates the configuration for managing players of games.
 func lobbyConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*lobby.Config, error) {
 	gameCfg, err := gameConfig(m, log, ud, timeFunc)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating game config: %w", err)
 	}
 	socketCfg := socketConfig(m, log, timeFunc)
 	cfg := lobby.Config{
@@ -147,10 +151,11 @@ func lobbyConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int
 	return &cfg, nil
 }
 
+// gameConfig creates the base configuration for all games.
 func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*controller.Config, error) {
 	wordsFile, err := os.Open(m.wordsFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("trying to open words file: %w", err)
 	}
 	wordChecker := word.NewChecker(wordsFile)
 	shuffleUnusedTilesFunc := func(tiles []tile.Tile) {
@@ -179,6 +184,7 @@ func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int6
 	return &cfg, nil
 }
 
+// socketConfig creates the configuration for players connecting to the lobby and games.
 func socketConfig(m mainFlags, log *log.Logger, timeFunc func() int64) socket.Config {
 	cfg := socket.Config{
 		Debug:          m.debugGame,
@@ -192,17 +198,16 @@ func socketConfig(m mainFlags, log *log.Logger, timeFunc func() int64) socket.Co
 	return cfg
 }
 
-func version(m mainFlags, log *log.Logger) string {
+// version reads the first word of the versionFile to use as the version.
+func version(m mainFlags) (string, error) {
 	versionFile, err := os.Open(m.versionFile)
 	if err != nil {
-		log.Printf("trying to open version file: %v", err)
-		return ""
+		return "", fmt.Errorf("trying to open version file: %v", err)
 	}
 	scanner := bufio.NewScanner(versionFile)
 	scanner.Split(bufio.ScanWords)
 	if !scanner.Scan() {
-		log.Print("no words in version file")
-		return ""
+		return "", fmt.Errorf("no words in version file")
 	}
-	return scanner.Text()
+	return scanner.Text(), nil
 }

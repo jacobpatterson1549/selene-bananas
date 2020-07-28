@@ -42,6 +42,7 @@ const (
 	defaultCacheSec int = 60 * 60 * 24 * 365 // 1 year
 )
 
+// usage prints how to run the server to the flagset's output.
 func usage(fs *flag.FlagSet) {
 	envVars := []string{
 		environmentVariableHTTPPort,
@@ -103,7 +104,7 @@ func (m *mainFlags) newFlagSet(osLookupEnvFunc func(string) (string, bool), port
 	return fs
 }
 
-// newMainFlags creates a new, populated mainFlags structure
+// newMainFlags creates a new, populated mainFlags structure.
 // Fields are populated from command line arguments.
 // If fields are not specified on the command line, environment variable values are used before defaulting to other defaults.
 func newMainFlags(osArgs []string, osLookupEnvFunc func(string) (string, bool)) mainFlags {
