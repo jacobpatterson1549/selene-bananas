@@ -2,31 +2,34 @@
 
 all: install
 
-GOROOT := $(shell go env GOROOT)
-WASM := GOOS=js GOARCH=wasm
+GOWASMPATH := $(shell go env GOROOT)/misc/wasm
+GOLIST := go list
+GOTEST := go test # -race
+GOBUILD := go build # -race
+GOWASMARGS := GOOS=js GOARCH=wasm
 
 test-wasm:
-	$(WASM) go test -exec=$(GOROOT)/misc/wasm/go_js_wasm_exec \
-		$(shell $(WASM) go list ./...  | grep ui)/... --cover
+	$(GOWASMARGS) $(GOTEST) -exec=$(GOWASMPATH)/go_js_wasm_exec \
+		$(shell $(GOWASMARGS) $(GOLIST) ./...  | grep ui)/... --cover
 
 test:
-	go test $(shell go list ./...) --cover
+	$(GOTEST) $(shell $(GOLIST) ./...) --cover
 
-banch:
-	go test ./... -bench=WordChecker
+bench:
+	$(GOTEST) ./... -bench=.
 
 wasm_exec.js:
 	ln -fs \
-		$(GOROOT)/misc/wasm/wasm_exec.js \
+		$(GOWASMPATH)/wasm_exec.js \
 		wasm_exec.js
 
 main.wasm: test-wasm
-	$(WASM) go build \
+	$(GOWASMARGS) $(GOBUILD) \
 			-o main.wasm \
 			cmd/ui/*.go
 
 main: test bench
-	go build \
+	$(GOBUILD) \
 		-o main \
 		cmd/server/*.go
 
