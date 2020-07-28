@@ -141,3 +141,18 @@ func TestUpdateUserPoints(t *testing.T) {
 		t.Errorf("wanted error %v, got %v", want, got)
 	}
 }
+
+func TestPlayerNames(t *testing.T) {
+	g := Game{
+		players: map[game.PlayerName]*player{
+			"b": {},
+			"c": {},
+			"a": {},
+		},
+	}
+	want := []string{"a","b","c"}
+	got := g.playerNames()
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("player names not equal/sorted:\nwanted: %v\ngot:    %v", want, got)
+	}
+}
