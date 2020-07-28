@@ -12,9 +12,6 @@ type (
 		readFileFunc func(filename string) ([]byte, error)
 	}
 
-	// UserPointsIncrementFunc is used to determine how much to increment the points for a username.
-	UserPointsIncrementFunc func(username string) int
-
 	// UserDaoConfig contains commonly shared UserDao properties.
 	UserDaoConfig struct {
 		// Debug is a flag that causes the socket to log the types non-ping/pong messages that are read/written.
@@ -117,12 +114,11 @@ func (ud UserDao) UpdatePassword(ctx context.Context, u User, newP string) error
 	return nil
 }
 
-// UpdatePointsIncrement increments the points for multiple users.
-func (ud UserDao) UpdatePointsIncrement(ctx context.Context, usernames []string, f UserPointsIncrementFunc) error {
-	queries := make([]query, len(usernames))
-	for i, u := range usernames {
-		pointsDelta := f(u)
-		queries[i] = newSQLExecFunction("user_update_points_increment", u, pointsDelta)
+// UpdatePointsIncrement increments the points for multiple users by the amount defined in the map.
+func (ud UserDao) UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error {
+	queries := make([]query, 0, len(userPoints))
+	for username, points := range userPoints {
+		queries = append(queries, newSQLExecFunction("user_update_points_increment", username, points))
 	}
 	if err := ud.db.exec(ctx, queries...); err != nil {
 		return fmt.Errorf("incrementing user points: %w", err)

@@ -340,14 +340,7 @@ func TestUserDaoUpdatePointsIncrement(t *testing.T) {
 			},
 		}
 		ctx := context.Background()
-		usernames := make([]string, 0, len(test.usernamePoints))
-		for u := range test.usernamePoints {
-			usernames = append(usernames, u)
-		}
-		f := func(username string) int {
-			return test.usernamePoints[username]
-		}
-		err := ud.UpdatePointsIncrement(ctx, usernames, f)
+		err := ud.UpdatePointsIncrement(ctx, test.usernamePoints)
 		switch {
 		case err != nil:
 			if test.wantOk {

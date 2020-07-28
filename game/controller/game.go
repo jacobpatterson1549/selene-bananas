@@ -8,7 +8,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/jacobpatterson1549/selene-bananas/db"
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
@@ -23,7 +22,7 @@ type (
 		id                     game.ID
 		createdAt              int64
 		status                 game.Status
-		userDao                *db.UserDao
+		userDao                UserDao
 		players                map[game.PlayerName]*player
 		maxPlayers             int
 		numNewTiles            int
@@ -45,7 +44,7 @@ type (
 		// Used for the created at timestamp.
 		TimeFunc func() int64
 		// UserDao is used to increment the points for players when the game is finished.
-		UserDao *db.UserDao
+		UserDao UserDao
 		// MaxPlayers is the maximum number of players that can be part of the game.
 		MaxPlayers int
 		// NumNewTiles is the number of new tiles each player starts the game with.
@@ -68,6 +67,12 @@ type (
 
 	// messageHandler is a function which handles game messages, returning responses to the output channel.
 	messageHandler func(ctx context.Context, m game.Message, out chan<- game.Message) error
+
+	// UserDao makes changes to the stored state of users in the game
+	UserDao interface {
+		// UpdatePointsIncrement increments points for the specified usernames based on the userPointsIncrementFunc
+		UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error
+	}
 )
 
 const (
@@ -512,17 +517,18 @@ func (g *Game) handleGameChat(ctx context.Context, m game.Message, out chan<- ga
 }
 
 // updateUserPoints updates the points for users in the game after a player has won.
-// The wining player gets their winPoints value, while others get a single participation point.
+// The winning player gets their winpoints.  Other players in the game get a consolation point.
 func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName game.PlayerName) error {
-	users := g.playerNames()
-	userPointsIncrementFunc := func(u string) int {
-		if string(u) == string(winningPlayerName) {
-			p := g.players[winningPlayerName]
-			return p.winPoints
+	userPoints := make(map[string]int, len(g.players))
+	for pn, p := range g.players {
+		switch {
+		case pn == winningPlayerName:
+			userPoints[string(pn)] = p.winPoints
+		default:
+			userPoints[string(pn)] = 1
 		}
-		return 1
 	}
-	return g.userDao.UpdatePointsIncrement(ctx, users, userPointsIncrementFunc)
+	return g.userDao.UpdatePointsIncrement(ctx, userPoints)
 }
 
 // playerNames returns an array of the player name strings.

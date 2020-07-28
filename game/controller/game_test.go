@@ -1,11 +1,23 @@
 package controller
 
 import (
+	"context"
+	"fmt"
+	"reflect"
 	"sort"
 	"testing"
 
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
+
+type mockUserDao struct {
+	UpdatePointsIncrementFunc func(ctx context.Context, userPoints map[string]int) error
+}
+
+func (ud mockUserDao) UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error {
+	return ud.UpdatePointsIncrementFunc(ctx, userPoints)
+}
 
 func TestInitializeUnusedTilesCorrectAmount(t *testing.T) {
 	g := Game{
@@ -90,5 +102,42 @@ func TestInitializeUnusedTilesCustom(t *testing.T) {
 		if want != got {
 			t.Errorf("wanted %v tiles, but got %v", want, got)
 		}
+	}
+}
+
+func TestUpdateUserPoints(t *testing.T) {
+	want := fmt.Errorf("calling UpdatePointsIncrement")
+	ctx := context.Background()
+	wantUserPoints := map[string]int{
+		"alice":  1,
+		"bob":    1,
+		"selene": 5,
+	}
+	ud := mockUserDao{
+		UpdatePointsIncrementFunc: func(ctx context.Context, gotUserPoints map[string]int) error {
+			switch {
+			case ctx == nil:
+				return fmt.Errorf("context missing")
+			case !reflect.DeepEqual(wantUserPoints, gotUserPoints):
+				return fmt.Errorf("user points not equal\nwanted: %v\ngot:    %v", wantUserPoints, gotUserPoints)
+			}
+			return want
+		},
+	}
+	g := Game{
+		players: map[game.PlayerName]*player{
+			"alice": {
+				winPoints: 4,
+			},
+			"selene": {
+				winPoints: 5,
+			},
+			"bob": {},
+		},
+		userDao: ud,
+	}
+	got := g.updateUserPoints(ctx, "selene")
+	if want != got {
+		t.Errorf("wanted error %v, got %v", want, got)
 	}
 }
