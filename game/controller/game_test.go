@@ -169,7 +169,7 @@ func TestPlayerNames(t *testing.T) {
 			"a": {},
 		},
 	}
-	want := []string{"a","b","c"}
+	want := []string{"a", "b", "c"}
 	got := g.playerNames()
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("player names not equal/sorted:\nwanted: %v\ngot:    %v", want, got)
