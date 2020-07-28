@@ -23,6 +23,7 @@ const (
 	environmentVariableTLSKeyFile     = "TLS_KEY_FILE"
 )
 
+// mainFlags are the configuration options which can be easly configured at run startup for different environments.
 type mainFlags struct {
 	httpPort       int
 	httpsPort      int

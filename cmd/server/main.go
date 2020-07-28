@@ -13,6 +13,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/server"
 )
 
+// main configures and runs the server.
 func main() {
 	m := newMainFlags(os.Args, os.LookupEnv)
 	log := log.New(os.Stdout, "", log.LstdFlags)
@@ -24,6 +25,7 @@ func main() {
 	runServer(ctx, *server, log)
 }
 
+// create server greates the server from a configuration.
 func createServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Server, error) {
 	cfg, err := serverConfig(ctx, m, log)
 	if err != nil {
@@ -36,6 +38,7 @@ func createServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Se
 	return server, nil
 }
 
+// runServer runs the server until it is interrupted or terminated.
 func runServer(ctx context.Context, server server.Server, log *log.Logger) {
 	done := make(chan os.Signal, 2)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)

@@ -20,13 +20,15 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/ui/user"
 )
 
+// main initializes the wasm code for the web dom and runs as long as the browser is open.
 func main() {
 	ctx := context.Background()
 	var wg sync.WaitGroup
 	initDom(ctx, &wg)
-	wg.Wait()
+	wg.Wait() // BLOCKING
 }
 
+// initDom initializes and links up dom components.
 func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	log := initLog(ctx, wg)
@@ -44,12 +46,14 @@ func initDom(ctx context.Context, wg *sync.WaitGroup) {
 	enableInteraction()
 }
 
+// initLog initializes the log component.
 func initLog(ctx context.Context, wg *sync.WaitGroup) *log.Log {
 	log := new(log.Log)
 	log.InitDom(ctx, wg)
 	return log
 }
 
+// initLog initializes the user/form/http component.
 func initUser(ctx context.Context, wg *sync.WaitGroup, log *log.Log) *user.User {
 	cfg := user.Config{
 		Log: log,
@@ -62,6 +66,7 @@ func initUser(ctx context.Context, wg *sync.WaitGroup, log *log.Log) *user.User 
 	return user
 }
 
+// initLog initializes the game drawing component with elements from the dom.
 func initCanvas(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *board.Board) *canvas.Canvas {
 	cfg := canvas.Config{
 		Log:        log,
@@ -74,6 +79,7 @@ func initCanvas(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *bo
 	return canvas
 }
 
+// initLog initializes the game component.
 func initGame(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *board.Board, canvas *canvas.Canvas) *controller.Game {
 	cfg := controller.GameConfig{
 		Log:    log,
@@ -85,6 +91,7 @@ func initGame(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *boar
 	return game
 }
 
+// initLog initializes the game lobby component.
 func initLobby(ctx context.Context, wg *sync.WaitGroup, log *log.Log, game *controller.Game) *lobby.Lobby {
 	cfg := lobby.Config{
 		Log:  log,
@@ -95,6 +102,7 @@ func initLobby(ctx context.Context, wg *sync.WaitGroup, log *log.Log, game *cont
 	return lobby
 }
 
+// initLog initializes the player socket component for connection to the lobby.
 func initSocket(ctx context.Context, wg *sync.WaitGroup, log *log.Log, user *user.User, game *controller.Game, lobby *lobby.Lobby) *socket.Socket {
 	cfg := socket.Config{
 		Log:   log,
@@ -107,6 +115,8 @@ func initSocket(ctx context.Context, wg *sync.WaitGroup, log *log.Log, user *use
 	return socket
 }
 
+// initBeforeUnloadFn registers a function to cancel the context when the browser is about to close.
+// This should trigger other dom functions to release.
 func initBeforeUnloadFn(cancelFunc context.CancelFunc, wg *sync.WaitGroup) {
 	wg.Add(1)
 	var fn js.Func
@@ -122,6 +132,7 @@ func initBeforeUnloadFn(cancelFunc context.CancelFunc, wg *sync.WaitGroup) {
 	global.Call("addEventListener", "beforeunload", fn)
 }
 
+// enableInteraction removes the disabled attribute from all submit buttons, allowing users to sign in and send other forms.
 func enableInteraction() {
 	document := dom.QuerySelector("body")
 	disabledSubmitButtons := dom.QuerySelectorAll(document, `input[type="submit"]:disabled`)
