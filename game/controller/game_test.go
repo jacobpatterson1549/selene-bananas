@@ -23,7 +23,9 @@ func TestInitializeUnusedTilesCorrectAmount(t *testing.T) {
 	g := Game{
 		tileLetters: defaultTileLetters,
 	}
-	g.initializeUnusedTiles()
+	if err := g.initializeUnusedTiles(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 	want := 144
 	got := len(g.unusedTiles)
 	if want != got {
@@ -35,7 +37,9 @@ func TestInitializeUnusedTilesAllLetters(t *testing.T) {
 	g := Game{
 		tileLetters: defaultTileLetters,
 	}
-	g.initializeUnusedTiles()
+	if err := g.initializeUnusedTiles(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 	m := make(map[rune]struct{}, 26)
 	for _, v := range g.unusedTiles {
 		ch := rune(v.Ch)
@@ -72,7 +76,9 @@ func TestInitializeUnusedTilesShuffled(t *testing.T) {
 				})
 			},
 		}
-		g.initializeUnusedTiles()
+		if err := g.initializeUnusedTiles(); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
 		got := rune(g.unusedTiles[0].Ch)
 		if test.want != got {
 			t.Errorf("expected first tile to be %q when sorted%v (a fake shuffle), but was %q", test.want, test.inReverse, got)
@@ -81,8 +87,11 @@ func TestInitializeUnusedTilesShuffled(t *testing.T) {
 }
 
 func TestInitializeUnusedTilesUniqueIds(t *testing.T) {
-	g := Game{}
-	g.initializeUnusedTiles()
+	tileLetters := "AAAABBABACCABAC"
+	g := Game{tileLetters: tileLetters}
+	if err := g.initializeUnusedTiles(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 	tileIDs := make(map[tile.ID]struct{}, len(g.unusedTiles))
 	for _, tile := range g.unusedTiles {
 		if _, ok := tileIDs[tile.ID]; ok {
@@ -95,13 +104,23 @@ func TestInitializeUnusedTilesUniqueIds(t *testing.T) {
 func TestInitializeUnusedTilesCustom(t *testing.T) {
 	tileLetters := "SELENE"
 	g := Game{tileLetters: tileLetters}
-	g.initializeUnusedTiles()
+	if err := g.initializeUnusedTiles(); err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 	for i, tile := range g.unusedTiles {
 		want := rune(tileLetters[i])
 		got := rune(tile.Ch)
 		if want != got {
 			t.Errorf("wanted %v tiles, but got %v", want, got)
 		}
+	}
+}
+
+func TestInitializeUnusedTilesInvalid(t *testing.T) {
+	tileLetters := ":("
+	g := Game{tileLetters: tileLetters}
+	if err := g.initializeUnusedTiles(); err == nil {
+		t.Errorf("expected error while initializing tiles with text: '%v'", tileLetters)
 	}
 }
 
