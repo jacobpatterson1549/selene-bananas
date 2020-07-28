@@ -521,12 +521,11 @@ func (g *Game) handleGameChat(ctx context.Context, m game.Message, out chan<- ga
 func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName game.PlayerName) error {
 	userPoints := make(map[string]int, len(g.players))
 	for pn, p := range g.players {
-		switch {
-		case pn == winningPlayerName:
-			userPoints[string(pn)] = p.winPoints
-		default:
-			userPoints[string(pn)] = 1
+		points := 1
+		if pn == winningPlayerName {
+			points = p.winPoints
 		}
+		userPoints[string(pn)] = points
 	}
 	return g.userDao.UpdatePointsIncrement(ctx, userPoints)
 }
