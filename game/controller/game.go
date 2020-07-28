@@ -170,7 +170,7 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 		game.BoardSize:    g.handleBoardRefresh,
 	}
 	defer removeGameFunc()
-	for { // BLOCKS
+	for { // BLOCKING
 		select {
 		case <-ctx.Done():
 			return

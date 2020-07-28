@@ -115,7 +115,7 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 		s.conn.Close()
 	}()
 	s.conn.SetPongHandler(s.refreshReadDeadline)
-	for { // BLOCKS
+	for { // BLOCKING
 		m, err := s.readMessage()
 		select {
 		case <-ctx.Done():
@@ -151,7 +151,7 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 		CloseConn(s.conn, closeReason)
 	}()
 	var err error
-	for { // BLOCKS
+	for { // BLOCKING
 		select {
 		case <-ctx.Done():
 			closeReason = "server shutting down"

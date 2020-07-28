@@ -43,7 +43,7 @@ func runServer(ctx context.Context, server server.Server, log *log.Logger) {
 	done := make(chan os.Signal, 2)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 	errC := server.Run(ctx)
-	select {
+	select { // BLOCKING
 	case err := <-errC:
 		switch {
 		case err == http.ErrServerClosed:

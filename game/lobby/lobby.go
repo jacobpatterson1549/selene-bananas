@@ -131,7 +131,7 @@ func (l *Lobby) RemoveUser(username string) {
 
 // Run runs the lobby until the context is closed.
 func (l *Lobby) Run(ctx context.Context) {
-	for { // BLOCKS
+	for { // BLOCKING
 		select {
 		case <-ctx.Done():
 			return
