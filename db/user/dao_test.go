@@ -7,12 +7,34 @@ import (
 	"testing"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
-	"github.com/jacobpatterson1549/selene-bananas/db/dbtest"
 	"github.com/jacobpatterson1549/selene-bananas/db/sql"
 )
 
+type (
+	mockDatabase struct {
+		queryFunc func(ctx context.Context, q db.Query) db.Scanner
+		execFunc  func(ctx context.Context, queries ...db.Query) error
+	}
+
+	mockScanner struct {
+		scanFunc func(dest ...interface{}) error
+	}
+)
+
+func (d mockDatabase) Query(ctx context.Context, q db.Query) db.Scanner {
+	return d.queryFunc(ctx, q)
+}
+
+func (d mockDatabase) Exec(ctx context.Context, queries ...db.Query) error {
+	return d.execFunc(ctx, queries...)
+}
+
+func (s mockScanner) Scan(dest ...interface{}) error {
+	return s.scanFunc(dest...)
+}
+
 func TestNewDao(t *testing.T) {
-	var mockDB dbtest.MockDatabase
+	var mockDB mockDatabase
 	var sqlDB sql.Database
 	mockReadFileFunc := func(filename string) ([]byte, error) {
 		return nil, nil
@@ -77,8 +99,8 @@ func TestDaoSetup(t *testing.T) {
 	}
 	for i, test := range setupTests {
 		d := Dao{
-			db: dbtest.MockDatabase{
-				ExecFunc: func(ctx context.Context, queries ...db.Query) error {
+			db: mockDatabase{
+				execFunc: func(ctx context.Context, queries ...db.Query) error {
 					return test.execFuncErr
 				},
 			},
@@ -125,8 +147,8 @@ func TestDaoCreate(t *testing.T) {
 			},
 		}
 		d := Dao{
-			db: dbtest.MockDatabase{
-				ExecFunc: func(ctx context.Context, queries ...db.Query) error {
+			db: mockDatabase{
+				execFunc: func(ctx context.Context, queries ...db.Query) error {
 					return test.dbExecErr
 				},
 			},
@@ -174,17 +196,17 @@ func TestDaoRead(t *testing.T) {
 				},
 			},
 		}
-		s := dbtest.MockScanner{
-			ScanFunc: func(dest ...interface{}) error {
+		s := mockScanner{
+			scanFunc: func(dest ...interface{}) error {
 				return test.rowScanErr
 			},
 		}
 		d := Dao{
-			db: dbtest.MockDatabase{
-				QueryFunc: func(ctx context.Context, q db.Query) db.Scanner {
+			db: mockDatabase{
+				queryFunc: func(ctx context.Context, q db.Query) db.Scanner {
 					return s
 				},
-				ExecFunc: func(ctx context.Context, queries ...db.Query) error {
+				execFunc: func(ctx context.Context, queries ...db.Query) error {
 					return test.dbExecErr
 				},
 			},
@@ -255,8 +277,8 @@ func TestDaoUpdatePassword(t *testing.T) {
 				},
 			},
 		}
-		s := dbtest.MockScanner{
-			ScanFunc: func(dest ...interface{}) error {
+		s := mockScanner{
+			scanFunc: func(dest ...interface{}) error {
 				if len(dest) == 3 {
 					if d, ok := dest[1].(*string); ok {
 						*d = test.dbP
@@ -266,11 +288,11 @@ func TestDaoUpdatePassword(t *testing.T) {
 			},
 		}
 		d := Dao{
-			db: dbtest.MockDatabase{
-				QueryFunc: func(ctx context.Context, q db.Query) db.Scanner {
+			db: mockDatabase{
+				queryFunc: func(ctx context.Context, q db.Query) db.Scanner {
 					return s
 				},
-				ExecFunc: func(ctx context.Context, queries ...db.Query) error {
+				execFunc: func(ctx context.Context, queries ...db.Query) error {
 					return test.dbExecErr
 				},
 			},
@@ -334,8 +356,8 @@ func TestDaoUpdatePointsIncrement(t *testing.T) {
 	}
 	for i, test := range updatePointsIncrementTests {
 		d := Dao{
-			db: dbtest.MockDatabase{
-				ExecFunc: func(ctx context.Context, queries ...db.Query) error {
+			db: mockDatabase{
+				execFunc: func(ctx context.Context, queries ...db.Query) error {
 					if test.dbExecErr != nil {
 						return test.dbExecErr
 					}
@@ -380,17 +402,17 @@ func TestDaoDelete(t *testing.T) {
 				},
 			},
 		}
-		s := dbtest.MockScanner{
-			ScanFunc: func(dest ...interface{}) error {
+		s := mockScanner{
+			scanFunc: func(dest ...interface{}) error {
 				return test.readErr
 			},
 		}
 		d := Dao{
-			db: dbtest.MockDatabase{
-				QueryFunc: func(ctx context.Context, q db.Query) db.Scanner {
+			db: mockDatabase{
+				queryFunc: func(ctx context.Context, q db.Query) db.Scanner {
 					return s
 				},
-				ExecFunc: func(ctx context.Context, queries ...db.Query) error {
+				execFunc: func(ctx context.Context, queries ...db.Query) error {
 					return test.dbExecErr
 				},
 			},
