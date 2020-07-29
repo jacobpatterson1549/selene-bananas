@@ -1,10 +1,28 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
+)
+
+type (
+	// UserDao contains CRUD operations for user-related information.
+	UserDao interface {
+		Create(ctx context.Context, u user.User) error
+		Read(ctx context.Context, u user.User) (*user.User, error)
+		UpdatePassword(ctx context.Context, u user.User, newP string) error
+		Delete(ctx context.Context, u user.User) error
+	}
+
+	// Lobby is the place users can create, join, and participate in games.
+	Lobby interface {
+		Run(ctx context.Context)
+		AddUser(username string, w http.ResponseWriter, r *http.Request) error
+		RemoveUser(username string)
+	}
 )
 
 // handleUserCreate creates a user, adding it to the database.
@@ -51,8 +69,15 @@ func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleUserJoinLobby adds the user to the lobby.
-func (s Server) handleUserJoinLobby(w http.ResponseWriter, r *http.Request, username string) {
+// handleUserLobby adds the user to the lobby.
+func (s Server) handleUserLobby(w http.ResponseWriter, r *http.Request) {
+	tokenString := r.FormValue("access_token")
+	username, err := s.tokenizer.ReadUsername(tokenString)
+	if err != nil {
+		s.log.Printf("reading username from token: %v", err)
+		s.httpError(w, http.StatusUnauthorized)
+		return
+	}
 	if err := s.lobby.AddUser(username, w, r); err != nil {
 		err = fmt.Errorf("websocket error: %w", err)
 		s.handleError(w, err)

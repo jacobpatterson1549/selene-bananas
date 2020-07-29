@@ -15,8 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jacobpatterson1549/selene-bananas/db/user"
-	"github.com/jacobpatterson1549/selene-bananas/game/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/server/auth"
 	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
 )
@@ -27,8 +25,8 @@ type (
 		data          interface{}
 		log           *log.Logger
 		tokenizer     auth.Tokenizer
-		userDao       *user.Dao
-		lobby         *lobby.Lobby
+		userDao       UserDao
+		lobby         Lobby
 		httpsServer   *http.Server
 		httpServer    *http.Server
 		stopDur       time.Duration
@@ -51,9 +49,9 @@ type (
 		// Tokenizer is used to generate and parse session tokens
 		Tokenizer auth.Tokenizer
 		// UserDao is used to track different users
-		UserDao *user.Dao
-		// LobbyCfg is used to create a game lobby
-		LobbyCfg lobby.Config
+		UserDao UserDao
+		// Lobby is used to let lusers play Games.
+		Lobby Lobby
 		// StopDur is the maximum duration the server should take to shutdown gracefully
 		StopDur time.Duration
 		// CachenSec is the number of seconds some files are cached
@@ -141,16 +139,12 @@ func (cfg Config) NewServer() (*Server, error) {
 		Addr:    httpAddr,
 		Handler: httpServeMux,
 	}
-	lobby, err := cfg.LobbyCfg.NewLobby()
-	if err != nil {
-		return nil, err
-	}
 	s := Server{
 		data:          data,
 		log:           cfg.Log,
 		tokenizer:     cfg.Tokenizer,
 		userDao:       cfg.UserDao,
-		lobby:         lobby,
+		lobby:         cfg.Lobby,
 		httpsServer:   httpsServer,
 		httpServer:    httpServer,
 		stopDur:       cfg.StopDur,
@@ -298,7 +292,7 @@ func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	case "/robots.txt", "/favicon.ico", "/favicon-192.png", "/favicon-512.png":
 		s.handleFile(s.serveFile("resources"+r.URL.Path), false)(w, r)
 	case "/lobby":
-		s.handleLobby(w, r)
+		s.handleUserLobby(w, r)
 	case "/ping":
 		s.handleHTTPPing(w, r)
 	case "/monitor":
@@ -409,18 +403,6 @@ func (s Server) handleFile(fn http.HandlerFunc, checkVersion bool) http.HandlerF
 		}
 		fn(w, r)
 	}
-}
-
-// handleLobby adds the user to the lobby.
-func (s Server) handleLobby(w http.ResponseWriter, r *http.Request) {
-	tokenString := r.FormValue("access_token")
-	tokenUsername, err := s.tokenizer.ReadUsername(tokenString)
-	if err != nil {
-		s.log.Printf("reading username from token: %v", err)
-		s.httpError(w, http.StatusUnauthorized)
-		return
-	}
-	s.handleUserJoinLobby(w, r, tokenUsername)
 }
 
 // handleHTTPPing ensures the ping is for a valid user.

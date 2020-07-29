@@ -57,6 +57,10 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby config: %w", err)
 	}
+	lobby, err := lobbyCfg.NewLobby()
+	if err != nil {
+		return nil, fmt.Errorf("creating lobby: %w", err)
+	}
 	v, err := version(m)
 	if err != nil {
 		return nil, fmt.Errorf("creating build version: %w", err)
@@ -72,7 +76,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		Log:           log,
 		Tokenizer:     tokenizer,
 		UserDao:       ud,
-		LobbyCfg:      *lobbyCfg,
+		Lobby:         lobby,
 		StopDur:       time.Second,
 		CacheSec:      m.cacheSec,
 		Version:       v,
