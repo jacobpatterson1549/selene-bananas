@@ -286,11 +286,11 @@ func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/", "/manifest.json", "/init.js":
-		s.handleFile(s.serveTemplate(r.URL.Path), false)(w, r)
+		s.handleFile(w, r, s.serveTemplate(r.URL.Path), false)
 	case "/wasm_exec.js", "/main.wasm":
-		s.handleFile(s.serveFile("."+r.URL.Path), true)(w, r)
+		s.handleFile(w, r, s.serveFile("."+r.URL.Path), true)
 	case "/robots.txt", "/favicon.ico", "/favicon-192.png", "/favicon-512.png":
-		s.handleFile(s.serveFile("resources"+r.URL.Path), false)(w, r)
+		s.handleFile(w, r, s.serveFile("resources"+r.URL.Path), false)
 	case "/lobby":
 		s.handleUserLobby(w, r)
 	case "/ping":
@@ -378,31 +378,29 @@ func (Server) serveFile(name string) http.HandlerFunc {
 }
 
 // handleFile wraps the handling of the file, add cache-control header and gzip compression, if possible.
-func (s Server) handleFile(fn http.HandlerFunc, checkVersion bool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if checkVersion && r.URL.Query().Get("v") != s.version {
-			url := r.URL
-			q := url.Query()
-			q.Set("v", s.version)
-			url.RawQuery = q.Encode()
-			w.Header().Set("Location", url.String())
-			w.WriteHeader(http.StatusMovedPermanently)
-			return
-		}
-		if s.cacheSec > 0 && !strings.Contains(r.Header.Get("Cache-Control"), "no-store") {
-			w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
-		}
-		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			w2 := gzip.NewWriter(w)
-			defer w2.Close()
-			w = wrappedResponseWriter{
-				Writer:         w2,
-				ResponseWriter: w,
-			}
-			w.Header().Set("Content-Encoding", "gzip")
-		}
-		fn(w, r)
+func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.HandlerFunc, checkVersion bool) {
+	if checkVersion && r.URL.Query().Get("v") != s.version {
+		url := r.URL
+		q := url.Query()
+		q.Set("v", s.version)
+		url.RawQuery = q.Encode()
+		w.Header().Set("Location", url.String())
+		w.WriteHeader(http.StatusMovedPermanently)
+		return
 	}
+	if s.cacheSec > 0 && !strings.Contains(r.Header.Get("Cache-Control"), "no-store") {
+		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
+	}
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		w2 := gzip.NewWriter(w)
+		defer w2.Close()
+		w = wrappedResponseWriter{
+			Writer:         w2,
+			ResponseWriter: w,
+		}
+		w.Header().Set("Content-Encoding", "gzip")
+	}
+	fn(w, r)
 }
 
 // handleHTTPPing ensures the ping is for a valid user.
