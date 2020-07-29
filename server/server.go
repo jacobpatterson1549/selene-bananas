@@ -406,7 +406,7 @@ func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.Handl
 // handleHTTPPing ensures the ping is for a valid user.
 func (s Server) handleHTTPPing(w http.ResponseWriter, r *http.Request) {
 	if err := s.checkTokenUsername(r); err != nil {
-		s.handleError(w, err)
+		s.httpError(w, http.StatusUnauthorized)
 	}
 }
 

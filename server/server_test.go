@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -240,5 +241,47 @@ func TestHandleError(t *testing.T) {
 		t.Errorf("wanted message in body (%v), but got %v", err.Error(), w.Body.String())
 	case !strings.Contains(buf.String(), err.Error()):
 		t.Errorf("wanted message in log (%v), but got %v", err.Error(), buf.String())
+	}
+}
+
+func TestHandleHTTPPing(t *testing.T) {
+	handleHTTPPingTests := []struct {
+		authorizationHeader string
+		wantCode            int
+	}{
+		{
+			wantCode: 401,
+		},
+		{
+			authorizationHeader: "Bearer token_string",
+			wantCode:            200,
+		},
+	}
+	for i, test := range handleHTTPPingTests {
+		s := Server{
+			log: log.New(ioutil.Discard, "test", log.LstdFlags),
+			tokenizer: mockTokenizer{
+				ReadUsernameFunc: func(tokenString string) (string, error) {
+					return "selene", nil
+				},
+			},
+		}
+		r := http.Request{
+			Header: http.Header{
+				"Authorization": {test.authorizationHeader},
+			},
+			Form: url.Values{
+				"username": {"selene"},
+			},
+		}
+		w := httptest.NewRecorder()
+		s.handleHTTPPing(w, &r)
+		gotCode := w.Code
+		switch {
+		case test.wantCode != gotCode:
+			t.Errorf("Test %v: wanted response code to be %v, got %v", i, test.wantCode, gotCode)
+		case test.wantCode != 200 && w.Body.Len() <= 1:
+			t.Errorf("Test %v: wanted response body message about error", i)
+		}
 	}
 }
