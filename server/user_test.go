@@ -197,12 +197,12 @@ func TestHandleUserLogin(t *testing.T) {
 		}
 		w := httptest.NewRecorder()
 		s.handleUserLogin(w, &r)
+		gotCode := w.Code
+		if test.wantCode != gotCode {
+			t.Errorf("Test %v: wanted response code to be %v, but was %v", i, test.wantCode, gotCode)
+		}
 		switch {
 		case test.wantCode == 200:
-			gotCode := w.Code
-			if test.wantCode != gotCode {
-				t.Errorf("Test %v: wanted response code to be %v, but was %v", i, test.wantCode, gotCode)
-			}
 			gotBody := w.Body.String()
 			if wantToken != gotBody {
 				t.Errorf("Test %v: wanted response body to be %v, but was %v", i, wantToken, gotBody)
@@ -215,13 +215,10 @@ func TestHandleUserLogin(t *testing.T) {
 			if !strings.Contains(got, want) {
 				t.Errorf("Test %v: wanted response body to be %v, but was %v", i, want, got)
 			}
-		}
-		gotCode := w.Code
-		if test.wantCode != gotCode {
-			t.Errorf("Test %v: wanted response code to be %v, but was %v", i, test.wantCode, gotCode)
-		}
-		if w.Body.Len() == 0 {
-			t.Errorf("Test %v: response body should not be empty when an error occurred", i)
+		default:
+			if w.Body.Len() == 0 {
+				t.Errorf("Test %v: response body should not be empty when an error occurred", i)
+			}
 		}
 	}
 }
