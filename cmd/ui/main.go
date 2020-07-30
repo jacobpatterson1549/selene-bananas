@@ -14,6 +14,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/ui/canvas"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game"
+	"github.com/jacobpatterson1549/selene-bananas/ui/http/native"
 	"github.com/jacobpatterson1549/selene-bananas/ui/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 	"github.com/jacobpatterson1549/selene-bananas/ui/socket"
@@ -61,7 +62,10 @@ func initUser(ctx context.Context, wg *sync.WaitGroup, log *log.Log) *user.User 
 	httpClient := http.Client{
 		Timeout: 10 * time.Second,
 	}
-	user := cfg.New(&httpClient)
+	goHTTPClient := native.HTTPClient{
+		Client: httpClient,
+	}
+	user := cfg.New(goHTTPClient)
 	user.InitDom(ctx, wg)
 	return user
 }

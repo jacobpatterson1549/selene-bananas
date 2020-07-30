@@ -6,11 +6,12 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
-	"net/http"
+	"strconv"
 	"strings"
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 )
 
 type (
@@ -45,7 +46,7 @@ func (u *User) request(event js.Value) {
 	case err != nil:
 		u.log.Error("making http request: " + err.Error())
 		return
-	case resp.StatusCode >= 400:
+	case resp.Code >= 400:
 		u.handleResponseError(resp)
 		return
 	case r.handler != nil:
@@ -55,30 +56,27 @@ func (u *User) request(event js.Value) {
 
 // do actually makes the request.
 func (r request) do() (*http.Response, error) {
-	var httpRequest *http.Request
-	var err error
 	f := r.form
+	req := http.Request{
+		Method:  f.Method,
+		Headers: make(map[string]string),
+	}
 	switch f.Method {
 	case "get":
 		f.URL.RawQuery = f.Params.Encode()
-		url := f.URL.String()
-		httpRequest, err = http.NewRequest(f.Method, url, nil)
+		req.URL = f.URL.String()
 	case "post":
-		url := f.URL.String()
-		body := strings.NewReader(f.Params.Encode())
-		httpRequest, err = http.NewRequest(f.Method, url, body)
-		httpRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.URL = f.URL.String()
+		req.Body = strings.NewReader(f.Params.Encode())
+		req.Headers["Content-Type"] = "application/x-www-form-urlencoded"
 	default:
 		return nil, errors.New("unknown method: " + f.Method)
 	}
-	if err != nil {
-		return nil, errors.New("creating request: " + err.Error())
-	}
 	if dom.Checked(".has-login") {
 		jwt := r.user.JWT()
-		httpRequest.Header.Set("Authorization", "Bearer "+jwt)
+		req.Headers["Authorization"] = "Bearer " + jwt
 	}
-	return r.user.httpClient.Do(httpRequest)
+	return r.user.httpClient.Do(req)
 }
 
 // responseHandler creates a response-handling function for the url and form.  Nil is returned if the url is unknown.Path
@@ -127,13 +125,13 @@ func (u *User) newRequest(f dom.Form) (*request, error) {
 
 func (u *User) handleResponseError(resp *http.Response) {
 	u.Logout()
-	u.log.Error(resp.Status)
-	defer resp.Body.Close()
-	message, err := ioutil.ReadAll(resp.Body)
+	body := resp.Body
+	defer body.Close()
+	message, err := ioutil.ReadAll(body)
 	switch {
 	case err != nil:
 		u.log.Error("reading error response body: " + err.Error())
 	case len(message) > 0:
-		u.log.Error(string(message))
+		u.log.Error("HTTP error: status " + strconv.Itoa(resp.Code) + ": " + string(message))
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
 
@@ -25,7 +25,7 @@ type (
 	// User is a http/login helper.
 	User struct {
 		log        *log.Log
-		httpClient *http.Client
+		httpClient http.Client
 		escapeRE   regexp.Regexp
 		Socket     Socket
 	}
@@ -48,7 +48,7 @@ type (
 )
 
 // New creates a http/login helper struct.
-func (cfg Config) New(httpClient *http.Client) *User {
+func (cfg Config) New(httpClient http.Client) *User {
 	escapeRE := regexp.MustCompile("([" + regexp.QuoteMeta(`\^$*+?.()|[]{}`) + "])")
 	u := User{
 		log:        cfg.Log,
