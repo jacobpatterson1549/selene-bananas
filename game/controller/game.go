@@ -256,20 +256,22 @@ func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- ga
 	}
 	p := &player{
 		winPoints: 10,
-		Board:     *b,
+		board:     b,
 	}
 	g.players[m.PlayerName] = p
-	gamePlayers := g.playerNames()
-	out <- game.Message{
-		Type:        game.Join,
-		PlayerName:  m.PlayerName,
-		Info:        "joining game",
-		Tiles:       newTiles,
-		TilesLeft:   len(g.unusedTiles),
-		GamePlayers: gamePlayers,
-		GameStatus:  g.status,
-		GameID:      g.id,
+	m2, err := b.Resize(cfg)
+	if err != nil {
+		return fmt.Errorf("creating board message %w", err)
 	}
+	gamePlayers := g.playerNames()
+	m2.Type = game.Join
+	m2.PlayerName = m.PlayerName
+	m2.Info = "joining game"
+	m2.TilesLeft = len(g.unusedTiles)
+	m2.GamePlayers = gamePlayers
+	m2.GameStatus = g.status
+	m2.GameID = g.id
+	out <- *m2
 	for n := range g.players {
 		if n != m.PlayerName {
 			out <- game.Message{
@@ -343,14 +345,14 @@ func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- 
 		return gameWarning("can only attempt to set game that is in progress to finished")
 	case len(g.unusedTiles) != 0:
 		return gameWarning("snag first")
-	case len(p.UnusedTiles) != 0:
+	case len(p.board.UnusedTiles) != 0:
 		p.decrementWinPoints()
 		return gameWarning("not all tiles used, possible win points decremented")
-	case !p.HasSingleUsedGroup():
+	case !p.board.HasSingleUsedGroup():
 		p.decrementWinPoints()
 		return gameWarning("not all used tiles form a single group, possible win points decremented")
 	}
-	usedWords := p.UsedTileWords()
+	usedWords := p.board.UsedTileWords()
 	var invalidWords []string
 	for _, w := range usedWords {
 		if !g.wordChecker.Check(w) {
@@ -410,7 +412,7 @@ func (g *Game) handleGameSnag(ctx context.Context, m game.Message, out chan<- ga
 		case n2 == m.PlayerName:
 			m2.Tiles = g.unusedTiles[:1]
 			m2.Info = "snagged a tile"
-			if err := g.players[n2].AddTile(g.unusedTiles[0]); err != nil {
+			if err := g.players[n2].board.AddTile(g.unusedTiles[0]); err != nil {
 				return err
 			}
 			g.unusedTiles = g.unusedTiles[1:]
@@ -419,7 +421,7 @@ func (g *Game) handleGameSnag(ctx context.Context, m game.Message, out chan<- ga
 		default:
 			m2.Info = fmt.Sprintf("%v snagged a tile, adding a tile to your pile", m.PlayerName)
 			m2.Tiles = g.unusedTiles[:1]
-			if err := g.players[n2].AddTile(g.unusedTiles[0]); err != nil {
+			if err := g.players[n2].board.AddTile(g.unusedTiles[0]); err != nil {
 				return err
 			}
 			g.unusedTiles = g.unusedTiles[1:]
@@ -445,7 +447,7 @@ func (g *Game) handleGameSwap(ctx context.Context, m game.Message, out chan<- ga
 	}
 	t := m.Tiles[0]
 	p := g.players[m.PlayerName]
-	err := p.RemoveTile(t)
+	err := p.board.RemoveTile(t)
 	if err != nil {
 		return err
 	}
@@ -454,7 +456,7 @@ func (g *Game) handleGameSwap(ctx context.Context, m game.Message, out chan<- ga
 	var newTiles []tile.Tile
 	for i := 0; i < 3 && len(g.unusedTiles) > 0; i++ {
 		newTiles = append(newTiles, g.unusedTiles[0])
-		err := p.AddTile(g.unusedTiles[0])
+		err := p.board.AddTile(g.unusedTiles[0])
 		if err != nil {
 			return err
 		}
@@ -485,7 +487,7 @@ func (g *Game) handleGameTilesMoved(ctx context.Context, m game.Message, out cha
 		return gameWarningNotInProgress
 	}
 	p := g.players[m.PlayerName]
-	return p.MoveTiles(m.TilePositions)
+	return p.board.MoveTiles(m.TilePositions)
 }
 
 // handleBoardRefresh sends the player's board back to the player.
@@ -495,10 +497,16 @@ func (g *Game) handleBoardRefresh(ctx context.Context, m game.Message, out chan<
 		NumRows: m.NumRows,
 	}
 	p := g.players[m.PlayerName]
-	m2, err := p.refreshBoard(cfg, *g, m.PlayerName)
+	m2, err := p.board.Resize(cfg)
 	if err != nil {
 		return err
 	}
+	m2.Type = game.Join
+	m2.PlayerName = m.PlayerName
+	m2.TilesLeft = len(g.unusedTiles)
+	m2.GameStatus = g.status
+	m2.GamePlayers = g.playerNames()
+	m2.GameID = g.id
 	out <- *m2
 	return nil
 }

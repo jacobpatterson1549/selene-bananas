@@ -3,9 +3,11 @@ package board
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"sort"
 
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 
@@ -44,11 +46,13 @@ func (cfg Config) New(unusedTiles []tile.Tile) (*Board, error) {
 		unusedTilesByID[t.ID] = t
 		unusedTileIDs[i] = t.ID
 	}
+	usedTiles := make(map[tile.ID]tile.Position)
+	usedTileLocs := make(map[tile.X]map[tile.Y]tile.Tile)
 	b := Board{
 		UnusedTiles:   unusedTilesByID,
 		UnusedTileIDs: unusedTileIDs,
-		UsedTiles:     make(map[tile.ID]tile.Position),
-		UsedTileLocs:  make(map[tile.X]map[tile.Y]tile.Tile),
+		UsedTiles:     usedTiles,
+		UsedTileLocs:  usedTileLocs,
 		NumCols:       cfg.NumCols,
 		NumRows:       cfg.NumRows,
 	}
@@ -341,4 +345,46 @@ func (b Board) hasTile(t tile.Tile) bool {
 		return true
 	}
 	return false
+}
+
+// Resize rezises the board to use the new config.  The board information is returned in the message.
+func (b *Board) Resize(cfg Config) (*game.Message, error) {
+	usedTilePositions := make([]tile.Position, 0, len(b.UsedTiles))
+	var movedTiles []tile.Tile
+	for _, tp := range b.UsedTiles {
+		switch {
+		case cfg.NumCols <= int(tp.X), cfg.NumRows <= int(tp.Y):
+			if err := b.RemoveTile(tp.Tile); err != nil {
+				return nil, fmt.Errorf("removing used tile to move to unused area for smaller board: %v", err)
+			}
+			if err := b.AddTile(tp.Tile); err != nil {
+				return nil, fmt.Errorf("adding used tile to unused area on smaller board: %v", err)
+			}
+			movedTiles = append(movedTiles, tp.Tile)
+		default:
+			usedTilePositions = append(usedTilePositions, tp)
+		}
+	}
+	sort.Slice(usedTilePositions, func(i, j int) bool {
+		a, b := usedTilePositions[i], usedTilePositions[j]
+		// top-bottom, left-right
+		switch {
+		case a.Y == b.Y:
+			return a.X < b.X
+		default:
+			return a.Y > b.Y
+		}
+	})
+	unusedTiles := make([]tile.Tile, len(b.UnusedTiles))
+	for i, id := range b.UnusedTileIDs {
+		unusedTiles[i] = b.UnusedTiles[id]
+	}
+	m := game.Message{
+		Tiles:         unusedTiles,
+		TilePositions: usedTilePositions,
+	}
+	if len(movedTiles) > 0 {
+		m.Info = fmt.Sprintf("moving %v tile(s) to the unused area of the narrower/shorter board", len(movedTiles))
+	}
+	return &m, nil
 }

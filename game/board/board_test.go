@@ -464,3 +464,77 @@ func TestRemoveTile(t *testing.T) {
 		}
 	}
 }
+
+func TestResize(t *testing.T) {
+	resizeTests := []struct {
+		deltaNumCols    int
+		wantTile2Unused bool
+	}{
+		{}, // do not change board, add board to message
+		{
+			deltaNumCols:    -10,
+			wantTile2Unused: true,
+		},
+		{
+			deltaNumCols: 10,
+		},
+	}
+	for i, test := range resizeTests {
+		cfg := Config{
+			NumCols: 20,
+			NumRows: 10,
+		}
+		t1, err := tile.New(1, 'A')
+		if err != nil {
+			t.Errorf("Test %v: unexpected error: %v", i, err)
+		}
+		t2, err := tile.New(2, 'B')
+		if err != nil {
+			t.Errorf("Test %v: unexpected error: %v", i, err)
+		}
+		unusedTiles := []tile.Tile{
+			*t1,
+			*t2,
+		}
+		b, err := cfg.New(unusedTiles)
+		if err != nil {
+			t.Errorf("Test %v: unexpected error: %v", i, err)
+		}
+		tilePositions := []tile.Position{
+			{
+				Tile: *t1,
+				X:    5,
+				Y:    5,
+			},
+			{
+				Tile: *t2,
+				X:    15,
+				Y:    5,
+			},
+		}
+		if err := b.MoveTiles(tilePositions); err != nil {
+			t.Errorf("Test %v: unexpected error: %v", i, err)
+		}
+		cfg.NumCols += test.deltaNumCols
+		m, err := b.Resize(cfg)
+		switch {
+		case err != nil:
+			t.Errorf("Test %v: unexpected error: %v", i, err)
+		case test.wantTile2Unused:
+			switch {
+			case len(b.UnusedTileIDs) != 1, b.UnusedTileIDs[0] != t2.ID,
+				len(m.Tiles) != 1, m.Tiles[0].ID != t2.ID:
+				t.Errorf("Test %v: wanted tile 2 to be moved back to the unused area now that the board is more narrow", i)
+			case len(m.Info) == 0:
+				t.Errorf("Test %v: wanted info about board resize", i)
+			}
+		default:
+			switch {
+			case len(b.UnusedTileIDs) != 0, len(m.Tiles) != 0:
+				t.Errorf("Test %v: wanted no unused tiles", i)
+			case len(m.Info) != 0:
+				t.Errorf("Test %v: wanted no info about board resize", i)
+			}
+		}
+	}
+}
