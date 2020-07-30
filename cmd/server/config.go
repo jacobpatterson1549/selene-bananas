@@ -16,8 +16,8 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/db/sql"
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 	"github.com/jacobpatterson1549/selene-bananas/game"
-	"github.com/jacobpatterson1549/selene-bananas/game/controller"
 	"github.com/jacobpatterson1549/selene-bananas/game/lobby"
+	playerModel "github.com/jacobpatterson1549/selene-bananas/game/models/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/socket"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
@@ -157,7 +157,7 @@ func lobbyConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int
 }
 
 // gameConfig creates the base configuration for all games.
-func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*controller.Config, error) {
+func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*game.Config, error) {
 	wordsFile, err := os.Open(m.wordsFile)
 	if err != nil {
 		return nil, fmt.Errorf("trying to open words file: %w", err)
@@ -171,18 +171,18 @@ func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int6
 			tiles[i], tiles[j] = tiles[j], tiles[i]
 		})
 	}
-	shufflePlayersFunc := func(sockets []game.PlayerName) {
+	shufflePlayersFunc := func(sockets []playerModel.Name) {
 		rand.Shuffle(len(sockets), func(i, j int) {
 			sockets[i], sockets[j] = sockets[j], sockets[i]
 		})
 	}
-	cfg := controller.Config{
+	cfg := game.Config{
 		Debug:                  m.debugGame,
 		Log:                    log,
 		TimeFunc:               timeFunc,
 		UserDao:                ud,
 		MaxPlayers:             8,
-		PlayerCfg:           playerCfg,
+		PlayerCfg:              playerCfg,
 		NumNewTiles:            21,
 		TileLetters:            "",
 		WordChecker:            wordChecker,

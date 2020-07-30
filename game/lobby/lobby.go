@@ -8,8 +8,9 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
-	"github.com/jacobpatterson1549/selene-bananas/game"
-	"github.com/jacobpatterson1549/selene-bananas/game/controller"
+	gameController "github.com/jacobpatterson1549/selene-bananas/game"
+	"github.com/jacobpatterson1549/selene-bananas/game/models/game"
+	"github.com/jacobpatterson1549/selene-bananas/game/models/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/socket"
 )
 
@@ -22,8 +23,8 @@ type (
 		maxGames       int
 		maxSockets     int
 		socketCfg      socket.Config
-		gameCfg        controller.Config
-		sockets        map[game.PlayerName]messageHandler
+		gameCfg        gameController.Config
+		sockets        map[player.Name]messageHandler
 		games          map[game.ID]gameMessageHandler
 		addSockets     chan playerSocket
 		socketMessages chan game.Message
@@ -41,14 +42,14 @@ type (
 		// MaxSockets is the maximum number of sockets the lobby supports
 		MaxSockets int
 		// GameCfg is used to create new games
-		GameCfg controller.Config
+		GameCfg gameController.Config
 		// SocketCfg is used to create new sockets
 		SocketCfg socket.Config
 	}
 
 	// playerSocket ise used to add players from http requests.
 	playerSocket struct {
-		game.PlayerName
+		playerName player.Name
 		http.ResponseWriter
 		*http.Request
 		result chan<- error
@@ -81,7 +82,7 @@ func (cfg Config) NewLobby() (*Lobby, error) {
 		maxSockets:     cfg.MaxSockets,
 		gameCfg:        cfg.GameCfg,
 		socketCfg:      cfg.SocketCfg,
-		sockets:        make(map[game.PlayerName]messageHandler, cfg.MaxSockets),
+		sockets:        make(map[player.Name]messageHandler, cfg.MaxSockets),
 		games:          make(map[game.ID]gameMessageHandler, cfg.MaxGames),
 		addSockets:     make(chan playerSocket),
 		socketMessages: make(chan game.Message),
@@ -105,10 +106,10 @@ func (cfg Config) validate() error {
 
 // AddUser adds a user to the lobby, it opens a new websocket (player) for the username.
 func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request) error {
-	playerName := game.PlayerName(username)
+	playerName := player.Name(username)
 	result := make(chan error)
 	ps := playerSocket{
-		PlayerName:     playerName,
+		playerName:     playerName,
 		ResponseWriter: w,
 		Request:        r,
 		result:         result,
@@ -122,7 +123,7 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 
 // RemoveUser removes the user from the lobby and a game, if any.
 func (l *Lobby) RemoveUser(username string) {
-	playerName := game.PlayerName(username)
+	playerName := player.Name(username)
 	l.socketMessages <- game.Message{
 		Type:       game.PlayerDelete,
 		PlayerName: playerName,
@@ -256,14 +257,14 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 		err = fmt.Errorf("upgrading to websocket connection: %v", err)
 		return
 	}
-	s, err := l.socketCfg.NewSocket(conn, ps.PlayerName)
+	s, err := l.socketCfg.NewSocket(conn, ps.playerName)
 	if err != nil {
 		err = fmt.Errorf("creating socket: %v", err)
 		return
 	}
 	socketCtx, cancelFunc := context.WithCancel(ctx)
 	removeSocketFunc := func() {
-		l.removeSocket(ps.PlayerName)
+		l.removeSocket(ps.playerName)
 		cancelFunc()
 	}
 	writeMessages := make(chan game.Message)
@@ -272,11 +273,11 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 		writeMessages: writeMessages,
 		CancelFunc:    cancelFunc,
 	}
-	if _, ok := l.sockets[ps.PlayerName]; ok {
-		l.log.Printf("message handler for %v already exists, replacing", ps.PlayerName)
-		l.removeSocket(ps.PlayerName)
+	if _, ok := l.sockets[ps.playerName]; ok {
+		l.log.Printf("message handler for %v already exists, replacing", ps.playerName)
+		l.removeSocket(ps.playerName)
 	}
-	l.sockets[ps.PlayerName] = mh
+	l.sockets[ps.playerName] = mh
 	infos := l.gameInfos()
 	m := game.Message{
 		Type:      game.Infos,
@@ -286,7 +287,7 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 }
 
 // removeSocket removes a socket from the messageHandlers.
-func (l *Lobby) removeSocket(pn game.PlayerName) {
+func (l *Lobby) removeSocket(pn player.Name) {
 	mh, ok := l.sockets[pn]
 	if !ok {
 		l.log.Printf("no socket to remove for %v", pn)

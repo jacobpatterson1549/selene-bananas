@@ -1,9 +1,7 @@
 package game
 
-type (
-	// Status is the state of the game.
-	Status int
-)
+// Status is the state of the game.
+type Status int
 
 const (
 	_ Status = iota

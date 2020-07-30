@@ -1,8 +1,6 @@
 package game
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestCanJoinInfo(t *testing.T) {
 	canJoinTests := []struct {

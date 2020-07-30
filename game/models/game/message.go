@@ -1,6 +1,7 @@
 package game
 
 import (
+	"github.com/jacobpatterson1549/selene-bananas/game/models/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 
@@ -21,7 +22,7 @@ type (
 		GamePlayers   []string        `json:"gamePlayers,omitempty"`
 		NumCols       int             `json:"c,omitempty"`
 		NumRows       int             `json:"r,omitempty"`
-		PlayerName    PlayerName      `json:"-"`
+		PlayerName    player.Name     `json:"-"`
 	}
 )
 

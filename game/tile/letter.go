@@ -2,7 +2,7 @@ package tile
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 )
 
 // letter is the value of a tile.
@@ -11,7 +11,7 @@ type letter rune
 // newLetter creates a letter from the rune.
 func newLetter(r rune) (letter, error) {
 	if r < 'A' || 'Z' < r {
-		return 0, fmt.Errorf("letter must be uppercase and between A and Z: %v", r)
+		return 0, errors.New("letter must be uppercase and between A and Z: " + string(r))
 	}
 	return letter(r), nil
 }
@@ -34,7 +34,7 @@ func (l *letter) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	if len(s) != 1 {
-		return fmt.Errorf("invalid letter: %v", s)
+		return errors.New("invalid letter: " + string(s))
 	}
 	b0 := s[0]
 	r := rune(b0)

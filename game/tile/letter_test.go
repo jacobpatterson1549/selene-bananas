@@ -2,7 +2,6 @@ package tile
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 )
 
@@ -53,7 +52,7 @@ func TestNewLetter(t *testing.T) {
 func TestLetterString(t *testing.T) {
 	l := letter('X')
 	want := "X"
-	got := fmt.Sprintf("%v", l)
+	got := l.String()
 	if want != got {
 		t.Errorf("wanted %v, got %v", want, got)
 	}

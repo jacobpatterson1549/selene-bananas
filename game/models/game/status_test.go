@@ -1,8 +1,6 @@
 package game
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestStringStatus(t *testing.T) {
 	statuses := []Status{

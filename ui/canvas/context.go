@@ -2,9 +2,7 @@
 
 package canvas
 
-import (
-	"syscall/js"
-)
+import "syscall/js"
 
 type (
 	// jsContext implements the canvas context interface for javascript values.

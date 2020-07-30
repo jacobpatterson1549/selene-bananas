@@ -1,4 +1,4 @@
-package controller
+package game
 
 import (
 	"context"
@@ -7,9 +7,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
-	"github.com/jacobpatterson1549/selene-bananas/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/game/models/player"
+	playerController "github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 
@@ -145,16 +145,16 @@ func TestUpdateUserPoints(t *testing.T) {
 			return want
 		},
 	}
-	alicePlayer, err := player.Config{WinPoints: 4}.New(&board.Board{})
+	alicePlayer, err := playerController.Config{WinPoints: 4}.New(&board.Board{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	selenePlayer, err := player.Config{WinPoints: 5}.New(&board.Board{})
+	selenePlayer, err := playerController.Config{WinPoints: 5}.New(&board.Board{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 	g := Game{
-		players: map[game.PlayerName]*player.Player{
+		players: map[player.Name]*playerController.Player{
 			"alice":  alicePlayer,
 			"selene": selenePlayer,
 			"bob":    {},
@@ -169,7 +169,7 @@ func TestUpdateUserPoints(t *testing.T) {
 
 func TestPlayerNames(t *testing.T) {
 	g := Game{
-		players: map[game.PlayerName]*player.Player{
+		players: map[player.Name]*playerController.Player{
 			"b": {},
 			"c": {},
 			"a": {},

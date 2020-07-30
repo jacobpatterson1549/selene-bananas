@@ -1,4 +1,4 @@
-package controller
+package game
 
 // gameWarning is an error that represents a user error.
 type gameWarning string

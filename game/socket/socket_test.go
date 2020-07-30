@@ -7,14 +7,12 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/jacobpatterson1549/selene-bananas/game"
 )
 
 func TestNewSocket(t *testing.T) {
 	log := log.New(ioutil.Discard, "test", log.LstdFlags)
 	conn := new(websocket.Conn)
 	timeFunc := func() int64 { return 0 }
-	playerName := game.PlayerName("selene")
 	cfg := Config{
 		Log:            log,
 		TimeFunc:       timeFunc,
@@ -23,7 +21,7 @@ func TestNewSocket(t *testing.T) {
 		IdlePeriod:     3 * time.Minute,
 		HTTPPingPeriod: 14 * time.Minute,
 	}
-	s, err := cfg.NewSocket(conn, playerName)
+	s, err := cfg.NewSocket(conn, "selene")
 	switch {
 	case err != nil:
 		t.Errorf("unexpected error: %v", err)

@@ -1,8 +1,6 @@
-package controller
+package game
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestGameWarningError(t *testing.T) {
 	want := "x"

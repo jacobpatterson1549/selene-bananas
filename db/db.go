@@ -1,9 +1,7 @@
 // Package db interacts with storing user attributes so they can be retrieved after the server restarts
 package db
 
-import (
-	"context"
-)
+import "context"
 
 type (
 	// Database contains methods to create, read, update, and delete data.

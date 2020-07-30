@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/jacobpatterson1549/selene-bananas/game"
+	"github.com/jacobpatterson1549/selene-bananas/game/models/game"
+	"github.com/jacobpatterson1549/selene-bananas/game/models/player"
 )
 
 type (
@@ -18,7 +19,7 @@ type (
 		log            *log.Logger
 		conn           *websocket.Conn
 		timeFunc       func() int64
-		playerName     game.PlayerName
+		playerName     player.Name
 		gameID         game.ID // mutable
 		active         bool
 		readWait       time.Duration
@@ -52,7 +53,7 @@ type (
 var errSocketClosed = fmt.Errorf("socket closed")
 
 // NewSocket creates a socket
-func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) (*Socket, error) {
+func (cfg Config) NewSocket(conn *websocket.Conn, playerName player.Name) (*Socket, error) {
 	if err := cfg.validate(conn, playerName); err != nil {
 		return nil, fmt.Errorf("creating socket: validation: %w", err)
 	}
@@ -73,7 +74,7 @@ func (cfg Config) NewSocket(conn *websocket.Conn, playerName game.PlayerName) (*
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(conn *websocket.Conn, playerName game.PlayerName) error {
+func (cfg Config) validate(conn *websocket.Conn, playerName player.Name) error {
 	switch {
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")

@@ -12,8 +12,8 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/ui/canvas"
-	"github.com/jacobpatterson1549/selene-bananas/ui/controller"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui/game"
 	"github.com/jacobpatterson1549/selene-bananas/ui/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 	"github.com/jacobpatterson1549/selene-bananas/ui/socket"
@@ -80,8 +80,8 @@ func initCanvas(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *bo
 }
 
 // initLog initializes the game component.
-func initGame(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *board.Board, canvas *canvas.Canvas) *controller.Game {
-	cfg := controller.GameConfig{
+func initGame(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *board.Board, canvas *canvas.Canvas) *game.Game {
+	cfg := game.Config{
 		Log:    log,
 		Board:  board,
 		Canvas: canvas,
@@ -92,7 +92,7 @@ func initGame(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *boar
 }
 
 // initLog initializes the game lobby component.
-func initLobby(ctx context.Context, wg *sync.WaitGroup, log *log.Log, game *controller.Game) *lobby.Lobby {
+func initLobby(ctx context.Context, wg *sync.WaitGroup, log *log.Log, game *game.Game) *lobby.Lobby {
 	cfg := lobby.Config{
 		Log:  log,
 		Game: game,
@@ -103,7 +103,7 @@ func initLobby(ctx context.Context, wg *sync.WaitGroup, log *log.Log, game *cont
 }
 
 // initLog initializes the player socket component for connection to the lobby.
-func initSocket(ctx context.Context, wg *sync.WaitGroup, log *log.Log, user *user.User, game *controller.Game, lobby *lobby.Lobby) *socket.Socket {
+func initSocket(ctx context.Context, wg *sync.WaitGroup, log *log.Log, user *user.User, game *game.Game, lobby *lobby.Lobby) *socket.Socket {
 	cfg := socket.Config{
 		Log:   log,
 		User:  user,

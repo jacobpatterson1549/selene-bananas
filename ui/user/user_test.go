@@ -2,9 +2,7 @@
 
 package user
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestGetUser(t *testing.T) {
 	getUserTests := []struct {

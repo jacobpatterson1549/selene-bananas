@@ -1,8 +1,6 @@
 package tile
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestNew(t *testing.T) {
 	newTests := []struct {

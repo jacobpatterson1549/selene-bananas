@@ -1,7 +1,7 @@
 // +build js,wasm
 
-// Package controller has the ui game logic.
-package controller
+// Package game has the ui game logic.
+package game
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 	"sync"
 	"syscall/js"
 
-	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
+	"github.com/jacobpatterson1549/selene-bananas/game/models/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/ui/canvas"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
@@ -27,8 +27,8 @@ type (
 		Socket Socket
 	}
 
-	// GameConfig contains the parameters to create a Game.
-	GameConfig struct {
+	// Config contains the parameters to create a Game.
+	Config struct {
 		Log    *log.Log
 		Board  *board.Board
 		Canvas *canvas.Canvas
@@ -41,7 +41,7 @@ type (
 )
 
 // NewGame creates a new game controller with references to the board and canvas.
-func (cfg GameConfig) NewGame() *Game {
+func (cfg Config) NewGame() *Game {
 	g := Game{
 		log:    cfg.Log,
 		board:  cfg.Board,

@@ -1,8 +1,6 @@
 package player
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestDecrementWinPoints(t *testing.T) {
 	decrementWinPointsTests := []struct {

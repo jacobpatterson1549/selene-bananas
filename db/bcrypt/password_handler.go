@@ -1,9 +1,7 @@
 // Package bcrypt contains password hashing and checking logic for stored passwords.
 package bcrypt
 
-import (
-	"golang.org/x/crypto/bcrypt"
-)
+import "golang.org/x/crypto/bcrypt"
 
 type (
 	// PasswordHandler can hash and check passwords
