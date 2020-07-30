@@ -10,6 +10,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
+	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/game/word"
 )
@@ -23,8 +24,9 @@ type (
 		createdAt              int64
 		status                 game.Status
 		userDao                UserDao
-		players                map[game.PlayerName]*player
+		players                map[game.PlayerName]*player.Player
 		maxPlayers             int
+		playerCfg              player.Config
 		numNewTiles            int
 		tileLetters            string
 		unusedTiles            []tile.Tile
@@ -47,6 +49,8 @@ type (
 		UserDao UserDao
 		// MaxPlayers is the maximum number of players that can be part of the game.
 		MaxPlayers int
+		// PlayerCfg is used to create new players.
+		PlayerCfg player.Config
 		// NumNewTiles is the number of new tiles each player starts the game with.
 		NumNewTiles int
 		// TileLetters is a string of all the upper case letters that can be used in the game.
@@ -99,11 +103,12 @@ func (cfg Config) NewGame(id game.ID) (*Game, error) {
 		status:                 game.NotStarted,
 		userDao:                cfg.UserDao,
 		maxPlayers:             cfg.MaxPlayers,
+		playerCfg:              cfg.PlayerCfg,
 		numNewTiles:            cfg.NumNewTiles,
 		tileLetters:            tileLetters,
 		wordChecker:            cfg.WordChecker,
 		idlePeriod:             cfg.IdlePeriod,
-		players:                make(map[game.PlayerName]*player),
+		players:                make(map[game.PlayerName]*player.Player),
 		shuffleUnusedTilesFunc: cfg.ShuffleUnusedTilesFunc,
 		shufflePlayersFunc:     cfg.ShufflePlayersFunc,
 	}
@@ -246,22 +251,22 @@ func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- ga
 	}
 	newTiles := g.unusedTiles[:g.numNewTiles]
 	g.unusedTiles = g.unusedTiles[g.numNewTiles:]
-	cfg := board.Config{
+	boardCfg := board.Config{
 		NumCols: m.NumCols,
 		NumRows: m.NumRows,
 	}
-	b, err := cfg.New(newTiles)
+	b, err := boardCfg.New(newTiles)
 	if err != nil {
 		return err
 	}
-	p := &player{
-		winPoints: 10,
-		board:     b,
+	p, err := g.playerCfg.New(b)
+	if err != nil {
+		return fmt.Errorf("creating player: %w", err)
 	}
 	g.players[m.PlayerName] = p
-	m2, err := b.Resize(cfg)
+	m2, err := b.Resize(boardCfg)
 	if err != nil {
-		return fmt.Errorf("creating board message %w", err)
+		return fmt.Errorf("creating board message: %w", err)
 	}
 	gamePlayers := g.playerNames()
 	m2.Type = game.Join
@@ -345,14 +350,14 @@ func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- 
 		return gameWarning("can only attempt to set game that is in progress to finished")
 	case len(g.unusedTiles) != 0:
 		return gameWarning("snag first")
-	case len(p.board.UnusedTiles) != 0:
-		p.decrementWinPoints()
+	case len(p.Board.UnusedTiles) != 0:
+		p.DecrementWinPoints()
 		return gameWarning("not all tiles used, possible win points decremented")
-	case !p.board.HasSingleUsedGroup():
-		p.decrementWinPoints()
+	case !p.Board.HasSingleUsedGroup():
+		p.DecrementWinPoints()
 		return gameWarning("not all used tiles form a single group, possible win points decremented")
 	}
-	usedWords := p.board.UsedTileWords()
+	usedWords := p.Board.UsedTileWords()
 	var invalidWords []string
 	for _, w := range usedWords {
 		if !g.wordChecker.Check(w) {
@@ -360,7 +365,7 @@ func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- 
 		}
 	}
 	if len(invalidWords) > 0 {
-		p.decrementWinPoints()
+		p.DecrementWinPoints()
 		return gameWarning(fmt.Sprintf("invalid words: %v, possible winpoints decremented", invalidWords))
 	}
 	g.status = game.Finished
@@ -368,7 +373,7 @@ func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- 
 		"WINNER! - %v won, creating %v words, getting %v points.  Other players each get 1 point",
 		m.PlayerName,
 		len(usedWords),
-		p.winPoints,
+		p.WinPoints(),
 	)
 	err := g.updateUserPoints(ctx, m.PlayerName)
 	if err != nil {
@@ -412,7 +417,7 @@ func (g *Game) handleGameSnag(ctx context.Context, m game.Message, out chan<- ga
 		case n2 == m.PlayerName:
 			m2.Tiles = g.unusedTiles[:1]
 			m2.Info = "snagged a tile"
-			if err := g.players[n2].board.AddTile(g.unusedTiles[0]); err != nil {
+			if err := g.players[n2].Board.AddTile(g.unusedTiles[0]); err != nil {
 				return err
 			}
 			g.unusedTiles = g.unusedTiles[1:]
@@ -421,7 +426,7 @@ func (g *Game) handleGameSnag(ctx context.Context, m game.Message, out chan<- ga
 		default:
 			m2.Info = fmt.Sprintf("%v snagged a tile, adding a tile to your pile", m.PlayerName)
 			m2.Tiles = g.unusedTiles[:1]
-			if err := g.players[n2].board.AddTile(g.unusedTiles[0]); err != nil {
+			if err := g.players[n2].Board.AddTile(g.unusedTiles[0]); err != nil {
 				return err
 			}
 			g.unusedTiles = g.unusedTiles[1:]
@@ -447,7 +452,7 @@ func (g *Game) handleGameSwap(ctx context.Context, m game.Message, out chan<- ga
 	}
 	t := m.Tiles[0]
 	p := g.players[m.PlayerName]
-	err := p.board.RemoveTile(t)
+	err := p.Board.RemoveTile(t)
 	if err != nil {
 		return err
 	}
@@ -456,7 +461,7 @@ func (g *Game) handleGameSwap(ctx context.Context, m game.Message, out chan<- ga
 	var newTiles []tile.Tile
 	for i := 0; i < 3 && len(g.unusedTiles) > 0; i++ {
 		newTiles = append(newTiles, g.unusedTiles[0])
-		err := p.board.AddTile(g.unusedTiles[0])
+		err := p.Board.AddTile(g.unusedTiles[0])
 		if err != nil {
 			return err
 		}
@@ -487,7 +492,7 @@ func (g *Game) handleGameTilesMoved(ctx context.Context, m game.Message, out cha
 		return gameWarningNotInProgress
 	}
 	p := g.players[m.PlayerName]
-	return p.board.MoveTiles(m.TilePositions)
+	return p.Board.MoveTiles(m.TilePositions)
 }
 
 // handleBoardRefresh sends the player's board back to the player.
@@ -497,7 +502,7 @@ func (g *Game) handleBoardRefresh(ctx context.Context, m game.Message, out chan<
 		NumRows: m.NumRows,
 	}
 	p := g.players[m.PlayerName]
-	m2, err := p.board.Resize(cfg)
+	m2, err := p.Board.Resize(cfg)
 	if err != nil {
 		return err
 	}
@@ -531,7 +536,7 @@ func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName game.Play
 	for pn, p := range g.players {
 		points := 1
 		if pn == winningPlayerName {
-			points = p.winPoints
+			points = p.WinPoints()
 		}
 		userPoints[string(pn)] = points
 	}

@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
+	"github.com/jacobpatterson1549/selene-bananas/game/board"
+	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 
@@ -143,15 +145,19 @@ func TestUpdateUserPoints(t *testing.T) {
 			return want
 		},
 	}
+	alicePlayer, err := player.Config{WinPoints: 4}.New(&board.Board{})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	selenePlayer, err := player.Config{WinPoints: 5}.New(&board.Board{})
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 	g := Game{
-		players: map[game.PlayerName]*player{
-			"alice": {
-				winPoints: 4,
-			},
-			"selene": {
-				winPoints: 5,
-			},
-			"bob": {},
+		players: map[game.PlayerName]*player.Player{
+			"alice":  alicePlayer,
+			"selene": selenePlayer,
+			"bob":    {},
 		},
 		userDao: ud,
 	}
@@ -163,7 +169,7 @@ func TestUpdateUserPoints(t *testing.T) {
 
 func TestPlayerNames(t *testing.T) {
 	g := Game{
-		players: map[game.PlayerName]*player{
+		players: map[game.PlayerName]*player.Player{
 			"b": {},
 			"c": {},
 			"a": {},

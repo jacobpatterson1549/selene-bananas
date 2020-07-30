@@ -18,6 +18,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/controller"
 	"github.com/jacobpatterson1549/selene-bananas/game/lobby"
+	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/socket"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/game/word"
@@ -161,6 +162,9 @@ func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int6
 	if err != nil {
 		return nil, fmt.Errorf("trying to open words file: %w", err)
 	}
+	playerCfg := player.Config{
+		WinPoints: 10,
+	}
 	wordChecker := word.NewChecker(wordsFile)
 	shuffleUnusedTilesFunc := func(tiles []tile.Tile) {
 		rand.Shuffle(len(tiles), func(i, j int) {
@@ -178,6 +182,7 @@ func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int6
 		TimeFunc:               timeFunc,
 		UserDao:                ud,
 		MaxPlayers:             8,
+		PlayerCfg:           playerCfg,
 		NumNewTiles:            21,
 		TileLetters:            "",
 		WordChecker:            wordChecker,

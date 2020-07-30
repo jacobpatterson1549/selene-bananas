@@ -1,4 +1,4 @@
-package controller
+package player
 
 import (
 	"testing"
@@ -16,13 +16,24 @@ func TestDecrementWinPoints(t *testing.T) {
 		{10, 9},
 	}
 	for i, test := range decrementWinPointsTests {
-		p := player{
+		p := Player{
 			winPoints: test.winPoints,
 		}
-		p.decrementWinPoints()
+		p.DecrementWinPoints()
 		got := p.winPoints
 		if test.want != got {
 			t.Errorf("Test %v: wanted %v, got %v", i, test.want, got)
 		}
+	}
+}
+
+func TestWinPoints(t *testing.T) {
+	want := 37
+	p := Player{
+		winPoints: want,
+	}
+	got := p.WinPoints()
+	if want != got {
+		t.Errorf("wanted %v, got %v", want, got)
 	}
 }
