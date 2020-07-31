@@ -10,12 +10,10 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 )
 
-type (
-	// HTTPClient makes requests using the net/http package.
-	HTTPClient struct {
-		net_http.Client
-	}
-)
+// HTTPClient makes requests using the net/http package.
+type HTTPClient struct {
+	net_http.Client
+}
 
 // Do makes a HTTP request.
 func (c HTTPClient) Do(req http.Request) (*http.Response, error) {

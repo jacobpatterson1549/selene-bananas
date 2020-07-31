@@ -51,7 +51,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	if err != nil {
 		return nil, fmt.Errorf("creating user dao: %w", err)
 	}
-	if err := ud.Setup(ctx); err != nil {
+	if err = ud.Setup(ctx); err != nil {
 		return nil, fmt.Errorf("setting up user dao: %w", err)
 	}
 	lobbyCfg, err := lobbyConfig(m, log, ud, timeFunc)

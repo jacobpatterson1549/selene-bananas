@@ -512,7 +512,7 @@ func TestResize(t *testing.T) {
 				Y:    5,
 			},
 		}
-		if err := b.MoveTiles(tilePositions); err != nil {
+		if err = b.MoveTiles(tilePositions); err != nil {
 			t.Errorf("Test %v: unexpected error: %v", i, err)
 		}
 		cfg.NumCols += test.deltaNumCols
