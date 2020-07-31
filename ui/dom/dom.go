@@ -93,3 +93,10 @@ func Color(element js.Value) string {
 	color := computedStyle.Get("color")
 	return color.String()
 }
+
+// NewXHR creates a new XML HTTP Request.
+func NewXHR() js.Value {
+	global := js.Global()
+	xhr := global.Get("XMLHttpRequest")
+	return xhr.New()
+}
