@@ -5,7 +5,6 @@ package main
 
 import (
 	"context"
-	"net/http"
 	"sync"
 	"syscall/js"
 	"time"
@@ -14,7 +13,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/ui/canvas"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game"
-	"github.com/jacobpatterson1549/selene-bananas/ui/http/native"
+	"github.com/jacobpatterson1549/selene-bananas/ui/http/xhr"
 	"github.com/jacobpatterson1549/selene-bananas/ui/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 	"github.com/jacobpatterson1549/selene-bananas/ui/socket"
@@ -59,13 +58,10 @@ func initUser(ctx context.Context, wg *sync.WaitGroup, log *log.Log) *user.User 
 	cfg := user.Config{
 		Log: log,
 	}
-	httpClient := http.Client{
+	xhrHTTPClient := xhr.HTTPClient{
 		Timeout: 10 * time.Second,
 	}
-	goHTTPClient := native.HTTPClient{
-		Client: httpClient,
-	}
-	user := cfg.New(goHTTPClient)
+	user := cfg.New(xhrHTTPClient)
 	user.InitDom(ctx, wg)
 	return user
 }
