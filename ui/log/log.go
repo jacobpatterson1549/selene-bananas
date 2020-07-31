@@ -12,10 +12,8 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 )
 
-type (
-	// Log manages messages for the log div.
-	Log struct{}
-)
+// Log manages messages for the log div.
+type Log struct{}
 
 // InitDom regesters log dom functions.
 func (l *Log) InitDom(ctx context.Context, wg *sync.WaitGroup) {

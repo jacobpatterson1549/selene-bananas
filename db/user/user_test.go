@@ -2,12 +2,10 @@ package user
 
 import "testing"
 
-type (
-	mockPasswordHandler struct {
-		hashFunc      func(password string) ([]byte, error)
-		isCorrectFunc func(hashedPassword []byte, password string) (bool, error)
-	}
-)
+type mockPasswordHandler struct {
+	hashFunc      func(password string) ([]byte, error)
+	isCorrectFunc func(hashedPassword []byte, password string) (bool, error)
+}
 
 func (ph mockPasswordHandler) Hash(password string) ([]byte, error) {
 	return ph.hashFunc(password)

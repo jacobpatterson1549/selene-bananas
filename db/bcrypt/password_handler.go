@@ -3,12 +3,10 @@ package bcrypt
 
 import "golang.org/x/crypto/bcrypt"
 
-type (
-	// PasswordHandler can hash and check passwords
-	PasswordHandler struct {
-		cost int
-	}
-)
+// PasswordHandler can hash and check passwords
+type PasswordHandler struct {
+	cost int
+}
 
 // NewPasswordHandler creates a password handler with the default cost
 func NewPasswordHandler() PasswordHandler {

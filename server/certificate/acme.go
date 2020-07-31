@@ -6,13 +6,11 @@ import (
 	"io"
 )
 
-type (
-	// Challenge token and key used to get a TLS certificate using the ACME HTTP-01.
-	Challenge struct {
-		Token string
-		Key   string
-	}
-)
+// Challenge token and key used to get a TLS certificate using the ACME HTTP-01.
+type Challenge struct {
+	Token string
+	Key   string
+}
 
 const (
 	// acmeHeader is the path of the endpoint to serve the challenge at.

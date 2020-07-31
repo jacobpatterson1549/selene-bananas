@@ -14,15 +14,13 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 )
 
-type (
-	// request handles http communication with the server through forms.
-	request struct {
-		user      *User
-		form      dom.Form
-		validator func() bool
-		handler   func(body io.ReadCloser)
-	}
-)
+// request handles http communication with the server through forms.
+type request struct {
+	user      *User
+	form      dom.Form
+	validator func() bool
+	handler   func(body io.ReadCloser)
+}
 
 // Request makes an BLOCKING request to the server using the fields in the form.
 func (u *User) request(event js.Value) {

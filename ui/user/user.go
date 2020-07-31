@@ -20,8 +20,6 @@ import (
 )
 
 type (
-	// jwt is a java-web token.
-	jwt string
 	// User is a http/login helper.
 	User struct {
 		log        *log.Log
@@ -69,10 +67,9 @@ func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 // login handles requesting a login when the login button is clicked.
-func (u *User) login(token string) {
-	dom.SetValue(".jwt", token)
-	j := jwt(token)
-	ui, err := j.userInfo()
+func (u *User) login(jwt string) {
+	dom.SetValue(".jwt", jwt)
+	ui, err := u.info(jwt)
 	if err != nil {
 		u.log.Error("getting user from jwt: " + err.Error())
 		return
@@ -97,9 +94,9 @@ func (u *User) Logout() {
 	dom.SetChecked("#tab-login-user", true)
 }
 
-// userInfo retrieves the user information from the token.
-func (j jwt) userInfo() (*userInfo, error) {
-	parts := strings.Split(string(j), ".")
+// info retrieves the user information from the token.
+func (User) info(jwt string) (*userInfo, error) {
+	parts := strings.Split(jwt, ".")
 	if len(parts) != 3 {
 		return nil, errors.New("expected 3 jwt parts")
 	}
@@ -143,8 +140,8 @@ func (u User) JWT() string {
 // Username returns the username of the logged in user.
 // If any problem occurs, an empty string is returned.
 func (u User) Username() string {
-	j := jwt(u.JWT())
-	ui, err := j.userInfo()
+	jwt := u.JWT()
+	ui, err := u.info(jwt)
 	if err != nil {
 		return ""
 	}

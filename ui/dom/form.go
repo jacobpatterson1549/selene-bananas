@@ -8,15 +8,13 @@ import (
 	"syscall/js"
 )
 
-type (
-	// Form contains the fields needed to make a request to the server.
-	Form struct {
-		v      js.Value
-		Method string
-		URL    url.URL
-		Params url.Values
-	}
-)
+// Form contains the fields needed to make a request to the server.
+type Form struct {
+	v      js.Value
+	Method string
+	URL    url.URL
+	Params url.Values
+}
 
 // NewForm creates a form from the target property of the event.  An error is returned if the url action is not successfully parsed.
 func NewForm(event js.Value) (*Form, error) {

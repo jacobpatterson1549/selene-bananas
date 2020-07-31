@@ -9,11 +9,19 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 )
 
-type (
-	mockUser struct {
-		jwt string
-	}
-)
+type mockUser string
+
+func (u mockUser) JWT() string {
+	return string(u)
+}
+
+func (u mockUser) Username() string {
+	return ""
+}
+
+func (u *mockUser) Logout() {
+	// NOOP
+}
 
 func TestReleaseWebSocketJsFuncs(t *testing.T) {
 	var s Socket
@@ -49,9 +57,7 @@ func TestWebSocketURL(t *testing.T) {
 			URL:    *u,
 			Params: make(url.Values, 1),
 		}
-		mu := mockUser{
-			jwt: test.jwt,
-		}
+		mu := mockUser(test.jwt)
 		s := Socket{
 			user: &mu,
 		}
@@ -60,16 +66,4 @@ func TestWebSocketURL(t *testing.T) {
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
 		}
 	}
-}
-
-func (u mockUser) JWT() string {
-	return u.jwt
-}
-
-func (u mockUser) Username() string {
-	return ""
-}
-
-func (u *mockUser) Logout() {
-	// NOOP
 }

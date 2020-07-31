@@ -10,19 +10,17 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 
-type (
-	mockContext struct {
-		SetFontFunc        func(name string)
-		SetLineWidthFunc   func(width float64)
-		SetFillColorFunc   func(name string)
-		SetStrokeColorFunc func(name string)
-		SetOpacityFunc     func(fraction string)
-		FillTextFunc       func(text string, x, y int)
-		ClearRectFunc      func(x, y, width, height int)
-		FillRectFunc       func(x, y, width, height int)
-		StrokeRectFunc     func(x, y, width, height int)
-	}
-)
+type mockContext struct {
+	SetFontFunc        func(name string)
+	SetLineWidthFunc   func(width float64)
+	SetFillColorFunc   func(name string)
+	SetStrokeColorFunc func(name string)
+	SetOpacityFunc     func(fraction string)
+	FillTextFunc       func(text string, x, y int)
+	ClearRectFunc      func(x, y, width, height int)
+	FillRectFunc       func(x, y, width, height int)
+	StrokeRectFunc     func(x, y, width, height int)
+}
 
 func TestDrawTile(t *testing.T) {
 	drawTileID := tile.ID(1)

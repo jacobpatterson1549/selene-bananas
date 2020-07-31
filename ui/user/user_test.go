@@ -26,8 +26,8 @@ func TestGetUser(t *testing.T) {
 		},
 	}
 	for i, test := range getUserTests {
-		j := jwt(test.jwt)
-		got, err := j.userInfo()
+		var u User
+		got, err := u.info(test.jwt)
 		switch {
 		case err != nil:
 			if test.wantOk {
