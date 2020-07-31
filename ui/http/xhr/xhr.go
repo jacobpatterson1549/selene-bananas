@@ -53,11 +53,6 @@ func (c HTTPClient) Do(req http.Request) (*http.Response, error) {
 // handleEvent handles an event for the XHR.
 func handleEvent(xhr js.Value, responseC chan<- http.Response, errC chan<- error) func(event js.Value) {
 	return func(event js.Value) {
-		defer func() {
-			if e := recover(); e != nil {
-				errC <- e.(error)
-			}
-		}()
 		eventType := event.Get("type").String()
 		switch eventType {
 		case "load":
