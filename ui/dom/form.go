@@ -32,7 +32,7 @@ func NewForm(event js.Value) (*Form, error) {
 	for _, formInput := range formInputs {
 		name := formInput.Get("name").String()
 		value := formInput.Get("value").String()
-		params[name] = []string{value}
+		params.Add(name, value)
 	}
 	f := Form{
 		v:      form,
