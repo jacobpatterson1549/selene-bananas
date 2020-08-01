@@ -10,7 +10,7 @@ RUN go mod download && \
     apk add \
         nodejs bash \
     # TODO: use package from main repo, not edge:testing
-    && apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/testing words-en 
+    && apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/testing words-en
         # words-en
 
 # create version, run tests, and build the applications

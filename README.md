@@ -67,7 +67,7 @@ The server can verifiy its identity over http to pass a Automatic Certificate Ma
 
 #### localhost
 
-Use [mkcert](https://github.com/FiloSottile/mkcert) to configure a development machine to accept local certificates.  
+Use [mkcert](https://github.com/FiloSottile/mkcert) to configure a development machine to accept local certificates.
 ```bash
 go get github.com/FiloSottile/mkcert
 mkcert -install
@@ -76,7 +76,7 @@ Generate certificates for localhost at 127.0.0.1
 ```bash
 mkcert 127.0.0.1
 ```
-Then, add the certificate files to the run environment configuration in `.env`.  The certificate files should be in the root of the 
+Then, add the certificate files to the run environment configuration in `.env`.  The certificate files should be in the root of the application.
 ```
 TLS_CERT_FILE=127.0.0.1.pem
 TLS_KEY_FILE=127.0.0.1-key.pem
