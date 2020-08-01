@@ -8,10 +8,10 @@ COPY \
     go.sum \
     /app/
 RUN go mod download && \
-    apk add \
+    apk add --no-cache \
         nodejs=12.18.3-r0 bash=5.0.17-r0 \
     # TODO: use package from main repo, not edge:testing
-   && apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/testing words-en=2.1-r0
+   && apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing words-en=2.1-r0
         # words-en=?
 
 # create version, run tests, and build the applications
