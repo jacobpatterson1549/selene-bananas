@@ -17,10 +17,11 @@ RUN go mod download && \
 # create version, run tests, and build the applications
 COPY . /app
 RUN tar -c . | md5sum | cut -c -32 > /app/version && \
-    echo version $(cat /app/version) && \
+    cat /app/version | xargs echo version && \
     GOOS=js GOARCH=wasm \
-        go test -exec=/usr/local/go/misc/wasm/go_js_wasm_exec \
-            $(GOOS=js GOARCH=wasm go list ./... | grep ui)/... --cover && \
+        go list ./... | grep ui | \
+        GOOS=js GOARCH=wasm \
+        xargs go test -exec=/usr/local/go/misc/wasm/go_js_wasm_exec --cover && \
     CGO_ENABLED=0 \
         go test ./... --cover && \
     GOOS=js GOARCH=wasm \

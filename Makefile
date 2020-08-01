@@ -4,19 +4,21 @@ all: install
 
 GOWASMPATH := $(shell go env GOROOT)/misc/wasm
 GOLIST := go list
-GOTEST := go test # -race
+GOTEST := go test --cover # -race
 GOBUILD := go build # -race
+GOBENCH := go test -bench=.
 GOWASMARGS := GOOS=js GOARCH=wasm
 
 test-wasm:
-	$(GOWASMARGS) $(GOTEST) -exec=$(GOWASMPATH)/go_js_wasm_exec \
-		$(shell $(GOWASMARGS) $(GOLIST) ./...  | grep ui)/... --cover
+	$(GOWASMARGS) $(GOLIST) ./... | grep ui | \
+		$(GOWASMARGS) xargs $(GOTEST) -exec=$(GOWASMPATH)/go_js_wasm_exec
 
 test:
-	$(GOTEST) $(shell $(GOLIST) ./...) --cover
+	$(GOLIST) ./... | \
+		xargs $(GOTEST)
 
 bench:
-	$(GOTEST) ./... -bench=.
+	$(GOBENCH) ./...
 
 wasm_exec.js:
 	ln -fs \
@@ -41,10 +43,8 @@ serve: install
 
 serve-tcp: install
 	sudo setcap 'cap_net_bind_service=+ep' main
-	export $(shell \
-		echo $(shell grep -s -v '^#' .env | xargs) \
-		" HTTP_PORT=80 HTTPS_PORT=443" \
-		) && \
+	export $(shell grep -s -v '^#' .env | xargs | \
+		xargs -I {} echo "{} HTTP_PORT=80 HTTPS_PORT=443") && \
 		sudo -E ./main
 
 clean:
