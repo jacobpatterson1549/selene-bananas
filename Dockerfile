@@ -1,12 +1,12 @@
 # download golang dependencies, add node & bash to run wasm tests and american-english word list
 FROM golang:1.14-alpine3.12 \
     AS BUILDER
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 WORKDIR /app
 COPY \
     go.mod \
     go.sum \
     /app/
-SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 RUN go mod download && \
     apk add \
         nodejs=12.18.3-r0 bash=5.0.17-r0 \
