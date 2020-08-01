@@ -334,7 +334,7 @@ func TestDaoUpdatePointsIncrement(t *testing.T) {
 			args := q.Args()
 			u, ok := args[0].(string)
 			if !ok {
-				return fmt.Errorf("Test %v: arg0 was not a string", i)
+				return fmt.Errorf("query %v: arg0 was not a string", i)
 			}
 			p2, ok := args[1].(int)
 			if !ok {
