@@ -6,16 +6,17 @@ COPY \
     go.mod \
     go.sum \
     /app/
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 RUN go mod download && \
     apk add \
-        nodejs bash \
+        nodejs=12.18.3-r0 bash=5.0.17-r0 \
     # TODO: use package from main repo, not edge:testing
-    && apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/testing words-en
-        # words-en
+   && apk add -X http://dl-cdn.alpinelinux.org/alpine/edge/testing words-en=2.1-r0
+        # words-en=?
 
 # create version, run tests, and build the applications
 COPY . /app
-RUN tar -cf - . | md5sum | cut -c -32 > /app/version && \
+RUN tar -c . | md5sum | cut -c -32 > /app/version && \
     echo version $(cat /app/version) && \
     GOOS=js GOARCH=wasm \
         go test -exec=/usr/local/go/misc/wasm/go_js_wasm_exec \
