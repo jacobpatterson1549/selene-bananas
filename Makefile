@@ -1,48 +1,48 @@
-.PHONY: all test-wasm test bench install serve serve-tcp clean
+.PHONY: all test-wasm test bench build serve serve-tcp clean
 
-all: install
+GO_LIST := go list
+GO_TEST := go test --cover # -race
+GO_BUILD := go build # -race
+GO_BENCH := go test -bench=.
+GO_WASM_ARGS := GOOS=js GOARCH=wasm
+GO_WASM_PATH := $(shell go env GOROOT)/misc/wasm
 
-GOWASMPATH := $(shell go env GOROOT)/misc/wasm
-GOLIST := go list
-GOTEST := go test --cover # -race
-GOBUILD := go build # -race
-GOBENCH := go test -bench=.
-GOWASMARGS := GOOS=js GOARCH=wasm
+all: build
 
 test-wasm:
-	$(GOWASMARGS) $(GOLIST) ./... | grep ui \
-		| $(GOWASMARGS) xargs $(GOTEST) \
-			-exec=$(GOWASMPATH)/go_js_wasm_exec
+	$(GO_WASM_ARGS) $(GO_LIST) ./... | grep ui \
+		| $(GO_WASM_ARGS) xargs $(GO_TEST) \
+			-exec=$(GO_WASM_PATH)/go_js_wasm_exec
 
 test:
-	$(GOLIST) ./... \
-		| xargs $(GOTEST)
+	$(GO_LIST) ./... \
+		| xargs $(GO_TEST)
 
 bench:
-	$(GOBENCH) ./...
+	$(GO_BENCH) ./...
 
 wasm_exec.js:
 	ln -fs \
-		$(GOWASMPATH)/wasm_exec.js \
-		wasm_exec.js
+		$(GO_WASM_PATH)/$@ \
+		$@
 
 main.wasm: test-wasm
-	$(GOWASMARGS) $(GOBUILD) \
-			-o main.wasm \
-			cmd/ui/*.go
+	$(GO_WASM_ARGS) $(GO_BUILD) \
+		-o $@ \
+		cmd/ui/*.go
 
-main: test bench
-	$(GOBUILD) \
-		-o main \
+main: test
+	$(GO_BUILD) \
+		-o $@ \
 		cmd/server/*.go
 
-install: main main.wasm wasm_exec.js
+build: main main.wasm wasm_exec.js
 
-serve: install
+serve: build
 	export $(shell grep -s -v '^#' .env | xargs) \
 		&& ./main
 
-serve-tcp: install
+serve-tcp: build
 	sudo setcap 'cap_net_bind_service=+ep' main
 	export $(shell grep -s -v '^#' .env | xargs \
 			| xargs -I {} echo "{} HTTP_PORT=80 HTTPS_PORT=443") \
@@ -51,6 +51,6 @@ serve-tcp: install
 clean:
 	rm -f \
 		cmd/server/__debug_bin \
-		main.wasm \
 		wasm_exec.js \
+		main.wasm \
 		main
