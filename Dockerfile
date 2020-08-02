@@ -16,8 +16,9 @@ RUN go mod download && \
 
 # create version, run tests, and build the applications
 COPY . /app
-RUN tar -c . | md5sum | cut -c -32 > /app/version && \
-    cat /app/version | xargs echo version && \
+RUN tar -c . | md5sum | cut -c -32 | \
+        tee /app/version | \
+        xargs echo version && \
     GOOS=js GOARCH=wasm \
         go list ./... | grep ui | \
         GOOS=js GOARCH=wasm \
