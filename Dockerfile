@@ -7,29 +7,31 @@ COPY \
     go.mod \
     go.sum \
     /app/
-RUN go mod download && \
-    apk add --no-cache \
+RUN go mod download \
+    && apk add --no-cache \
         nodejs=12.18.3-r0 bash=5.0.17-r0 \
     # TODO: use package from main repo, not edge:testing
-   && apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing words-en=2.1-r0
+    && apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing words-en=2.1-r0
         # words-en=?
 
 # create version, run tests, and build the applications
 COPY . /app
-RUN tar -c . | md5sum | cut -c -32 | \
-        tee /app/version | \
-        xargs echo version && \
-    GOOS=js GOARCH=wasm \
-        go list ./... | grep ui | \
-        GOOS=js GOARCH=wasm \
-        xargs go test -exec=/usr/local/go/misc/wasm/go_js_wasm_exec --cover && \
-    CGO_ENABLED=0 \
-        go test ./... --cover && \
-    GOOS=js GOARCH=wasm \
+RUN tar -c . | md5sum | cut -c -32 \
+        | tee /app/version \
+        | xargs echo version \
+    && GOOS=js GOARCH=wasm \
+            go list ./... | grep ui \
+        | GOOS=js GOARCH=wasm \
+            xargs go test --cover \
+                -exec=/usr/local/go/misc/wasm/go_js_wasm_exec \
+    && go list ./... \
+        | CGO_ENABLED=0 \
+            xargs go test --cover \
+    && GOOS=js GOARCH=wasm \
         go build \
             -o /app/main.wasm \
-            /app/cmd/ui/*.go && \
-    CGO_ENABLED=0 \
+            /app/cmd/ui/*.go \
+    && CGO_ENABLED=0 \
         go build \
             -o /app/main \
             /app/cmd/server/*.go
