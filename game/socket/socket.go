@@ -115,7 +115,6 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 		writeCancelFunc()
 		s.conn.Close()
 	}()
-	s.conn.SetPongHandler(s.refreshReadDeadline)
 	for { // BLOCKING
 		m, err := s.readMessage()
 		select {
@@ -223,23 +222,10 @@ func (s *Socket) writeMessage(m game.Message) error {
 
 // writePing writes a ping message to the connection.
 func (s *Socket) writePing() error {
-	if err := s.refreshWriteDeadline(); err != nil {
-		return err
-	}
 	if err := s.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 		return err
 	}
-	return nil
-}
-
-// refreshReadDeadline is called when the read wait needs to be refreshed.
-func (s *Socket) refreshReadDeadline(appData string) error {
-	return s.refreshDeadline(s.conn.SetReadDeadline, s.readWait)
-}
-
-// refreshWriteDeadline is called when the write wait needs to be refreshed.
-func (s *Socket) refreshWriteDeadline() error {
-	return s.refreshDeadline(s.conn.SetWriteDeadline, s.writeWait)
+ 	return nil
 }
 
 // refreshDeadline is called when a wait needs to be refreshed.
@@ -258,6 +244,8 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 // CloseConn closes the websocket connection without reporting any errors.
 func CloseConn(conn *websocket.Conn, reason string) {
 	data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
-	conn.WriteMessage(websocket.CloseMessage, data)
+	if err := conn.WriteMessage(websocket.CloseMessage, data); err != nil {
+		fmt.Printf("closing connection: writing close message: %v", err)
+	}
 	conn.Close()
 }
