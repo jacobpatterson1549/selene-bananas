@@ -225,7 +225,7 @@ func (s *Socket) writePing() error {
 	if err := s.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 		return err
 	}
- 	return nil
+	return nil
 }
 
 // refreshDeadline is called when a wait needs to be refreshed.
