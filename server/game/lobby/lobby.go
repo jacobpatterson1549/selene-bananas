@@ -254,12 +254,12 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 		return
 	}
 	if err != nil {
-		err = fmt.Errorf("upgrading to websocket connection: %v", err)
+		err = fmt.Errorf("upgrading to websocket connection: %w", err)
 		return
 	}
 	s, err := l.socketCfg.NewSocket(conn, ps.playerName)
 	if err != nil {
-		err = fmt.Errorf("creating socket: %v", err)
+		err = fmt.Errorf("creating socket: %w", err)
 		return
 	}
 	socketCtx, cancelFunc := context.WithCancel(ctx)
