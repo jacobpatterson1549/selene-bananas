@@ -16,15 +16,15 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/db/sql"
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 	"github.com/jacobpatterson1549/selene-bananas/game"
-	"github.com/jacobpatterson1549/selene-bananas/game/lobby"
 	playerModel "github.com/jacobpatterson1549/selene-bananas/game/models/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
-	"github.com/jacobpatterson1549/selene-bananas/game/socket"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/game/word"
 	"github.com/jacobpatterson1549/selene-bananas/server"
 	"github.com/jacobpatterson1549/selene-bananas/server/auth"
 	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
+	"github.com/jacobpatterson1549/selene-bananas/server/game/lobby"
+	"github.com/jacobpatterson1549/selene-bananas/server/game/socket"
 	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
 )
 

@@ -13,8 +13,8 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/models/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
-	"github.com/jacobpatterson1549/selene-bananas/ui/canvas"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui/game/canvas"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
 

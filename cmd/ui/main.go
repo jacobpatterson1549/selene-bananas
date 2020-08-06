@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
-	"github.com/jacobpatterson1549/selene-bananas/ui/canvas"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game"
+	"github.com/jacobpatterson1549/selene-bananas/ui/game/canvas"
+	"github.com/jacobpatterson1549/selene-bananas/ui/game/lobby"
+	"github.com/jacobpatterson1549/selene-bananas/ui/game/socket"
 	"github.com/jacobpatterson1549/selene-bananas/ui/http/xhr"
-	"github.com/jacobpatterson1549/selene-bananas/ui/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
-	"github.com/jacobpatterson1549/selene-bananas/ui/socket"
 	"github.com/jacobpatterson1549/selene-bananas/ui/user"
 )
 

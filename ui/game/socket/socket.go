@@ -13,7 +13,7 @@ import (
 	gameModel "github.com/jacobpatterson1549/selene-bananas/game/models/game"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game"
-	"github.com/jacobpatterson1549/selene-bananas/ui/lobby"
+	"github.com/jacobpatterson1549/selene-bananas/ui/game/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
 
