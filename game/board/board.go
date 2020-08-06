@@ -3,8 +3,9 @@ package board
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"sort"
+	"strconv"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
@@ -37,7 +38,7 @@ const (
 // New creates a new board with the unused tiles.
 func (cfg Config) New(unusedTiles []tile.Tile) (*Board, error) {
 	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("creating board: validation: %w", err)
+		return nil, errors.New("creating board: validation: " + err.Error())
 	}
 	unusedTilesByID := make(map[tile.ID]tile.Tile, len(unusedTiles))
 	unusedTileIDs := make([]tile.ID, len(unusedTiles))
@@ -62,9 +63,9 @@ func (cfg Config) New(unusedTiles []tile.Tile) (*Board, error) {
 func (cfg Config) Validate() error {
 	switch {
 	case cfg.NumRows < minRows:
-		return fmt.Errorf("not enough rows on board (%v<%v)", cfg.NumRows, minRows)
+		return errors.New("not enough rows on board, must be >= " + strconv.Itoa(minRows))
 	case cfg.NumCols < minCols:
-		return fmt.Errorf("not enough columns on board (%v<%v)", cfg.NumCols, minCols)
+		return errors.New("not enough columns on board, must be >= " + strconv.Itoa(minCols))
 	}
 	return nil
 }
@@ -73,7 +74,7 @@ func (cfg Config) Validate() error {
 // An error is returned and the tile is not added if the player already has it.
 func (b *Board) AddTile(t tile.Tile) error {
 	if b.hasTile(t) {
-		return fmt.Errorf("player already has tile with id %v", t.ID)
+		return errors.New("player already has tile with id " + strconv.Itoa(int(t.ID)))
 	}
 	b.UnusedTiles[t.ID] = t
 	b.UnusedTileIDs = append(b.UnusedTileIDs, t.ID)
@@ -84,7 +85,7 @@ func (b *Board) AddTile(t tile.Tile) error {
 // An error is returned if the board does not have the tile.
 func (b *Board) RemoveTile(t tile.Tile) error {
 	if !b.hasTile(t) {
-		return fmt.Errorf("player does not have tile with id %v", t.ID)
+		return errors.New("player does not have tile with id " + strconv.Itoa(int(t.ID)))
 	}
 	_, ok := b.UnusedTiles[t.ID]
 	switch {
@@ -121,7 +122,7 @@ func (b *Board) removeUsedTile(t tile.Tile) {
 // No action is taken and an error is returned if the tiles cannot be moved.
 func (b *Board) MoveTiles(tilePositions []tile.Position) error {
 	if !b.CanMoveTiles(tilePositions) {
-		return fmt.Errorf("cannot move tiles that the player does not have or cannot move tiles to the same spot as others")
+		return errors.New("cannot move tiles that the player does not have or cannot move tiles to the same spot as others")
 	}
 	for _, tp := range tilePositions {
 		_, tileUnused := b.UnusedTiles[tp.Tile.ID]
@@ -373,7 +374,7 @@ func (b *Board) Resize(cfg Config) (*game.Message, error) {
 		TilePositions: usedTilePositions,
 	}
 	if len(movedTiles) > 0 {
-		m.Info = fmt.Sprintf("moving %v tile(s) to the unused area of the narrower/shorter board", len(movedTiles))
+		m.Info = "moving " + strconv.Itoa(len(movedTiles)) + " tile(s) to the unused area of the narrower/shorter board"
 	}
 	return &m, nil
 }
