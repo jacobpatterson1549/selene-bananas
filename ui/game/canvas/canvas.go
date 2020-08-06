@@ -259,7 +259,7 @@ func (c *Canvas) Redraw() {
 func (c *Canvas) SetGameStatus(s game.Status) {
 	c.gameStatus = s
 	c.selection.setMoveState(none)
-	c.selection.tiles = nil
+	c.selection.tiles = make(map[tile.ID]tileSelection)
 	c.Redraw()
 }
 
