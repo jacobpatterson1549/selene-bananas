@@ -468,6 +468,7 @@ func TestRemoveTile(t *testing.T) {
 func TestResize(t *testing.T) {
 	resizeTests := []struct {
 		deltaNumCols    int
+		deltaNumRows    int
 		wantTile2Unused bool
 	}{
 		{}, // do not change board, add board to message
@@ -478,44 +479,62 @@ func TestResize(t *testing.T) {
 		{
 			deltaNumCols: 10,
 		},
+		{
+			deltaNumRows:    -7,
+			wantTile2Unused: true,
+		},
+		{
+			deltaNumRows: -4,
+		},
+	}
+	t1, err := tile.New(1, 'A')
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t2, err := tile.New(2, 'B')
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	t3, err := tile.New(3, 'C')
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	unusedTiles := []tile.Tile{
+		*t1,
+		*t2,
+		*t3,
+	}
+	tilePositions := []tile.Position{
+		{
+			Tile: *t1,
+			X:    1,
+			Y:    1,
+		},
+		{
+			Tile: *t2,
+			X:    15,
+			Y:    5,
+		},
+		{
+			Tile: *t3,
+			X:    2,
+			Y:    1,
+		},
 	}
 	for i, test := range resizeTests {
 		cfg := Config{
 			NumCols: 20,
 			NumRows: 10,
 		}
-		t1, err := tile.New(1, 'A')
-		if err != nil {
-			t.Errorf("Test %v: unexpected error: %v", i, err)
-		}
-		t2, err := tile.New(2, 'B')
-		if err != nil {
-			t.Errorf("Test %v: unexpected error: %v", i, err)
-		}
-		unusedTiles := []tile.Tile{
-			*t1,
-			*t2,
-		}
 		b, err := cfg.New(unusedTiles)
 		if err != nil {
 			t.Errorf("Test %v: unexpected error: %v", i, err)
-		}
-		tilePositions := []tile.Position{
-			{
-				Tile: *t1,
-				X:    5,
-				Y:    5,
-			},
-			{
-				Tile: *t2,
-				X:    15,
-				Y:    5,
-			},
 		}
 		if err = b.MoveTiles(tilePositions); err != nil {
 			t.Errorf("Test %v: unexpected error: %v", i, err)
 		}
 		cfg.NumCols += test.deltaNumCols
+		cfg.NumRows += test.deltaNumRows
 		m, err := b.Resize(cfg)
 		switch {
 		case err != nil:
@@ -524,7 +543,7 @@ func TestResize(t *testing.T) {
 			switch {
 			case len(b.UnusedTileIDs) != 1, b.UnusedTileIDs[0] != t2.ID,
 				len(m.Tiles) != 1, m.Tiles[0].ID != t2.ID:
-				t.Errorf("Test %v: wanted tile 2 to be moved back to the unused area now that the board is more narrow", i)
+				t.Errorf("Test %v: wanted tile 2 to be moved back to the unused area now that the board is more narrow/short", i)
 			case len(m.Info) == 0:
 				t.Errorf("Test %v: wanted info about board resize", i)
 			}

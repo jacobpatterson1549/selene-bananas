@@ -344,10 +344,10 @@ func (b *Board) Resize(cfg Config) (*game.Message, error) {
 		switch {
 		case cfg.NumCols <= int(tp.X), cfg.NumRows <= int(tp.Y):
 			if err := b.RemoveTile(tp.Tile); err != nil {
-				return nil, fmt.Errorf("removing used tile to move to unused area for smaller board: %v", err)
+				return nil, err
 			}
 			if err := b.AddTile(tp.Tile); err != nil {
-				return nil, fmt.Errorf("adding used tile to unused area on smaller board: %v", err)
+				return nil, err
 			}
 			movedTiles = append(movedTiles, tp.Tile)
 		default:
