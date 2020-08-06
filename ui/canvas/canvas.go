@@ -259,7 +259,7 @@ func (c *Canvas) Redraw() {
 func (c *Canvas) SetGameStatus(s game.Status) {
 	c.gameStatus = s
 	c.selection.setMoveState(none)
-	c.selection.tiles = map[tile.ID]tileSelection{}
+	c.selection.tiles = nil
 	c.Redraw()
 }
 
@@ -476,7 +476,7 @@ func (c Canvas) calculateSelectedTiles() map[tile.ID]tileSelection {
 	case len(selectedUnusedTileIds) == 0:
 		return selectedUsedTileIds
 	case len(selectedUsedTileIds) != 0:
-		return map[tile.ID]tileSelection{} // cannot select used and unused tiles
+		return nil // cannot select used and unused tiles
 	default:
 		return selectedUnusedTileIds
 	}
@@ -489,7 +489,7 @@ func (c Canvas) calculateSelectedUnusedTiles(minX, maxX, minY, maxY int) map[til
 		c.draw.unusedMin.x+len(c.board.UnusedTileIDs)*c.draw.tileLength <= minX,
 		maxY < c.draw.unusedMin.y,
 		c.draw.unusedMin.y+c.draw.tileLength <= minY:
-		return map[tile.ID]tileSelection{}
+		return nil
 	}
 	minI := (minX - c.draw.unusedMin.x) / c.draw.tileLength
 	if minI < 0 {
@@ -518,7 +518,7 @@ func (c Canvas) calculateSelectedUsedTiles(minX, maxX, minY, maxY int) map[tile.
 		c.draw.usedMin.x+c.draw.numCols*c.draw.tileLength <= minX,
 		maxY < c.draw.usedMin.y,
 		c.draw.usedMin.y+c.draw.numRows*c.draw.tileLength <= minY:
-		return map[tile.ID]tileSelection{}
+		return nil
 	}
 	minCol := tile.X((minX - c.draw.usedMin.x) / c.draw.tileLength)
 	maxCol := tile.X((maxX - c.draw.usedMin.x) / c.draw.tileLength)
@@ -563,27 +563,26 @@ func (c *Canvas) moveSelectedTiles() {
 
 // selectionTilePositions calculates the new positions of the selected tiles.
 func (c Canvas) selectionTilePositions() []tile.Position {
-	if len(c.selection.tiles) == 0 {
-		return []tile.Position{}
-	}
 	startTS := c.tileSelection(c.selection.start)
 	endC := (c.selection.end.x - c.draw.usedMin.x) / c.draw.tileLength
 	endR := (c.selection.end.y - c.draw.usedMin.y) / c.draw.tileLength
 	switch {
 	case startTS == nil:
 		c.log.Error("no tile position at start position")
-		return []tile.Position{}
+	case int(startTS.x) == endC && int(startTS.y) == endR:
+		// NOOP
 	case startTS.used:
 		return c.selectionUsedTilePositions(*startTS, endC, endR)
 	default:
 		return c.selectionUnusedTilePositions(*startTS, endC, endR)
 	}
+	return nil
 }
 
 // selectionUsedTilePositions computes the unused tile positions of the selection.
 func (c Canvas) selectionUnusedTilePositions(startTS tileSelection, endC, endR int) []tile.Position {
 	if endR < 0 || c.draw.numRows <= endR {
-		return []tile.Position{}
+		return nil
 	}
 	tilePositions := make([]tile.Position, 0, len(c.selection.tiles))
 	y := tile.Y(endR)
@@ -592,7 +591,7 @@ func (c Canvas) selectionUnusedTilePositions(startTS tileSelection, endC, endR i
 		col := endC + deltaIdx
 		switch {
 		case col < 0, c.draw.numCols <= col:
-			return []tile.Position{}
+			return nil
 		}
 		tilePositions = append(tilePositions, tile.Position{
 			Tile: ts.tile,
@@ -614,7 +613,7 @@ func (c Canvas) selectionUsedTilePositions(startTS tileSelection, endC, endR int
 		switch {
 		case col < 0, c.draw.numCols <= col,
 			row < 0, c.draw.numRows <= row:
-			return []tile.Position{}
+			return nil
 		}
 		tilePositions = append(tilePositions, tile.Position{
 			Tile: ts.tile,
