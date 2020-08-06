@@ -1,7 +1,7 @@
 package game
 
 import (
-	"github.com/jacobpatterson1549/selene-bananas/game/models/player"
+	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 

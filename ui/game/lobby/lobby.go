@@ -9,9 +9,9 @@ import (
 	"sync"
 	"syscall/js"
 
-	gameModel "github.com/jacobpatterson1549/selene-bananas/game/models/game"
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
-	"github.com/jacobpatterson1549/selene-bananas/ui/game"
+	gameController "github.com/jacobpatterson1549/selene-bananas/ui/game"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
 
@@ -19,14 +19,14 @@ type (
 	// Lobby handles viewing, joining, and creating games on the server.
 	Lobby struct {
 		log    *log.Log
-		game   *game.Game
+		game   *gameController.Game
 		Socket Socket
 	}
 
 	// Config contains the parameters to create a Lobby.
 	Config struct {
 		Log  *log.Log
-		Game *game.Game
+		Game *gameController.Game
 	}
 
 	// Socket is a structure that connects the server to the lobby.
@@ -72,7 +72,7 @@ func (l *Lobby) leave() {
 }
 
 // SetGameInfos updates the game-infos table with the game infos for the username.
-func (l *Lobby) SetGameInfos(gameInfos []gameModel.Info, username string) {
+func (l *Lobby) SetGameInfos(gameInfos []game.Info, username string) {
 	tbodyElement := dom.QuerySelector(".game-infos>tbody")
 	tbodyElement.Set("innerHTML", "")
 	if len(gameInfos) == 0 {

@@ -15,14 +15,14 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/db"
 	"github.com/jacobpatterson1549/selene-bananas/db/sql"
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
-	"github.com/jacobpatterson1549/selene-bananas/game"
-	playerModel "github.com/jacobpatterson1549/selene-bananas/game/models/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/game/word"
 	"github.com/jacobpatterson1549/selene-bananas/server"
 	"github.com/jacobpatterson1549/selene-bananas/server/auth"
 	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
+	gameController "github.com/jacobpatterson1549/selene-bananas/server/game"
+	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/server/game/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/server/game/socket"
 	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
@@ -157,12 +157,12 @@ func lobbyConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int
 }
 
 // gameConfig creates the base configuration for all games.
-func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*game.Config, error) {
+func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*gameController.Config, error) {
 	wordsFile, err := os.Open(m.wordsFile)
 	if err != nil {
 		return nil, fmt.Errorf("trying to open words file: %w", err)
 	}
-	playerCfg := player.Config{
+	playerCfg := playerController.Config{
 		WinPoints: 10,
 	}
 	wordChecker := word.NewChecker(wordsFile)
@@ -171,12 +171,12 @@ func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int6
 			tiles[i], tiles[j] = tiles[j], tiles[i]
 		})
 	}
-	shufflePlayersFunc := func(sockets []playerModel.Name) {
+	shufflePlayersFunc := func(sockets []player.Name) {
 		rand.Shuffle(len(sockets), func(i, j int) {
 			sockets[i], sockets[j] = sockets[j], sockets[i]
 		})
 	}
-	cfg := game.Config{
+	cfg := gameController.Config{
 		Debug:                  m.debugGame,
 		Log:                    log,
 		TimeFunc:               timeFunc,

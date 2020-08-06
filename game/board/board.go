@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/jacobpatterson1549/selene-bananas/game/models/game"
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 

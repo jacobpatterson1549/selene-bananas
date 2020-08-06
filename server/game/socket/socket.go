@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/jacobpatterson1549/selene-bananas/game/models/game"
-	"github.com/jacobpatterson1549/selene-bananas/game/models/player"
+	"github.com/jacobpatterson1549/selene-bananas/game"
+	"github.com/jacobpatterson1549/selene-bananas/game/player"
 )
 
 type (

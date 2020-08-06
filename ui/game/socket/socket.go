@@ -10,9 +10,9 @@ import (
 	"sync"
 	"syscall/js"
 
-	gameModel "github.com/jacobpatterson1549/selene-bananas/game/models/game"
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
-	"github.com/jacobpatterson1549/selene-bananas/ui/game"
+	gameController "github.com/jacobpatterson1549/selene-bananas/ui/game"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
@@ -23,7 +23,7 @@ type (
 		log       *log.Log
 		webSocket js.Value
 		user      User
-		game      *game.Game
+		game      *gameController.Game
 		lobby     *lobby.Lobby
 		jsFuncs   struct {
 			onOpen    js.Func
@@ -37,7 +37,7 @@ type (
 	Config struct {
 		Log   *log.Log
 		User  User
-		Game  *game.Game
+		Game  *gameController.Game
 		Lobby *lobby.Lobby
 	}
 
@@ -162,28 +162,28 @@ func (s *Socket) onError(errC chan<- error) func() {
 func (s *Socket) onMessage(event js.Value) {
 	jsMessage := event.Get("data")
 	messageJSON := jsMessage.String()
-	var m gameModel.Message
+	var m game.Message
 	err := json.Unmarshal([]byte(messageJSON), &m)
 	if err != nil {
 		s.log.Error("unmarshalling message: " + err.Error())
 		return
 	}
 	switch m.Type {
-	case gameModel.Leave:
+	case game.Leave:
 		s.handleGameLeave(m)
-	case gameModel.Infos:
+	case game.Infos:
 		s.lobby.SetGameInfos(m.GameInfos, s.user.Username())
-	case gameModel.PlayerDelete:
+	case game.PlayerDelete:
 		s.handlePlayerDelete(m)
-	case gameModel.Join, gameModel.StatusChange, gameModel.TilesChange:
+	case game.Join, game.StatusChange, game.TilesChange:
 		s.handleInfo(m)
-	case gameModel.SocketError:
+	case game.SocketError:
 		s.log.Error(m.Info)
-	case gameModel.SocketWarning:
+	case game.SocketWarning:
 		s.log.Warning(m.Info)
-	case gameModel.SocketHTTPPing:
+	case game.SocketHTTPPing:
 		s.httpPing()
-	case gameModel.Chat:
+	case game.Chat:
 		s.log.Chat(m.Info)
 	default:
 		s.log.Error("unknown message type received")
@@ -191,7 +191,7 @@ func (s *Socket) onMessage(event js.Value) {
 }
 
 // Send delivers a message to the server via it's websocket, panicing if the WebSocket is not open.
-func (s *Socket) Send(m gameModel.Message) {
+func (s *Socket) Send(m game.Message) {
 	if !s.isOpen() {
 		s.log.Error("websocket not open")
 		return
@@ -220,7 +220,7 @@ func (s *Socket) isOpen() bool {
 }
 
 // handleGameLeave leaves the game and logs any info text from the message.
-func (s *Socket) handleGameLeave(m gameModel.Message) {
+func (s *Socket) handleGameLeave(m game.Message) {
 	s.game.Leave()
 	if len(m.Info) > 0 {
 		s.log.Info(m.Info)
@@ -228,7 +228,7 @@ func (s *Socket) handleGameLeave(m gameModel.Message) {
 }
 
 // handlePlayerDelete closes the socket and logs any info text from the message.
-func (s *Socket) handlePlayerDelete(m gameModel.Message) {
+func (s *Socket) handlePlayerDelete(m game.Message) {
 	s.Close()
 	if len(m.Info) > 0 {
 		s.log.Info(m.Info)
@@ -236,7 +236,7 @@ func (s *Socket) handlePlayerDelete(m gameModel.Message) {
 }
 
 // handleInfo contains the logic for handling messages with types Info and GameJoin.
-func (s *Socket) handleInfo(m gameModel.Message) {
+func (s *Socket) handleInfo(m game.Message) {
 	s.game.UpdateInfo(m)
 	if len(m.Info) > 0 {
 		s.log.Info(m.Info)

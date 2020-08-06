@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
-	"github.com/jacobpatterson1549/selene-bananas/game/models/player"
-	playerController "github.com/jacobpatterson1549/selene-bananas/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
+	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
 )
 
 type mockUserDao struct {
