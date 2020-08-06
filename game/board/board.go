@@ -149,47 +149,37 @@ func (b *Board) MoveTiles(tilePositions []tile.Position) error {
 // CanMoveTiles determines if the player's tiles can be moved to/in the used area
 // without overlapping any other tiles
 func (b Board) CanMoveTiles(tilePositions []tile.Position) bool {
-	desiredUsedTileLocs, movedTileIDs, ok := b.desiredUsedTileLocs(tilePositions)
-	if !ok {
-		return false
-	}
-	return b.canLeaveUsedTiles(desiredUsedTileLocs, movedTileIDs)
-}
-
-// desiredUsedTileLocs creates a set of desired move locations, tile IDs, and an ok value from tilePositions.
-// The returned ok value will be false if the board does not have any of the tiles specified by the tilePositions,
-// if a tile is moved more than once, or if multiple tiles move to the same position.
-func (b Board) desiredUsedTileLocs(tilePositions []tile.Position) (map[tile.X]map[tile.Y]struct{}, map[tile.ID]struct{}, bool) {
-	desiredUsedTileLocs := make(map[tile.X]map[tile.Y]struct{}, len(b.UsedTileLocs))
-	movedTileIDs := make(map[tile.ID]struct{}, len(tilePositions))
+	ids := make(map[tile.ID]struct{}, len(tilePositions))
+	positions := make(map[tile.X]map[tile.Y]struct{}, len(b.UsedTileLocs))
 	for _, tp := range tilePositions {
+		// ensure the tile position and id is valid
 		switch {
 		case tp.X < 0, tp.Y < 0, int(tp.X) >= b.NumCols, int(tp.Y) >= b.NumRows,
 			!b.hasTile(tp.Tile):
-			return nil, nil, false
+			return false
 		}
-		if _, ok := movedTileIDs[tp.Tile.ID]; ok {
-			return nil, nil, false
+		if _, ok := ids[tp.Tile.ID]; ok {
+			return false
 		}
-		movedTileIDs[tp.Tile.ID] = struct{}{}
-		if _, ok := desiredUsedTileLocs[tp.X]; !ok {
-			desiredUsedTileLocs[tp.X] = make(map[tile.Y]struct{}, 1)
+		ids[tp.Tile.ID] = struct{}{}
+		// ensure no other tile is moved to the same spot
+		if _, ok := positions[tp.X]; !ok {
+			positions[tp.X] = make(map[tile.Y]struct{}, 1)
+		} else if _, ok := positions[tp.X][tp.Y]; ok {
+			return false
 		}
-		if _, ok := desiredUsedTileLocs[tp.X][tp.Y]; ok {
-			return nil, nil, false
-		}
-		desiredUsedTileLocs[tp.X][tp.Y] = struct{}{}
+		positions[tp.X][tp.Y] = struct{}{}
 	}
-	return desiredUsedTileLocs, movedTileIDs, true
+	return b.canLeaveUsedTiles(ids, positions)
 }
 
-// canLeaveUsedTiles determines if all of the used tiles on the board that are not in the movedTilesIDs set
-// will not be replaced by any of the tilePositions in desiredUsedTileLocs.
-func (b Board) canLeaveUsedTiles(desiredUsedTileLocs map[tile.X]map[tile.Y]struct{}, movedTileIDs map[tile.ID]struct{}) bool {
+// canLeaveUsedTiles determines if all of the used tiles on the board that are not in movedTilesIDs
+// will not be replaced by any of the tiles being moved.
+func (b Board) canLeaveUsedTiles(movedTileIDs map[tile.ID]struct{}, movedTilePositions map[tile.X]map[tile.Y]struct{}) bool {
 	for t2ID, tp2 := range b.UsedTiles {
 		if _, ok := movedTileIDs[t2ID]; !ok {
-			if desiredUsedTileLocsY, ok := desiredUsedTileLocs[tp2.X]; ok {
-				if _, ok := desiredUsedTileLocsY[tp2.Y]; ok {
+			if movedTilePositionsY, ok := movedTilePositions[tp2.X]; ok {
+				if _, ok := movedTilePositionsY[tp2.Y]; ok {
 					return false
 				}
 			}
