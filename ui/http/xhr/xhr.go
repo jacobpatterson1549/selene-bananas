@@ -37,11 +37,15 @@ func (c HTTPClient) Do(req http.Request) (*http.Response, error) {
 	for _, event := range []string{"load", "timeout", "abort"} {
 		xhr.Call("addEventListener", event, eventHandler)
 	}
-	body, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		return nil, errors.New("getting request body: " + err.Error())
+	var body string
+	if req.Body != nil {
+		bytes, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			return nil, errors.New("getting request body: " + err.Error())
+		}
+		body = string(bytes)
 	}
-	xhr.Call("send", string(body))
+	xhr.Call("send", body)
 	select {
 	case response := <-responseC:
 		return &response, nil
