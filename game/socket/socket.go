@@ -245,7 +245,7 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 func CloseConn(conn *websocket.Conn, reason string) {
 	data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
 	if err := conn.WriteMessage(websocket.CloseMessage, data); err != nil {
-		fmt.Printf("closing connection: writing close message: %v", err)
+		fmt.Printf("closing connection: writing close message: %v\n", err)
 	}
 	conn.Close()
 }
