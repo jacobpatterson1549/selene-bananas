@@ -22,8 +22,8 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/server/auth"
 	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
 	gameController "github.com/jacobpatterson1549/selene-bananas/server/game"
-	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/server/game/lobby"
+	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/server/game/socket"
 	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
 )
