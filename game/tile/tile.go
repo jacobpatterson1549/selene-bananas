@@ -10,7 +10,7 @@ type (
 
 	// Position represents a tile and its location.
 	Position struct {
-		Tile Tile `json:"tile"`
+		Tile Tile `json:"t"`
 		X    X    `json:"x"`
 		Y    Y    `json:"y"`
 	}

@@ -38,7 +38,7 @@ func TestMessageJSON(t *testing.T) {
 		},
 		{
 			m: Message{Type: 9, TilePositions: []tile.Position{{Tile: tile.Tile{ID: 8, Ch: 'R'}, X: 4, Y: 46}}},
-			j: `{"type":9,"tilePositions":[{"tile":{"id":8,"ch":"R"},"x":4,"y":46}]}`,
+			j: `{"type":9,"tilePositions":[{"t":{"id":8,"ch":"R"},"x":4,"y":46}]}`,
 		},
 		{
 			m: Message{Type: 3, GameInfos: []Info{{ID: 7, Status: 2, Players: []string{"fred", "barney"}, CreatedAt: 1257894000}}},
