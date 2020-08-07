@@ -10,9 +10,9 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
+	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/game/word"
-	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
 )
 
