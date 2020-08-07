@@ -52,12 +52,12 @@ func TestNewSQLDatabase(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		case sqlDB == nil:
-			t.Errorf("Test %v: expected database to be set", i)
+			t.Errorf("Test %v: wanted database to be set", i)
 		}
 	}
 }
@@ -136,7 +136,7 @@ func TestDatabaseQueryRow(t *testing.T) {
 		}
 		db, err := cfg.NewDatabase()
 		if err != nil {
-			t.Errorf("unexpected error: %v", err)
+			t.Errorf("unwanted error: %v", err)
 		}
 		r := db.Query(ctx, q)
 		var got int
@@ -144,10 +144,10 @@ func TestDatabaseQueryRow(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		case want != got:
 			t.Errorf("Test %v: value not set correctly, wanted %v, got %v", i, want, got)
 		}
@@ -274,16 +274,16 @@ func TestDatabaseExec(t *testing.T) {
 		}
 		db, err := cfg.NewDatabase()
 		if err != nil {
-			t.Errorf("unexpected error: %v", err)
+			t.Errorf("unwanted error: %v", err)
 		}
 		err = db.Exec(ctx, q)
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		}
 	}
 }

@@ -20,7 +20,7 @@ func TestCreate(t *testing.T) {
 	got, err := tokenizer.Create("selene", 18)
 	switch {
 	case err != nil:
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	case want != got:
 		t.Errorf("could not create using simple key\nwanted %v\ngot    %v", want, got)
 	}
@@ -64,7 +64,7 @@ func TestReadUsername(t *testing.T) {
 		}
 		tokenString, err := creationTokenizer.Create(test.username, 0)
 		if err != nil {
-			t.Errorf("Test %v: unexpected error: %v", i, err)
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 			continue
 		}
 		var readTokenizer Tokenizer = jwtTokenizer{
@@ -76,10 +76,10 @@ func TestReadUsername(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		case test.want != got:
 			t.Errorf("Test %v: wanted %v, got %v", i, test.want, got)
 		}
@@ -148,16 +148,16 @@ func TestCreateReadWithTime(t *testing.T) {
 		want := "selene"
 		tokenString, err := tokenizer.Create(want, 32)
 		if err != nil {
-			t.Errorf("unexpected error: %v", err)
+			t.Errorf("unwanted error: %v", err)
 		}
 		got, err := tokenizer.ReadUsername(tokenString)
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		case want != got:
 			t.Errorf("Test %v: wanted %v, got %v", i, want, got)
 		}
@@ -169,7 +169,7 @@ func TestNewTokenizer(t *testing.T) {
 		KeyReader: errorReader{fmt.Errorf("problem reading key")},
 	}
 	if _, err := badCfg.NewTokenizer(); err == nil {
-		t.Errorf("expected error creating tokenizer with bad key reader")
+		t.Errorf("wanted error creating tokenizer with bad key reader")
 	}
 	key := []byte("secret")
 	keyReader := bytes.NewReader(key)
@@ -190,9 +190,9 @@ func TestNewTokenizer(t *testing.T) {
 	gotJWT, ok := got.(jwtTokenizer)
 	switch {
 	case err != nil:
-		t.Errorf("unexpected error")
+		t.Errorf("unwanted error")
 	case !ok:
-		t.Errorf("expected jwtTokenizer, got %T", got)
+		t.Errorf("wanted jwtTokenizer, got %T", got)
 	case want.method != gotJWT.method,
 		want.key == nil,
 		gotJWT.timeFunc == nil,

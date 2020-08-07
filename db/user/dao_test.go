@@ -69,10 +69,10 @@ func TestNewDao(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		case !reflect.DeepEqual(d.db, test.db):
 			t.Errorf("Test %v: db not set", i)
 		case d.readFileFunc == nil:
@@ -113,10 +113,10 @@ func TestDaoSetup(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		}
 	}
 }
@@ -158,10 +158,10 @@ func TestDaoCreate(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		}
 	}
 }
@@ -216,10 +216,10 @@ func TestDaoRead(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		case test.want != *got:
 			t.Errorf("Test %v:\nwanted: %v\ngot:    : %v", i, test.want, got)
 		}
@@ -302,10 +302,10 @@ func TestDaoUpdatePassword(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		}
 	}
 }
@@ -343,7 +343,7 @@ func TestDaoUpdatePointsIncrement(t *testing.T) {
 			p1, ok := usernamePoints[u]
 			switch {
 			case !ok:
-				return fmt.Errorf("query %v: unexpected username: %v", i, u)
+				return fmt.Errorf("query %v: unwanted username: %v", i, u)
 			case p1 != p2:
 				return fmt.Errorf("query %v: wanted to update points for %v to %v, got: %v ", i, u, p1, p2)
 			}
@@ -370,10 +370,10 @@ func TestDaoUpdatePointsIncrement(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		}
 	}
 }
@@ -422,10 +422,10 @@ func TestDaoDelete(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		}
 	}
 }

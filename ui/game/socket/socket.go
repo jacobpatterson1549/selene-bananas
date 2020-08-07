@@ -150,7 +150,7 @@ func (s *Socket) closeWebSocket() {
 	dom.SetChecked("#tab-lobby", true)
 }
 
-// onMessage is called when the websocket encounters an unexpected error.
+// onMessage is called when the websocket encounters an unwanted error.
 func (s *Socket) onError(errC chan<- error) func() {
 	return func() {
 		s.user.Logout()

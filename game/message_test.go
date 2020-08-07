@@ -53,17 +53,17 @@ func TestMessageJSON(t *testing.T) {
 		j2, err := json.Marshal(test.m)
 		switch {
 		case err != nil:
-			t.Errorf("Test %v (Marshal): unexpected error while marshalling Message '%v': %v", i, test.m, err)
+			t.Errorf("Test %v (Marshal): unwanted error while marshalling Message '%v': %v", i, test.m, err)
 		case test.j != string(j2):
-			t.Errorf("Test %v (Marshal): expected json to be:\n%v\nbut was:\n%v", i, test.j, string(j2))
+			t.Errorf("Test %v (Marshal): unwanted json to be:\n%v\nbut was:\n%v", i, test.j, string(j2))
 		}
 		var m2 Message
 		err = json.Unmarshal([]byte(test.j), &m2)
 		switch {
 		case err != nil:
-			t.Errorf("Test %v (Unmarshal): unexpected error while unmarshalling json '%v': %v", i, test.j, err)
+			t.Errorf("Test %v (Unmarshal): unwanted error while unmarshalling json '%v': %v", i, test.j, err)
 		case !reflect.DeepEqual(test.m, m2):
-			t.Errorf("Test %v (Unmarshal): expected Message to be:\n%v\nbut was:\n%v", i, test.m, m2)
+			t.Errorf("Test %v (Unmarshal): unwanted Message to be:\n%v\nbut was:\n%v", i, test.m, m2)
 		}
 	}
 }
@@ -74,7 +74,7 @@ func TestMessageMarshalOmitsInternals(t *testing.T) {
 	got, err := json.Marshal(m)
 	switch {
 	case err != nil:
-		t.Errorf("unexpected exception: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	case !reflect.DeepEqual(want, got):
 		t.Errorf("wanted %v, got %v", string(want), string(got))
 	}

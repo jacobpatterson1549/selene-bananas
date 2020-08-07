@@ -98,7 +98,7 @@ func (u *User) Logout() {
 func (User) info(jwt string) (*userInfo, error) {
 	parts := strings.Split(jwt, ".")
 	if len(parts) != 3 {
-		return nil, errors.New("expected 3 jwt parts")
+		return nil, errors.New("wanted 3 jwt parts, got " + strconv.Itoa(len(parts)))
 	}
 	payload := parts[1]
 	jwtUsernameClaims, err := base64.RawURLEncoding.DecodeString(payload)

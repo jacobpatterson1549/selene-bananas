@@ -202,10 +202,10 @@ func TestCheckTokenUsername(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		}
 	}
 }

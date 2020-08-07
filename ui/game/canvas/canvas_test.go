@@ -95,15 +95,15 @@ func TestDrawTile(t *testing.T) {
 func TestCalculateSelectedUnusedTiles(t *testing.T) {
 	ta, err := tile.New(tile.ID(11), 'A')
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	}
 	tb, err := tile.New(tile.ID(22), 'B')
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	}
 	tc, err := tile.New(tile.ID(33), 'C')
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	}
 	c := Canvas{
 		draw: drawMetrics{

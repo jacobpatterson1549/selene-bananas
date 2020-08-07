@@ -26,7 +26,7 @@ func TestInitializeUnusedTilesCorrectAmount(t *testing.T) {
 		tileLetters: defaultTileLetters,
 	}
 	if err := g.initializeUnusedTiles(); err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	}
 	want := 144
 	got := len(g.unusedTiles)
@@ -40,7 +40,7 @@ func TestInitializeUnusedTilesAllLetters(t *testing.T) {
 		tileLetters: defaultTileLetters,
 	}
 	if err := g.initializeUnusedTiles(); err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	}
 	m := make(map[rune]struct{}, 26)
 	for _, v := range g.unusedTiles {
@@ -79,11 +79,11 @@ func TestInitializeUnusedTilesShuffled(t *testing.T) {
 			},
 		}
 		if err := g.initializeUnusedTiles(); err != nil {
-			t.Errorf("unexpected error: %v", err)
+			t.Errorf("unwanted error: %v", err)
 		}
 		got := rune(g.unusedTiles[0].Ch)
 		if test.want != got {
-			t.Errorf("expected first tile to be %q when sorted%v (a fake shuffle), but was %q", test.want, test.inReverse, got)
+			t.Errorf("wanted first tile to be %q when sorted%v (a fake shuffle), but was %q", test.want, test.inReverse, got)
 		}
 	}
 }
@@ -92,7 +92,7 @@ func TestInitializeUnusedTilesUniqueIds(t *testing.T) {
 	tileLetters := "AAAABBABACCABAC"
 	g := Game{tileLetters: tileLetters}
 	if err := g.initializeUnusedTiles(); err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	}
 	tileIDs := make(map[tile.ID]struct{}, len(g.unusedTiles))
 	for _, tile := range g.unusedTiles {
@@ -107,7 +107,7 @@ func TestInitializeUnusedTilesCustom(t *testing.T) {
 	tileLetters := "SELENE"
 	g := Game{tileLetters: tileLetters}
 	if err := g.initializeUnusedTiles(); err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	}
 	for i, tile := range g.unusedTiles {
 		want := rune(tileLetters[i])
@@ -122,7 +122,7 @@ func TestInitializeUnusedTilesInvalid(t *testing.T) {
 	tileLetters := ":("
 	g := Game{tileLetters: tileLetters}
 	if err := g.initializeUnusedTiles(); err == nil {
-		t.Errorf("expected error while initializing tiles with text: '%v'", tileLetters)
+		t.Errorf("wanted error while initializing tiles with text: '%v'", tileLetters)
 	}
 }
 
@@ -147,11 +147,11 @@ func TestUpdateUserPoints(t *testing.T) {
 	}
 	alicePlayer, err := playerController.Config{WinPoints: 4}.New(&board.Board{})
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	}
 	selenePlayer, err := playerController.Config{WinPoints: 5}.New(&board.Board{})
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	}
 	g := Game{
 		players: map[player.Name]*playerController.Player{

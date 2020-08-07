@@ -24,7 +24,7 @@ func TestNewSocket(t *testing.T) {
 	s, err := cfg.NewSocket(conn, "selene")
 	switch {
 	case err != nil:
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	case s.pingPeriod <= 0,
 		s.pingPeriod >= s.readWait:
 		t.Errorf("ping period should be initialized to be less than readWait (%v)", s.readWait)

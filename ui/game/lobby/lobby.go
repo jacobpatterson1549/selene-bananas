@@ -54,7 +54,7 @@ func (l *Lobby) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	dom.RegisterFuncs(ctx, wg, "lobby", jsFuncs)
 }
 
-// connect makes an BLOCKING request to connect to the lobby.
+// connect makes a BLOCKING request to connect to the lobby.
 // It is expected that the server will respond with a game infos message.
 func (l *Lobby) connect(event js.Value) {
 	err := l.Socket.Connect(event)

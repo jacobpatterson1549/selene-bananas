@@ -343,7 +343,7 @@ func (l Lobby) gameInfos() []game.Info {
 // handleGameInfo updates the game info for the game.
 func (l *Lobby) handleGameInfoChanged(m game.Message) {
 	if len(m.GameInfos) != 1 {
-		log.Printf("expected 1 gameInfo to have changed, got %v", len(m.GameInfos))
+		log.Printf("wanted 1 gameInfo to have changed, got %v", len(m.GameInfos))
 		return
 	}
 	i := m.GameInfos[0]

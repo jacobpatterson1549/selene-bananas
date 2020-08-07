@@ -39,10 +39,10 @@ func TestNewLetter(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		case test.want != got:
 			t.Errorf("Test %v: wanted %v, got %v", i, test.want, got)
 		}
@@ -64,7 +64,7 @@ func TestMarshalLetter(t *testing.T) {
 	got, err := json.Marshal(l)
 	switch {
 	case err != nil:
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	case want != string(got):
 		t.Errorf("wanted %v, got %v", want, string(got))
 	}
@@ -107,10 +107,10 @@ func TestUnmarshalLetter(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		case test.want != got:
 			t.Errorf("Test %v: wanted %v, got %v", i, test.want, got)
 		}
@@ -121,6 +121,6 @@ func TestUnmarshalLetterDirectError(t *testing.T) {
 	var l letter
 	err := l.UnmarshalJSON([]byte(`X`))
 	if err == nil {
-		t.Errorf("expected error when unmarshalling unquoted letter")
+		t.Errorf("wanted error when unmarshalling unquoted letter")
 	}
 }

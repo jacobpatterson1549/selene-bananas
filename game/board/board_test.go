@@ -14,7 +14,7 @@ func TestNew(t *testing.T) {
 	}
 	b, err := cfg.New([]tile.Tile{{ID: 1}})
 	if err != nil || b == nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("unwanted error: %v", err)
 	}
 	if len(b.UnusedTileIDs) != 1 || b.UnusedTiles[1].ID != 1 {
 		t.Errorf("wanted only unused tile to have id 1, got %v", b.UnusedTiles)
@@ -44,7 +44,7 @@ func TestNewInvalidBoards(t *testing.T) {
 	for i, cfg := range invalidBoardConfigs {
 		_, err := cfg.New(nil)
 		if err == nil {
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		}
 	}
 }
@@ -61,20 +61,20 @@ func TestAddTile(t *testing.T) {
 	tl := tile.Tile{ID: 1}
 	err := b.AddTile(tl)
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	}
 	err = b.AddTile(tl)
 	if err == nil {
-		t.Errorf("unexpected error while adding tile that TileState already has")
+		t.Errorf("unwanted error while adding tile that TileState already has")
 	}
 	tp := tile.Position{Tile: tl}
 	err = b.MoveTiles([]tile.Position{tp})
 	if err != nil {
-		t.Errorf("unexpected error: %v", err)
+		t.Errorf("unwanted error: %v", err)
 	}
 	err = b.AddTile(tl)
 	if err == nil {
-		t.Errorf("unexpected while adding tile that TileState has moved")
+		t.Errorf("wanted error when re-adding tile")
 	}
 }
 
@@ -393,10 +393,10 @@ func TestMoveTiles(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		}
 	}
 }
@@ -452,10 +452,10 @@ func TestRemoveTile(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		case !(reflect.DeepEqual(test.want.UnusedTiles, test.board.UnusedTiles) || (test.want.UnusedTiles == nil && len(test.board.UnusedTiles) == 0)),
 			!(reflect.DeepEqual(test.want.UnusedTileIDs, test.board.UnusedTileIDs) || (test.want.UnusedTileIDs == nil && len(test.board.UnusedTileIDs) == 0)),
 			!(reflect.DeepEqual(test.want.UsedTiles, test.board.UsedTiles) || (test.want.UsedTiles == nil && len(test.board.UsedTiles) == 0)),
@@ -489,15 +489,15 @@ func TestResize(t *testing.T) {
 	}
 	t1, err := tile.New(1, 'A')
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("unwanted error: %v", err)
 	}
 	t2, err := tile.New(2, 'B')
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("unwanted error: %v", err)
 	}
 	t3, err := tile.New(3, 'C')
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("unwanted error: %v", err)
 	}
 	unusedTiles := []tile.Tile{
 		*t1,
@@ -528,17 +528,17 @@ func TestResize(t *testing.T) {
 		}
 		b, err := cfg.New(unusedTiles)
 		if err != nil {
-			t.Errorf("Test %v: unexpected error: %v", i, err)
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		}
 		if err = b.MoveTiles(tilePositions); err != nil {
-			t.Errorf("Test %v: unexpected error: %v", i, err)
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		}
 		cfg.NumCols += test.deltaNumCols
 		cfg.NumRows += test.deltaNumRows
 		m, err := b.Resize(cfg)
 		switch {
 		case err != nil:
-			t.Errorf("Test %v: unexpected error: %v", i, err)
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case test.wantTile2Unused:
 			switch {
 			case len(b.UnusedTileIDs) != 1, b.UnusedTileIDs[0] != t2.ID,

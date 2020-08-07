@@ -73,7 +73,7 @@ func (s Database) Exec(ctx context.Context, queries ...db.Query) error {
 			var n int64
 			n, err = result.RowsAffected()
 			if err == nil && n != 1 {
-				err = fmt.Errorf("expected to update 1 row, but updated %d when calling %s", n, f.name)
+				err = fmt.Errorf("wanted to update 1 row, but updated %d when calling %s", n, f.name)
 			}
 		}
 		if err != nil {

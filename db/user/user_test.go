@@ -82,12 +82,12 @@ func TestNewUser(t *testing.T) {
 		case err != nil:
 			switch {
 			case test.wantOk:
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			case u != nil:
-				t.Errorf("Test %v: expected nil user when error returned", i)
+				t.Errorf("Test %v: wanted nil user when error returned", i)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		case test.username != string(u.Username):
 			t.Errorf("Test %v: wanted user's username to be %v, but was %v", i, test.username, u.Username)
 		case test.password != string(u.password):

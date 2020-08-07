@@ -25,10 +25,10 @@ func TestNew(t *testing.T) {
 		switch {
 		case err != nil:
 			if test.wantOk {
-				t.Errorf("Test %v: unexpected error: %v", i, err)
+				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
 		case !test.wantOk:
-			t.Errorf("Test %v: expected error", i)
+			t.Errorf("Test %v: wanted error", i)
 		case test.want != *got:
 			t.Errorf("Test %v:\nwanted %v\ngot    %v", i, test.want, *got)
 		}
