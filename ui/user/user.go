@@ -6,7 +6,6 @@ package user
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"regexp"
 	"strconv"
@@ -15,6 +14,7 @@ import (
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui/dom/json"
 	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
@@ -105,29 +105,22 @@ func (User) info(jwt string) (*userInfo, error) {
 	if err != nil {
 		return nil, errors.New("decoding user info: " + err.Error())
 	}
-	var claims map[string]interface{}
-	if err := json.Unmarshal(jwtUsernameClaims, &claims); err != nil {
-		return nil, errors.New("destructuring user info" + err.Error())
-	}
-	sub, ok := claims["sub"]
-	if !ok {
+	claims := json.Parse(string(jwtUsernameClaims))
+	switch {
+	case claims.Type() != js.TypeObject:
+		return nil, errors.New("wanted user info to be an object, got " + claims.Type().String())
+	case claims.Get("sub").IsUndefined():
 		return nil, errors.New("no 'sub' field in user claims")
-	}
-	username, ok := sub.(string)
-	if !ok {
+	case claims.Get("sub").Type() != js.TypeString:
 		return nil, errors.New("sub is not a string")
-	}
-	points, ok := claims["points"]
-	if !ok {
+	case claims.Get("points").IsUndefined():
 		return nil, errors.New("no 'points' field in user claims")
-	}
-	pointsF, ok := points.(float64)
-	if !ok {
+	case claims.Get("points").Type() != js.TypeNumber:
 		return nil, errors.New("points is not a number")
 	}
 	u := userInfo{
-		username: username,
-		points:   int(pointsF),
+		username: claims.Get("sub").String(),
+		points:   claims.Get("points").Int(),
 	}
 	return &u, nil
 }
