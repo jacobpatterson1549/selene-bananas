@@ -83,6 +83,9 @@ func TestUnmarshalLetter(t *testing.T) {
 			json: `X`,
 		},
 		{
+			json: `1`,
+		},
+		{
 			json: `"@"`,
 		},
 		{
@@ -114,13 +117,5 @@ func TestUnmarshalLetter(t *testing.T) {
 		case test.want != got:
 			t.Errorf("Test %v: wanted %v, got %v", i, test.want, got)
 		}
-	}
-}
-
-func TestUnmarshalLetterDirectError(t *testing.T) {
-	var l letter
-	err := l.UnmarshalJSON([]byte(`X`))
-	if err == nil {
-		t.Errorf("wanted error when unmarshalling unquoted letter")
 	}
 }
