@@ -60,6 +60,7 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		"start":             dom.NewJsFunc(g.Start),
 		"finish":            dom.NewJsFunc(g.Finish),
 		"snagTile":          dom.NewJsFunc(g.SnagTile),
+		"swapTile":          dom.NewJsFunc(g.StartSwap),
 		"sendChat":          dom.NewJsEventFunc(g.sendChat),
 		"resizeTiles":       dom.NewJsFunc(g.resizeTiles),
 		"refreshTileLength": dom.NewJsFunc(g.refreshTileLength),
@@ -128,6 +129,11 @@ func (g *Game) SnagTile() {
 	g.Socket.Send(game.Message{
 		Type: game.Snag,
 	})
+}
+
+// StartSwap start a swap move on the canvas.
+func (g *Game) StartSwap() {
+	g.canvas.StartSwap()
 }
 
 // sendChat sends a chat message from the form of the event.
