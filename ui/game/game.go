@@ -176,7 +176,6 @@ func (g *Game) addUnusedTiles(m game.Message) {
 		message += ": " + strings.Join(tileStrings, ", ")
 		g.log.Info(message)
 	}
-	g.canvas.Redraw()
 }
 
 // UpdateInfo updates the game for the specified message.
@@ -190,6 +189,7 @@ func (g *Game) UpdateInfo(m game.Message) {
 	case len(m.Tiles) > 0:
 		g.addUnusedTiles(m)
 	}
+	g.canvas.Redraw()
 }
 
 // updateStatus sets the statusText and enables or disables the snag, swap, start, and finish buttons.
@@ -204,7 +204,6 @@ func (g *Game) updateStatus(m game.Message) {
 		finishDisabled = true
 	case game.InProgress:
 		statusText = "In Progress"
-		g.canvas.Redraw()
 		startDisabled = true
 		finishDisabled = m.TilesLeft > 0
 	case game.Finished:

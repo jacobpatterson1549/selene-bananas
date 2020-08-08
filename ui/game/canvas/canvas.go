@@ -169,7 +169,6 @@ func (c *Canvas) SetTileLength(tileLength int) {
 // InitDom regesters canvas dom functions.
 func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
-		"redraw":   dom.NewJsFunc(c.Redraw),
 		"swapTile": dom.NewJsFunc(c.StartSwap),
 	}
 	dom.RegisterFuncs(ctx, wg, "canvas", jsFuncs)
@@ -260,7 +259,6 @@ func (c *Canvas) SetGameStatus(s game.Status) {
 	c.gameStatus = s
 	c.selection.setMoveState(none)
 	c.selection.tiles = make(map[tile.ID]tileSelection)
-	c.Redraw()
 }
 
 // drawUsedTiles pants the unused tiles.
@@ -348,15 +346,15 @@ func (c *Canvas) MoveStart(pp pixelPosition) {
 			c.selection.tiles[tileID] = *ts
 		}
 		c.selection.setMoveState(drag)
-	case hasPreviousSelection:
+	case hasPreviousSelection: // && ts == nil
 		c.selection.tiles = make(map[tile.ID]tileSelection)
-		c.selection.setMoveState(none)
+		c.selection.setMoveState(rect)
 		c.Redraw()
-	case ts != nil:
+	case ts != nil: // && !hasPreviousSelection
 		tileID := ts.tile.ID
 		c.selection.tiles[tileID] = *ts
 		c.selection.setMoveState(drag)
-	default:
+	default: // !hasPerviousSelection && ts == nil
 		c.selection.setMoveState(rect)
 	}
 }
