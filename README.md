@@ -57,8 +57,6 @@ sudo -u postgres psql \
 && echo DATABASE_URL=postgres://$PGUSER:$PGPASSWORD@$PGHOSTADDR:$PGPORT/$PGDATABASE'
 ```
 
-To access the database when the server is not running, run the command `psql selene -h localhost -p 5432 -d selene_bananas_db -W` and enter the database password.
-
 ### HTTPS
 
 The app requires HTTP TLS (HTTPS) to run. Insecure http requests are redirected to https.
@@ -103,8 +101,13 @@ The [Makefile](Makefile) runs the application locally.  This requires Go and a P
 Launching the application with [Docker](https://www.docker.com) requires minimal configuration.
 
 1. Install [docker-compose](https://github.com/docker/compose)
-1. Ensure the files for the`TLS_CERT_FILE` and `TLS_KEY_FILE` environment variables are located in the project folder.
-1. The database will be accessable on port 54320. 
-    * The database will be created using the credentials defined in the `DATABASE_URL_DOCKER` environment variable. The database must be `db`, and will ssl will likely need to be disabled: `DATABASE_URL_DOCKER=postgres://selene:selene123@db/selene_bananas_db?sslmode=disable`
+1. Set database environment variables in a `.env` file in project root (next to Dockerfile).
+```
+POSTGRES_DB=selene_bananas_db
+POSTGRES_USER=selene
+POSTGRES_PASSWORD=selene123
+POSTGRES_PORT=54320
+```
+3. Ensure the files for the`TLS_CERT_FILE` and `TLS_KEY_FILE` environment variables are located in the project folder.
 1. Run `docker-compose up` to launch the application.
 1. Access application by opening <http://localhost:8000>.
