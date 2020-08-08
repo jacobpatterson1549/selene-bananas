@@ -203,8 +203,7 @@ func (g *Game) handleMessage(ctx context.Context, m game.Message, out chan<- gam
 		g.log.Printf("game reading message with type %v", m.Type)
 	}
 	var err error
-	mh, ok := messageHandlers[m.Type]
-	if !ok {
+	if mh, ok := messageHandlers[m.Type]; !ok {
 		err = fmt.Errorf("game does not know how to handle MessageType %v", m.Type)
 	} else if _, ok := g.players[m.PlayerName]; !ok && m.Type != game.Join {
 		err = fmt.Errorf("game does not have player named '%v'", m.PlayerName)
