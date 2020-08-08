@@ -190,23 +190,23 @@ func (c *Canvas) createEventFuncs() map[string]func(event js.Value) {
 	touchPP := c.newPixelPosition()
 	funcs := map[string]func(event js.Value){
 		"mousedown": func(event js.Value) {
-			c.MoveStart(mousePP.fromMouse(event))
+			c.moveStart(mousePP.fromMouse(event))
 		},
 		"mouseup": func(event js.Value) {
-			c.MoveEnd(mousePP.fromMouse(event))
+			c.moveEnd(mousePP.fromMouse(event))
 		},
 		"mousemove": func(event js.Value) {
-			c.MoveCursor(mousePP.fromMouse(event))
+			c.moveCursor(mousePP.fromMouse(event))
 		},
 		"touchstart": func(event js.Value) {
-			c.MoveStart(touchPP.fromTouch(event))
+			c.moveStart(touchPP.fromTouch(event))
 		},
 		"touchend": func(event js.Value) {
 			// the event has no touches, use previous touchPos
-			c.MoveEnd(*touchPP)
+			c.moveEnd(*touchPP)
 		},
 		"touchmove": func(event js.Value) {
-			c.MoveCursor(touchPP.fromTouch(event))
+			c.moveCursor(touchPP.fromTouch(event))
 		},
 	}
 	return funcs
@@ -312,8 +312,8 @@ func (c *Canvas) drawSelectionRectangle() {
 	c.ctx.StrokeRect(minX, minY, width, height)
 }
 
-// MoveStart should be called when a move is started to be made at the specified coordinates.
-func (c *Canvas) MoveStart(pp pixelPosition) {
+// moveStart should be called when a move is started to be made at the specified coordinates.
+func (c *Canvas) moveStart(pp pixelPosition) {
 	if c.gameStatus != game.InProgress {
 		return
 	}
@@ -352,8 +352,8 @@ func (c *Canvas) MoveStart(pp pixelPosition) {
 	}
 }
 
-// MoveCursor should be called whenever the cursor moves, regardless of if a move is being made.
-func (c *Canvas) MoveCursor(pp pixelPosition) {
+// moveCursor should be called whenever the cursor moves, regardless of if a move is being made.
+func (c *Canvas) moveCursor(pp pixelPosition) {
 	if c.gameStatus != game.InProgress {
 		return
 	}
@@ -373,8 +373,8 @@ func (c *Canvas) MoveCursor(pp pixelPosition) {
 	}
 }
 
-// MoveEnd should be called when a move is done being made at the specified coordinates.
-func (c *Canvas) MoveEnd(pp pixelPosition) {
+// moveEnd should be called when a move is done being made at the specified coordinates.
+func (c *Canvas) moveEnd(pp pixelPosition) {
 	if c.gameStatus != game.InProgress {
 		return
 	}

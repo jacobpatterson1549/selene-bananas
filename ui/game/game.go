@@ -53,14 +53,14 @@ func (cfg Config) NewGame() *Game {
 // InitDom registers game dom functions.
 func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
-		"create":            dom.NewJsFunc(g.Create),
+		"create":            dom.NewJsFunc(g.create),
 		"join":              dom.NewJsEventFunc(g.join),
 		"leave":             dom.NewJsFunc(g.Leave),
-		"delete":            dom.NewJsFunc(g.Delete),
+		"delete":            dom.NewJsFunc(g.delete),
 		"start":             dom.NewJsFunc(g.Start),
-		"finish":            dom.NewJsFunc(g.Finish),
-		"snagTile":          dom.NewJsFunc(g.SnagTile),
-		"swapTile":          dom.NewJsFunc(g.StartSwap),
+		"finish":            dom.NewJsFunc(g.finish),
+		"snagTile":          dom.NewJsFunc(g.snagTile),
+		"swapTile":          dom.NewJsFunc(g.startTileSwap),
 		"sendChat":          dom.NewJsEventFunc(g.sendChat),
 		"resizeTiles":       dom.NewJsFunc(g.resizeTiles),
 		"refreshTileLength": dom.NewJsFunc(g.refreshTileLength),
@@ -68,8 +68,8 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	dom.RegisterFuncs(ctx, wg, "game", jsFuncs)
 }
 
-// Create clears the tiles and asks the server for a new game to join.
-func (g *Game) Create() {
+// create clears the tiles and asks the server for a new game to join.
+func (g *Game) create() {
 	m := game.Message{
 		Type: game.Create,
 	}
@@ -99,8 +99,8 @@ func (g *Game) Leave() {
 	dom.SetChecked("#tab-lobby", true)
 }
 
-// Delete removes everyone from the game and deletes it.
-func (g *Game) Delete() {
+// delete removes everyone from the game and deletes it.
+func (g *Game) delete() {
 	if dom.Confirm("Are you sure? Deleting the game will kick everyone out.") {
 		g.Socket.Send(game.Message{
 			Type: game.Delete,
@@ -116,23 +116,23 @@ func (g *Game) Start() {
 	})
 }
 
-// Finish triggers the game to finish for everyone by checking the players tiles.
-func (g *Game) Finish() {
+// finish triggers the game to finish for everyone by checking the players tiles.
+func (g *Game) finish() {
 	g.Socket.Send(game.Message{
 		Type:       game.StatusChange,
 		GameStatus: game.Finished,
 	})
 }
 
-// SnagTile asks the game to give everone a new tile.
-func (g *Game) SnagTile() {
+// snagTile asks the game to give everone a new tile.
+func (g *Game) snagTile() {
 	g.Socket.Send(game.Message{
 		Type: game.Snag,
 	})
 }
 
-// StartSwap start a swap move on the canvas.
-func (g *Game) StartSwap() {
+// startTileSwap start a swap move on the canvas.
+func (g *Game) startTileSwap() {
 	g.canvas.StartSwap()
 }
 
