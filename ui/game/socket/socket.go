@@ -63,7 +63,7 @@ func (cfg Config) New() *Socket {
 	return &s
 }
 
-// InitDom regesters socket dom functions.
+// InitDom registers socket dom functions.
 func (s *Socket) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go s.releaseJsFuncsOnDone(ctx, wg)

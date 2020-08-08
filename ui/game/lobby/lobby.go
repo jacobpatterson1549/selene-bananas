@@ -45,7 +45,7 @@ func (cfg Config) New() *Lobby {
 	return &l
 }
 
-// InitDom regesters lobby dom functions.
+// InitDom registers lobby dom functions.
 func (l *Lobby) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
 		"connect": dom.NewJsEventFuncAsync(l.connect, true),

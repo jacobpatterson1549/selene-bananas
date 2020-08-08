@@ -168,7 +168,7 @@ func (c *Canvas) SetTileLength(tileLength int) {
 	c.UpdateSize()
 }
 
-// InitDom regesters canvas dom functions by adding an event listeners to the canvas element.
+// InitDom registers canvas dom functions by adding an event listeners to the canvas element.
 func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	funcs := c.createEventFuncs()
 	jsFuncs := make(map[string]js.Func, len(funcs))

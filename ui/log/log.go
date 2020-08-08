@@ -15,7 +15,7 @@ import (
 // Log manages messages for the log div.
 type Log struct{}
 
-// InitDom regesters log dom functions.
+// InitDom registers log dom functions.
 func (l *Log) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
 		"clear": dom.NewJsFunc(l.Clear),

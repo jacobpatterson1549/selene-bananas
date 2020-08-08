@@ -56,7 +56,7 @@ func (cfg Config) New(httpClient http.Client) *User {
 	return &u
 }
 
-// InitDom regesters user dom functions.
+// InitDom registers user dom functions.
 func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
 		"logout":               dom.NewJsEventFunc(u.logoutButtonClick),

@@ -50,7 +50,7 @@ func (cfg Config) NewGame() *Game {
 	return &g
 }
 
-// InitDom regesters game dom functions.
+// InitDom registers game dom functions.
 func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
 		"create":            dom.NewJsFunc(g.Create),
