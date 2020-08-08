@@ -28,13 +28,14 @@ RUN tar -c . | md5sum | cut -c -32 \
         | CGO_ENABLED=0 \
             xargs go test --cover \
     && GOOS=js GOARCH=wasm \
-        go build \
-            -o /app/main.wasm \
-            /app/cmd/ui/*.go \
-    && CGO_ENABLED=0 \
-        go build \
-            -o /app/main \
-            /app/cmd/server/*.go
+            go list ./... | grep cmd/ui \
+        | GOOS=js GOARCH=wasm \
+            xargs go build \
+                -o /app/main.wasm \
+    && go list ./... | grep cmd/server \
+        | CGO_ENABLED=0 \
+            xargs go build \
+                -o /app/main
 
 # copy necessary files and folders to a minimal build image
 FROM scratch

@@ -27,14 +27,14 @@ wasm_exec.js:
 		$@
 
 main.wasm: test-wasm
-	$(GO_WASM_ARGS) $(GO_BUILD) \
-		-o $@ \
-		cmd/ui/*.go
+	$(GO_WASM_ARGS) $(GO_LIST) ./... | grep cmd/ui \
+		| $(GO_WASM_ARGS) xargs $(GO_BUILD) \
+			-o $@
 
 main: test
-	$(GO_BUILD) \
-		-o $@ \
-		cmd/server/*.go
+	$(GO_LIST) ./... | grep cmd/server \
+		| xargs $(GO_BUILD) \
+			-o $@
 
 build: main main.wasm wasm_exec.js
 
