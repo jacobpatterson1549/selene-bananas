@@ -10,14 +10,28 @@ func TestGetUser(t *testing.T) {
 		want   userInfo
 		wantOk bool
 	}{
+		// use jwt alg: HS256, secret: s3cr3t
+		{},
 		{
 			jwt: "onlyTWO.parts",
 		},
-		{
+		{ // invalid base64
 			jwt: "a.bad-jwt-!!!.c",
 		},
+		{ // has key of Sub, not sub
+			jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwb2ludHMiOjE4LCJTdWIiOiJzZWxlbmUifQ.GN3dIGP0ENeN1SC78ByrW4dmlm2qBP9XVeACAclGhZ8",
+		},
+		{ // sub is not a string
+			jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwb2ludHMiOjE4LCJzdWIiOjY1fQ.Uf_R9QoSEJIId-JOqz4UNxI0L1tgcBSBL159UT75nDI",
+		},
+		{ // has key of Points, not points
+			jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJQb2ludHMiOjE4LCJzdWIiOiJzZWxlbmUifQ.us4MNwC4FTvbmr5ef2piyTUSIL2a0XwZ2tu66jsQDbk",
+		},
+		{ // points is a string, not a number
+			jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwb2ludHMiOiIxOCIsInN1YiI6InNlbGVuZSJ9.vfTXyRB6qDI0J7mkso3qxBEIe0RMDsFVz6u97bGC_FE",
+		},
 		{
-			jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwb2ludHMiOjE4LCJleHAiOjMxNTM2MDAwLCJzdWIiOiJzZWxlbmUifQ.C4w9IKwB3k3Db40R5FYdeqfg66gYCF7l5s821WlLuJY",
+			jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwb2ludHMiOjE4LCJzdWIiOiJzZWxlbmUifQ.DVKhdVyXfV2cQxHnoNJQdrJUKZ1MuauJdUS8pkcMANE",
 			want: userInfo{
 				username: "selene",
 				points:   18,
