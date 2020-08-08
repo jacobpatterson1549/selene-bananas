@@ -108,7 +108,9 @@ const (
 )
 
 // New Creates a canvas from the config.
-func (cfg Config) New(board *board.Board, parentDiv, element *js.Value) *Canvas {
+func (cfg Config) New(board *board.Board) *Canvas {
+	parentDiv := dom.QuerySelector(".game>.canvas")
+	element := dom.QuerySelector(".game>.canvas>canvas")
 	contextElement := element.Call("getContext", "2d")
 	divColor := func(query string) string {
 		div := element.Call("querySelector", query)
@@ -128,8 +130,8 @@ func (cfg Config) New(board *board.Board, parentDiv, element *js.Value) *Canvas 
 		selection: selection{
 			tiles: make(map[tile.ID]tileSelection),
 		},
-		parentDiv: parentDiv,
-		element:   element,
+		parentDiv: &parentDiv,
+		element:   &element,
 		draw: drawMetrics{
 			tileLength: cfg.TileLength,
 		},

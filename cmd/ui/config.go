@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game/canvas"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game/lobby"
@@ -21,10 +20,8 @@ import (
 
 // mainFlags contains options for the the ui.
 type mainFlags struct {
-	httpTimeout        time.Duration
-	tileLength         int
-	canvasDivQuery     string
-	canvasElementQuery string
+	httpTimeout time.Duration
+	tileLength  int
 }
 
 // initDom creates, initializes, and links up dom components.
@@ -68,9 +65,7 @@ func (m mainFlags) canvas(ctx context.Context, wg *sync.WaitGroup, log *log.Log,
 		Log:        log,
 		TileLength: m.tileLength,
 	}
-	canvasDiv := dom.QuerySelector(m.canvasDivQuery)
-	canvasElement := dom.QuerySelector(m.canvasElementQuery)
-	canvas := cfg.New(board, &canvasDiv, &canvasElement)
+	canvas := cfg.New(board)
 	canvas.InitDom(ctx, wg)
 	return canvas
 }

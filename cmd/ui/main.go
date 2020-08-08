@@ -17,8 +17,6 @@ func main() {
 	m := mainFlags{
 		httpTimeout:        10 * time.Second,
 		tileLength:         20,
-		canvasDivQuery:     ".game>.canvas",
-		canvasElementQuery: ".game>.canvas>canvas",
 	}
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
