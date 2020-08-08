@@ -10,10 +10,10 @@ type PasswordHandler struct {
 
 // NewPasswordHandler creates a password handler with the default cost
 func NewPasswordHandler() PasswordHandler {
-	bph := PasswordHandler{
+	ph := PasswordHandler{
 		cost: bcrypt.DefaultCost,
 	}
-	return bph
+	return ph
 }
 
 // Hash computes the password hash from the supplied password

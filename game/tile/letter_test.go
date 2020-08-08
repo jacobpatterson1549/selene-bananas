@@ -87,17 +87,17 @@ func TestUnmarshalLetter(t *testing.T) {
 		},
 		{
 			json:   `"A"`,
-			want:   letter('A'),
+			want:   'A',
 			wantOk: true,
 		},
 		{
 			json:   `"Z"`,
-			want:   letter('Z'),
+			want:   'Z',
 			wantOk: true,
 		},
 		{
 			json:   `"X"`,
-			want:   letter('X'),
+			want:   'X',
 			wantOk: true,
 		},
 	}
