@@ -27,8 +27,8 @@ func parseUserInfoJSON(text string) (*userInfo, error) {
 		return nil, errors.New("points is not a number")
 	}
 	u := userInfo{
-		username: claims.Get("sub").String(),
-		points:   claims.Get("points").Int(),
+		Name: claims.Get("sub").String(),
+		Points:   claims.Get("points").Int(),
 	}
 	return &u, nil
 }

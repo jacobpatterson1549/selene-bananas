@@ -34,8 +34,8 @@ type (
 
 	// userInfo contains a user's username and points.
 	userInfo struct {
-		username string
-		points   int
+		Name   string `json:"sub"`    // the JWT subject
+		Points int    `json:"points"` // custom JWT field
 	}
 
 	// Socket is a structure that the user interacts with for the lobby and game.
@@ -73,8 +73,8 @@ func (u *User) login(jwt string) {
 		u.log.Error("getting user from jwt: " + err.Error())
 		return
 	}
-	u.setUsernamesReadOnly(string(ui.username))
-	dom.SetValue("input.points", strconv.Itoa(ui.points))
+	u.setUsernamesReadOnly(string(ui.Name))
+	dom.SetValue("input.points", strconv.Itoa(ui.Points))
 	dom.SetChecked("#tab-lobby", true)
 	dom.SetChecked(".has-login", true)
 }
@@ -124,7 +124,7 @@ func (u User) Username() string {
 	if err != nil {
 		return ""
 	}
-	return ui.username
+	return ui.Name
 }
 
 // updateConfirmPassword updates the pattern of the password confirm input to expect the content of the password input.

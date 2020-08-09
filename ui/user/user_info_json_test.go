@@ -30,8 +30,8 @@ func TestParseUserInfoJSON(t *testing.T) {
 			json:   `{"sub":"selene","points":18}`,
 			wantOk: true,
 			want: &userInfo{
-				username: "selene",
-				points:   18,
+				Name: "selene",
+				Points:   18,
 			},
 		},
 	}

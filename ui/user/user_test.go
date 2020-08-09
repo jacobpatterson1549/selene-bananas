@@ -24,8 +24,8 @@ func TestGetUser(t *testing.T) {
 		{
 			jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwb2ludHMiOjE4LCJzdWIiOiJzZWxlbmUifQ.DVKhdVyXfV2cQxHnoNJQdrJUKZ1MuauJdUS8pkcMANE",
 			want: userInfo{
-				username: "selene",
-				points:   18,
+				Name: "selene",
+				Points:   18,
 			},
 			wantOk: true,
 		},
