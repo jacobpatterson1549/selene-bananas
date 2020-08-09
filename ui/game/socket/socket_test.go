@@ -100,7 +100,7 @@ func TestMessageToJSON(t *testing.T) {
 		{
 			ID:        9,
 			Status:    game.NotStarted,
-			Players:   []string{},
+			Players:   []string{"x"},
 			CreatedAt: 111,
 		},
 	}
@@ -122,10 +122,10 @@ func TestMessageToJSON(t *testing.T) {
 	}
 	want := `{"type":1,"info":"message test","tiles":[{"id":1,"ch":65},{"id":2,"ch":66}],"tilePositions":[{"t":{"id":3,"ch":67},"x":4,"y":5}],"gameInfos":[{"id":9,"status":1,"players":[],"createdAt":111}],"gameID":6,"gameStatus":2,"gamePlayers":["selene","bob"],"c":7,"r":8}`
 	got, err := json.Stringify(m)
-	if err != nil {
+	switch {
+	case err != nil:
 		t.Errorf("unwanted error: %v", err)
-	}
-	if want != got {
-		t.Errorf("not equal\nwanted: %v\ngot:    %v", want, got)
+	case want != got:
+		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
 	}
 }

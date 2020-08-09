@@ -32,6 +32,10 @@ func Stringify(value interface{}) (text string, err error) {
 			err = errors.New("JSON stringify: " + err.Error())
 		}
 	}()
-	j := json.Call("stringify", value).String()
-	return j, nil
+	m, err := toMap(value)
+	if err != nil {
+		return "", err
+	}
+	v := json.Call("stringify", m)
+	return v.String(), nil
 }
