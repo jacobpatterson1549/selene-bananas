@@ -14,6 +14,7 @@ import (
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui/dom/json"
 	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
@@ -104,11 +105,11 @@ func (User) info(jwt string) (*userInfo, error) {
 	if err != nil {
 		return nil, errors.New("decoding user info: " + err.Error())
 	}
-	ui, err := parseUserInfoJSON(string(jwtUserClaims))
-	if err != nil {
+	var ui userInfo
+	if err := json.Parse(string(jwtUserClaims), &ui); err != nil {
 		return nil, errors.New("parsing json: " + err.Error())
 	}
-	return ui, nil
+	return &ui, nil
 }
 
 // JWT gets the value of the jwt input.

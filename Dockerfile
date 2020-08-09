@@ -24,7 +24,7 @@ RUN tar -c . | md5sum | cut -c -32 \
         | GOOS=js GOARCH=wasm \
             xargs go test --cover \
                 -exec=/usr/local/go/misc/wasm/go_js_wasm_exec \
-    && go list ./... \
+    && go list ./... | grep -v ui \
         | CGO_ENABLED=0 \
             xargs go test --cover \
     && GOOS=js GOARCH=wasm \

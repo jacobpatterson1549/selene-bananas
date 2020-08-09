@@ -1,5 +1,3 @@
-// +build js,wasm
-
 // Package http handles making http requests
 package http
 

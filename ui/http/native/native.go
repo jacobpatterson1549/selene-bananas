@@ -1,5 +1,3 @@
-// +build js,wasm
-
 // Package native makes XML HTTP Requests using go code.
 package native
 

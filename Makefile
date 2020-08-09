@@ -15,7 +15,7 @@ test-wasm:
 			-exec=$(GO_WASM_PATH)/go_js_wasm_exec
 
 test:
-	$(GO_LIST) ./... \
+	$(GO_LIST) ./... | grep -v ui \
 		| xargs $(GO_TEST)
 
 bench:
