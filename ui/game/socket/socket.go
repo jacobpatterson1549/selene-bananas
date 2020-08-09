@@ -5,7 +5,6 @@ package socket
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"sync"
 	"syscall/js"
@@ -162,8 +161,7 @@ func (s *Socket) onError(errC chan<- error) func() {
 func (s *Socket) onMessage(event js.Value) {
 	jsMessage := event.Get("data")
 	messageJSON := jsMessage.String()
-	var m game.Message
-	err := json.Unmarshal([]byte(messageJSON), &m)
+	m, err := parseMessageJSON(messageJSON)
 	if err != nil {
 		s.log.Error("unmarshalling message: " + err.Error())
 		return
@@ -196,12 +194,12 @@ func (s *Socket) Send(m game.Message) {
 		s.log.Error("websocket not open")
 		return
 	}
-	messageJSON, err := json.Marshal(m)
+	messageJSON, err := messageToJSON(m)
 	if err != nil {
 		s.log.Error("marshalling socket message to send: " + err.Error())
 		return
 	}
-	s.webSocket.Call("send", js.ValueOf(string(messageJSON)))
+	s.webSocket.Call("send", js.ValueOf(messageJSON))
 }
 
 // Close releases the websocket

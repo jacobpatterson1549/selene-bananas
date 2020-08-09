@@ -14,7 +14,6 @@ import (
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom/json"
 	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
@@ -101,28 +100,15 @@ func (User) info(jwt string) (*userInfo, error) {
 		return nil, errors.New("wanted 3 jwt parts, got " + strconv.Itoa(len(parts)))
 	}
 	payload := parts[1]
-	jwtUsernameClaims, err := base64.RawURLEncoding.DecodeString(payload)
+	jwtUserClaims, err := base64.RawURLEncoding.DecodeString(payload)
 	if err != nil {
 		return nil, errors.New("decoding user info: " + err.Error())
 	}
-	claims := json.Parse(string(jwtUsernameClaims))
-	switch {
-	case claims.Type() != js.TypeObject:
-		return nil, errors.New("wanted user info to be an object, got " + claims.Type().String())
-	case claims.Get("sub").IsUndefined():
-		return nil, errors.New("no 'sub' field in user claims")
-	case claims.Get("sub").Type() != js.TypeString:
-		return nil, errors.New("sub is not a string")
-	case claims.Get("points").IsUndefined():
-		return nil, errors.New("no 'points' field in user claims")
-	case claims.Get("points").Type() != js.TypeNumber:
-		return nil, errors.New("points is not a number")
+	ui, err := parseUserInfoJSON(string(jwtUserClaims))
+	if err != nil {
+		return nil, errors.New("parsing json: " + err.Error())
 	}
-	u := userInfo{
-		username: claims.Get("sub").String(),
-		points:   claims.Get("points").Int(),
-	}
-	return &u, nil
+	return ui, nil
 }
 
 // JWT gets the value of the jwt input.

@@ -4,6 +4,7 @@
 package dom
 
 import (
+	"errors"
 	"syscall/js"
 	"time"
 )
@@ -99,4 +100,17 @@ func NewXHR() js.Value {
 	global := js.Global()
 	xhr := global.Get("XMLHttpRequest")
 	return xhr.New()
+}
+
+// RecoverError converts the recovery interface into a useful error.
+// Panics if the interface is not an error or a string.
+func RecoverError(r interface{}) error {
+	switch v := r.(type) {
+	case error:
+		return v
+	case string:
+		return errors.New(v)
+	default:
+		panic([]interface{}{"unknown panic type", v, r})
+	}
 }
