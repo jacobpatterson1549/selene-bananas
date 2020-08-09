@@ -300,7 +300,7 @@ func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
 	c.ctx.SetFillColor(lineColor)
 	c.ctx.StrokeRect(x, y, c.draw.tileLength, c.draw.tileLength)
 	c.ctx.SetFillColor(lineColor)
-	c.ctx.FillText(t.Ch.String(), x+c.draw.textOffset, y+c.draw.tileLength-c.draw.textOffset)
+	c.ctx.FillText(string(t.Ch), x+c.draw.textOffset, y+c.draw.tileLength-c.draw.textOffset)
 }
 
 // drawSelectionRectangle draws the outline of the selection.

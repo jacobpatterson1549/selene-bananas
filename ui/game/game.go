@@ -168,7 +168,7 @@ func (g *Game) replaceGameTiles(m game.Message) {
 func (g *Game) addUnusedTiles(m game.Message) {
 	tileStrings := make([]string, len(m.Tiles))
 	for i, t := range m.Tiles {
-		tileStrings[i] = `"` + t.Ch.String() + `"`
+		tileStrings[i] = `"` + string(t.Ch) + `"`
 		if err := g.board.AddTile(t); err != nil {
 			g.log.Error("could not add unused tile(s): " + err.Error())
 			return

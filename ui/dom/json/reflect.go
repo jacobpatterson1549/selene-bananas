@@ -21,9 +21,6 @@ func toMap(src interface{}) (interface{}, error) {
 	switch k := v.Kind(); k {
 	case reflect.String, reflect.Int, reflect.Int64:
 		return src, nil
-	case reflect.Int32: // TODO: rune hack - make tile.letter a string, make it public
-		r := src.(int32)
-		return string(r), nil
 	case reflect.Slice:
 		return toSlice(v)
 	case reflect.Struct:

@@ -7,23 +7,22 @@ import (
 	"errors"
 )
 
-// MarshalJSON has special handling to marshal the letters to strings.
-func (l letter) MarshalJSON() ([]byte, error) {
-	return json.Marshal(string(l))
-}
-
 // UnmarshalJSON has special handling to unmarshalling tiles from strings.
-func (l *letter) UnmarshalJSON(b []byte) error {
+func (l *Letter) UnmarshalJSON(b []byte) error {
 	var s string
 	err := json.Unmarshal(b, &s)
 	if err != nil {
 		return err
 	}
 	if len(s) != 1 {
-		return errors.New("invalid letter: " + string(s))
+		return errors.New("letter longer than 1 character: " + s)
 	}
 	b0 := s[0]
 	r := rune(b0)
-	*l, err = newLetter(r)
-	return err
+	l2, err := newLetter(r)
+	if err != nil {
+		return err
+	}
+	*l = *l2
+	return nil
 }

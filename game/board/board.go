@@ -274,7 +274,7 @@ func (b Board) keyedUsedWords(tiles map[int]map[int]tile.Tile, ord func(tp tile.
 				}
 				buffer = new(bytes.Buffer)
 			}
-			buffer.WriteRune(rune(tp.Tile.Ch))
+			buffer.WriteString(string(tp.Tile.Ch))
 		}
 		if buffer.Len() > 1 {
 			zWords = append(zWords, buffer.String())

@@ -44,7 +44,7 @@ func TestInitializeUnusedTilesAllLetters(t *testing.T) {
 	}
 	m := make(map[rune]struct{}, 26)
 	for _, v := range g.unusedTiles {
-		ch := rune(v.Ch)
+		ch := rune(v.Ch[0])
 		if ch < 'A' || ch > 'Z' {
 			t.Errorf("invalid tile: %v", v)
 		}
@@ -59,11 +59,11 @@ func TestInitializeUnusedTilesAllLetters(t *testing.T) {
 
 func TestInitializeUnusedTilesShuffled(t *testing.T) {
 	createTilesShuffledTests := []struct {
-		want      rune
+		want      tile.Letter
 		inReverse string
 	}{
-		{'A', ""},
-		{'Z', " IN REVERSE"},
+		{"A", ""},
+		{"Z", " IN REVERSE"},
 	}
 	for _, test := range createTilesShuffledTests {
 		g := Game{
@@ -81,7 +81,7 @@ func TestInitializeUnusedTilesShuffled(t *testing.T) {
 		if err := g.initializeUnusedTiles(); err != nil {
 			t.Errorf("unwanted error: %v", err)
 		}
-		got := rune(g.unusedTiles[0].Ch)
+		got := g.unusedTiles[0].Ch
 		if test.want != got {
 			t.Errorf("wanted first tile to be %q when sorted%v (a fake shuffle), but was %q", test.want, test.inReverse, got)
 		}
@@ -109,9 +109,9 @@ func TestInitializeUnusedTilesCustom(t *testing.T) {
 	if err := g.initializeUnusedTiles(); err != nil {
 		t.Errorf("unwanted error: %v", err)
 	}
-	for i, tile := range g.unusedTiles {
-		want := rune(tileLetters[i])
-		got := rune(tile.Ch)
+	for i, ti := range g.unusedTiles {
+		want := tile.Letter(tileLetters[i : i+1])
+		got := ti.Ch
 		if want != got {
 			t.Errorf("wanted %v tiles, but got %v", want, got)
 		}

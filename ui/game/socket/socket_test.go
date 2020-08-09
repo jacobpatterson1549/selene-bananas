@@ -79,18 +79,18 @@ func TestMessageToJSON(t *testing.T) {
 	tiles := []tile.Tile{
 		{
 			ID: 1,
-			Ch: 'A',
+			Ch: "A",
 		},
 		{
 			ID: 2,
-			Ch: 'B',
+			Ch: "B",
 		},
 	}
 	tilePositions := []tile.Position{
 		{
 			Tile: tile.Tile{
 				ID: 3,
-				Ch: 'C',
+				Ch: "C",
 			},
 			X: 4,
 			Y: 5,

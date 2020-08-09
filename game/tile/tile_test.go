@@ -14,9 +14,12 @@ func TestNew(t *testing.T) {
 			r:  'a',
 		},
 		{
-			id:     3,
-			r:      'A',
-			want:   Tile{ID: 3, Ch: 'A'},
+			id: 3,
+			r:  'A',
+			want: Tile{
+				ID: 3,
+				Ch: "A",
+			},
 			wantOk: true,
 		},
 	}

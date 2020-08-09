@@ -5,7 +5,7 @@ type (
 	// Tile is a piece in the game.
 	Tile struct {
 		ID ID     `json:"id"`
-		Ch letter `json:"ch"`
+		Ch Letter `json:"ch"`
 	}
 
 	// Position represents a tile and its location.
@@ -31,7 +31,7 @@ func New(id ID, r rune) (*Tile, error) {
 	}
 	t := Tile{
 		ID: id,
-		Ch: ch,
+		Ch: *ch,
 	}
 	return &t, nil
 }
