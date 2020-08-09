@@ -53,7 +53,10 @@ func toStruct(v reflect.Value) (map[string]interface{}, error) {
 		field := t.Field(i)
 		jsonTags := field.Tag.Get("json")
 		jsonName := strings.Split(jsonTags, ",")[0]
-		if len(jsonName) == 0 {
+		switch jsonName {
+		case "-":
+			continue
+		case "":
 			return nil, errors.New("field " + strconv.Itoa(i) + " of struct " + v.Type().Name() + "(" + field.Name + ") has no json name")
 		}
 		vi := v.Field(i)
