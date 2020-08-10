@@ -13,12 +13,12 @@ func TestToMap(t *testing.T) {
 	}{
 		{},
 		{
-			src:  7,
-			want: 7,
+			src:  int(7),
+			want: int64(7),
 		},
 		{
-			src:  9223372036854775807,
-			want: 9223372036854775807,
+			src:  int64(1597076190),
+			want: int64(1597076190),
 		},
 		{
 			src:  "some text",
@@ -38,8 +38,13 @@ func TestToMap(t *testing.T) {
 		},
 		{
 			src: struct {
-				Name        string `json:"id"`
-				DoNotEncode string `json:"-"`
+				Name        string   `json:"id"`
+				DoNotEncode string   `json:"-"`
+				EmptyInt    int      `json:"EmptyInt,omitempty"`
+				EmptySlice  []string `json:"EmptySlice,omitempty"`
+				EmptyStruct struct {
+					E int `json:"e,omitempty"`
+				} `json:"EmptyStruct,omitempty"`
 			}{
 				Name:        "selene",
 				DoNotEncode: "secret",
@@ -59,7 +64,20 @@ func TestToMap(t *testing.T) {
 		case test.wantErr:
 			t.Errorf("Test %v: wanted error", i)
 		case !reflect.DeepEqual(test.want, got):
-			t.Errorf("Test %v:\nwanted %v\ngot    %v", i, test.want, got)
+			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
 		}
+	}
+}
+
+func TestToMapCustomType(t *testing.T) {
+	type myInt int
+	var x myInt = 7
+	var want interface{} = int64(7)
+	got, err := toMap(x)
+	switch {
+	case err != nil:
+		t.Errorf("unwanted error: %v", err)
+	case !reflect.DeepEqual(want, got):
+		t.Errorf("wanted: %v, got: %v", want, got)
 	}
 }
