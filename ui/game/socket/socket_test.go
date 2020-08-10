@@ -4,6 +4,7 @@ package socket
 
 import (
 	"net/url"
+	"reflect"
 	"testing"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
@@ -71,11 +72,7 @@ func TestWebSocketURL(t *testing.T) {
 	}
 }
 
-func TestParseMessageJSON(t *testing.T) {
-	// TODO
-}
-
-func TestMessageToJSON(t *testing.T) {
+func TestMessageJSON(t *testing.T) {
 	t.Skip() // TODO
 	tiles := []tile.Tile{
 		{
@@ -121,13 +118,23 @@ func TestMessageToJSON(t *testing.T) {
 		NumCols:       7,
 		NumRows:       8,
 	}
-	want := `{"type":1,"info":"message test","tiles":[{"id":1,"ch":"A"},{"id":2,"ch":"B"}],"tilePositions":[{"t":{"id":3,"ch":"C"},"x":4,"y":5}],"gameInfos":[{"id":9,"status":1,"players":[],"createdAt":111}],"gameID":6,"gameStatus":2,"gamePlayers":["selene","bob"],"c":7,"r":8}`
-	got, err := json.Stringify(m)
+	wantS := `{"type":1,"info":"message test","tiles":[{"id":1,"ch":"A"},{"id":2,"ch":"B"}],"tilePositions":[{"t":{"id":3,"ch":"C"},"x":4,"y":5}],"gameInfos":[{"id":9,"status":1,"players":[],"createdAt":111}],"gameID":6,"gameStatus":2,"gamePlayers":["selene","bob"],"c":7,"r":8}`
+	gotS, errS := json.Stringify(m)
+	if errS != nil {
+		t.Fatalf("stringify: %v", errS)
+	}
+	var wantM, gotM game.Message
+	errW := json.Parse(wantS, &wantM)
+	if errW != nil {
+		t.Fatalf("parsing wanted json: %v", errW)
+	}
+	errG := json.Parse(gotS, &gotM)
 	switch {
-	case err != nil:
-		t.Errorf("unwanted error: %v", err)
-	// TODO: call w, _ := json.Parse(want); g, _ := json.Parse(got); if !reflect.DeepEqual(want, got) { ... }
-	case want != got:
-		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
+	case errG != nil:
+		t.Errorf("parsing json: %v", errW)
+	case reflect.ValueOf(gotM).IsZero():
+		t.Errorf("wanted non-empty message when json is %v", gotS)
+	case !reflect.DeepEqual(wantM, gotM):
+		t.Errorf("not equal\nwanted %v\ngot    %v", wantM, gotM)
 	}
 }

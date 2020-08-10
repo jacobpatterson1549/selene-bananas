@@ -5,7 +5,25 @@ import (
 	"testing"
 )
 
-func TestToMap(t *testing.T) {
+func TestFromMap(t *testing.T) {
+	fromMapTests := []struct {
+		want interface{}
+		got  interface{}
+	}{
+		// TODO
+	}
+	for i, test := range fromMapTests {
+		err := fromObject(&test.got, test.want)
+		switch {
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case !reflect.DeepEqual(test.want, test.got):
+			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, test.got)
+		}
+	}
+}
+
+func TestToObject(t *testing.T) {
 	parseUserInfoJSONTests := []struct {
 		src     interface{}
 		wantErr bool
@@ -55,7 +73,7 @@ func TestToMap(t *testing.T) {
 		},
 	}
 	for i, test := range parseUserInfoJSONTests {
-		got, err := toMap(test.src)
+		got, err := toObject(test.src)
 		switch {
 		case err != nil:
 			if !test.wantErr {
@@ -69,11 +87,11 @@ func TestToMap(t *testing.T) {
 	}
 }
 
-func TestToMapCustomType(t *testing.T) {
+func TestToObjectCustomType(t *testing.T) {
 	type myInt int
 	var x myInt = 7
 	var want interface{} = int64(7)
-	got, err := toMap(x)
+	got, err := toObject(x)
 	switch {
 	case err != nil:
 		t.Errorf("unwanted error: %v", err)

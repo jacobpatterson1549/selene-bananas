@@ -7,13 +7,13 @@ import (
 	"strings"
 )
 
-// fromMap maps the source value into the destination value using reflection.
-func fromMap(dst, src interface{}) error {
+// fromObject converts a json-styled object into the go interface.
+func fromObject(dst, src interface{}) error {
 	return nil // TODO
 }
 
-// toMap converts the interface to a map if it is a slice and passes through primitive types.
-func toMap(src interface{}) (interface{}, error) {
+// toObject converts the interface to a json-styled object that uses only strings, ints, slices, and maps of strings to other objects for structs.
+func toObject(src interface{}) (interface{}, error) {
 	if src == nil {
 		return nil, nil
 	}
@@ -40,7 +40,7 @@ func toSlice(v reflect.Value) ([]interface{}, error) {
 	}
 	s := make([]interface{}, n)
 	for i := 0; i < n; i++ {
-		vi, err := toMap(v.Index(i).Interface())
+		vi, err := toObject(v.Index(i).Interface())
 		if err != nil {
 			return nil, errors.New("index " + strconv.Itoa(i) + ": " + err.Error())
 		}
@@ -66,18 +66,18 @@ func toStruct(v reflect.Value) (map[string]interface{}, error) {
 		case "":
 			return nil, errors.New("field " + strconv.Itoa(i) + " of struct " + v.Type().Name() + "(" + field.Name + ") has no json name")
 		}
-		vi := v.Field(i)
-		vii, err := toMap(vi.Interface())
+		f := v.Field(i)
+		o, err := toObject(f.Interface())
 		if err != nil {
 			return nil, errors.New("getting value of field " + strconv.Itoa(i) + " of struct")
 		}
 		if len(jsonTags) == 2 && jsonTags[1] == "omitempty" {
-			viii := reflect.ValueOf(vii)
-			if viii.IsZero() {
+			vz := reflect.ValueOf(o)
+			if vz.IsZero() {
 				continue
 			}
 		}
-		m[jsonName] = vii
+		m[jsonName] = o
 	}
 	if len(m) == 0 {
 		return nil, nil
