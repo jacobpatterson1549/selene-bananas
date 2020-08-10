@@ -13,17 +13,17 @@ func TestMessageJSON(t *testing.T) {
 		m Message
 		j string
 	}{
-		// {
-		// 	j: `{"type":0}`, // the MessageType should always be marshalled
-		// },
-		// {
-		// 	m: Message{Type: 2, GameID: 6},
-		// 	j: `{"type":2,"gameID":6}`,
-		// },
-		// {
-		// 	m: Message{Type: 5, Info: "Selene started the game."},
-		// 	j: `{"type":5,"info":"Selene started the game."}`,
-		// },
+		{
+			j: `{"type":0}`, // the MessageType should always be marshalled
+		},
+		{
+			m: Message{Type: 2, GameID: 6},
+			j: `{"type":2,"gameID":6}`,
+		},
+		{
+			m: Message{Type: 5, Info: "Selene started the game."},
+			j: `{"type":5,"info":"Selene started the game."}`,
+		},
 		{
 			m: Message{Type: 7, Info: "Selene snagged a tile.  You got a 'X'.", Tiles: []tile.Tile{{ID: 7, Ch: "X"}}},
 			j: `{"type":7,"info":"Selene snagged a tile.  You got a 'X'.","tiles":[{"id":7,"ch":"X"}]}`,
