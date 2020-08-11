@@ -72,8 +72,7 @@ func fromSlice(de, s reflect.Value) error {
 	}
 	det := de.Type()
 	dete := det.Elem()
-	sliceType := reflect.SliceOf(dete)
-	v := reflect.MakeSlice(sliceType, 0, n)
+	v := reflect.MakeSlice(det, 0, n)
 	for i := 0; i < n; i++ {
 		si := s.Index(i)
 		sii := si.Interface()
