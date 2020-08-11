@@ -73,7 +73,6 @@ func TestWebSocketURL(t *testing.T) {
 }
 
 func TestMessageJSON(t *testing.T) {
-	t.Skip() // TODO
 	tiles := []tile.Tile{
 		{
 			ID: 1,

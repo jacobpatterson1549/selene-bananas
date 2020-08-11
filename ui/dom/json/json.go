@@ -5,7 +5,6 @@ package json
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"syscall/js"
 
@@ -97,9 +96,9 @@ func toMap(jsValue js.Value) (map[string]interface{}, error) {
 	m := make(map[string]interface{}, n)
 	switch {
 	case err != nil:
-		return nil, fmt.Errorf("getting object keys: " + err.Error())
+		return nil, errors.New("getting object keys: " + err.Error())
 	case len(properties) != n:
-		return nil, fmt.Errorf("wanted " + strconv.Itoa(n) + " keys, got " + strconv.Itoa(len(properties)))
+		return nil, errors.New("wanted " + strconv.Itoa(n) + " keys, got " + strconv.Itoa(len(properties)))
 	}
 	for i := 0; i < n; i++ {
 		k, ok := properties[i].(string)
