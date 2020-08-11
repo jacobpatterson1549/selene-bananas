@@ -181,9 +181,7 @@ func TestToObject(t *testing.T) {
 				DoNotEncode string   `json:"-"`
 				EmptyInt    int      `json:"EmptyInt,omitempty"`
 				EmptySlice  []string `json:"EmptySlice,omitempty"`
-				EmptyStruct struct {
-					E int `json:"e,omitempty"`
-				} `json:"EmptyStruct,omitempty"`
+				EmptyStruct struct{} `json:"EmptyStruct,omitempty"`
 			}{
 				Name:        "selene",
 				DoNotEncode: "secret",

@@ -155,7 +155,7 @@ func toStruct(v reflect.Value) (map[string]interface{}, error) {
 		}
 		if len(jsonTags) == 2 && jsonTags[1] == "omitempty" {
 			vz := reflect.ValueOf(o)
-			if vz.IsZero() {
+			if isZero(vz) {
 				continue
 			}
 		}
@@ -188,4 +188,19 @@ func structJSONTagIndexes(v reflect.Value) map[string]int {
 	}
 	typeStructJSONTagIndexes[t] = m
 	return m
+}
+
+// isZero determines if the reflect type is zero.  Only strings, int64s, slices, and maps are supported.
+// TODO: This is copied from reflect.Value.IsZero(), but tinygo does offer it yet.  It would be nice to use that function eventually.
+func isZero(v reflect.Value) bool {
+	switch k := v.Kind(); k {
+	case reflect.String:
+		return v.Len() == 0
+	case reflect.Int64:
+		return v.Int() == 0
+	case reflect.Slice, reflect.Map:
+		return v.IsNil()
+	default:
+		panic("unsupported kind: " + k.String())
+	}
 }
