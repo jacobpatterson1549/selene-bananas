@@ -1,24 +1,23 @@
-# download golang dependencies, add node & bash to run wasm tests and american-english word list
-FROM golang:1.14-alpine3.12 \
+# download golang dependencies, generate version hash add node to run wasm tests and american-english word list, test and build ui, server
+FROM golang:1.14-buster \
     AS BUILDER
-SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 WORKDIR /app
 COPY \
-    go.mod \
-    go.sum \
+    . \
     /app/
 RUN go mod download \
-    && apk add --no-cache \
-        nodejs=12.18.3-r0 bash=5.0.17-r0 \
-    # TODO: use package from main repo, not edge:testing
-    && apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing words-en=2.1-r0
-        # words-en=?
-
-# create version, run tests, and build the applications
-COPY . /app
-RUN tar -c . | md5sum | cut -c -32 \
+    && tar -c . | md5sum | cut -c -32 \
         | tee /app/version \
         | xargs echo version \
+    && apt-get update \
+    && apt-get install \
+        --no-install-recommends \
+        -y \
+            nodejs=10.21.0~dfsg-1~deb10u1 \
+            wamerican-large=2018.04.16-1 \
+    && wget -q https://github.com/tinygo-org/tinygo/releases/download/v0.14.0/tinygo_0.14.0_amd64.deb \
+    && dpkg -i tinygo_0.14.0_amd64.deb \
     && GOOS=js GOARCH=wasm \
             go list ./... | grep ui \
         | GOOS=js GOARCH=wasm \
@@ -30,7 +29,7 @@ RUN tar -c . | md5sum | cut -c -32 \
     && GOOS=js GOARCH=wasm \
             go list ./... | grep cmd/ui \
         | GOOS=js GOARCH=wasm \
-            xargs go build \
+            xargs tinygo build \
                 -o /app/main.wasm \
     && go list ./... | grep cmd/server \
         | CGO_ENABLED=0 \
@@ -45,12 +44,12 @@ COPY --from=BUILDER \
     /app/main.wasm \
     /app/version \
     /usr/local/go/misc/wasm/wasm_exec.js \
-    /usr/share/dict/american-english \
+    /usr/share/dict/american-english-large \
     /app/
 COPY --from=BUILDER \
     /app/resources \
     /app/resources/
 ENTRYPOINT [ \
     "/app/main", \
-    "-words-file=/app/american-english", \
+    "-words-file=/app/american-english-large", \
     "-version-file=/app/version" ]

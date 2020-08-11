@@ -31,6 +31,11 @@ main.wasm: test-wasm
 		| $(GO_WASM_ARGS) xargs $(GO_BUILD) \
 			-o $@
 
+main.wasm-tinygo: test-wasm
+	$(GO_WASM_ARGS) $(GO_LIST) ./... | grep cmd/ui \
+		| $(GO_WASM_ARGS) xargs tinygo build \
+			-o main.wasm
+
 main: test
 	$(GO_LIST) ./... | grep cmd/server \
 		| xargs $(GO_BUILD) \
