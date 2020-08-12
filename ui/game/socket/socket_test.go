@@ -3,7 +3,6 @@
 package socket
 
 import (
-	"net/url"
 	"reflect"
 	"testing"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom/json"
+	"github.com/jacobpatterson1549/selene-bananas/ui/dom/url"
 )
 
 type mockUser string

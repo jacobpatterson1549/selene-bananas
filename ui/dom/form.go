@@ -4,8 +4,9 @@ package dom
 
 import (
 	"errors"
-	"net/url"
 	"syscall/js"
+
+	"github.com/jacobpatterson1549/selene-bananas/ui/dom/url"
 )
 
 // Form contains the fields needed to make a request to the server.
