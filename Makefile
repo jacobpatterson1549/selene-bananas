@@ -1,4 +1,4 @@
-.PHONY: all test-wasm test bench build serve serve-tcp clean
+.PHONY: all test-wasm test bench build serve serve-tcp clean main.wasm-tinygo
 
 GO_LIST := go list
 GO_TEST := go test --cover # -race
