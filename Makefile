@@ -1,4 +1,4 @@
-.PHONY: all test-wasm test bench build serve serve-tcp clean main.wasm-tinygo
+.PHONY: all test-wasm test bench build serve serve-tcp clean
 
 GO_LIST := go list
 GO_TEST := go test --cover # -race
@@ -30,11 +30,6 @@ main.wasm: test-wasm
 	$(GO_WASM_ARGS) $(GO_LIST) ./... | grep cmd/ui \
 		| $(GO_WASM_ARGS) xargs $(GO_BUILD) \
 			-o $@
-
-main.wasm-tinygo: test-wasm
-	$(GO_WASM_ARGS) $(GO_LIST) ./... | grep cmd/ui \
-		| $(GO_WASM_ARGS) xargs tinygo build \
-			-o main.wasm
 
 main: test
 	$(GO_LIST) ./... | grep cmd/server \
