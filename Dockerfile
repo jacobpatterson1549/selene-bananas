@@ -2,11 +2,11 @@
 FROM golang:1.14-buster \
     AS BUILDER
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
-WORKDIR /app
+WORKDIR /go/src/github.com/jacobpatterson1549/selene-bananas
 COPY \
     go.mod \
     go.sum \
-    /app/
+    ./
 RUN go mod download \
     && apt-get update \
     && apt-get install \
@@ -20,9 +20,9 @@ RUN go mod download \
 # create version, run tests, and build the applications
 COPY \
     . \
-    /app/
+    ./
 RUN tar -c . | md5sum | cut -c -32 \
-        | tee /app/version \
+        | tee version \
         | xargs echo version \
     && GOOS=js GOARCH=wasm \
             go list ./... | grep ui \
@@ -36,24 +36,24 @@ RUN tar -c . | md5sum | cut -c -32 \
             go list ./... | grep cmd/ui \
         | GOOS=js GOARCH=wasm \
             xargs tinygo build \
-                -o /app/main.wasm \
+                -o main.wasm \
     && go list ./... | grep cmd/server \
         | CGO_ENABLED=0 \
             xargs go build \
-                -o /app/main
+                -o main
 
 # copy necessary files and folders to a minimal build image
 FROM scratch
 WORKDIR /app
 COPY --from=BUILDER \
-    /app/main \
-    /app/main.wasm \
-    /app/version \
+    /go/src/github.com/jacobpatterson1549/selene-bananas/main \
+    /go/src/github.com/jacobpatterson1549/selene-bananas/main.wasm \
+    /go/src/github.com/jacobpatterson1549/selene-bananas/version \
     /usr/local/go/misc/wasm/wasm_exec.js \
     /usr/share/dict/american-english-large \
     /app/
 COPY --from=BUILDER \
-    /app/resources \
+    /go/src/github.com/jacobpatterson1549/selene-bananas/resources \
     /app/resources/
 ENTRYPOINT [ \
     "/app/main", \

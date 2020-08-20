@@ -86,16 +86,18 @@ func packageNames() ([]string, error) {
 	dir := filepath.Dir(filename)
 	dirs := []string{dir}
 	imports := make(map[string]struct{})
+	ctxt := build.Default
+	base := filepath.Join(ctxt.GOPATH, "src")
 	for len(dirs) > 0 {
 		dir, dirs = dirs[0], dirs[1:]
-		pkg, err := build.ImportDir(dir, 0)
+		pkg, err := ctxt.ImportDir(dir, 0)
 		if err != nil {
 			return nil, fmt.Errorf("importing %v: %w", dir, err)
 		}
 		for _, importPath := range pkg.Imports {
 			if _, ok := imports[importPath]; !ok {
 				imports[importPath] = struct{}{}
-				dir2 := filepath.Join(pkg.SrcRoot, importPath)
+				dir2 := filepath.Join(base, importPath)
 				fi, err := os.Stat(dir2)
 				switch {
 				case err != nil:
