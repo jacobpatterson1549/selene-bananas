@@ -1,4 +1,4 @@
-# download golang dependencies, add node to run wasm tests, american-english word list, and tinygo to build a small ui binary
+# download golang dependencies, add node to run wasm tests, american-english word list
 FROM golang:1.14-buster \
     AS BUILDER
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
@@ -13,15 +13,14 @@ RUN go mod download \
         --no-install-recommends \
         -y \
             nodejs=10.21.0~dfsg-1~deb10u1 \
-            wamerican-large=2018.04.16-1 \
-    && wget -q https://github.com/tinygo-org/tinygo/releases/download/v0.14.0/tinygo_0.14.0_amd64.deb \
-    && dpkg -i tinygo_0.14.0_amd64.deb
+            wamerican-large=2018.04.16-1
 
 # create version, run tests, and build the applications
 COPY \
     . \
     ./
-RUN tar -c . | md5sum | cut -c -32 \
+RUN touch version \
+    && tar -c . | md5sum | cut -c -32 \
         | tee version \
         | xargs echo version \
     && GOOS=js GOARCH=wasm \
@@ -35,7 +34,7 @@ RUN tar -c . | md5sum | cut -c -32 \
     && GOOS=js GOARCH=wasm \
             go list ./... | grep cmd/ui \
         | GOOS=js GOARCH=wasm \
-            xargs tinygo build \
+            xargs go build \
                 -o main.wasm \
     && go list ./... | grep cmd/server \
         | CGO_ENABLED=0 \
