@@ -19,8 +19,8 @@ func TestMainImports(t *testing.T) {
 		t.Fatalf("getting package names: %v", err)
 	}
 	contains := func(pkg string, isSuffix bool) bool {
-		for _, i := range imports {
-			if i == pkg || (isSuffix && strings.HasSuffix(i, pkg)) {
+		for _, importPath := range imports {
+			if importPath == pkg || (isSuffix && strings.HasSuffix(importPath, pkg)) {
 				return true
 			}
 		}
@@ -92,16 +92,15 @@ func packageNames() ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("importing %v: %w", dir, err)
 		}
-		imports2 := pkg.Imports
-		for _, i := range imports2 {
-			if _, ok := imports[i]; !ok {
-				imports[i] = struct{}{}
-				dir2 := filepath.Join(pkg.SrcRoot, i)
+		for _, importPath := range pkg.Imports {
+			if _, ok := imports[importPath]; !ok {
+				imports[importPath] = struct{}{}
+				dir2 := filepath.Join(pkg.SrcRoot, importPath)
 				fi, err := os.Stat(dir2)
 				switch {
 				case err != nil:
 					if !os.IsNotExist(err) {
-						return nil, fmt.Errorf("checking if import %v in %v is a file: %w", i, dir, err)
+						return nil, fmt.Errorf("checking if import %v in %v is a file: %w", importPath, dir, err)
 					}
 				case fi.IsDir():
 					dirs = append(dirs, dir2)
