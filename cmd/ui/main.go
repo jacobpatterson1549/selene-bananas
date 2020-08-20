@@ -15,8 +15,8 @@ import (
 // main initializes the wasm code for the web dom and runs as long as the browser is open.
 func main() {
 	m := mainFlags{
-		httpTimeout:        10 * time.Second,
-		tileLength:         20,
+		httpTimeout: 10 * time.Second,
+		tileLength:  20,
 	}
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
