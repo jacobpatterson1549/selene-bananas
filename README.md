@@ -7,7 +7,7 @@
 
 ## A Banagrams clone
 
-A tile-based word-forming game based on the popular Banagrams game.  https://bananagrams.com/games/bananagrams
+A tile-based word-forming game based on the popular Banagrams game.  <https://bananagrams.com/games/bananagrams>
 
 With WebSockets, users can play a word game together over a network.
 
@@ -19,7 +19,7 @@ New dependencies are automatically added to [go.mod](go/go.mod) when the project
 * [pq](https://github.com/lib/pq) provides the Postgres driver for storing user passwords and points
 * [Gorilla Websockets](https://github.com/gorilla/websocket) are used for bidirectional communication between users and the server
 * [jwt-go](https://github.com/dgrijalva/jwt-go) is used for stateless web sessions
-* [crypto](https://github.com/golang/crypto) is used to  encrypt passwords with the Bcrypt one-way function
+* [crypto](https://github.com/golang/crypto) is used to  encrypt passwords with bcrypt
 * [Font-Awesome](https://github.com/FortAwesome/Font-Awesome) provides the "copyright", "github," and, "linkedin" icons on the about page; they were copied from version [5.13.0](https://github.com/FortAwesome/Font-Awesome/releases/tag/5.13.0) to [resources/fa](resources/fa).
 
 ## Build/Run
@@ -63,7 +63,7 @@ The app requires HTTP TLS (HTTPS) to run. Insecure http requests are redirected 
 
 #### ACME
 
-The server can verifiy its identity over http to pass a Automatic Certificate Management Environment (ACME) HTTP-01 challenge.  Add the `-acme-challenge-token` and `-acme-challenge-key` parameters with necissary values when running the server to return correct responses when the server's identity is challenged to create TLS certificates.  After the certificates are created, remove the acme-* flags, and specify the certificate and key with the `-tls-cert-file` and `-tls-key-file` flags. See [letsencrypt.org](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) for more information about challenges.
+The server can verify its identity over http to pass a Automatic Certificate Management Environment (ACME) HTTP-01 challenge.  Add the `-acme-challenge-token` and `-acme-challenge-key` parameters with necessary values when running the server to return correct responses when the server's identity is challenged to create TLS certificates.  After the certificates are created, remove the acme-* flags, and specify the certificate and key with the `-tls-cert-file` and `-tls-key-file` flags. See [letsencrypt.org](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) for more information about challenges.
 
 #### localhost
 
@@ -101,13 +101,13 @@ The [Makefile](Makefile) runs the application locally.  This requires Go and a P
 Launching the application with [Docker](https://www.docker.com) requires minimal configuration.
 
 1. Install [docker-compose](https://github.com/docker/compose)
-1. Set database environment variables in a `.env` file in project root (next to Dockerfile).
-```
-POSTGRES_DB=selene_bananas_db
-POSTGRES_USER=selene
-POSTGRES_PASSWORD=selene123
-POSTGRES_PORT=54320
-```
-3. Ensure the files for the`TLS_CERT_FILE` and `TLS_KEY_FILE` environment variables are located in the project folder.
+1. Set database environment variables in the `.env` file in project root (next to Dockerfile).
+    ```
+    POSTGRES_DB=selene_bananas_db
+    POSTGRES_USER=selene
+    POSTGRES_PASSWORD=selene123
+    POSTGRES_PORT=54320
+    ```
+1. Ensure the files for the`TLS_CERT_FILE` and `TLS_KEY_FILE` environment variables are located in the project folder.
 1. Run `docker-compose up` to launch the application.
 1. Access application by opening <http://localhost:8000>.
