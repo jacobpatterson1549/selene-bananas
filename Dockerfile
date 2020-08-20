@@ -2,7 +2,7 @@
 FROM golang:1.14-buster \
     AS BUILDER
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
-WORKDIR /go/src/github.com/jacobpatterson1549/selene-bananas
+WORKDIR /app
 COPY \
     go.mod \
     go.sum \
@@ -45,14 +45,14 @@ RUN touch version \
 FROM scratch
 WORKDIR /app
 COPY --from=BUILDER \
-    /go/src/github.com/jacobpatterson1549/selene-bananas/main \
-    /go/src/github.com/jacobpatterson1549/selene-bananas/main.wasm \
-    /go/src/github.com/jacobpatterson1549/selene-bananas/version \
+    /app/main \
+    /app/main.wasm \
+    /app/version \
     /usr/local/go/misc/wasm/wasm_exec.js \
     /usr/share/dict/american-english-large \
     /app/
 COPY --from=BUILDER \
-    /go/src/github.com/jacobpatterson1549/selene-bananas/resources \
+    /app/resources \
     /app/resources/
 ENTRYPOINT [ \
     "/app/main", \
