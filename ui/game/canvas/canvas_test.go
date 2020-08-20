@@ -93,17 +93,17 @@ func TestDrawTile(t *testing.T) {
 }
 
 func TestCalculateSelectedUnusedTiles(t *testing.T) {
-	ta, err := tile.New(tile.ID(11), 'A')
-	if err != nil {
-		t.Errorf("unwanted error: %v", err)
+	ta := tile.Tile{
+		ID: 11,
+		Ch: "A",
 	}
-	tb, err := tile.New(tile.ID(22), 'B')
-	if err != nil {
-		t.Errorf("unwanted error: %v", err)
+	tb := tile.Tile{
+		ID: 22,
+		Ch: "B",
 	}
-	tc, err := tile.New(tile.ID(33), 'C')
-	if err != nil {
-		t.Errorf("unwanted error: %v", err)
+	tc := tile.Tile{
+		ID: 33,
+		Ch: "C",
 	}
 	c := Canvas{
 		draw: drawMetrics{
@@ -115,9 +115,9 @@ func TestCalculateSelectedUnusedTiles(t *testing.T) {
 		},
 		board: &board.Board{
 			UnusedTiles: map[tile.ID]tile.Tile{
-				ta.ID: *ta,
-				tb.ID: *tb,
-				tc.ID: *tc,
+				ta.ID: ta,
+				tb.ID: tb,
+				tc.ID: tc,
 			},
 			UnusedTileIDs: []tile.ID{
 				ta.ID,
@@ -133,7 +133,7 @@ func TestCalculateSelectedUnusedTiles(t *testing.T) {
 	want := map[tile.ID]tileSelection{
 		tb.ID: {
 			used:  false,
-			tile:  *tb,
+			tile:  tb,
 			index: 1,
 		},
 	}
