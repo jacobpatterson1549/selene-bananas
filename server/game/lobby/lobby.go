@@ -245,7 +245,7 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 	conn, err := l.upgrader.Upgrade(ps.ResponseWriter, ps.Request, nil)
 	defer func() {
 		if err != nil && conn != nil {
-			socket.CloseConn(conn, err.Error())
+			socket.CloseConn(conn, l.log, err.Error())
 		}
 		ps.result <- err
 	}()

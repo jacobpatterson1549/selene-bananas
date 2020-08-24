@@ -119,14 +119,14 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 		m, err := s.readMessage()
 		select {
 		case <-ctx.Done():
-			CloseConn(s.conn, "server shut down")
+			CloseConn(s.conn, s.log, "server shut down")
 			return
 		default:
 			if err != nil {
 				if err != errSocketClosed {
 					reason := fmt.Sprintf("reading socket messages stopped for %v: %v", s.playerName, err)
 					s.log.Print(reason)
-					CloseConn(s.conn, reason)
+					CloseConn(s.conn, s.log, reason)
 				}
 				return
 			}
@@ -148,7 +148,7 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 		httpPingTicker.Stop()
 		idleTicker.Stop()
 		readCancelFunc()
-		CloseConn(s.conn, closeReason)
+		CloseConn(s.conn, s.log, closeReason)
 	}()
 	var err error
 	for { // BLOCKING
@@ -242,10 +242,10 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 }
 
 // CloseConn closes the websocket connection without reporting any errors.
-func CloseConn(conn *websocket.Conn, reason string) {
+func CloseConn(conn *websocket.Conn, log *log.Logger, reason string) {
 	data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
 	if err := conn.WriteMessage(websocket.CloseMessage, data); err != nil {
-		fmt.Printf("closing connection: writing close message: %v\n", err)
+		log.Printf("closing connection: writing close message: %v", err)
 	}
 	conn.Close()
 }
