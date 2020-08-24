@@ -15,13 +15,14 @@ RUN go mod download \
             nodejs=10.21.0~dfsg-1~deb10u1 \
             wamerican-large=2018.04.16-1
 
-# create version, run tests, and build the applications
+# create version, run tests, build the applications, and link resources to build folder
 COPY \
     . \
     ./
-RUN touch version \
+RUN mkdir build \
+    && touch build/version \
     && tar -c . | md5sum | cut -c -32 \
-        | tee version \
+        | tee build/version \
         | xargs echo version \
     && GOOS=js GOARCH=wasm \
             go list ./... | grep ui \
@@ -35,25 +36,21 @@ RUN touch version \
             go list ./... | grep cmd/ui \
         | GOOS=js GOARCH=wasm \
             xargs go build \
-                -o main.wasm \
+                -o build/main.wasm \
     && go list ./... | grep cmd/server \
         | CGO_ENABLED=0 \
             xargs go build \
-                -o main
+                -o build/main \
+    && mv resources build
 
-# copy necessary files and folders to a minimal build image
+# copy files to a minimal build image
 FROM scratch
 WORKDIR /app
 COPY --from=BUILDER \
-    /app/main \
-    /app/main.wasm \
-    /app/version \
+    /app/build \
     /usr/local/go/misc/wasm/wasm_exec.js \
     /usr/share/dict/american-english-large \
     /app/
-COPY --from=BUILDER \
-    /app/resources \
-    /app/resources/
 ENTRYPOINT [ \
     "/app/main", \
     "-words-file=/app/american-english-large", \
