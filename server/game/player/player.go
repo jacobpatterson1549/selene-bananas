@@ -10,7 +10,7 @@ import (
 type (
 	// Player stores the board and other player-specific data for each player in the game.
 	Player struct {
-		winPoints int
+		WinPoints int
 		Board     *board.Board
 	}
 
@@ -28,7 +28,7 @@ func (cfg Config) New(b *board.Board) (*Player, error) {
 		return nil, fmt.Errorf("creating player: validation: %w", err)
 	}
 	p := Player{
-		winPoints: cfg.WinPoints,
+		WinPoints: cfg.WinPoints,
 		Board:     b,
 	}
 	return &p, nil
@@ -41,16 +41,4 @@ func (cfg Config) validate() error {
 		return fmt.Errorf("winPoints must be over 1")
 	}
 	return nil
-}
-
-// WinPoints gets a player's winPoints.
-func (p Player) WinPoints() int {
-	return p.winPoints
-}
-
-// DecrementWinPoints decreases the win points by 1.  The winPoints are never dreased to below 2.
-func (p *Player) DecrementWinPoints() {
-	if p.winPoints > 2 {
-		p.winPoints--
-	}
 }

@@ -351,10 +351,10 @@ func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- 
 	case len(g.unusedTiles) != 0:
 		return gameWarning("snag first")
 	case len(p.Board.UnusedTiles) != 0:
-		p.DecrementWinPoints()
+		p.WinPoints--
 		return gameWarning("not all tiles used, possible win points decremented")
 	case !p.Board.HasSingleUsedGroup():
-		p.DecrementWinPoints()
+		p.WinPoints--
 		return gameWarning("not all used tiles form a single group, possible win points decremented")
 	}
 	usedWords := p.Board.UsedTileWords()
@@ -365,7 +365,7 @@ func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- 
 		}
 	}
 	if len(invalidWords) > 0 {
-		p.DecrementWinPoints()
+		p.WinPoints--
 		return gameWarning(fmt.Sprintf("invalid words: %v, possible winpoints decremented", invalidWords))
 	}
 	g.status = game.Finished
@@ -373,7 +373,7 @@ func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- 
 		"WINNER! - %v won, creating %v words, getting %v points.  Other players each get 1 point",
 		m.PlayerName,
 		len(usedWords),
-		p.WinPoints(),
+		p.WinPoints,
 	)
 	err := g.updateUserPoints(ctx, m.PlayerName)
 	if err != nil {
@@ -530,13 +530,18 @@ func (g *Game) handleGameChat(ctx context.Context, m game.Message, out chan<- ga
 }
 
 // updateUserPoints updates the points for users in the game after a player has won.
-// The winning player gets their winpoints.  Other players in the game get a consolation point.
+// The winning player gets their winpoints or at least 2 points.  Other players in the game get a consolation point.
 func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName player.Name) error {
 	userPoints := make(map[string]int, len(g.players))
 	for pn, p := range g.players {
 		points := 1
 		if pn == winningPlayerName {
-			points = p.WinPoints()
+			switch {
+			case p.WinPoints > 1:
+				points = p.WinPoints
+			default:
+				points = 2
+			}
 		}
 		userPoints[string(pn)] = points
 	}
