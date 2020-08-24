@@ -355,6 +355,8 @@ func (b *Board) Resize(cfg Config) (*game.Message, error) {
 			usedTilePositions = append(usedTilePositions, tp)
 		}
 	}
+	b.NumCols = cfg.NumCols
+	b.NumRows = cfg.NumRows
 	sort.Slice(usedTilePositions, func(i, j int) bool {
 		a, b := usedTilePositions[i], usedTilePositions[j]
 		// top-bottom, left-right
