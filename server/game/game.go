@@ -229,26 +229,34 @@ func (g *Game) handleMessage(ctx context.Context, m game.Message, out chan<- gam
 }
 
 // handleGameJoin adds the player from the message to the game.
-func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- game.Message) (err error) {
-	defer func() {
-		if err != nil {
-			out <- game.Message{
-				Type:       game.Leave,
-				PlayerName: m.PlayerName,
-			}
-		}
-	}()
+func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	_, ok := g.players[m.PlayerName]
+	var err error
 	switch {
 	case ok:
-		return g.handleBoardRefresh(ctx, m, out)
+		err = g.handleBoardRefresh(ctx, m, out)
 	case g.status != game.NotStarted:
-		return gameWarning("cannot join game that has been started")
+		err = gameWarning("cannot join game that has been started")
 	case len(g.players) >= g.maxPlayers:
-		return gameWarning("no room for another player in game")
+		err = gameWarning("no room for another player in game")
 	case len(g.unusedTiles) < g.numNewTiles:
-		return gameWarning("not enough tiles to join the game")
+		err = gameWarning("not enough tiles to join the game")
+	default:
+		err = g.handleAddPlayer(ctx, m, out)
 	}
+	if err != nil {
+		// kick the player here, returning an error will not remove them from the game
+		out <- game.Message{
+			Type:       game.Leave,
+			PlayerName: m.PlayerName,
+		}
+		return err
+	}
+	return nil
+}
+
+// handleAddPlayer adds the player to the game.
+func (g *Game) handleAddPlayer(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	newTiles := g.unusedTiles[:g.numNewTiles]
 	g.unusedTiles = g.unusedTiles[g.numNewTiles:]
 	boardCfg := board.Config{
