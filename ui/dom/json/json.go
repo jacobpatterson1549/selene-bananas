@@ -18,7 +18,7 @@ var object = js.Global().Get("Object")
 // Parse converts the text into a JS Value.
 func Parse(data string, v interface{}) (err error) {
 	defer func() {
-		if r := recover(); r != nil {
+		if r := recover(); err == nil && r != nil {
 			err = dom.RecoverError(r)
 			err = errors.New("JSON parse: " + err.Error())
 		}

@@ -190,7 +190,7 @@ func (s *Socket) onMessage(event js.Value) {
 	}
 }
 
-// Send delivers a message to the server via it's websocket, panicing if the WebSocket is not open.
+// Send delivers a message to the server via it's websocket.
 func (s *Socket) Send(m game.Message) {
 	if !s.isOpen() {
 		s.log.Error("websocket not open")
