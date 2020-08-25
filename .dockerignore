@@ -10,3 +10,4 @@
 !ui
 !go.mod
 !go.sum
+!Makefile

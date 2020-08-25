@@ -1,7 +1,5 @@
 # binaries created by make
-/main.wasm
-/main
-/wasm_exec.js
+/build
 
 # environment variables
 /.env
@@ -11,7 +9,7 @@
 __debug_bin
 
 # https certificates
-/127.0.0.1*.pem
+/*.pem
 
 # SonarQube static analysis
 /.scannerwork

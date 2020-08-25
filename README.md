@@ -76,10 +76,10 @@ Generate certificates for localhost at 127.0.0.1
 ```bash
 mkcert 127.0.0.1
 ```
-Then, add the certificate files to the run environment configuration in `.env`.  The certificate files should be in the root of the application.
+Then, add the certificate files to the run environment configuration in `.env`.  The certificate files should be in the root of the application, but are aliased to be up a directory since the server runs in the build folder when running locally.
 ```
-TLS_CERT_FILE=127.0.0.1.pem
-TLS_KEY_FILE=127.0.0.1-key.pem
+TLS_CERT_FILE=../127.0.0.1.pem
+TLS_KEY_FILE=../127.0.0.1-key.pem
 ```
 
 ### Server Ports
@@ -108,6 +108,6 @@ Launching the application with [Docker](https://www.docker.com) requires minimal
     POSTGRES_PASSWORD=selene123
     POSTGRES_PORT=54320
     ```
-1. Ensure the files for the`TLS_CERT_FILE` and `TLS_KEY_FILE` environment variables are located in the project folder.
+1. Ensure the files for the `TLS_CERT_FILE` and `TLS_KEY_FILE` environment variables are located in the project folder and are **NOT** aliased relative to the build folder.  The variables should look like `TLS_CERT_FILE=127.0.0.1.pem`.
 1. Run `docker-compose up` to launch the application.
 1. Access application by opening <http://localhost:8000>.
