@@ -28,7 +28,6 @@ func RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, j
 // NewJsFunc creates a new javascript function from the provided function.
 func NewJsFunc(fn func()) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		defer alertOnPanic()
 		fn()
 		return nil
 	})
@@ -43,13 +42,12 @@ func NewJsEventFunc(fn func(event js.Value)) js.Func {
 // NewJsEventFuncAsync performs similarly to NewJsEventFunc, but calls the event-handling function asynchronously if async is true.
 func NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		defer alertOnPanic()
 		event := args[0]
 		event.Call("preventDefault")
 		switch {
 		case async:
 			go func() {
-				defer alertOnPanic()
+				defer AlertOnPanic()
 				fn(event)
 			}()
 		default:
@@ -62,6 +60,7 @@ func NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
 // ReleaseJsFuncsOnDone releases the jsFuncs and decrements the waitgroup when the context is done.
 // This function should be called on a separate goroutine.
 func ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func) {
+	defer AlertOnPanic()
 	<-ctx.Done() // BLOCKING
 	for _, f := range jsFuncs {
 		f.Release()
@@ -69,7 +68,9 @@ func ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[s
 	wg.Done()
 }
 
-func alertOnPanic() {
+// AlertOnPanic checks to see if a panic has occurred.
+// Thes function shoould be deferred as the first statement for each goroutine
+func AlertOnPanic() {
 	if r := recover(); r != nil {
 		err := RecoverError(r)
 		f := []string{
@@ -78,7 +79,7 @@ func alertOnPanic() {
 			"Message: " + err.Error(),
 		}
 		message := strings.Join(f, "\n")
-		Alert(message)
+		alert(message)
 		panic(err)
 	}
 }

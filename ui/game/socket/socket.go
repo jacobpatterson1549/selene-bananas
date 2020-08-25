@@ -71,6 +71,7 @@ func (s *Socket) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 
 // releaseJsFuncsOnDone waits for the context to be done before releasing the event listener functions.
 func (s *Socket) releaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup) {
+	defer dom.AlertOnPanic()
 	<-ctx.Done() // BLOCKING
 	s.releaseWebSocketJsFuncs()
 	wg.Done()

@@ -5,7 +5,6 @@ package main
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"syscall/js"
 	"time"
@@ -15,19 +14,7 @@ import (
 
 // main initializes the wasm code for the web dom and runs as long as the browser is open.
 func main() {
-	defer func() {
-		if r := recover(); r != nil {
-			err := dom.RecoverError(r)
-			f := []string{
-				"FATAL: could not load site",
-				"See browser console for more information",
-				"Message: " + err.Error(),
-			}
-			message := strings.Join(f, "\n")
-			dom.Alert(message)
-			panic(err)
-		}
-	}()
+	defer dom.AlertOnPanic()
 	m := mainFlags{
 		httpTimeout: 10 * time.Second,
 		tileLength:  20,
@@ -55,7 +42,7 @@ func initBeforeUnloadFn(cancelFunc context.CancelFunc, wg *sync.WaitGroup) {
 		return nil
 	})
 	global := js.Global()
-	global.Call("addEventListenere", "beforeunload", fn)
+	global.Call("addEventListener", "beforeunload", fn)
 }
 
 // enableInteraction removes the disabled attribute from all submit buttons, allowing users to sign in and send other forms.
