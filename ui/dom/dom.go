@@ -80,6 +80,12 @@ func Confirm(message string) bool {
 	return result.Bool()
 }
 
+// Alert shows a popup in the browser.
+func Alert(message string) {
+	global := js.Global()
+	global.Call("alert", message)
+}
+
 // NewWebSocket creates a new WebSocket with the specified url.
 func NewWebSocket(url string) js.Value {
 	global := js.Global()

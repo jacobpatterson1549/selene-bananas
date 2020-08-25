@@ -4,6 +4,7 @@ package dom
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"syscall/js"
 )
@@ -27,6 +28,7 @@ func RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, j
 // NewJsFunc creates a new javascript function from the provided function.
 func NewJsFunc(fn func()) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		defer recoverPanic()
 		fn()
 		return nil
 	})
@@ -41,11 +43,15 @@ func NewJsEventFunc(fn func(event js.Value)) js.Func {
 // NewJsEventFuncAsync performs similarly to NewJsEventFunc, but calls the event-handling function asynchronously if async is true.
 func NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		defer recoverPanic()
 		event := args[0]
 		event.Call("preventDefault")
 		switch {
 		case async:
-			go fn(event)
+			go func() {
+				defer recoverPanic()
+				fn(event)
+			}()
 		default:
 			fn(event)
 		}
@@ -61,4 +67,18 @@ func ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[s
 		f.Release()
 	}
 	wg.Done()
+}
+
+func recoverPanic() { // TODO: inline this better for async funcs
+	if r := recover(); r != nil {
+		err := RecoverError(r)
+		f := []string{
+			"FATAL: site shutting down",
+			"See browser console for more information",
+			"Message: " + err.Error(),
+		}
+		message := strings.Join(f, "\n")
+		Alert(message)
+		panic(err)
+	}
 }
