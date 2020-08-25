@@ -21,7 +21,8 @@ COPY \
     ./
 RUN make build \
     GO_ARGS="CGO_ENABLED=0" \
-    LINK="cp -R"
+    LINK="cp -R" \
+    -j 2
 
 # copy files to a minimal build image
 FROM scratch

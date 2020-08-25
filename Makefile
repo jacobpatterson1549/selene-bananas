@@ -9,7 +9,7 @@ GO_WASM_ARGS := GOOS=js GOARCH=wasm
 GO_ARGS :=
 GO_WASM_PATH := $(shell go env GOROOT)/misc/wasm
 LINK := ln -fs
-OBJS := $(addprefix $(BUILD_DIR)/,version wasm_exec.js resources main.wasm main)
+OBJS := $(addprefix $(BUILD_DIR)/,main.wasm main version wasm_exec.js resources)
 
 $(BUILD_DIR): $(OBJS)
 
@@ -48,8 +48,8 @@ $(BUILD_DIR)/version: | mkdir-$(BUILD_DIR)
 		| xargs tar -c \
 		| md5sum \
 		| cut -c -32 \
-        | tee $@ \
-        | xargs echo version
+		| tee $@ \
+		| xargs echo version
 
 $(BUILD_DIR)/main.wasm: test-wasm | mkdir-$(BUILD_DIR)
 	$(GO_WASM_ARGS) $(GO_LIST) ./... | grep cmd/ui \
