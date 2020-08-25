@@ -539,6 +539,8 @@ func TestResize(t *testing.T) {
 		switch {
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case b.NumCols != cfg.NumCols, b.NumRows != cfg.NumRows:
+			t.Errorf("resizing should update max board dimensions, wanted %v, got %v", cfg, b)
 		case test.wantTile2Unused:
 			switch {
 			case len(b.UnusedTileIDs) != 1, b.UnusedTileIDs[0] != t2.ID,
@@ -555,40 +557,5 @@ func TestResize(t *testing.T) {
 				t.Errorf("Test %v: wanted no info about board resize", i)
 			}
 		}
-	}
-}
-
-func TestResizeBeforeMove(t *testing.T) {
-	cfg1 := Config{
-		NumCols: 10,
-		NumRows: 10,
-	}
-	t1 := tile.Tile{
-		ID: 1,
-		Ch: "A",
-	}
-	unusedTiles := []tile.Tile{t1}
-	b, err := cfg1.New(unusedTiles)
-	if err != nil {
-		t.Fatalf("creating board: %v", err)
-	}
-	tp1 := tile.Position{
-		Tile: t1,
-		X:    20,
-		Y:    20,
-	}
-	tilePositions := []tile.Position{tp1}
-	if b.CanMoveTiles(tilePositions) {
-		t.Fatalf("should not be able to move tile yet: %v", err)
-	}
-	cfg2 := Config{
-		NumCols: 30,
-		NumRows: 30,
-	}
-	if _, err := b.Resize(cfg2); err != nil {
-		t.Fatalf("resize should not fail, got: %v", err)
-	}
-	if !b.CanMoveTiles(tilePositions) {
-		t.Fatal("should be able to move tile not that board is larger")
 	}
 }
