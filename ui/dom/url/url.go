@@ -1,9 +1,12 @@
+// +build js,wasm
+
 // Package url replaces the standard net/url package for pasic url operations
 package url
 
 import (
 	"errors"
 	"strings"
+	"syscall/js"
 )
 
 type (
@@ -84,7 +87,16 @@ func (v Values) Add(key, value string) {
 func (v Values) Encode() string {
 	queries := make([]string, 0, len(v))
 	for key, value := range v {
+		value = encodeURIComponent(value)
 		queries = append(queries, key+"="+value)
 	}
 	return strings.Join(queries, "&")
+}
+
+// encodeURIComponent escapes special characters for save use in URIs.
+func encodeURIComponent(str string) string {
+	global := js.Global()
+	fn := global.Get("encodeURIComponent")
+	rval := fn.Invoke(str)
+	return rval.String()
 }

@@ -1,3 +1,5 @@
+// +build js,wasm
+
 package url
 
 import (
@@ -106,5 +108,25 @@ func TestEncode(t *testing.T) {
 	case "a=340&b=cat", "b=cat&a=340": // nondeterminstic ordering
 	default:
 		t.Errorf("did not encode properly, got %v", got)
+	}
+}
+
+// TestEncodeURIComponent ensures encodeURIComponent is called.
+// tests copied from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
+func TestEncodeURIComponent(t *testing.T) {
+	encodeEscapeTests := map[string]string{
+		";,/?:@&=+$":  "%3B%2C%2F%3F%3A%40%26%3D%2B%24",
+		"-_.!~*'()":   "-_.!~*'()",
+		"#":           "%23",
+		"ABC abc 123": "ABC%20abc%20123",
+	}
+	for text, want := range encodeEscapeTests {
+		v := make(Values)
+		v.Add("p", text)
+		want = "p=" + want
+		got := v.Encode()
+		if want != got {
+			t.Errorf("did not encode properly\nwanted: %v\ngot:    %v", want, got)
+		}
 	}
 }
