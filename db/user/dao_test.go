@@ -270,6 +270,9 @@ func TestDaoUpdatePassword(t *testing.T) {
 			password: test.oldP,
 			ph: mockPasswordHandler{
 				hashFunc: func(password string) ([]byte, error) {
+					if password != test.newP {
+						t.Errorf("Test %v: wanted to hash new password %v, got %v", i, test.newP, password)
+					}
 					return []byte(password), test.hashPasswordErr
 				},
 				isCorrectFunc: func(hashedPassword []byte, password string) (bool, error) {

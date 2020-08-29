@@ -100,15 +100,16 @@ func (d Dao) Read(ctx context.Context, u User) (*User, error) {
 
 // UpdatePassword sets the password of a user.
 func (d Dao) UpdatePassword(ctx context.Context, u User, newP string) error {
+	if _, err := d.Read(ctx, u); err != nil {
+		return fmt.Errorf("checking password: %w", err)
+	}
 	if err := validatePassword(newP); err != nil {
 		return err
 	}
+	u.password = newP
 	hashedPassword, err := u.hashPassword()
 	if err != nil {
 		return err
-	}
-	if _, err := d.Read(ctx, u); err != nil {
-		return fmt.Errorf("checking password: %w", err)
 	}
 	q := sql.NewExecFunction("user_update_password", u.Username, hashedPassword)
 	if err := d.db.Exec(ctx, q); err != nil {
