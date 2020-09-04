@@ -1,4 +1,4 @@
-.PHONY: test-wasm test bench mkdir-$(BUILD_DIR) serve serve-tcp clean
+.PHONY: test-wasm test bench mkdir-build serve serve-tcp clean
 
 BUILD_DIR := build
 GO_LIST := go list
@@ -25,20 +25,20 @@ test:
 bench:
 	$(GO_BENCH) ./...
 
-mkdir-$(BUILD_DIR):
+mkdir-build:
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/wasm_exec.js: | mkdir-$(BUILD_DIR)
+$(BUILD_DIR)/wasm_exec.js: | mkdir-build
 	$(LINK) \
 		$(GO_WASM_PATH)/$(@F) \
 		$@
 
-$(BUILD_DIR)/resources: | mkdir-$(BUILD_DIR)
+$(BUILD_DIR)/resources: | mkdir-build
 	$(LINK) \
 		$(PWD)/$(@F) \
 		$@
 
-$(BUILD_DIR)/version: | mkdir-$(BUILD_DIR)
+$(BUILD_DIR)/version: | mkdir-build
 	find . \
 			-mindepth 2 \
 			-path "*/.*" -prune -o \
@@ -51,12 +51,12 @@ $(BUILD_DIR)/version: | mkdir-$(BUILD_DIR)
 		| tee $@ \
 		| xargs echo version
 
-$(BUILD_DIR)/main.wasm: test-wasm | mkdir-$(BUILD_DIR)
+$(BUILD_DIR)/main.wasm: test-wasm | mkdir-build
 	$(GO_WASM_ARGS) $(GO_LIST) ./... | grep cmd/ui \
 		| $(GO_WASM_ARGS) xargs $(GO_BUILD) \
 			-o $@
 
-$(BUILD_DIR)/main: test | mkdir-$(BUILD_DIR)
+$(BUILD_DIR)/main: test | mkdir-build
 	$(GO_LIST) ./... | grep cmd/server \
 		| $(GO_ARGS) xargs $(GO_BUILD) \
 			-o $@
