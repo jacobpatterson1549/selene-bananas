@@ -1,16 +1,17 @@
 {
-    "name": "{{.Name}}",
-    "short_name": "{{.ShortName}}",
-    "description": "{{.Description}}",
-    "theme_color": "{{.Colors.CanvasTile}}",
-    "background_color": "{{.Colors.TabBackground}}",
-    "display": "standalone",
-    "start_url": "/",
-    "icons": [
-      {
-        "src": "favicon.svg",
-        "sizes": "144x144 192x192 512x512",
-        "purpose": "any maskable"
-      }
-    ]
-  }
+  "name": "{{.Name}}",
+  "short_name": "{{.ShortName}}",
+  "description": "{{.Description}}",
+  "theme_color": "{{.Colors.CanvasTile}}",
+  "background_color": "{{.Colors.TabBackground}}",
+  "display": "standalone",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
