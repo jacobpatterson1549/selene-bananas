@@ -285,7 +285,7 @@ func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 // handleHTTPSGet calls handlers for GET endpoints.
 func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
-	case "/", "/manifest.json", "/init.js":
+	case "/":
 		s.handleFile(w, r, s.serveTemplate(r.URL.Path), false)
 	case "/wasm_exec.js", "/main.wasm":
 		s.handleFile(w, r, s.serveFile("."+r.URL.Path), true)
@@ -328,33 +328,25 @@ func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// sereveTemplate servers the file from the data-driven template.
+// sereveTemplate servers the root template file from the data-driven template.
 func (s Server) serveTemplate(name string) http.HandlerFunc {
-	var (
-		t         *template.Template
-		filenames []string
-	)
-	switch name {
-	case "/":
-		t = template.New("main.html")
-		templateFileGlobs := []string{
-			"resources/html/**/*.html",
-			"resources/fa/*.svg",
-			"resources/main.css",
-			"resources/init.js",
-		}
-		for _, g := range templateFileGlobs {
-			matches, err := filepath.Glob(g)
-			if err != nil {
-				return func(w http.ResponseWriter, r *http.Request) {
-					s.handleError(w, err)
-				}
+	t := template.New("main.html")
+	templateFileGlobs := []string{
+		"resources/html/**/*.html",
+		"resources/fa/*.svg",
+		"resources/main.css",
+		"resources/manifest.json",
+		"resources/init.js",
+	}
+	var filenames []string
+	for _, g := range templateFileGlobs {
+		matches, err := filepath.Glob(g)
+		if err != nil {
+			return func(w http.ResponseWriter, r *http.Request) {
+				s.handleError(w, err)
 			}
-			filenames = append(filenames, matches...)
 		}
-	default:
-		t = template.New(name[1:])
-		filenames = append(filenames, "resources"+name)
+		filenames = append(filenames, matches...)
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, err := t.ParseFiles(filenames...); err != nil {
