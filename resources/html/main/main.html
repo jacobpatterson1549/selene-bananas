@@ -2,9 +2,9 @@
 <html lang="en">
     <head>
         <title>{{.Name}}</title>
-        <link rel="icon" type="image/x-icon" href="/favicon.ico">
-        <link rel="apple-touch-icon" href="/favicon-192.png">
-        <link rel="manifest" href='data:application/json,{{ template "manifest.json" . }}'>
+        <link rel="icon" type="image/x-icon" href="/favicon.svg">
+        <link rel="apple-touch-icon" href="/favicon-svg">
+        <link rel="manifest" href="manifest.json">
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="Description" content="{{.Description}}">
@@ -21,12 +21,12 @@
     </head>
     <body>
         <noscript>
-            <img src="/favicon.ico" alt="tile with inverted colors">
+            <img src="/favicon.svg" alt="tile with inverted colors">
             <span>ERROR: Site requires Javascript to load WebAssembly, which makes the site interactive.</span>
         </noscript>
         <header>
             <h1>
-                <img src="/favicon.ico" alt="tile">
+                <img src="/favicon.svg" alt="tile">
                 <a href="/">{{.Name}}</a>
             </h1>
         </header>
