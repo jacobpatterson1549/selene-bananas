@@ -289,7 +289,7 @@ func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 		s.handleFile(w, r, s.serveTemplate(r.URL.Path), false)
 	case "/wasm_exec.js", "/main.wasm":
 		s.handleFile(w, r, s.serveFile("."+r.URL.Path), true)
-	case "/robots.txt", "/favicon.ico", "/favicon-192.png", "/favicon-512.png":
+	case "/robots.txt", "/favicon.ico", "/favicon-192.png", "/favicon-512.png", "/favicon-maskable.png":
 		s.handleFile(w, r, s.serveFile("resources"+r.URL.Path), false)
 	case "/lobby":
 		s.handleUserLobby(w, r)
