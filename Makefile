@@ -69,7 +69,7 @@ serve: $(BUILD_DIR)
 serve-tcp: $(BUILD_DIR)
 	sudo setcap 'cap_net_bind_service=+ep' $(BUILD_DIR)/main
 	export $(shell grep -s -v '^#' .env | xargs \
-			| xargs -I () echo "() HTTP_PORT=80 HTTPS_PORT=443") \
+			| xargs -I {} echo "{} HTTP_PORT=80 HTTPS_PORT=443") \
 		&& cd $(BUILD_DIR) \
 		&& sudo -E ./main
 
