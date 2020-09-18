@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"mime"
 	"net"
 	"net/http"
 	"path/filepath"
@@ -193,13 +194,20 @@ func (s Server) validHTTPAddr() bool {
 }
 
 // hasSecHeader returns true if thhe request has any header starting with "Sec-".
-func (s Server) hasSecHeader(r *http.Request) bool {
+func (Server) hasSecHeader(r *http.Request) bool {
 	for header := range r.Header {
 		if strings.HasPrefix(header, "Sec-") {
 			return true
 		}
 	}
 	return false
+}
+
+// addMimeTime adds the applicable mime type to the response.
+func (Server) addMimeTime(fileName string, w http.ResponseWriter) {
+	extension := filepath.Ext(fileName)
+	mimeType := mime.TypeByExtension(extension)
+	w.Header().Set("Content-Type", mimeType)
 }
 
 // runHTTPSServer runs the http server, adding the return error to the channel when done.
@@ -300,11 +308,11 @@ func (s Server) redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
 // handleHTTPSGet calls handlers for GET endpoints.
 func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
-	case "/", "/manifest.json", "/serviceWorker.js":
+	case "/", "/manifest.json", "/serviceWorker.js", "/favicon.svg":
 		s.handleFile(w, r, s.serveTemplate(r.URL.Path), false)
 	case "/wasm_exec.js", "/main.wasm":
 		s.handleFile(w, r, s.serveFile("."+r.URL.Path), true)
-	case "/robots.txt", "/favicon.svg", "/favicon.png":
+	case "/robots.txt", "/favicon.png":
 		s.handleFile(w, r, s.serveFile("resources"+r.URL.Path), false)
 	case "/lobby":
 		s.handleUserLobby(w, r)
@@ -355,6 +363,7 @@ func (s Server) serveTemplate(name string) http.HandlerFunc {
 		templateFileGlobs := []string{
 			"resources/html/**/*.html",
 			"resources/fa/*.svg",
+			"resources/favicon.svg",
 			"resources/main.css",
 			"resources/init.js",
 		}
@@ -377,9 +386,7 @@ func (s Server) serveTemplate(name string) http.HandlerFunc {
 			s.handleError(w, err)
 			return
 		}
-		if len(name) > 3 && name[len(name)-3:] == ".js" {
-			w.Header().Set("Content-Type", "application/javascript")
-		}
+		s.addMimeTime(name, w)
 		if err := t.Execute(w, s.data); err != nil {
 			err = fmt.Errorf("rendering template: %v", err)
 			s.handleError(w, err)

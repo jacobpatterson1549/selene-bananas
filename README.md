@@ -1,4 +1,4 @@
-# ![selene-bananas favicon](resources/favicon.svg) selene-bananas
+# selene-bananas
 
 [![Build Status](https://travis-ci.org/jacobpatterson1549/selene-bananas.svg?branch=master)](https://travis-ci.org/jacobpatterson1549/selene-bananas)
 [![Go Report Card](https://goreportcard.com/badge/github.com/jacobpatterson1549/selene-bananas)](https://goreportcard.com/report/github.com/jacobpatterson1549/selene-bananas)
