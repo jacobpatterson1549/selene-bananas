@@ -192,6 +192,16 @@ func (s Server) validHTTPAddr() bool {
 	return len(s.httpServer.Addr) > 0
 }
 
+// hasSecHeader returns true if thhe request has any header starting with "Sec-".
+func (s Server) hasSecHeader(r *http.Request) bool {
+	for header := range r.Header {
+		if strings.HasPrefix(header, "Sec-") {
+			return true
+		}
+	}
+	return false
+}
+
 // runHTTPSServer runs the http server, adding the return error to the channel when done.
 // The server is not run if the HTTP address is not valid.
 func (s Server) runHTTPServer(ctx context.Context, errC chan<- error) {
@@ -241,13 +251,35 @@ func (s Server) Stop(ctx context.Context) error {
 
 // handleHTTPS handles http endpoints.
 func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
-	if s.challenge.IsFor(r.URL.Path) {
+	switch {
+	case s.challenge.IsFor(r.URL.Path):
 		if err := s.challenge.Handle(w, r.URL.Path); err != nil {
 			s.log.Printf("serving acme challenge: %v", err)
 			s.httpError(w, http.StatusInternalServerError)
 		}
-		return
+	default:
+		s.redirectToHTTPS(w, r)
 	}
+}
+
+// handleHTTPS handles https endpoints.
+func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
+	switch {
+	case r.TLS == nil && !s.noTLSRedirect:
+		s.handleHTTP(w, r)
+	case r.TLS == nil && s.noTLSRedirect && !s.hasSecHeader(r):
+		s.redirectToHTTPS(w, r)
+	case r.Method == "GET":
+		s.handleHTTPSGet(w, r)
+	case r.Method == "POST":
+		s.handleHTTPSPost(w, r)
+	default:
+		s.httpError(w, http.StatusMethodNotAllowed)
+	}
+}
+
+// redirectToHTTPS redirects the page to https.
+func (s Server) redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
 	host := r.Host
 	if strings.Contains(host, ":") {
 		var err error
@@ -263,20 +295,6 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	httpsURI := "https://" + host + r.URL.Path
 	http.Redirect(w, r, httpsURI, http.StatusTemporaryRedirect)
-}
-
-// handleHTTPS handles https endpoints.
-func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case r.TLS == nil && !s.noTLSRedirect:
-		s.handleHTTP(w, r)
-	case r.Method == "GET":
-		s.handleHTTPSGet(w, r)
-	case r.Method == "POST":
-		s.handleHTTPSPost(w, r)
-	default:
-		s.httpError(w, http.StatusMethodNotAllowed)
-	}
 }
 
 // handleHTTPSGet calls handlers for GET endpoints.

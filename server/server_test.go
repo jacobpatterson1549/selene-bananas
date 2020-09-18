@@ -285,3 +285,25 @@ func TestHandleHTTPPing(t *testing.T) {
 		}
 	}
 }
+
+func TestHasSecHeader(t *testing.T) {
+	hasSecHeaderTests := map[string]bool{
+		"Accept":          false,
+		"DNT":             false,
+		"":                false,
+		"inSec-t":         false,
+		"Sec-Fetch-Mode:": true,
+	}
+	var s Server
+	for header, want := range hasSecHeaderTests {
+		r := http.Request{
+			Header: map[string][]string{
+				header: nil,
+			},
+		}
+		got := s.hasSecHeader(&r)
+		if want != got {
+			t.Errorf("wanted hasSecHeader = %v when header = %v", want, header)
+		}
+	}
+}
