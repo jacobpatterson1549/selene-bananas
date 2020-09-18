@@ -282,7 +282,7 @@ func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 // handleHTTPSGet calls handlers for GET endpoints.
 func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
-	case "/", "/manifest.json":
+	case "/", "/manifest.json", "/serviceWorker.js":
 		s.handleFile(w, r, s.serveTemplate(r.URL.Path), false)
 	case "/wasm_exec.js", "/main.wasm":
 		s.handleFile(w, r, s.serveFile("."+r.URL.Path), true)
@@ -358,6 +358,9 @@ func (s Server) serveTemplate(name string) http.HandlerFunc {
 			err = fmt.Errorf("parsing manifest template: %v", err)
 			s.handleError(w, err)
 			return
+		}
+		if len(name) > 3 && name[len(name)-3:] == ".js" {
+			w.Header().Set("Content-Type", "application/javascript")
 		}
 		if err := t.Execute(w, s.data); err != nil {
 			err = fmt.Errorf("rendering template: %v", err)
