@@ -248,9 +248,6 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	if s.noTLSRedirect {
-		return
-	}
 	host := r.Host
 	if strings.Contains(host, ":") {
 		var err error
@@ -261,7 +258,7 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if s.httpsServer.Addr != ":443" {
+	if s.httpsServer.Addr != ":443" && !s.noTLSRedirect {
 		host = host + s.httpsServer.Addr
 	}
 	httpsURI := "https://" + host + r.URL.Path
