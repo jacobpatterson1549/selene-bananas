@@ -203,8 +203,8 @@ func (Server) hasSecHeader(r *http.Request) bool {
 	return false
 }
 
-// addMimeTime adds the applicable mime type to the response.
-func (Server) addMimeTime(fileName string, w http.ResponseWriter) {
+// addMimeType adds the applicable mime type to the response.
+func (Server) addMimeType(fileName string, w http.ResponseWriter) {
 	extension := filepath.Ext(fileName)
 	mimeType := mime.TypeByExtension(extension)
 	w.Header().Set("Content-Type", mimeType)
@@ -386,7 +386,7 @@ func (s Server) serveTemplate(name string) http.HandlerFunc {
 			s.handleError(w, err)
 			return
 		}
-		s.addMimeTime(name, w)
+		s.addMimeType(name, w)
 		if err := t.Execute(w, s.data); err != nil {
 			err = fmt.Errorf("rendering template: %v", err)
 			s.handleError(w, err)

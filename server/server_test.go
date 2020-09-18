@@ -320,7 +320,7 @@ func TestAddMimeType(t *testing.T) {
 	for fileName, want := range addMimeTypeTests {
 		var s Server
 		w := httptest.NewRecorder()
-		s.addMimeTime(fileName, w)
+		s.addMimeType(fileName, w)
 		got := w.Header().Get("Content-Type")
 		if want != got {
 			t.Errorf("when filename = %v, wanted mimeType %v, got %v", fileName, want, got)
