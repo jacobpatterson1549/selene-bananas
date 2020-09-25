@@ -9,7 +9,7 @@
   "icons": [
     {
       "src": "favicon.svg",
-      "sizes": "32x32",
+      "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     },
