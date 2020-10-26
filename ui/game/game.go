@@ -222,10 +222,10 @@ func (g *Game) updateStatus(m game.Message) {
 		return
 	}
 	dom.SetValue(".game>.info .status", statusText)
-	dom.SetButtonDisabled(".game>.actions>.snag", snagDisabled)
-	dom.SetButtonDisabled(".game>.actions>.swap", swapDisabled)
-	dom.SetButtonDisabled(".game>.actions>.start", startDisabled)
-	dom.SetButtonDisabled(".game>.actions>.finish", finishDisabled)
+	dom.SetButtonDisabled(".game .actions>.snag", snagDisabled)
+	dom.SetButtonDisabled(".game .actions>.swap", swapDisabled)
+	dom.SetButtonDisabled(".game .actions>.start", startDisabled)
+	dom.SetButtonDisabled(".game .actions>.finish", finishDisabled)
 	g.canvas.SetGameStatus(m.GameStatus)
 }
 
@@ -233,13 +233,13 @@ func (g *Game) updateStatus(m game.Message) {
 func (g *Game) updateTilesLeft(m game.Message) {
 	dom.SetValue(".game>.info .tiles-left", strconv.Itoa(m.TilesLeft))
 	if m.TilesLeft == 0 {
-		dom.SetButtonDisabled(".game>.actions>.snag", true)
-		dom.SetButtonDisabled(".game>.actions>.swap", true)
+		dom.SetButtonDisabled(".game .actions>.snag", true)
+		dom.SetButtonDisabled(".game .actions>.swap", true)
 		// enable the finish button if the game is not being started or is already finished
 		switch m.GameStatus {
 		case game.NotStarted, game.Finished:
 		default:
-			dom.SetButtonDisabled(".game>.actions>.finish", false)
+			dom.SetButtonDisabled(".game .actions>.finish", false)
 		}
 	}
 }
