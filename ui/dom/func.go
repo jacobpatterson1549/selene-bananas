@@ -28,6 +28,7 @@ func RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, j
 // NewJsFunc creates a new javascript function from the provided function.
 func NewJsFunc(fn func()) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		defer AlertOnPanic()
 		fn()
 		return nil
 	})
@@ -51,6 +52,7 @@ func NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
 				fn(event)
 			}()
 		default:
+			defer AlertOnPanic()
 			fn(event)
 		}
 		return nil

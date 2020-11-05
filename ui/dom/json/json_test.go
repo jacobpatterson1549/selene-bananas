@@ -33,6 +33,14 @@ func TestStringify(t *testing.T) {
 			},
 			want: `{"ch":"B"}`,
 		},
+		{
+			value: true,
+			want:  "true",
+		},
+		{
+			value: false,
+			want:  "false",
+		},
 	}
 	for i, test := range stringifyTests {
 		got, err := Stringify(test.value)
@@ -50,6 +58,8 @@ func TestToInterface(t *testing.T) {
 		nil,
 		"C",
 		9,
+		true,
+		false,
 		[]interface{}{"nine", "blind", "mice"},
 		map[string]interface{}{
 			"I": 1,

@@ -164,6 +164,10 @@ func TestToObject(t *testing.T) {
 			want: "some text",
 		},
 		{
+			src:  true,
+			want: true,
+		},
+		{
 			src:  []string{"a", "b", "c"},
 			want: []interface{}{"a", "b", "c"},
 		},

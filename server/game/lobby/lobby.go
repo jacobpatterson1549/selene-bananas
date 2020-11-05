@@ -202,7 +202,15 @@ func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 		}
 		id++
 	}
-	g, err := l.gameCfg.NewGame(id)
+	// TODO: ensure the gameConfig of the Lobby is not modified
+	gameCfg := l.gameCfg
+	gameCfg.WordsConfig = gameController.WordsConfig{ // TODO: hack, should be passed in as pointer to struct in message
+		CheckOnSnag:     m.CheckOnSnag,
+		Penalize:        m.Penalize,
+		MinLength:       m.MinLength,
+		AllowDuplicates: m.AllowDuplicates,
+	}
+	g, err := gameCfg.NewGame(id)
 	if err != nil {
 		return
 	}

@@ -20,11 +20,11 @@ func fromObject(dst, src interface{}) error {
 	switch {
 	case sk == reflect.Map:
 		if dek != reflect.Struct {
-			return errors.New("want dest to be a struct when source is map, got " + dek.String())
+			return errors.New("wanted dest to be a struct when source is map, got " + dek.String())
 		}
 	case sk != dek:
 		if sk != reflect.Int && dek != reflect.Int64 { // ints should be passed as int64s.
-			return errors.New("want dest to be " + sk.String() + ", got " + dek.String())
+			return errors.New("wanted dest to be " + sk.String() + ", got " + dek.String())
 		}
 	}
 	switch sk {
@@ -34,6 +34,9 @@ func fromObject(dst, src interface{}) error {
 	case reflect.Int, reflect.Int64:
 		si := s.Int()
 		de.SetInt(si)
+	case reflect.Bool:
+		sb := s.Bool()
+		de.SetBool(sb)
 	case reflect.Slice:
 		return fromSlice(de, s)
 	case reflect.Map:
@@ -55,6 +58,8 @@ func toObject(src interface{}) (interface{}, error) {
 		return v.String(), nil
 	case reflect.Int, reflect.Int64:
 		return v.Int(), nil // converts to int64
+	case reflect.Bool:
+		return v.Bool(), nil
 	case reflect.Slice:
 		return toSlice(v)
 	case reflect.Struct:
@@ -151,7 +156,7 @@ func toStruct(v reflect.Value) (map[string]interface{}, error) {
 		f := v.Field(i)
 		o, err := toObject(f.Interface())
 		if err != nil {
-			return nil, errors.New("getting value of field " + strconv.Itoa(i) + " of struct")
+			return nil, errors.New("getting value of field " + strconv.Itoa(i) + " of struct: " + err.Error())
 		}
 		if len(jsonTags) == 2 && jsonTags[1] == "omitempty" {
 			vz := reflect.ValueOf(o)

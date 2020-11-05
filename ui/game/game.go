@@ -53,7 +53,8 @@ func (cfg Config) NewGame() *Game {
 // InitDom registers game dom functions.
 func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
-		"create":            dom.NewJsFunc(g.create),
+		"create":            dom.NewJsFunc(g.startCreate),
+		"createWithConfig":  dom.NewJsEventFunc(g.createWithConfig),
 		"join":              dom.NewJsEventFunc(g.join),
 		"leave":             dom.NewJsFunc(g.Leave),
 		"delete":            dom.NewJsFunc(g.delete),
@@ -68,10 +69,30 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	dom.RegisterFuncs(ctx, wg, "game", jsFuncs)
 }
 
-// create clears the tiles and asks the server for a new game to join.
-func (g *Game) create() {
+// startCreate opens the game tab in create mode.
+func (g *Game) startCreate() {
+	dom.SetChecked(".has-game", true)
+	dom.SetChecked(".create", true)
+	dom.SetChecked("#tab-game", true)
+}
+
+// createWithConfig clears the tiles and asks the server for a new game to join with the create config.
+func (g *Game) createWithConfig(event js.Value) {
+	checkOnSnag := dom.Checked(".checkOnSnag")
+	penalize := dom.Checked(".penalize")
+	minLengthStr := dom.Value(".minLength")
+	minLength, err := strconv.Atoi(minLengthStr)
+	if err != nil {
+		g.log.Error("retrieving minimum word length: " + err.Error())
+		return
+	}
+	allowDuplicates := dom.Checked(".allowDuplicates")
 	m := game.Message{
-		Type: game.Create,
+		Type:            game.Create,
+		CheckOnSnag:     checkOnSnag,
+		Penalize:        penalize,
+		MinLength:       minLength,
+		AllowDuplicates: allowDuplicates,
 	}
 	g.setTabActive(m)
 }
@@ -284,6 +305,7 @@ func (g *Game) resizeTiles() {
 // setTabActive performs the actions need to activate the game tab and create or join a game.
 func (g *Game) setTabActive(m game.Message) {
 	dom.SetChecked(".has-game", true)
+	dom.SetChecked(".create", false)
 	dom.SetChecked("#tab-game", true)
 	// the tab now has a size, so update the canvas and board
 	g.canvas.UpdateSize()

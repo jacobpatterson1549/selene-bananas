@@ -1,4 +1,29 @@
 <div class="game">
+    <input type="checkbox" class="create" hidden checked>
+    <form class="create" onsubmit="game.createWithConfig(event)">
+        <fieldset>
+            <legend>Game Options</legend>
+            <div>
+                <label title="Check words to ensure they are in a group and valid whenever a snag command is issued.">
+                    <div>Check words on snag:</div>
+                    <input type="checkbox" class="checkOnSnag" checked>
+                </label>
+                <label title="Decrease the player's potential win points if his words are not valid or all in one group.">
+                    <div>Penalize on invalid snag:</div>
+                    <input type="checkbox" class="penalize">
+                </label>
+                <label title="The minimum length of valid words.">
+                    <div>Minimum word length:</div>
+                    <input type="number" class="minLength" min=2 max=10 value=2>
+                </label>
+                <label title="Whether or not duplicate words are allowed on the board.">
+                    <div>Allow Duplicate words:</div>
+                    <input type="checkbox" class="allowDuplicates" checked>
+                </label>
+                <input class="button" type="submit" value="Create" disabled>
+            </div>
+        </fieldset>
+    </form>
     <form class="info">
         <fieldset>
             <input type="checkbox" id="hide-info" hidden checked>

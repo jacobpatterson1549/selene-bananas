@@ -48,6 +48,7 @@ func TestMessageJSON(t *testing.T) {
 			m: Message{Type: 11},
 			j: `{"type":11}`,
 		},
+		// TODO: test mock game create message
 	}
 	for i, test := range MessageJSONTests {
 		j2, err := json.Marshal(test.m)

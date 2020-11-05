@@ -9,6 +9,8 @@
 .tabs>.tab>.content>.game>.info #hide-info:not(:checked)+legend+div,
 .tabs>.tab>.content>.game>.chat #hide-chat:not(:checked)+legend+div,
 .tabs>.tab>.content>.game>.tile-length #hide-tile-length:not(:checked)+legend+div,
+.tabs>.tab>.content>.game>.create:checked~:not(.create),
+.tabs>.tab>.content>.game>.create:not(:checked)+.create,
 .tabs>.tab>.content>.game>.canvas>.move-state {
     display: none;
 }
@@ -75,6 +77,7 @@ noscript,
     background: {{ .Colors.TabBackground }};
     margin: 1em;
 }
+.game form.create label,
 .tab>input:checked+.button+.content {
     display: block;
 }

@@ -23,7 +23,9 @@ func (ud mockUserDao) UpdatePointsIncrement(ctx context.Context, userPoints map[
 
 func TestInitializeUnusedTilesCorrectAmount(t *testing.T) {
 	g := Game{
-		tileLetters: defaultTileLetters,
+		Config: Config{
+			TileLetters: defaultTileLetters,
+		},
 	}
 	if err := g.initializeUnusedTiles(); err != nil {
 		t.Errorf("unwanted error: %v", err)
@@ -37,7 +39,9 @@ func TestInitializeUnusedTilesCorrectAmount(t *testing.T) {
 
 func TestInitializeUnusedTilesAllLetters(t *testing.T) {
 	g := Game{
-		tileLetters: defaultTileLetters,
+		Config: Config{
+			TileLetters: defaultTileLetters,
+		},
 	}
 	if err := g.initializeUnusedTiles(); err != nil {
 		t.Errorf("unwanted error: %v", err)
@@ -67,15 +71,17 @@ func TestInitializeUnusedTilesShuffled(t *testing.T) {
 	}
 	for _, test := range createTilesShuffledTests {
 		g := Game{
-			tileLetters: "AZ",
-			shuffleUnusedTilesFunc: func(tiles []tile.Tile) {
-				sort.Slice(tiles, func(i, j int) bool {
-					lessThan := tiles[i].Ch < tiles[j].Ch
-					if len(test.inReverse) > 0 {
-						return !lessThan
-					}
-					return lessThan
-				})
+			Config: Config{
+				TileLetters: "AZ",
+				ShuffleUnusedTilesFunc: func(tiles []tile.Tile) {
+					sort.Slice(tiles, func(i, j int) bool {
+						lessThan := tiles[i].Ch < tiles[j].Ch
+						if len(test.inReverse) > 0 {
+							return !lessThan
+						}
+						return lessThan
+					})
+				},
 			},
 		}
 		if err := g.initializeUnusedTiles(); err != nil {
@@ -90,7 +96,11 @@ func TestInitializeUnusedTilesShuffled(t *testing.T) {
 
 func TestInitializeUnusedTilesUniqueIds(t *testing.T) {
 	tileLetters := "AAAABBABACCABAC"
-	g := Game{tileLetters: tileLetters}
+	g := Game{
+		Config: Config{
+			TileLetters: tileLetters,
+		},
+	}
 	if err := g.initializeUnusedTiles(); err != nil {
 		t.Errorf("unwanted error: %v", err)
 	}
@@ -105,7 +115,11 @@ func TestInitializeUnusedTilesUniqueIds(t *testing.T) {
 
 func TestInitializeUnusedTilesCustom(t *testing.T) {
 	tileLetters := "SELENE"
-	g := Game{tileLetters: tileLetters}
+	g := Game{
+		Config: Config{
+			TileLetters: tileLetters,
+		},
+	}
 	if err := g.initializeUnusedTiles(); err != nil {
 		t.Errorf("unwanted error: %v", err)
 	}
@@ -120,7 +134,11 @@ func TestInitializeUnusedTilesCustom(t *testing.T) {
 
 func TestInitializeUnusedTilesInvalid(t *testing.T) {
 	tileLetters := ":("
-	g := Game{tileLetters: tileLetters}
+	g := Game{
+		Config: Config{
+			TileLetters: tileLetters,
+		},
+	}
 	if err := g.initializeUnusedTiles(); err == nil {
 		t.Errorf("wanted error while initializing tiles with text: '%v'", tileLetters)
 	}
@@ -159,7 +177,9 @@ func TestUpdateUserPoints(t *testing.T) {
 			"selene": selenePlayer,
 			"bob":    {},
 		},
-		userDao: ud,
+		Config: Config{
+			UserDao: ud,
+		},
 	}
 	got := g.updateUserPoints(ctx, "selene")
 	if want != got {

@@ -57,6 +57,8 @@ func toInterface(jsValue js.Value) (interface{}, error) {
 		return jsValue.String(), nil
 	case js.TypeNumber:
 		return jsValue.Int(), nil
+	case js.TypeBoolean:
+		return jsValue.Bool(), nil
 	case js.TypeObject:
 		if jsValue.InstanceOf(array) {
 			return toArray(jsValue)

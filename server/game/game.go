@@ -19,22 +19,12 @@ import (
 type (
 	// Game contains the logic to play a tile-base word-forming game between users.
 	Game struct {
-		debug                  bool
-		log                    *log.Logger
-		id                     game.ID
-		createdAt              int64
-		status                 game.Status
-		userDao                UserDao
-		players                map[player.Name]*playerController.Player
-		maxPlayers             int
-		playerCfg              playerController.Config
-		numNewTiles            int
-		tileLetters            string
-		unusedTiles            []tile.Tile
-		wordChecker            word.Checker
-		idlePeriod             time.Duration
-		shuffleUnusedTilesFunc func(tiles []tile.Tile)
-		shufflePlayersFunc     func(playerNames []player.Name)
+		id          game.ID
+		createdAt   int64
+		status      game.Status
+		players     map[player.Name]*playerController.Player
+		unusedTiles []tile.Tile
+		Config
 	}
 
 	// Config contiains the properties to create similar games.
@@ -61,6 +51,8 @@ type (
 		TileLetters string
 		// WordChecker is used to validate players' words when they try to finish the game.
 		WordChecker word.Checker
+		// WordsConfig controlls how checking words works
+		WordsConfig WordsConfig
 		// IdlePeroid is the amount of time that can pass between non-BoardRefresh messages before the game is idle and will delete itself.
 		IdlePeriod time.Duration
 		// ShuffleUnusedTilesFunc is used to shuffle unused tiles when initializing the game and after tiles are swapped.
@@ -68,6 +60,18 @@ type (
 		// ShufflePlayersFunc is used to shuffle the order of players when giving tiles after a snag
 		// The snagging player should always get a new tile.  Other players will get a tile, if possible.
 		ShufflePlayersFunc func(playerNames []player.Name)
+	}
+
+	// WordsConfig is used when checking player words on a snag or game finish request.
+	WordsConfig struct {
+		// CheckOnSnag is a flag to check the board when a player wants to snag to ensure their board has on group of valid words.
+		CheckOnSnag bool `json:"checkOnSnag,omitempty"`
+		// Penalize is a flag to decrement a player's points if they try to snag a tile when their board is invalid.
+		Penalize bool `json:"penalize,omitempty"`
+		// MinLength is the minimum allowed word length for each word on the board.
+		MinLength int `json:"minLength,omitempty"`
+		// AllowDuplicates is a flag for whether or not to allow duplicate words when checking the board
+		AllowDuplicates bool `json:"allowDuplicates,omitempty"`
 	}
 
 	// messageHandler is a function which handles game messages, returning responses to the output channel.
@@ -92,26 +96,15 @@ func (cfg Config) NewGame(id game.ID) (*Game, error) {
 	if err := cfg.validate(id); err != nil {
 		return nil, fmt.Errorf("creating game: validation: %w", err)
 	}
-	tileLetters := cfg.TileLetters
-	if len(tileLetters) == 0 {
-		tileLetters = defaultTileLetters
+	if len(cfg.TileLetters) == 0 {
+		cfg.TileLetters = defaultTileLetters
 	}
 	g := Game{
-		debug:                  cfg.Debug,
-		log:                    cfg.Log,
-		id:                     id,
-		createdAt:              cfg.TimeFunc(),
-		status:                 game.NotStarted,
-		userDao:                cfg.UserDao,
-		maxPlayers:             cfg.MaxPlayers,
-		playerCfg:              cfg.PlayerCfg,
-		numNewTiles:            cfg.NumNewTiles,
-		tileLetters:            tileLetters,
-		wordChecker:            cfg.WordChecker,
-		idlePeriod:             cfg.IdlePeriod,
-		players:                make(map[player.Name]*playerController.Player),
-		shuffleUnusedTilesFunc: cfg.ShuffleUnusedTilesFunc,
-		shufflePlayersFunc:     cfg.ShufflePlayersFunc,
+		id:        id,
+		createdAt: cfg.TimeFunc(),
+		status:    game.NotStarted,
+		players:   make(map[player.Name]*playerController.Player),
+		Config:    cfg,
 	}
 	if err := g.initializeUnusedTiles(); err != nil {
 		return nil, err
@@ -146,8 +139,8 @@ func (cfg Config) validate(id game.ID) error {
 
 // initialize unusedTiles from tileLetters or defaultTileLetters and shuffles them.
 func (g *Game) initializeUnusedTiles() error {
-	g.unusedTiles = make([]tile.Tile, len(g.tileLetters))
-	for i, ch := range g.tileLetters {
+	g.unusedTiles = make([]tile.Tile, len(g.TileLetters))
+	for i, ch := range g.TileLetters {
 		id := tile.ID(i + 1)
 		t, err := tile.New(id, ch)
 		if err != nil {
@@ -155,15 +148,15 @@ func (g *Game) initializeUnusedTiles() error {
 		}
 		g.unusedTiles[i] = *t
 	}
-	if g.shuffleUnusedTilesFunc != nil {
-		g.shuffleUnusedTilesFunc(g.unusedTiles)
+	if g.ShuffleUnusedTilesFunc != nil {
+		g.ShuffleUnusedTilesFunc(g.unusedTiles)
 	}
 	return nil
 }
 
 // Run runs the game until the context is closed.
 func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-chan game.Message, out chan<- game.Message) {
-	idleTicker := time.NewTicker(g.idlePeriod)
+	idleTicker := time.NewTicker(g.IdlePeriod)
 	active := false
 	messageHandlers := map[game.MessageType]messageHandler{
 		game.Join:         g.handleGameJoin,
@@ -188,7 +181,7 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 		case <-idleTicker.C:
 			var m game.Message
 			if !active {
-				g.log.Printf("deleted game %v due to inactivity", g.id)
+				g.Log.Printf("deleted game %v due to inactivity", g.id)
 				g.handleGameDelete(ctx, m, out)
 				return
 			}
@@ -199,8 +192,8 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 
 // handleMessage handles the message with the appropriate message handler.
 func (g *Game) handleMessage(ctx context.Context, m game.Message, out chan<- game.Message, active *bool, messageHandlers map[game.MessageType]messageHandler) {
-	if g.debug {
-		g.log.Printf("game reading message with type %v", m.Type)
+	if g.Debug {
+		g.Log.Printf("game reading message with type %v", m.Type)
 	}
 	var err error
 	if mh, ok := messageHandlers[m.Type]; !ok {
@@ -218,7 +211,7 @@ func (g *Game) handleMessage(ctx context.Context, m game.Message, out chan<- gam
 			mt = game.SocketWarning
 		default:
 			mt = game.SocketError
-			g.log.Printf("game error: %v", err)
+			g.Log.Printf("game error: %v", err)
 		}
 		out <- game.Message{
 			Type:       mt,
@@ -237,9 +230,9 @@ func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- ga
 		err = g.handleBoardRefresh(ctx, m, out)
 	case g.status != game.NotStarted:
 		err = gameWarning("cannot join game that has been started")
-	case len(g.players) >= g.maxPlayers:
+	case len(g.players) >= g.MaxPlayers:
 		err = gameWarning("no room for another player in game")
-	case len(g.unusedTiles) < g.numNewTiles:
+	case len(g.unusedTiles) < g.NumNewTiles:
 		err = gameWarning("not enough tiles to join the game")
 	default:
 		err = g.handleAddPlayer(ctx, m, out)
@@ -257,8 +250,8 @@ func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- ga
 
 // handleAddPlayer adds the player to the game.
 func (g *Game) handleAddPlayer(ctx context.Context, m game.Message, out chan<- game.Message) error {
-	newTiles := g.unusedTiles[:g.numNewTiles]
-	g.unusedTiles = g.unusedTiles[g.numNewTiles:]
+	newTiles := g.unusedTiles[:g.NumNewTiles]
+	g.unusedTiles = g.unusedTiles[g.NumNewTiles:]
 	boardCfg := board.Config{
 		NumCols: m.NumCols,
 		NumRows: m.NumRows,
@@ -267,7 +260,7 @@ func (g *Game) handleAddPlayer(ctx context.Context, m game.Message, out chan<- g
 	if err != nil {
 		return err
 	}
-	p, err := g.playerCfg.New(b)
+	p, err := g.PlayerCfg.New(b)
 	if err != nil {
 		return fmt.Errorf("creating player: %w", err)
 	}
@@ -349,6 +342,51 @@ func (g *Game) handleGameStart(ctx context.Context, m game.Message, out chan<- g
 	return nil
 }
 
+// checkPlayerBoard checks the player board to ensure all tiles are in a group, words are valid, and other tests prescribed by the config.
+// The words and a possible game warning error are returned.
+// The player's winPoints are decremented if an error is returned if and only if the config wants to.
+func (g *Game) checkPlayerBoard(pn player.Name, checkWords bool) ([]string, error) {
+	var usedWords []string
+	errText := ""
+	p := g.players[pn]
+	switch {
+	case len(p.Board.UnusedTiles) != 0:
+		errText = "not all tiles used"
+	case !p.Board.HasSingleUsedGroup():
+		errText = "not all used tiles form a single group"
+	case checkWords:
+		uniqueWords := make(map[string]struct{}, len(usedWords))
+		usedWords = p.Board.UsedTileWords()
+		var invalidWords []string
+		for _, w := range usedWords {
+			if _, ok := uniqueWords[w]; !g.WordsConfig.AllowDuplicates && ok {
+				errText = "duplicate words detected"
+				break
+			}
+			uniqueWords[w] = struct{}{}
+			if len(w) < g.WordsConfig.MinLength {
+				errText = fmt.Sprintf("short word detected, all must be at least %v characters", g.WordsConfig.MinLength)
+				break
+			}
+			if !g.WordChecker.Check(w) {
+				invalidWords = append(invalidWords, w)
+			}
+		}
+		if len(invalidWords) > 0 {
+			errText = fmt.Sprintf("invalid words: %v", invalidWords)
+		}
+	}
+	if len(errText) != 0 {
+		errText = "invalid board: " + errText
+		if g.WordsConfig.Penalize {
+			p.WinPoints--
+			errText = errText + ", possible win points decremented"
+		}
+		return nil, gameWarning(errText)
+	}
+	return usedWords, nil
+}
+
 // handleGameStart tries to finish the game for the player sending the message by checking to see if the player wins.
 // If the player has won, game cleanup logic is triggered.
 func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- game.Message) error {
@@ -358,23 +396,10 @@ func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- 
 		return gameWarning("can only attempt to set game that is in progress to finished")
 	case len(g.unusedTiles) != 0:
 		return gameWarning("snag first")
-	case len(p.Board.UnusedTiles) != 0:
-		p.WinPoints--
-		return gameWarning("not all tiles used, possible win points decremented")
-	case !p.Board.HasSingleUsedGroup():
-		p.WinPoints--
-		return gameWarning("not all used tiles form a single group, possible win points decremented")
 	}
-	usedWords := p.Board.UsedTileWords()
-	var invalidWords []string
-	for _, w := range usedWords {
-		if !g.wordChecker.Check(w) {
-			invalidWords = append(invalidWords, w)
-		}
-	}
-	if len(invalidWords) > 0 {
-		p.WinPoints--
-		return gameWarning(fmt.Sprintf("invalid words: %v, possible winpoints decremented", invalidWords))
+	usedWords, boardErr := g.checkPlayerBoard(m.PlayerName, true)
+	if boardErr != nil {
+		return boardErr
 	}
 	g.status = game.Finished
 	info := fmt.Sprintf(
@@ -407,6 +432,9 @@ func (g *Game) handleGameSnag(ctx context.Context, m game.Message, out chan<- ga
 	case len(g.unusedTiles) == 0:
 		return gameWarning("no tiles left to snag, use what you have to finish")
 	}
+	if _, err := g.checkPlayerBoard(m.PlayerName, g.WordsConfig.CheckOnSnag); err != nil {
+		return err
+	}
 	snagPlayerMessages := make(map[player.Name]game.Message, len(g.players))
 	snagPlayerNames := make([]player.Name, 1, len(g.players))
 	snagPlayerNames[0] = m.PlayerName
@@ -415,7 +443,7 @@ func (g *Game) handleGameSnag(ctx context.Context, m game.Message, out chan<- ga
 			snagPlayerNames = append(snagPlayerNames, n2)
 		}
 	}
-	g.shufflePlayersFunc(snagPlayerNames[1:])
+	g.ShufflePlayersFunc(snagPlayerNames[1:])
 	for _, n2 := range snagPlayerNames {
 		m2 := game.Message{
 			Type:       game.TilesChange,
@@ -465,7 +493,7 @@ func (g *Game) handleGameSwap(ctx context.Context, m game.Message, out chan<- ga
 		return err
 	}
 	g.unusedTiles = append(g.unusedTiles, t)
-	g.shuffleUnusedTilesFunc(g.unusedTiles)
+	g.ShuffleUnusedTilesFunc(g.unusedTiles)
 	var newTiles []tile.Tile
 	for i := 0; i < 3 && len(g.unusedTiles) > 0; i++ {
 		newTiles = append(newTiles, g.unusedTiles[0])
@@ -553,7 +581,7 @@ func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName player.Na
 		}
 		userPoints[string(pn)] = points
 	}
-	return g.userDao.UpdatePointsIncrement(ctx, userPoints)
+	return g.UserDao.UpdatePointsIncrement(ctx, userPoints)
 }
 
 // playerNames returns an array of the player name strings.

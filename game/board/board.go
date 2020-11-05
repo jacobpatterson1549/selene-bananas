@@ -19,8 +19,7 @@ type (
 		UnusedTileIDs []tile.ID
 		UsedTiles     map[tile.ID]tile.Position
 		UsedTileLocs  map[tile.X]map[tile.Y]tile.Tile
-		NumRows       int
-		NumCols       int
+		Config
 	}
 
 	// Config stores fields for creating a board.
@@ -53,8 +52,7 @@ func (cfg Config) New(unusedTiles []tile.Tile) (*Board, error) {
 		UnusedTileIDs: unusedTileIDs,
 		UsedTiles:     usedTiles,
 		UsedTileLocs:  usedTileLocs,
-		NumCols:       cfg.NumCols,
-		NumRows:       cfg.NumRows,
+		Config:        cfg,
 	}
 	return &b, nil
 }
@@ -355,8 +353,7 @@ func (b *Board) Resize(cfg Config) (*game.Message, error) {
 			usedTilePositions = append(usedTilePositions, tp)
 		}
 	}
-	b.NumCols = cfg.NumCols
-	b.NumRows = cfg.NumRows
+	b.Config = cfg
 	sort.Slice(usedTilePositions, func(i, j int) bool {
 		a, b := usedTilePositions[i], usedTilePositions[j]
 		// top-bottom, left-right
