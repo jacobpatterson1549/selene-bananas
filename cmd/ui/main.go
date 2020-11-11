@@ -17,7 +17,7 @@ func main() {
 	defer dom.AlertOnPanic()
 	m := mainFlags{
 		httpTimeout: 10 * time.Second,
-		tileLength:  20,
+		tileLength:  25, // also in game.html
 	}
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
