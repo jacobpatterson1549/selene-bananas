@@ -20,14 +20,15 @@ type (
 		GameID        ID              `json:"gameID,omitempty"`
 		GameStatus    Status          `json:"gameStatus,omitempty"`
 		GamePlayers   []string        `json:"gamePlayers,omitempty"`
+		GameRules     []string        `json:"rules,omitempty"`
 		NumCols       int             `json:"c,omitempty"` // TODO: use BoardConfig... maybe canvasConfig
 		NumRows       int             `json:"r,omitempty"`
 		// WordsConfig   *WordsConfig    `json:"wordsConfig,omitempty"` // must be a pointer for omitempty to work
-		CheckOnSnag bool `json:"checkOnSnag,omitempty"`
-		Penalize bool `json:"penalize,omitempty"`
-		MinLength int `json:"minLength,omitempty"`
-		AllowDuplicates bool `json:"allowDuplicates,omitempty"`
-		PlayerName    player.Name     `json:"-"`
+		CheckOnSnag     bool        `json:"checkOnSnag,omitempty"`
+		Penalize        bool        `json:"penalize,omitempty"`
+		MinLength       int         `json:"minLength,omitempty"`
+		AllowDuplicates bool        `json:"allowDuplicates,omitempty"`
+		PlayerName      player.Name `json:"-"`
 	}
 )
 

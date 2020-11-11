@@ -9,6 +9,7 @@
 .tabs>.tab>.content>.game>.info #hide-info:not(:checked)+legend+div,
 .tabs>.tab>.content>.game>.chat #hide-chat:not(:checked)+legend+div,
 .tabs>.tab>.content>.game>.tile-length #hide-tile-length:not(:checked)+legend+div,
+.tabs>.tab>.content>.game>.rules #hide-rules:not(:checked)+legend+div,
 .tabs>.tab>.content>.game>.create:checked~:not(.create),
 .tabs>.tab>.content>.game>.create:not(:checked)+.create,
 .tabs>.tab>.content>.game>.canvas>.move-state {
@@ -44,6 +45,9 @@ noscript,
     clear: both;
     min-height: 200px;
     width: 600px;
+}
+.game form {
+    width: 538px;
 }
 @media screen and (min-width: 1125px) {
     .canvas {

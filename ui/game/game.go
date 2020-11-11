@@ -217,6 +217,9 @@ func (g *Game) UpdateInfo(m game.Message) {
 		g.addUnusedTiles(m)
 	}
 	g.canvas.Redraw()
+	if m.Type == game.Join {
+		g.setRules(m.GameRules)
+	}
 }
 
 // updateStatus sets the statusText and enables or disables the snag, swap, start, and finish buttons.
@@ -329,4 +332,17 @@ func (g *Game) setBoardSize(m game.Message) {
 	m.NumCols = g.board.NumCols
 	m.NumRows = g.board.NumRows
 	g.Socket.Send(m)
+}
+
+// setRules replaces the rules for the game
+func (g *Game) setRules(rules []string) {
+	rulesList := dom.QuerySelector(".game .rules ul")
+	rulesList.Set("innerHTML", "")
+	for _, r := range rules {
+		clone := dom.CloneElement(".game .rules template")
+		cloneChildren := clone.Get("children")
+		li := cloneChildren.Index(0)
+		li.Set("innerHTML", r)
+		rulesList.Call("appendChild", li)
+	}
 }

@@ -70,6 +70,19 @@
             </div>
         </fieldset>
     </form>
+    <form class="rules">
+        <fieldset>
+            <input type="checkbox" id="hide-rules" hidden>
+            <legend><label class="button" for="hide-rules" title="Rules for the game.">Rules</label></legend>
+            <div>
+                <ul>
+                </ul>
+                <template>
+                    <li></li>
+                </template>
+            </div>
+        </fieldset>
+    </form>
     <div class="canvas">
         <div class="actions">
             <button class="button snag" onclick="game.snagTile()" disabled title="Get a new tile when you have run out of tiles.  All other players also get a tile.">Snag</button>

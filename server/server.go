@@ -18,6 +18,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/server/auth"
 	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
+	"github.com/jacobpatterson1549/selene-bananas/server/game"
 )
 
 type (
@@ -115,12 +116,14 @@ func (cfg Config) NewServer() (*Server, error) {
 		Description string
 		Version     string
 		Colors      ColorConfig
+		Rules        []string
 	}{
 		Name:        "selene-bananas",
 		ShortName:   "bananas",
 		Description: "a tile-based word-forming game",
 		Version:     cfg.Version,
 		Colors:      cfg.ColorConfig,
+		Rules:        game.Rules(),
 	}
 	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
 	if cfg.HTTPSPort <= 0 {
