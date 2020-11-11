@@ -116,14 +116,14 @@ func (cfg Config) NewServer() (*Server, error) {
 		Description string
 		Version     string
 		Colors      ColorConfig
-		Rules        []string
+		Rules       []string
 	}{
 		Name:        "selene-bananas",
 		ShortName:   "bananas",
 		Description: "a tile-based word-forming game",
 		Version:     cfg.Version,
 		Colors:      cfg.ColorConfig,
-		Rules:        game.Rules(),
+		Rules:       game.Rules(),
 	}
 	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
 	if cfg.HTTPSPort <= 0 {
