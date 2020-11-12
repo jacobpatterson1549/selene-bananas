@@ -32,7 +32,7 @@ type (
 		httpsServer   *http.Server
 		httpServer    *http.Server
 		stopDur       time.Duration
-		cacheSec      int
+		cacheMaxAge   string
 		version       string
 		challenge     certificate.Challenge
 		tlsCertFile   string
@@ -143,6 +143,7 @@ func (cfg Config) NewServer() (*Server, error) {
 		Addr:    httpAddr,
 		Handler: httpServeMux,
 	}
+	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
 	s := Server{
 		data:          data,
 		log:           cfg.Log,
@@ -152,7 +153,7 @@ func (cfg Config) NewServer() (*Server, error) {
 		httpsServer:   httpsServer,
 		httpServer:    httpServer,
 		stopDur:       cfg.StopDur,
-		cacheSec:      cfg.CacheSec,
+		cacheMaxAge:   cacheMaxAge,
 		version:       cfg.Version,
 		challenge:     cfg.Challenge,
 		tlsCertFile:   cfg.TLSCertFile,
@@ -420,9 +421,7 @@ func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.Handl
 			w.WriteHeader(http.StatusMovedPermanently)
 			return
 		}
-	}
-	if s.cacheSec > 0 && !strings.Contains(r.Header.Get("Cache-Control"), "no-store") {
-		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
+		w.Header().Set("Cache-Control", s.cacheMaxAge)
 	}
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 		w2 := gzip.NewWriter(w)

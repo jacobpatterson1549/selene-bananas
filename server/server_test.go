@@ -71,6 +71,7 @@ func TestHandleFileVersion(t *testing.T) {
 		s.handleFile(w, r, h)
 		gotCode := w.Code
 		gotHeader := w.Header()
+		delete(gotHeader, "Cache-Control")
 		switch {
 		case test.wantCode != gotCode:
 			t.Errorf("Test %v: wanted %v status code, got %v", i, test.wantCode, gotCode)
@@ -82,10 +83,10 @@ func TestHandleFileVersion(t *testing.T) {
 
 func TestHandleFile(t *testing.T) {
 	s := Server{
-		cacheSec: 44,
+		cacheMaxAge:  "max-age=???",
 	}
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest("", "/", nil)
+	r := httptest.NewRequest("", "/file", nil)
 	r.Header = http.Header{
 		"Accept-Encoding": {"gzip"},
 	}
@@ -96,7 +97,7 @@ func TestHandleFile(t *testing.T) {
 	}
 	s.handleFile(w, r, h)
 	switch {
-	case !strings.Contains(w.Header().Get("Cache-Control"), "max-age"):
+	case w.Header().Get("Cache-Control") != s.cacheMaxAge:
 		t.Error("missing cache response header")
 	case w.Header().Get("Content-Encoding") != "gzip":
 		t.Error("missing gzip response header")
