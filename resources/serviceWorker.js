@@ -5,7 +5,6 @@ const assets = [
     "./manifest.json",
     "./wasm_exec.js?v={{.Version}}",
     "./main.wasm?v={{.Version}}",
-    "./",
 ];
 
 self.addEventListener("install", event => {
