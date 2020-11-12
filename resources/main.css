@@ -109,8 +109,3 @@ table tbody td:nth-last-of-type(even) {
     height: 1em;
     margin-right: .25em;
 }
-
-.icon-32 {
-    width: 32px;
-    height: 32px;
-}
