@@ -407,14 +407,19 @@ func (Server) serveFile(name string) http.HandlerFunc {
 
 // handleFile wraps the handling of the file, add cache-control header and gzip compression, if possible.
 func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.HandlerFunc) {
-	if r.URL.Path != "/" && r.URL.Query().Get("v") != s.version {
-		url := r.URL
-		q := url.Query()
-		q.Set("v", s.version)
-		url.RawQuery = q.Encode()
-		w.Header().Set("Location", url.String())
-		w.WriteHeader(http.StatusMovedPermanently)
-		return
+	switch r.URL.Path {
+	case "/":
+		w.Header().Set("Cache-Control", "no-store")
+	default:
+		if r.URL.Query().Get("v") != s.version {
+			url := r.URL
+			q := url.Query()
+			q.Set("v", s.version)
+			url.RawQuery = q.Encode()
+			w.Header().Set("Location", url.String())
+			w.WriteHeader(http.StatusMovedPermanently)
+			return
+		}
 	}
 	if s.cacheSec > 0 && !strings.Contains(r.Header.Get("Cache-Control"), "no-store") {
 		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", s.cacheSec))
