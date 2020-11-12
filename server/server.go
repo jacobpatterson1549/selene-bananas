@@ -312,11 +312,11 @@ func (s Server) redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
 func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/", "/manifest.json", "/serviceWorker.js", "/favicon.svg":
-		s.handleFile(w, r, s.serveTemplate(r.URL.Path), false)
+		s.handleFile(w, r, s.serveTemplate(r.URL.Path))
 	case "/wasm_exec.js", "/main.wasm":
-		s.handleFile(w, r, s.serveFile("."+r.URL.Path), true)
+		s.handleFile(w, r, s.serveFile("."+r.URL.Path))
 	case "/robots.txt", "/favicon.png":
-		s.handleFile(w, r, s.serveFile("resources"+r.URL.Path), false)
+		s.handleFile(w, r, s.serveFile("resources"+r.URL.Path))
 	case "/lobby":
 		s.handleUserLobby(w, r)
 	case "/ping":
@@ -406,8 +406,8 @@ func (Server) serveFile(name string) http.HandlerFunc {
 }
 
 // handleFile wraps the handling of the file, add cache-control header and gzip compression, if possible.
-func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.HandlerFunc, checkVersion bool) {
-	if checkVersion && r.URL.Query().Get("v") != s.version {
+func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.HandlerFunc) {
+	if r.URL.Path != "/" && r.URL.Query().Get("v") != s.version {
 		url := r.URL
 		q := url.Query()
 		q.Set("v", s.version)
