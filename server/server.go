@@ -38,6 +38,7 @@ type (
 		tlsCertFile   string
 		tlsKeyFile    string
 		noTLSRedirect bool
+		templateFiles []string
 	}
 
 	// Config contains fields which describe the server
@@ -144,6 +145,10 @@ func (cfg Config) NewServer() (*Server, error) {
 		Handler: httpServeMux,
 	}
 	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
+	templateFiles, err := templateFiles()
+	if err != nil {
+		return nil, fmt.Errorf("loading template file names: %v", err)
+	}
 	s := Server{
 		data:          data,
 		log:           cfg.Log,
@@ -159,6 +164,7 @@ func (cfg Config) NewServer() (*Server, error) {
 		tlsCertFile:   cfg.TLSCertFile,
 		tlsKeyFile:    cfg.TLSKeyFile,
 		noTLSRedirect: cfg.NoTLSRedirect,
+		templateFiles: templateFiles,
 	}
 	httpsServeMux.HandleFunc("/", s.handleHTTPS)
 	httpServeMux.HandleFunc("/", s.handleHTTP)
@@ -312,7 +318,7 @@ func (s Server) redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
 // handleHTTPSGet calls handlers for GET endpoints.
 func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
-	case "/", "/manifest.json", "/serviceWorker.js", "/favicon.svg":
+	case "/", "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html":
 		s.handleFile(w, r, s.serveTemplate(r.URL.Path))
 	case "/wasm_exec.js", "/main.wasm":
 		s.handleFile(w, r, s.serveFile("."+r.URL.Path))
@@ -355,38 +361,39 @@ func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// sereveTemplate servers the file from the data-driven template.
+// templateFiles gets the list of available resources for templates
+func templateFiles() ([]string, error) {
+	var filenames []string
+	templateFileGlobs := []string{
+		"resources/html/**/*.html",
+		"resources/fa/*.svg",
+		"resources/favicon.svg",
+		"resources/main.css",
+		"resources/*.js",
+		"resources/manifest.json",
+	}
+	for _, g := range templateFileGlobs {
+		matches, err := filepath.Glob(g)
+		if err != nil {
+			return nil, err
+		}
+		filenames = append(filenames, matches...)
+	}
+	return filenames, nil
+}
+
+// serveTemplate servers the file from the data-driven template.
 func (s Server) serveTemplate(name string) http.HandlerFunc {
-	var (
-		t         *template.Template
-		filenames []string
-	)
+	var t *template.Template
 	switch name {
 	case "/":
 		t = template.New("main.html")
-		templateFileGlobs := []string{
-			"resources/html/**/*.html",
-			"resources/fa/*.svg",
-			"resources/favicon.svg",
-			"resources/main.css",
-			"resources/init.js",
-		}
-		for _, g := range templateFileGlobs {
-			matches, err := filepath.Glob(g)
-			if err != nil {
-				return func(w http.ResponseWriter, r *http.Request) {
-					s.handleError(w, err)
-				}
-			}
-			filenames = append(filenames, matches...)
-		}
 	default:
 		t = template.New(name[1:])
-		filenames = append(filenames, "resources"+name)
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, err := t.ParseFiles(filenames...); err != nil {
-			err = fmt.Errorf("parsing manifest template: %v", err)
+		if _, err := t.ParseFiles(s.templateFiles...); err != nil {
+			err = fmt.Errorf("parsing template: %v", err)
 			s.handleError(w, err)
 			return
 		}

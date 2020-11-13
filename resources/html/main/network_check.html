@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <script>
+            {{ template "network_check.js" . }}
+        </script>
+    </head>
+    <body>
+        {{ template "noscript.html" . }}
+        <main>
+            <p>Checking network...</p>
+            <p class="offline" hidden>ERROR: The device is offline.  Site requires the device to be online.</p>
+        </main>
+    </body>
+</html>

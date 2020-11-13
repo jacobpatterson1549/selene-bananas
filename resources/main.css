@@ -33,6 +33,7 @@ label {
 noscript>img {
     filter: invert(1);
 }
+.offline,
 noscript,
 .log>.scroll>.error   { color: {{ .Colors.LogError }}; }
 .log>.scroll>.chat    { color: {{ .Colors.LogChat }}; }
@@ -78,8 +79,8 @@ noscript,
 .tab>.content {
     position: absolute;
     left: 0;
-    background: {{ .Colors.TabBackground }};
     margin: 1em;
+    background: {{ .Colors.TabBackground }};
 }
 .game form.create label,
 .tab>input:checked+.button+.content {
