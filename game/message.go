@@ -1,6 +1,7 @@
 package game
 
 import (
+	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
@@ -22,14 +23,8 @@ type (
 		GamePlayers   []string        `json:"gamePlayers,omitempty"`
 		GameRules     []string        `json:"rules,omitempty"`
 		PlayerName    player.Name     `json:"-"`
-		NumCols       int             `json:"c,omitempty"` // TODO: use BoardConfig... maybe canvasConfig
-		NumRows       int             `json:"r,omitempty"`
-		// WordsConfig   *WordsConfig    `json:"wordsConfig,omitempty"` // must be a pointer for omitempty to work
-		CheckOnSnag       bool `json:"checkOnSnag,omitempty"`
-		Penalize          bool `json:"penalize,omitempty"`
-		MinLength         int  `json:"minLength,omitempty"`
-		AllowDuplicates   bool `json:"allowDuplicates,omitempty"`
-		FinishedAllowMove bool `json:"finishedAllowMove,omitempty"`
+		BoardConfig   *board.Config   `json:"boardConfig,omitempty"`
+		WordsConfig   *WordsConfig    `json:"wordsConfig,omitempty"`
 	}
 )
 

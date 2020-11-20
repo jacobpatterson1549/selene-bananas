@@ -89,12 +89,14 @@ func (g *Game) createWithConfig(event js.Value) {
 	allowDuplicates := dom.Checked(".allowDuplicates")
 	finishedAllowMove := dom.Checked(".finishedAllowMove")
 	m := game.Message{
-		Type:              game.Create,
-		CheckOnSnag:       checkOnSnag,
-		Penalize:          penalize,
-		MinLength:         minLength,
-		AllowDuplicates:   allowDuplicates,
-		FinishedAllowMove: finishedAllowMove,
+		Type: game.Create,
+		WordsConfig: &game.WordsConfig{
+			CheckOnSnag:       checkOnSnag,
+			Penalize:          penalize,
+			MinLength:         minLength,
+			AllowDuplicates:   allowDuplicates,
+			FinishedAllowMove: finishedAllowMove,
+		},
 	}
 	g.setTabActive(m)
 }
@@ -332,8 +334,10 @@ func (g *Game) setBoardSize(m game.Message) {
 	g.board.NumCols = g.canvas.NumCols()
 	g.board.NumRows = g.canvas.NumRows()
 	g.resetTiles()
-	m.NumCols = g.board.NumCols
-	m.NumRows = g.board.NumRows
+	m.BoardConfig = &board.Config{
+		NumCols: g.board.NumCols,
+		NumRows: g.board.NumRows,
+	}
 	g.Socket.Send(m)
 }
 

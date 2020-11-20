@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 
@@ -24,8 +23,15 @@ type (
 
 	// Config stores fields for creating a board.
 	Config struct {
-		NumRows int
-		NumCols int
+		NumRows int `json:"r"`
+		NumCols int `json:"c"`
+	}
+
+	// ResizeResult contains the result of a successful board resize operation.
+	ResizeResult struct {
+		Info          string
+		Tiles         []tile.Tile
+		TilePositions []tile.Position
 	}
 )
 
@@ -335,8 +341,8 @@ func (b Board) hasTile(t tile.Tile) bool {
 	return false
 }
 
-// Resize rezises the board to use the new config.  The board information is returned in the message.
-func (b *Board) Resize(cfg Config) (*game.Message, error) {
+// Resize rezises the board to use the new config.  Any board size change information is returned in the message.
+func (b *Board) Resize(cfg Config) (*ResizeResult, error) {
 	usedTilePositions := make([]tile.Position, 0, len(b.UsedTiles))
 	var movedTiles []tile.Tile
 	for _, tp := range b.UsedTiles {
@@ -368,12 +374,12 @@ func (b *Board) Resize(cfg Config) (*game.Message, error) {
 	for i, id := range b.UnusedTileIDs {
 		unusedTiles[i] = b.UnusedTiles[id]
 	}
-	m := game.Message{
+	rr := ResizeResult{
 		Tiles:         unusedTiles,
 		TilePositions: usedTilePositions,
 	}
 	if len(movedTiles) > 0 {
-		m.Info = "moving " + strconv.Itoa(len(movedTiles)) + " tile(s) to the unused area of the narrower/shorter board"
+		rr.Info = "moving " + strconv.Itoa(len(movedTiles)) + " tile(s) to the unused area of the narrower/shorter board"
 	}
-	return &m, nil
+	return &rr, nil
 }

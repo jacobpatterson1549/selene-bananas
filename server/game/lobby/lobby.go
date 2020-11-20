@@ -204,13 +204,7 @@ func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 	}
 	// TODO: ensure the gameConfig of the Lobby is not modified
 	gameCfg := l.gameCfg
-	gameCfg.WordsConfig = gameController.WordsConfig{ // TODO: hack, should be passed in as pointer to struct in message
-		CheckOnSnag:       m.CheckOnSnag,
-		Penalize:          m.Penalize,
-		MinLength:         m.MinLength,
-		AllowDuplicates:   m.AllowDuplicates,
-		FinishedAllowMove: m.FinishedAllowMove,
-	}
+	gameCfg.WordsConfig = *m.WordsConfig
 	g, err := gameCfg.NewGame(id)
 	if err != nil {
 		return
@@ -229,12 +223,12 @@ func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 	l.games[id] = gameMessageHandler{
 		messageHandler: mh,
 	}
-	writeMessages <- game.Message{ // this will update the game's info
-		Type:       game.Join,
-		PlayerName: m.PlayerName,
-		NumCols:    m.NumCols,
-		NumRows:    m.NumRows,
+	m2 := game.Message{
+		Type:        game.Join,
+		PlayerName:  m.PlayerName,
+		BoardConfig: m.BoardConfig,
 	}
+	writeMessages <- m2 // this will update the game's info
 }
 
 // removeGame removes a game from the messageHandlers.

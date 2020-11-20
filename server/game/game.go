@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
-	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/game/word"
@@ -51,8 +50,6 @@ type (
 		TileLetters string
 		// WordChecker is used to validate players' words when they try to finish the game.
 		WordChecker word.Checker
-		// WordsConfig controlls how checking words works
-		WordsConfig WordsConfig
 		// IdlePeroid is the amount of time that can pass between non-BoardRefresh messages before the game is idle and will delete itself.
 		IdlePeriod time.Duration
 		// ShuffleUnusedTilesFunc is used to shuffle unused tiles when initializing the game and after tiles are swapped.
@@ -60,23 +57,11 @@ type (
 		// ShufflePlayersFunc is used to shuffle the order of players when giving tiles after a snag
 		// The snagging player should always get a new tile.  Other players will get a tile, if possible.
 		ShufflePlayersFunc func(playerNames []player.Name)
+		// WordsConfig is the nested coniguration for the specific game
+		game.WordsConfig
 	}
 
-	// WordsConfig is used when checking player words on a snag or game finish request.
-	WordsConfig struct {
-		// CheckOnSnag is a flag to check the board when a player wants to snag to ensure their board has on group of valid words.
-		CheckOnSnag bool `json:"checkOnSnag,omitempty"`
-		// Penalize is a flag to decrement a player's points if they try to snag a tile when their board is invalid.
-		Penalize bool `json:"penalize,omitempty"`
-		// MinLength is the minimum allowed word length for each word on the board.
-		MinLength int `json:"minLength,omitempty"`
-		// AllowDuplicates is a flag for whether or not to allow duplicate words when checking the board
-		AllowDuplicates bool `json:"allowDuplicates,omitempty"`
-		// FinishedAllowMove is a flag on whether or not the ui should allow tiles to be moved after the game is finished.
-		FinishedAllowMove bool `json:"finishedAllowMove,omitempty"`
-	}
-
-	// messageHandler is a function which handles game messages, returning responses to the output channel.
+	// messageHandler is a function which handles game.Messages, returning responses to the output channel.
 	messageHandler func(ctx context.Context, m game.Message, out chan<- game.Message) error
 
 	// UserDao makes changes to the stored state of users in the game
@@ -254,11 +239,7 @@ func (g *Game) handleGameJoin(ctx context.Context, m game.Message, out chan<- ga
 func (g *Game) handleAddPlayer(ctx context.Context, m game.Message, out chan<- game.Message) error {
 	newTiles := g.unusedTiles[:g.NumNewTiles]
 	g.unusedTiles = g.unusedTiles[g.NumNewTiles:]
-	boardCfg := board.Config{
-		NumCols: m.NumCols,
-		NumRows: m.NumRows,
-	}
-	b, err := boardCfg.New(newTiles)
+	b, err := m.BoardConfig.New(newTiles)
 	if err != nil {
 		return err
 	}
@@ -267,20 +248,13 @@ func (g *Game) handleAddPlayer(ctx context.Context, m game.Message, out chan<- g
 		return fmt.Errorf("creating player: %w", err)
 	}
 	g.players[m.PlayerName] = p
-	m2, err := b.Resize(boardCfg)
+	m2, err := g.resizeBoard(m)
 	if err != nil {
 		return fmt.Errorf("creating board message: %w", err)
 	}
-	gamePlayers := g.playerNames()
-	m2.Type = game.Join
-	m2.PlayerName = m.PlayerName
 	m2.Info = "joining game"
-	m2.TilesLeft = len(g.unusedTiles)
-	m2.GamePlayers = gamePlayers
-	m2.GameStatus = g.status
-	m2.GameID = g.id
-	m2.GameRules = g.Rules()
 	out <- *m2
+	gamePlayers := g.playerNames() // also called in g.ResizeBoard
 	for n := range g.players {
 		if n != m.PlayerName {
 			out <- game.Message{
@@ -540,22 +514,10 @@ func (g *Game) handleGameTilesMoved(ctx context.Context, m game.Message, out cha
 
 // handleBoardRefresh sends the player's board back to the player.
 func (g *Game) handleBoardRefresh(ctx context.Context, m game.Message, out chan<- game.Message) error {
-	cfg := board.Config{
-		NumCols: m.NumCols,
-		NumRows: m.NumRows,
-	}
-	p := g.players[m.PlayerName]
-	m2, err := p.Board.Resize(cfg)
+	m2, err := g.resizeBoard(m)
 	if err != nil {
 		return err
 	}
-	m2.Type = game.Join
-	m2.PlayerName = m.PlayerName
-	m2.TilesLeft = len(g.unusedTiles)
-	m2.GameStatus = g.status
-	m2.GamePlayers = g.playerNames()
-	m2.GameID = g.id
-	m2.GameRules = g.Rules()
 	out <- *m2
 	return nil
 }
@@ -648,4 +610,27 @@ func (g Game) Rules() []string {
 		rules = append(rules, "Tiles can be moved when game is finished.")
 	}
 	return rules
+}
+
+// resizeBoard refreshes the board for the specified player using the config.
+func (g *Game) resizeBoard(m game.Message) (*game.Message, error) {
+	p := g.players[m.PlayerName]
+	b := p.Board
+	rr, err := b.Resize(*m.BoardConfig)
+	if err != nil {
+		return nil, err
+	}
+	m2 := game.Message{
+		Info:          rr.Info,
+		Tiles:         rr.Tiles,
+		TilePositions: rr.TilePositions,
+		Type:          game.Join,
+		PlayerName:    m.PlayerName,
+		TilesLeft:     len(g.unusedTiles),
+		GameStatus:    g.status,
+		GamePlayers:   g.playerNames(),
+		GameID:        g.id,
+		GameRules:     g.Rules(),
+	}
+	return &m2, nil
 }
