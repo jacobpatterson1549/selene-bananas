@@ -6,6 +6,7 @@ package user
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"regexp"
 	"strconv"
@@ -14,7 +15,6 @@ import (
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom/json"
 	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
@@ -106,7 +106,7 @@ func (User) info(jwt string) (*userInfo, error) {
 		return nil, errors.New("decoding user info: " + err.Error())
 	}
 	var ui userInfo
-	if err := json.Parse(string(jwtUserClaims), &ui); err != nil {
+	if err := json.Unmarshal(jwtUserClaims, &ui); err != nil {
 		return nil, errors.New("parsing json: " + err.Error())
 	}
 	return &ui, nil

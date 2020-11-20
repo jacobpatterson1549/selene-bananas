@@ -3,10 +3,9 @@
 package user
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
-
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom/json"
 )
 
 func TestGetUser(t *testing.T) {
@@ -86,7 +85,7 @@ func TestParseUserInfoJSON(t *testing.T) {
 	}
 	for i, test := range parseUserInfoJSONTests {
 		var got userInfo
-		err := json.Parse(test.json, &got)
+		err := json.Unmarshal([]byte(test.json), &got)
 		switch {
 		case err != nil:
 			if test.wantOk {

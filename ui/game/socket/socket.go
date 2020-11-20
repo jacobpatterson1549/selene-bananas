@@ -5,13 +5,13 @@ package socket
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom/json"
 	gameController "github.com/jacobpatterson1549/selene-bananas/ui/game"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
@@ -164,7 +164,7 @@ func (s *Socket) onMessage(event js.Value) {
 	jsMessage := event.Get("data")
 	messageJSON := jsMessage.String()
 	var m message.Message
-	err := json.Parse(messageJSON, &m)
+	err := json.Unmarshal([]byte(messageJSON), &m)
 	if err != nil {
 		s.log.Error("unmarshalling message: " + err.Error())
 		return
@@ -197,7 +197,7 @@ func (s *Socket) Send(m message.Message) {
 		s.log.Error("websocket not open")
 		return
 	}
-	messageJSON, err := json.Stringify(m)
+	messageJSON, err := json.Marshal(m)
 	if err != nil {
 		s.log.Error("marshalling socket message to send: " + err.Error())
 		return

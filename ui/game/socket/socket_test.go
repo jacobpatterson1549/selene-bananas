@@ -3,6 +3,7 @@
 package socket
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom/json"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom/url"
 )
 
@@ -131,16 +131,16 @@ func TestMessageJSON(t *testing.T) {
 		GameConfig:    &gameConfig,
 	}
 	wantS := `{"type":1,"info":"message test","tiles":[{"id":1,"ch":"A"},{"id":2,"ch":"B"}],"tilePositions":[{"t":{"id":3,"ch":"C"},"x":4,"y":5}],"gameInfos":[{"id":9,"status":1,"players":[],"createdAt":111}],"gameID":6,"gameStatus":2,"gamePlayers":["selene","bob"],"boardConfig":{"c":7,"r":8},"gameConfig":{"checkOnSnag":true,"penalize":true,"minLength":9,"allowDuplicates":true,"finishedAllowMove":true}}`
-	gotS, errS := json.Stringify(m)
+	gotS, errS := json.Marshal(m)
 	if errS != nil {
 		t.Fatalf("stringify: %v", errS)
 	}
 	var wantM, gotM message.Message
-	errW := json.Parse(wantS, &wantM)
+	errW := json.Unmarshal([]byte(wantS), &wantM)
 	if errW != nil {
 		t.Fatalf("parsing wanted json: %v", errW)
 	}
-	errG := json.Parse(gotS, &gotM)
+	errG := json.Unmarshal([]byte(gotS), &gotM)
 	switch {
 	case errG != nil:
 		t.Errorf("parsing json: %v", errG)
