@@ -202,7 +202,6 @@ func (l *Lobby) createGame(ctx context.Context, m game.Message) {
 		}
 		id++
 	}
-	// TODO: ensure the gameConfig of the Lobby is not modified
 	gameCfg := l.gameCfg
 	gameCfg.WordsConfig = *m.WordsConfig
 	g, err := gameCfg.NewGame(id)

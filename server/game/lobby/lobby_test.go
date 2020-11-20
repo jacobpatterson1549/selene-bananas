@@ -1,6 +1,7 @@
 package lobby
 
 import (
+	"context"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -8,6 +9,10 @@ import (
 	"testing"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
+	"github.com/jacobpatterson1549/selene-bananas/game/board"
+	"github.com/jacobpatterson1549/selene-bananas/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/game/tile"
+	gameController "github.com/jacobpatterson1549/selene-bananas/server/game"
 )
 
 func TestNew(t *testing.T) {
@@ -100,5 +105,55 @@ func TestRemoveUser(t *testing.T) {
 		t.Errorf("wanted player delete messageType (%v), got %v", game.PlayerDelete, m.Type)
 	case string(m.PlayerName) != username:
 		t.Errorf("wanted playerName %v in message, got %v", username, m.PlayerName)
+	}
+}
+
+type mockUserDao struct {
+	UpdatePointsIncrementFunc func(ctx context.Context, userPoints map[string]int) error
+}
+
+func (d mockUserDao) UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error {
+	return d.UpdatePointsIncrementFunc(ctx, userPoints)
+}
+
+func TestCreateGame(t *testing.T) {
+	log := log.New(ioutil.Discard, "test", log.LstdFlags)
+	mockUserDao := mockUserDao{
+		UpdatePointsIncrementFunc: func(ctx context.Context, userPoints map[string]int) error {
+			return errors.New("unexpected call")
+		},
+	}
+	gameCfg := gameController.Config{
+		Log:                    log,
+		MaxPlayers:             1,
+		NumNewTiles:            9,
+		UserDao:                mockUserDao,
+		IdlePeriod:             8,
+		TimeFunc:               func() int64 { return 7 },
+		ShuffleUnusedTilesFunc: func(tiles []tile.Tile) {},
+		ShufflePlayersFunc:     func(playerNames []player.Name) {},
+	}
+	l := Lobby{
+		maxGames: 1,
+		gameCfg:  gameCfg,
+		games:    make(map[game.ID]gameMessageHandler, 1),
+	}
+	m := game.Message{
+		BoardConfig: &board.Config{NumRows: 23, NumCols: 21},
+		WordsConfig: &game.WordsConfig{CheckOnSnag: true, Penalize: true, MinLength: 3, FinishedAllowMove: true},
+	}
+	ctx := context.Background()
+	ctx, cancelFunc := context.WithCancel(ctx)
+	defer cancelFunc()
+	l.createGame(ctx, m)
+	wc := game.WordsConfig{}
+	switch {
+	case l.gameCfg.WordsConfig != wc:
+		t.Errorf("creating a game unwantedly stored the game's config in the lobby")
+	case len(l.games) != 1:
+		t.Errorf("wanted 1 game, got %v", len(l.games))
+	}
+	for _, gmh := range l.games {
+		gmh.CancelFunc()
 	}
 }
