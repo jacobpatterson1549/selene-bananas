@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 
@@ -48,7 +49,10 @@ func TestMessageJSON(t *testing.T) {
 			m: Message{Type: 11},
 			j: `{"type":11}`,
 		},
-		// TODO: test mock game create message
+		{
+			m: Message{Type: 1, BoardConfig: &board.Config{NumRows: 23, NumCols: 21}, WordsConfig: &WordsConfig{CheckOnSnag: true, Penalize: true, MinLength: 3, FinishedAllowMove: true}},
+			j: `{"type":1,"boardConfig":{"r":23,"c":21},"wordsConfig":{"checkOnSnag":true,"penalize":true,"minLength":3,"finishedAllowMove":true}}`,
+		},
 	}
 	for i, test := range MessageJSONTests {
 		j2, err := json.Marshal(test.m)
