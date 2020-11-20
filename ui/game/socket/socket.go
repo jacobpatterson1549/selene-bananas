@@ -202,7 +202,7 @@ func (s *Socket) Send(m message.Message) {
 		s.log.Error("marshalling socket message to send: " + err.Error())
 		return
 	}
-	s.webSocket.Call("send", js.ValueOf(messageJSON))
+	s.webSocket.Call("send", js.ValueOf(string(messageJSON)))
 }
 
 // Close releases the websocket

@@ -5,6 +5,7 @@ package socket
 import (
 	"encoding/json"
 	"reflect"
+	"syscall/js"
 	"testing"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
@@ -148,5 +149,31 @@ func TestMessageJSON(t *testing.T) {
 		t.Errorf("wanted non-empty message when json is %v", gotS)
 	case !reflect.DeepEqual(wantM, gotM):
 		t.Errorf("not equal\nwanted %#v\ngot    %#v", wantM, gotM)
+	}
+}
+
+func TestSend(t *testing.T) {
+	webSocket := js.ValueOf(make(map[string]interface{}))
+	webSocket.Set("readyState", 1)
+	sendCalled := false
+	sendFunc := func(this js.Value, args []js.Value) interface{} {
+		want := `{"type":15,"info":"selene : hi"}`
+		got := args[0].String()
+		if want != got {
+			t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
+		}
+		sendCalled = true
+		return nil
+	}
+	sendJsFunc := js.FuncOf(sendFunc)
+	defer sendJsFunc.Release()
+	webSocket.Set("send", sendJsFunc)
+	m := message.Message{Type: 15, Info: "selene : hi"}
+	s := Socket{
+		webSocket: webSocket,
+	}
+	s.Send(m)
+	if !sendCalled {
+		t.Errorf("send function not called")
 	}
 }
