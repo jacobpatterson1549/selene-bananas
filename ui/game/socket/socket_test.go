@@ -106,22 +106,23 @@ func TestMessageJSON(t *testing.T) {
 		"bob",
 	}
 	m := game.Message{
-		Type:            game.Create,
-		Info:            "message test",
-		Tiles:           tiles,
-		TilePositions:   tilePositions,
-		GameInfos:       gameInfos,
-		GameID:          6,
-		GameStatus:      game.InProgress,
-		GamePlayers:     gamePlayers,
-		NumCols:         7,
-		NumRows:         8,
-		CheckOnSnag:     true,
-		Penalize:        true,
-		MinLength:       9,
-		AllowDuplicates: true,
+		Type:              game.Create,
+		Info:              "message test",
+		Tiles:             tiles,
+		TilePositions:     tilePositions,
+		GameInfos:         gameInfos,
+		GameID:            6,
+		GameStatus:        game.InProgress,
+		GamePlayers:       gamePlayers,
+		NumCols:           7,
+		NumRows:           8,
+		CheckOnSnag:       true,
+		Penalize:          true,
+		MinLength:         9,
+		AllowDuplicates:   true,
+		FinishedAllowMove: true,
 	}
-	wantS := `{"type":1,"info":"message test","tiles":[{"id":1,"ch":"A"},{"id":2,"ch":"B"}],"tilePositions":[{"t":{"id":3,"ch":"C"},"x":4,"y":5}],"gameInfos":[{"id":9,"status":1,"players":[],"createdAt":111}],"gameID":6,"gameStatus":2,"gamePlayers":["selene","bob"],"c":7,"r":8,"checkOnSnag":true,"penalize":true,"minLength":9,"allowDuplicates":true}`
+	wantS := `{"type":1,"info":"message test","tiles":[{"id":1,"ch":"A"},{"id":2,"ch":"B"}],"tilePositions":[{"t":{"id":3,"ch":"C"},"x":4,"y":5}],"gameInfos":[{"id":9,"status":1,"players":[],"createdAt":111}],"gameID":6,"gameStatus":2,"gamePlayers":["selene","bob"],"c":7,"r":8,"checkOnSnag":true,"penalize":true,"minLength":9,"allowDuplicates":true,"finishedAllowMove":true}`
 	gotS, errS := json.Stringify(m)
 	if errS != nil {
 		t.Fatalf("stringify: %v", errS)

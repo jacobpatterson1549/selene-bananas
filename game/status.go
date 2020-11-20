@@ -11,6 +11,8 @@ const (
 	InProgress
 	// Finished is the status of a game that has no tiles left and has a winner that has used all his tiles to form one group of interconnected words.
 	Finished
+	// FinishedAllowMove is the status of a game that is finished, and but allows tiles to be moved.
+	FinishedAllowMove
 )
 
 // String returns the display value for the status.
@@ -22,6 +24,8 @@ func (s Status) String() string {
 		return "In Progress"
 	case Finished:
 		return "Finished"
+	case FinishedAllowMove:
+		return "Finished, tile movement allowed"
 	}
 	return "?"
 }

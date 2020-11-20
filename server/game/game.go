@@ -72,6 +72,8 @@ type (
 		MinLength int `json:"minLength,omitempty"`
 		// AllowDuplicates is a flag for whether or not to allow duplicate words when checking the board
 		AllowDuplicates bool `json:"allowDuplicates,omitempty"`
+		// FinishedAllowMove is a flag on whether or not the ui should allow tiles to be moved after the game is finished.
+		FinishedAllowMove bool `json:"finishedAllowMove,omitempty"`
 	}
 
 	// messageHandler is a function which handles game messages, returning responses to the output channel.
@@ -413,12 +415,16 @@ func (g *Game) handleGameFinish(ctx context.Context, m game.Message, out chan<- 
 	if err != nil {
 		info = err.Error()
 	}
+	messageStatus := game.Finished
+	if g.WordsConfig.FinishedAllowMove {
+		messageStatus = game.FinishedAllowMove
+	}
 	for n := range g.players {
 		out <- game.Message{
 			Type:       game.StatusChange,
 			PlayerName: n,
 			Info:       info,
-			GameStatus: g.status,
+			GameStatus: messageStatus,
 		}
 	}
 	return nil
@@ -637,6 +643,9 @@ func (g Game) Rules() []string {
 	}
 	if !g.WordsConfig.AllowDuplicates {
 		rules = append(rules, "Duplicate words are not allowed.")
+	}
+	if g.WordsConfig.FinishedAllowMove {
+		rules = append(rules, "Tiles can be moved when game is finished.")
 	}
 	return rules
 }

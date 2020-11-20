@@ -314,7 +314,7 @@ func (c *Canvas) drawSelectionRectangle() {
 
 // moveStart should be called when a move is started to be made at the specified coordinates.
 func (c *Canvas) moveStart(pp pixelPosition) {
-	if c.gameStatus != game.InProgress {
+	if !c.canMove() {
 		return
 	}
 	c.selection.start, c.selection.end = pp, pp
@@ -354,7 +354,7 @@ func (c *Canvas) moveStart(pp pixelPosition) {
 
 // moveCursor should be called whenever the cursor moves, regardless of if a move is being made.
 func (c *Canvas) moveCursor(pp pixelPosition) {
-	if c.gameStatus != game.InProgress {
+	if !c.canMove() {
 		return
 	}
 	switch c.selection.moveState {
@@ -375,7 +375,7 @@ func (c *Canvas) moveCursor(pp pixelPosition) {
 
 // moveEnd should be called when a move is done being made at the specified coordinates.
 func (c *Canvas) moveEnd(pp pixelPosition) {
-	if c.gameStatus != game.InProgress {
+	if !c.canMove() {
 		return
 	}
 	c.selection.end = pp
@@ -395,6 +395,14 @@ func (c *Canvas) moveEnd(pp pixelPosition) {
 		c.selection.setMoveState(none)
 		c.Redraw()
 	}
+}
+
+func (c Canvas) canMove() bool {
+	switch c.gameStatus {
+	case game.InProgress, game.FinishedAllowMove:
+		return true
+	}
+	return false
 }
 
 // StartSwap start a swap move.
@@ -546,10 +554,12 @@ func (c *Canvas) moveSelectedTiles() {
 		c.log.Error("moving tiles to presumably valid locations: " + err.Error())
 		return
 	}
-	c.Socket.Send(game.Message{
-		Type:          game.TilesMoved,
-		TilePositions: tilePositions,
-	})
+	if c.gameStatus == game.InProgress {
+		c.Socket.Send(game.Message{
+			Type:          game.TilesMoved,
+			TilePositions: tilePositions,
+		})
+	}
 }
 
 // selectionTilePositions calculates the new positions of the selected tiles.
