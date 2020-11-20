@@ -9,7 +9,11 @@ import (
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+
+	go_json "encoding/json"
 )
+
+const useGoJSON = true
 
 var json = js.Global().Get("JSON")
 var array = js.Global().Get("Array")
@@ -17,6 +21,13 @@ var object = js.Global().Get("Object")
 
 // Parse converts the text into a JS Value.
 func Parse(data string, v interface{}) (err error) {
+	if useGoJSON {
+		err := go_json.Unmarshal([]byte(data), v)
+		if err != nil {
+			return errors.New("JSON parse: " + err.Error())
+		}
+		return nil
+	}
 	defer func() {
 		if r := recover(); err == nil && r != nil {
 			err = dom.RecoverError(r)
@@ -33,6 +44,13 @@ func Parse(data string, v interface{}) (err error) {
 
 // Stringify converts the value into a JSON string.
 func Stringify(value interface{}) (text string, err error) {
+	if useGoJSON {
+		b, err := go_json.Marshal(value)
+		if err != nil {
+			return "", errors.New("JSON stringify: " + err.Error())
+		}
+		return string(b), nil
+	}
 	defer func() {
 		if r := recover(); r != nil {
 			err = dom.RecoverError(r)

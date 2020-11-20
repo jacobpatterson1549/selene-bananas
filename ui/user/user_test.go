@@ -70,21 +70,7 @@ func TestParseUserInfoJSON(t *testing.T) {
 	}{
 		{},
 		{
-			json:   `{"Sub":"selene","points":18}`,
-			wantOk: true,
-			want: &userInfo{
-				Points: 18,
-			},
-		},
-		{
 			json: `{"sub":18,"points":18}`, // bad name type
-		},
-		{
-			json:   `{"sub":"selene","Points":18}`,
-			wantOk: true,
-			want: &userInfo{
-				Name: "selene",
-			},
 		},
 		{
 			json: `{"sub":"selene","points":"18"}`, // bad points type
