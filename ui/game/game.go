@@ -12,6 +12,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
+	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game/canvas"
@@ -36,7 +37,7 @@ type (
 
 	// Socket sends messages to the server.
 	Socket interface {
-		Send(m game.Message)
+		Send(m message.Message)
 	}
 )
 
@@ -88,9 +89,9 @@ func (g *Game) createWithConfig(event js.Value) {
 	}
 	allowDuplicates := dom.Checked(".allowDuplicates")
 	finishedAllowMove := dom.Checked(".finishedAllowMove")
-	m := game.Message{
-		Type: game.Create,
-		WordsConfig: &game.WordsConfig{
+	m := message.Message{
+		Type: message.Create,
+		GameConfig: &game.Config{
 			CheckOnSnag:       checkOnSnag,
 			Penalize:          penalize,
 			MinLength:         minLength,
@@ -111,8 +112,8 @@ func (g *Game) join(event js.Value) {
 		g.log.Error("could not get Id of game: " + err.Error())
 		return
 	}
-	m := game.Message{
-		Type:   game.Join,
+	m := message.Message{
+		Type:   message.Join,
 		GameID: game.ID(id),
 	}
 	g.setTabActive(m)
@@ -127,32 +128,32 @@ func (g *Game) Leave() {
 // delete removes everyone from the game and deletes it.
 func (g *Game) delete() {
 	if dom.Confirm("Are you sure? Deleting the game will kick everyone out.") {
-		g.Socket.Send(game.Message{
-			Type: game.Delete,
+		g.Socket.Send(message.Message{
+			Type: message.Delete,
 		})
 	}
 }
 
 // Start triggers the game to start for everyone.
 func (g *Game) Start() {
-	g.Socket.Send(game.Message{
-		Type:       game.StatusChange,
+	g.Socket.Send(message.Message{
+		Type:       message.StatusChange,
 		GameStatus: game.InProgress,
 	})
 }
 
 // finish triggers the game to finish for everyone by checking the players tiles.
 func (g *Game) finish() {
-	g.Socket.Send(game.Message{
-		Type:       game.StatusChange,
+	g.Socket.Send(message.Message{
+		Type:       message.StatusChange,
 		GameStatus: game.Finished,
 	})
 }
 
 // snagTile asks the game to give everone a new tile.
 func (g *Game) snagTile() {
-	g.Socket.Send(game.Message{
-		Type: game.Snag,
+	g.Socket.Send(message.Message{
+		Type: message.Snag,
 	})
 }
 
@@ -168,16 +169,17 @@ func (g *Game) sendChat(event js.Value) {
 		g.log.Error(err.Error())
 		return
 	}
-	message := f.Params.Get("chat")
+	info := f.Params.Get("chat")
 	f.Reset()
-	g.Socket.Send(game.Message{
-		Type: game.Chat,
-		Info: message,
-	})
+	m := message.Message{
+		Type: message.Chat,
+		Info: info,
+	}
+	g.Socket.Send(m)
 }
 
 // replacegameTiles completely replaces the games used and unused tiles.
-func (g *Game) replaceGameTiles(m game.Message) {
+func (g *Game) replaceGameTiles(m message.Message) {
 	g.resetTiles()
 	for _, tp := range m.TilePositions {
 		g.board.UsedTiles[tp.Tile.ID] = tp
@@ -190,7 +192,7 @@ func (g *Game) replaceGameTiles(m game.Message) {
 }
 
 // addUnusedTilesappends new tiles onto the game.
-func (g *Game) addUnusedTiles(m game.Message) {
+func (g *Game) addUnusedTiles(m message.Message) {
 	tileStrings := make([]string, len(m.Tiles))
 	for i, t := range m.Tiles {
 		tileStrings[i] = `"` + string(t.Ch) + `"`
@@ -199,7 +201,7 @@ func (g *Game) addUnusedTiles(m game.Message) {
 			return
 		}
 	}
-	if m.Type != game.Join {
+	if m.Type != message.Join {
 		message := "adding unused tile"
 		if len(tileStrings) == 1 {
 			message += "s"
@@ -210,7 +212,7 @@ func (g *Game) addUnusedTiles(m game.Message) {
 }
 
 // UpdateInfo updates the game for the specified message.
-func (g *Game) UpdateInfo(m game.Message) {
+func (g *Game) UpdateInfo(m message.Message) {
 	g.updateStatus(m)
 	g.updateTilesLeft(m)
 	g.updatePlayers(m)
@@ -221,13 +223,13 @@ func (g *Game) UpdateInfo(m game.Message) {
 		g.addUnusedTiles(m)
 	}
 	g.canvas.Redraw()
-	if m.Type == game.Join {
+	if m.Type == message.Join {
 		g.setRules(m.GameRules)
 	}
 }
 
 // updateStatus sets the statusText and enables or disables the snag, swap, start, and finish buttons.
-func (g *Game) updateStatus(m game.Message) {
+func (g *Game) updateStatus(m message.Message) {
 	var statusText string
 	var snagDisabled, swapDisabled, startDisabled, finishDisabled bool
 	switch m.GameStatus {
@@ -258,7 +260,7 @@ func (g *Game) updateStatus(m game.Message) {
 }
 
 // updateTilesLeft updates the TilesLeft label.  Other labels are updated if there are no tiles left.
-func (g *Game) updateTilesLeft(m game.Message) {
+func (g *Game) updateTilesLeft(m message.Message) {
 	dom.SetValue(".game>.info .tiles-left", strconv.Itoa(m.TilesLeft))
 	if m.TilesLeft == 0 {
 		dom.SetButtonDisabled(".game .actions>.snag", true)
@@ -274,7 +276,7 @@ func (g *Game) updateTilesLeft(m game.Message) {
 }
 
 // updatePlayers sets the players list display from the message.
-func (g *Game) updatePlayers(m game.Message) {
+func (g *Game) updatePlayers(m message.Message) {
 	if len(m.GamePlayers) > 0 {
 		players := strings.Join(m.GamePlayers, ",")
 		dom.SetValue(".game>.info .players", players)
@@ -304,14 +306,14 @@ func (g *Game) resizeTiles() {
 		return
 	}
 	g.canvas.SetTileLength(tileLength)
-	m := game.Message{
-		Type: game.BoardSize,
+	m := message.Message{
+		Type: message.BoardSize,
 	}
 	g.setBoardSize(m)
 }
 
 // setTabActive performs the actions need to activate the game tab and create or join a game.
-func (g *Game) setTabActive(m game.Message) {
+func (g *Game) setTabActive(m message.Message) {
 	dom.SetChecked(".has-game", true)
 	dom.SetChecked(".create", false)
 	dom.SetChecked("#tab-game", true)
@@ -330,7 +332,7 @@ func (g *Game) setTabActive(m game.Message) {
 }
 
 // setBoardSize updates the board size due to a recent canvas update, adds the updated size to the message, and sends it.
-func (g *Game) setBoardSize(m game.Message) {
+func (g *Game) setBoardSize(m message.Message) {
 	g.board.NumCols = g.canvas.NumCols()
 	g.board.NumRows = g.canvas.NumRows()
 	g.resetTiles()

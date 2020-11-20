@@ -11,6 +11,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
+	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
@@ -95,7 +96,7 @@ type (
 
 	// Socket sends messages to the server.
 	Socket interface {
-		Send(m game.Message)
+		Send(m message.Message)
 	}
 )
 
@@ -426,8 +427,8 @@ func (c *Canvas) swap() {
 	if err := c.board.RemoveTile(endTS.tile); err != nil {
 		c.log.Error("removing tile while swapping: " + err.Error())
 	}
-	c.Socket.Send(game.Message{
-		Type: game.Swap,
+	c.Socket.Send(message.Message{
+		Type: message.Swap,
 		Tiles: []tile.Tile{
 			endTS.tile,
 		},
@@ -555,8 +556,8 @@ func (c *Canvas) moveSelectedTiles() {
 		return
 	}
 	if c.gameStatus == game.InProgress {
-		c.Socket.Send(game.Message{
-			Type:          game.TilesMoved,
+		c.Socket.Send(message.Message{
+			Type:          message.TilesMoved,
 			TilePositions: tilePositions,
 		})
 	}

@@ -1,35 +1,37 @@
-package game
+// Package message contains structures to pass between the ui and server.
+package message
 
 import (
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 
 type (
-	// MessageType represents what the purpose of a message.
-	MessageType int
+	// Type represents what the purpose of a message.
+	Type int
 
 	// Message contains information to or from a socket for a game/lobby.
 	Message struct {
-		Type          MessageType     `json:"type"`
+		Type          Type            `json:"type"`
 		Info          string          `json:"info,omitempty"`
 		Tiles         []tile.Tile     `json:"tiles,omitempty"`
 		TilePositions []tile.Position `json:"tilePositions,omitempty"`
 		TilesLeft     int             `json:"tilesLeft,omitempty"`
-		GameInfos     []Info          `json:"gameInfos,omitempty"`
-		GameID        ID              `json:"gameID,omitempty"`
-		GameStatus    Status          `json:"gameStatus,omitempty"`
+		GameInfos     []game.Info     `json:"gameInfos,omitempty"`
+		GameID        game.ID         `json:"gameID,omitempty"`
+		GameStatus    game.Status     `json:"gameStatus,omitempty"`
 		GamePlayers   []string        `json:"gamePlayers,omitempty"`
 		GameRules     []string        `json:"rules,omitempty"`
 		PlayerName    player.Name     `json:"-"`
 		BoardConfig   *board.Config   `json:"boardConfig,omitempty"`
-		WordsConfig   *WordsConfig    `json:"wordsConfig,omitempty"`
+		GameConfig    *game.Config    `json:"gameConfig,omitempty"`
 	}
 )
 
 const (
-	_ MessageType = iota
+	_ Type = iota
 	// Create is a MessageType that users send to open a new game.
 	Create
 	// Join is a MessageType that users send to join a game or the server sends to have the user load a game.

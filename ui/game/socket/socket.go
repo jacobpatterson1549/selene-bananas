@@ -9,7 +9,7 @@ import (
 	"sync"
 	"syscall/js"
 
-	"github.com/jacobpatterson1549/selene-bananas/game"
+	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom/json"
 	gameController "github.com/jacobpatterson1549/selene-bananas/ui/game"
@@ -163,28 +163,28 @@ func (s *Socket) onError(errC chan<- error) func() {
 func (s *Socket) onMessage(event js.Value) {
 	jsMessage := event.Get("data")
 	messageJSON := jsMessage.String()
-	var m game.Message
+	var m message.Message
 	err := json.Parse(messageJSON, &m)
 	if err != nil {
 		s.log.Error("unmarshalling message: " + err.Error())
 		return
 	}
 	switch m.Type {
-	case game.Leave:
+	case message.Leave:
 		s.handleGameLeave(m)
-	case game.Infos:
+	case message.Infos:
 		s.lobby.SetGameInfos(m.GameInfos, s.user.Username())
-	case game.PlayerDelete:
+	case message.PlayerDelete:
 		s.handlePlayerDelete(m)
-	case game.Join, game.StatusChange, game.TilesChange:
+	case message.Join, message.StatusChange, message.TilesChange:
 		s.handleInfo(m)
-	case game.SocketError:
+	case message.SocketError:
 		s.log.Error(m.Info)
-	case game.SocketWarning:
+	case message.SocketWarning:
 		s.log.Warning(m.Info)
-	case game.SocketHTTPPing:
+	case message.SocketHTTPPing:
 		s.httpPing()
-	case game.Chat:
+	case message.Chat:
 		s.log.Chat(m.Info)
 	default:
 		s.log.Error("unknown message type received")
@@ -192,7 +192,7 @@ func (s *Socket) onMessage(event js.Value) {
 }
 
 // Send delivers a message to the server via it's websocket.
-func (s *Socket) Send(m game.Message) {
+func (s *Socket) Send(m message.Message) {
 	if !s.isOpen() {
 		s.log.Error("websocket not open")
 		return
@@ -221,7 +221,7 @@ func (s *Socket) isOpen() bool {
 }
 
 // handleGameLeave leaves the game and logs any info text from the message.
-func (s *Socket) handleGameLeave(m game.Message) {
+func (s *Socket) handleGameLeave(m message.Message) {
 	s.game.Leave()
 	if len(m.Info) > 0 {
 		s.log.Info(m.Info)
@@ -229,7 +229,7 @@ func (s *Socket) handleGameLeave(m game.Message) {
 }
 
 // handlePlayerDelete closes the socket and logs any info text from the message.
-func (s *Socket) handlePlayerDelete(m game.Message) {
+func (s *Socket) handlePlayerDelete(m message.Message) {
 	s.Close()
 	if len(m.Info) > 0 {
 		s.log.Info(m.Info)
@@ -237,7 +237,7 @@ func (s *Socket) handlePlayerDelete(m game.Message) {
 }
 
 // handleInfo contains the logic for handling messages with types Info and GameJoin.
-func (s *Socket) handleInfo(m game.Message) {
+func (s *Socket) handleInfo(m message.Message) {
 	s.game.UpdateInfo(m)
 	if len(m.Info) > 0 {
 		s.log.Info(m.Info)

@@ -1,10 +1,11 @@
-package game
+package message
 
 import (
 	"encoding/json"
 	"reflect"
 	"testing"
 
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
@@ -42,7 +43,7 @@ func TestMessageJSON(t *testing.T) {
 			j: `{"type":9,"tilePositions":[{"t":{"id":8,"ch":"R"},"x":4,"y":46}]}`,
 		},
 		{
-			m: Message{Type: 3, GameInfos: []Info{{ID: 7, Status: 2, Players: []string{"fred", "barney"}, CreatedAt: 1257894000}}},
+			m: Message{Type: 3, GameInfos: []game.Info{{ID: 7, Status: 2, Players: []string{"fred", "barney"}, CreatedAt: 1257894000}}},
 			j: `{"type":3,"gameInfos":[{"id":7,"status":2,"players":["fred","barney"],"createdAt":1257894000}]}`,
 		},
 		{
@@ -50,8 +51,8 @@ func TestMessageJSON(t *testing.T) {
 			j: `{"type":11}`,
 		},
 		{
-			m: Message{Type: 1, BoardConfig: &board.Config{NumRows: 23, NumCols: 21}, WordsConfig: &WordsConfig{CheckOnSnag: true, Penalize: true, MinLength: 3, FinishedAllowMove: true}},
-			j: `{"type":1,"boardConfig":{"r":23,"c":21},"wordsConfig":{"checkOnSnag":true,"penalize":true,"minLength":3,"finishedAllowMove":true}}`,
+			m: Message{Type: 1, BoardConfig: &board.Config{NumRows: 23, NumCols: 21}, GameConfig: &game.Config{CheckOnSnag: true, Penalize: true, MinLength: 3, FinishedAllowMove: true}},
+			j: `{"type":1,"boardConfig":{"r":23,"c":21},"gameConfig":{"checkOnSnag":true,"penalize":true,"minLength":3,"finishedAllowMove":true}}`,
 		},
 	}
 	for i, test := range MessageJSONTests {

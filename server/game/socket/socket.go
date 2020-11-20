@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/jacobpatterson1549/selene-bananas/game"
+	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 )
 
@@ -100,7 +101,7 @@ func (cfg Config) validate(conn *websocket.Conn, playerName player.Name) error {
 // The Socket runs until the connection fails for an unexpected reason or a message is received on the "done"< channel.
 // Messages the socket receives are sent to the provided channel.
 // Messages the socket sends are consumed from the returned channel.
-func (s *Socket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, readMessages chan<- game.Message, writeMessages <-chan game.Message) {
+func (s *Socket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, readMessages chan<- message.Message, writeMessages <-chan message.Message) {
 	readCtx, readCancelFunc := context.WithCancel(ctx)
 	writeCtx, writeCancelFunc := context.WithCancel(ctx)
 	go s.readMessages(readCtx, removeSocketFunc, writeCancelFunc, readMessages)
@@ -109,7 +110,7 @@ func (s *Socket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, r
 
 // readMessages receives messages from the connected socket and writes the to the messages channel.
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancelFunc context.CancelFunc, messages chan<- game.Message) {
+func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancelFunc context.CancelFunc, messages chan<- message.Message) {
 	defer func() {
 		removeSocketFunc()
 		writeCancelFunc()
@@ -138,7 +139,7 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 
 // writeMessages sends messages added to the messages channel to the connected socket.
 // messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.CancelFunc, messages <-chan game.Message) {
+func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.CancelFunc, messages <-chan message.Message) {
 	pingTicker := time.NewTicker(s.pingPeriod)
 	httpPingTicker := time.NewTicker(s.httpPingPeriod)
 	idleTicker := time.NewTicker(s.idlePeriod)
@@ -161,8 +162,8 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 		case <-pingTicker.C:
 			err = s.writePing()
 		case <-httpPingTicker.C:
-			err = s.writeMessage(game.Message{
-				Type: game.SocketHTTPPing,
+			err = s.writeMessage(message.Message{
+				Type: message.SocketHTTPPing,
 			})
 		case <-idleTicker.C:
 			if !s.active {
@@ -182,8 +183,8 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 }
 
 // readMessage reads the next message from the connection.
-func (s *Socket) readMessage() (*game.Message, error) {
-	var m game.Message
+func (s *Socket) readMessage() (*message.Message, error) {
+	var m message.Message
 	if err := s.conn.ReadJSON(&m); err != nil { // BLOCKING
 		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
 			return nil, fmt.Errorf("unexpected socket closure: %v", err)
@@ -194,27 +195,27 @@ func (s *Socket) readMessage() (*game.Message, error) {
 		s.log.Printf("socket reading message with type %v", m.Type)
 	}
 	m.PlayerName = s.playerName
-	if m.Type != game.Join {
+	if m.Type != message.Join {
 		m.GameID = s.gameID
 	}
 	return &m, nil
 }
 
 // writeMessage writes a message to the connection.
-func (s *Socket) writeMessage(m game.Message) error {
+func (s *Socket) writeMessage(m message.Message) error {
 	if s.debug {
 		s.log.Printf("socket writing message with type %v", m.Type)
 	}
 	switch m.Type {
-	case game.Join:
+	case message.Join:
 		s.gameID = m.GameID
-	case game.Delete, game.Leave:
+	case message.Delete, message.Leave:
 		s.gameID = 0
 	}
 	if err := s.conn.WriteJSON(m); err != nil {
 		return fmt.Errorf("writing socket message: %v", err)
 	}
-	if m.Type == game.PlayerDelete {
+	if m.Type == message.PlayerDelete {
 		return fmt.Errorf("player deleted")
 	}
 	return nil

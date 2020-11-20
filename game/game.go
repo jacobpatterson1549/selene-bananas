@@ -5,9 +5,8 @@ type (
 	// ID is the id of a game.
 	ID int
 
-	// WordsConfig is used when checking player words on a snag or game finish request.
-	// TODO: rename to Config, move Message to message package, rename MessageType to Type
-	WordsConfig struct {
+	// Config is used when checking player words on a snag or game finish request.
+	Config struct {
 		// CheckOnSnag is a flag to check the board when a player wants to snag to ensure their board has on group of valid words.
 		CheckOnSnag bool `json:"checkOnSnag,omitempty"`
 		// Penalize is a flag to decrement a player's points if they try to snag a tile when their board is invalid.
