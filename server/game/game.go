@@ -3,6 +3,7 @@ package game
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sort"
@@ -333,25 +334,10 @@ func (g *Game) checkPlayerBoard(pn player.Name, checkWords bool) ([]string, erro
 	case !p.Board.HasSingleUsedGroup():
 		errText = "not all used tiles form a single group"
 	case checkWords:
-		uniqueWords := make(map[string]struct{}, len(usedWords))
-		usedWords = p.Board.UsedTileWords()
-		var invalidWords []string
-		for _, w := range usedWords {
-			if _, ok := uniqueWords[w]; !g.Config.AllowDuplicates && ok {
-				errText = "duplicate words detected"
-				break
-			}
-			uniqueWords[w] = struct{}{}
-			if len(w) < g.Config.MinLength {
-				errText = fmt.Sprintf("short word detected, all must be at least %v characters", g.Config.MinLength)
-				break
-			}
-			if !g.WordChecker.Check(w) {
-				invalidWords = append(invalidWords, w)
-			}
-		}
-		if len(invalidWords) > 0 {
-			errText = fmt.Sprintf("invalid words: %v", invalidWords)
+		var err error
+		usedWords, err = g.checkWords(pn)
+		if err != nil {
+			errText = err.Error()
 		}
 	}
 	if len(errText) != 0 {
@@ -361,6 +347,36 @@ func (g *Game) checkPlayerBoard(pn player.Name, checkWords bool) ([]string, erro
 			errText = errText + ", possible win points decremented"
 		}
 		return nil, gameWarning(errText)
+	}
+	return usedWords, nil
+}
+
+// checkWords returns the used words from the game and an error if the game board is not valid.
+func (g Game) checkWords(pn player.Name) ([]string, error) {
+	p := g.players[pn]
+	usedWords := p.Board.UsedTileWords()
+	var invalidWords []string
+	uniqueWords := make(map[string]struct{}, len(usedWords))
+	errText := ""
+	for _, w := range usedWords {
+		if _, ok := uniqueWords[w]; !g.Config.AllowDuplicates && ok {
+			errText = "duplicate words detected"
+			break
+		}
+		uniqueWords[w] = struct{}{}
+		if len(w) < g.Config.MinLength {
+			errText = fmt.Sprintf("short word detected, all must be at least %v characters", g.Config.MinLength)
+			break
+		}
+		if !g.WordChecker.Check(w) {
+			invalidWords = append(invalidWords, w)
+		}
+	}
+	if len(invalidWords) > 0 { // len(errText) == 0
+		errText = fmt.Sprintf("invalid words: %v", invalidWords)
+	}
+	if len(errText) != 0 {
+		return usedWords, errors.New(errText)
 	}
 	return usedWords, nil
 }
