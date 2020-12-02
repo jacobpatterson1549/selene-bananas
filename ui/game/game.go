@@ -72,7 +72,7 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 
 // startCreate opens the game tab in create mode.
 func (g *Game) startCreate() {
-	dom.SetChecked(".has-game", true)
+	g.setHas(true)
 	dom.SetChecked(".create", true)
 	dom.SetChecked("#tab-game", true)
 }
@@ -119,9 +119,14 @@ func (g *Game) join(event js.Value) {
 	g.setTabActive(m)
 }
 
+// setHas sets the .has-game input.
+func (g *Game) setHas(hasGame bool) {
+	dom.SetChecked(".has-game", hasGame)
+}
+
 // Leave changes the view for game by hiding it.
 func (g *Game) Leave() {
-	dom.SetChecked(".has-game", false)
+	g.setHas(false)
 	dom.SetChecked("#tab-lobby", true)
 }
 
@@ -314,7 +319,7 @@ func (g *Game) resizeTiles() {
 
 // setTabActive performs the actions need to activate the game tab and create or join a game.
 func (g *Game) setTabActive(m message.Message) {
-	dom.SetChecked(".has-game", true)
+	g.setHas(true)
 	dom.SetChecked(".create", false)
 	dom.SetChecked("#tab-game", true)
 	// the tab now has a size, so update the canvas and board
