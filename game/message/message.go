@@ -14,19 +14,20 @@ type (
 
 	// Message contains information to or from a socket for a game/lobby.
 	Message struct {
-		Type          Type            `json:"type"`
-		Info          string          `json:"info,omitempty"`
-		Tiles         []tile.Tile     `json:"tiles,omitempty"`
-		TilePositions []tile.Position `json:"tilePositions,omitempty"`
-		TilesLeft     int             `json:"tilesLeft,omitempty"`
-		GameInfos     []game.Info     `json:"gameInfos,omitempty"`
-		GameID        game.ID         `json:"gameID,omitempty"`
-		GameStatus    game.Status     `json:"gameStatus,omitempty"`
-		GamePlayers   []string        `json:"gamePlayers,omitempty"`
-		GameRules     []string        `json:"rules,omitempty"`
-		PlayerName    player.Name     `json:"-"`
-		BoardConfig   *board.Config   `json:"boardConfig,omitempty"`
-		GameConfig    *game.Config    `json:"gameConfig,omitempty"`
+		Type          Type                   `json:"type"`
+		Info          string                 `json:"info,omitempty"`
+		Tiles         []tile.Tile            `json:"tiles,omitempty"`
+		TilePositions []tile.Position        `json:"tilePositions,omitempty"`
+		TilesLeft     int                    `json:"tilesLeft,omitempty"`
+		GameInfos     []game.Info            `json:"gameInfos,omitempty"`
+		GameID        game.ID                `json:"gameID,omitempty"`
+		GameStatus    game.Status            `json:"gameStatus,omitempty"`
+		GamePlayers   []string               `json:"gamePlayers,omitempty"`
+		GameRules     []string               `json:"rules,omitempty"`
+		PlayerName    player.Name            `json:"-"`
+		BoardConfig   *board.Config          `json:"boardConfig,omitempty"`
+		GameConfig    *game.Config           `json:"gameConfig,omitempty"`
+		FinalBoards   map[string]board.Board `json:"finalBoards,omitempty"`
 	}
 )
 

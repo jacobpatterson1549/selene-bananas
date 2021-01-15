@@ -1,6 +1,7 @@
 package board
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -551,5 +552,103 @@ func TestResize(t *testing.T) {
 				t.Errorf("Test %v: wanted no info about board resize", i)
 			}
 		}
+	}
+}
+
+func TestMarshal(t *testing.T) {
+	b := Board{
+		UnusedTiles: map[tile.ID]tile.Tile{ // should be ignored
+			1: {
+				ID: 1,
+				Ch: "A",
+			},
+		},
+		UnusedTileIDs: []tile.ID{
+			1,
+		},
+		UsedTiles: map[tile.ID]tile.Position{
+			2: {
+				Tile: tile.Tile{
+					ID: 2,
+					Ch: "B",
+				},
+				X: 3,
+				Y: 4,
+			},
+		},
+		UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{ // should be ignored
+			3: {
+				4: {
+					ID: 2,
+					Ch: "B",
+				},
+			},
+		},
+		Config: Config{
+			NumRows: 17,
+			NumCols: 22,
+		},
+	}
+	want := `{"UnusedTiles":[{"id":1,"ch":"A"}],"UsedTiles":[{"t":{"id":2,"ch":"B"},"x":3,"y":4}],"r":17,"c":22}`
+	got, err := json.Marshal(b)
+	switch {
+	case err != nil:
+		t.Errorf("unwanted error: %v", err)
+	case want != string(got):
+		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, string(got))
+	}
+}
+
+func TestUnMarshal(t *testing.T) {
+	j := `{"UnusedTiles":[{"id":1,"ch":"A"}],"UsedTiles":[{"t":{"id":2,"ch":"B"},"x":3,"y":4}],"r":17,"c":22}`
+	want := Board{
+		UnusedTiles: map[tile.ID]tile.Tile{ // should be ignored
+			1: {
+				ID: 1,
+				Ch: "A",
+			},
+		},
+		UnusedTileIDs: []tile.ID{
+			1,
+		},
+		UsedTiles: map[tile.ID]tile.Position{
+			2: {
+				Tile: tile.Tile{
+					ID: 2,
+					Ch: "B",
+				},
+				X: 3,
+				Y: 4,
+			},
+		},
+		UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{ // should be ignored
+			3: {
+				4: {
+					ID: 2,
+					Ch: "B",
+				},
+			},
+		},
+		Config: Config{
+			NumRows: 17,
+			NumCols: 22,
+		},
+	}
+	var got Board
+	err := json.Unmarshal([]byte(j), &got)
+	switch {
+	case err != nil:
+		t.Errorf("unwanted error: %v", err)
+	case !reflect.DeepEqual(want, got):
+		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
+	}
+}
+
+func TestMarshalBadJson(t *testing.T) {
+	j := `{"UnusedTiles":"NOT_AN_ARRAY"}`
+	var got Board
+	err := json.Unmarshal([]byte(j), &got)
+	if err == nil {
+		t.Error("wanted error when unmarshaling bad json")
 	}
 }

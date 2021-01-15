@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
+	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
@@ -410,12 +411,14 @@ func (g *Game) handleGameFinish(ctx context.Context, m message.Message, out chan
 	if g.Config.FinishedAllowMove {
 		messageStatus = game.FinishedAllowMove
 	}
+	finalBoards := g.playerFinalBoards()
 	for n := range g.players {
 		out <- message.Message{
-			Type:       message.StatusChange,
-			PlayerName: n,
-			Info:       info,
-			GameStatus: messageStatus,
+			Type:        message.StatusChange,
+			PlayerName:  n,
+			Info:        info,
+			GameStatus:  messageStatus,
+			FinalBoards: finalBoards,
 		}
 	}
 	return nil
@@ -650,4 +653,13 @@ func (g *Game) resizeBoard(m message.Message) (*message.Message, error) {
 		GameRules:     g.Rules(),
 	}
 	return &m2, nil
+}
+
+// playerFinalBoards creates a map of player boards.
+func (g Game) playerFinalBoards() map[string]board.Board {
+	finalBoards := make(map[string]board.Board, len(g.players))
+	for pn, p := range g.players {
+		finalBoards[string(pn)] = *p.Board
+	}
+	return finalBoards
 }

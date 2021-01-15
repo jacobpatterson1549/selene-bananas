@@ -3,6 +3,7 @@ package board
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"sort"
 	"strconv"
@@ -32,6 +33,13 @@ type (
 		Info          string
 		Tiles         []tile.Tile
 		TilePositions []tile.Position
+	}
+
+	// jsonBoard is used for serialization with the json/encoding package
+	jsonBoard struct {
+		UnusedTiles []tile.Tile
+		UsedTiles   []tile.Position
+		Config
 	}
 )
 
@@ -71,6 +79,53 @@ func (cfg Config) Validate() error {
 	case cfg.NumCols < minCols:
 		return errors.New("not enough columns on board, must be >= " + strconv.Itoa(minCols))
 	}
+	return nil
+}
+
+// MarshalJSON implements the encoding/json.Marshaler interface.
+// Returns an object containing the array of unused tiles, map of tile positions, and the board config.
+func (b Board) MarshalJSON() ([]byte, error) {
+	unusedTiles := make([]tile.Tile, 0, len(b.UnusedTiles))
+	for _, id := range b.UnusedTileIDs {
+		t := b.UnusedTiles[id]
+		unusedTiles = append(unusedTiles, t)
+	}
+	usedTiles := make([]tile.Position, 0, len(b.UsedTiles))
+	// TODO: populate usedTiles array in ascending order by x coords, then y coords
+	for _, tp := range b.UsedTiles {
+		usedTiles = append(usedTiles, tp)
+	}
+	jb := jsonBoard{
+		UnusedTiles: unusedTiles,
+		UsedTiles:   usedTiles,
+		Config:      b.Config,
+	}
+	return json.Marshal(jb)
+}
+
+// UnmarshalJSON implements the encoding/json.Unmarshaler interface.
+// UsedTiles and UnusedTiles are read from arrays and converted into maps for quick lookup.
+func (b *Board) UnmarshalJSON(d []byte) error {
+	var jb jsonBoard
+	if err := json.Unmarshal(d, &jb); err != nil {
+		return err
+	}
+	b.UnusedTiles = make(map[tile.ID]tile.Tile, len(jb.UnusedTiles))
+	b.UnusedTileIDs = make([]tile.ID, 0, len(jb.UnusedTiles))
+	for _, t := range jb.UnusedTiles {
+		b.UnusedTiles[t.ID] = t
+		b.UnusedTileIDs = append(b.UnusedTileIDs, t.ID)
+	}
+	b.UsedTiles = make(map[tile.ID]tile.Position, len(jb.UsedTiles))
+	b.UsedTileLocs = make(map[tile.X]map[tile.Y]tile.Tile)
+	for _, tp := range jb.UsedTiles {
+		b.UsedTiles[tp.Tile.ID] = tp
+		if _, ok := b.UsedTileLocs[tp.X]; !ok {
+			b.UsedTileLocs[tp.X] = make(map[tile.Y]tile.Tile)
+		}
+		b.UsedTileLocs[tp.X][tp.Y] = tp.Tile
+	}
+	b.Config = jb.Config
 	return nil
 }
 
