@@ -106,6 +106,17 @@ type (
 	}
 )
 
+const (
+	// HeaderContentType is used to set the document type header on http responses.
+	HeaderContentType = "Content-Type"
+	// HeaderCacheControl is used to tell browsers how long to cache http responses.
+	HeaderCacheControl = "Cache-Control"
+	// HeaderLocation is used to tell browsers to request a different document.
+	HeaderLocation = "Location"
+	// HeaderContentEncoding is used to tell browsers how the document is encoded.
+	HeaderContentEncoding = "Content-Encoding"
+)
+
 // NewServer creates a Server from the Config
 func (cfg Config) NewServer() (*Server, error) {
 	if err := cfg.validate(); err != nil {
@@ -217,7 +228,7 @@ func (Server) hasSecHeader(r *http.Request) bool {
 func (Server) addMimeType(fileName string, w http.ResponseWriter) {
 	extension := filepath.Ext(fileName)
 	mimeType := mime.TypeByExtension(extension)
-	w.Header().Set("Content-Type", mimeType)
+	w.Header().Set(HeaderContentType, mimeType)
 }
 
 // runHTTPSServer runs the http server, adding the return error to the channel when done.
@@ -417,20 +428,20 @@ func (Server) serveFile(name string) http.HandlerFunc {
 func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.HandlerFunc) {
 	switch r.URL.Path {
 	case "/":
-		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set(HeaderCacheControl, "no-store")
 	case "/favicon.svg", "/favicon.png":
-		w.Header().Set("Cache-Control", s.cacheMaxAge) // this logic is duplicated below for all other files
+		w.Header().Set(HeaderCacheControl, s.cacheMaxAge) // this logic is duplicated below for all other files
 	default:
 		if r.URL.Query().Get("v") != s.version {
 			url := r.URL
 			q := url.Query()
 			q.Set("v", s.version)
 			url.RawQuery = q.Encode()
-			w.Header().Set("Location", url.String())
+			w.Header().Set(HeaderLocation, url.String())
 			w.WriteHeader(http.StatusMovedPermanently)
 			return
 		}
-		w.Header().Set("Cache-Control", s.cacheMaxAge)
+		w.Header().Set(HeaderCacheControl, s.cacheMaxAge)
 	}
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 		w2 := gzip.NewWriter(w)
@@ -439,7 +450,7 @@ func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.Handl
 			Writer:         w2,
 			ResponseWriter: w,
 		}
-		w.Header().Set("Content-Encoding", "gzip")
+		w.Header().Set(HeaderContentEncoding, "gzip")
 	}
 	fn(w, r)
 }
