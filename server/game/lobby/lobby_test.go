@@ -141,7 +141,7 @@ func TestCreateGame(t *testing.T) {
 	}
 	m := message.Message{
 		BoardConfig: &board.Config{NumRows: 23, NumCols: 21},
-		GameConfig:  &game.Config{CheckOnSnag: true, Penalize: true, MinLength: 3, FinishedAllowMove: true},
+		GameConfig:  &game.Config{CheckOnSnag: true, Penalize: true, MinLength: 3},
 	}
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)

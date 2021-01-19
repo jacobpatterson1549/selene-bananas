@@ -408,9 +408,6 @@ func (g *Game) handleGameFinish(ctx context.Context, m message.Message, out chan
 		info = err.Error()
 	}
 	messageStatus := game.Finished
-	if g.Config.FinishedAllowMove {
-		messageStatus = game.FinishedAllowMove
-	}
 	finalBoards := g.playerFinalBoards()
 	for n := range g.players {
 		out <- message.Message{
@@ -625,9 +622,6 @@ func (g Game) Rules() []string {
 	}
 	if !g.Config.AllowDuplicates {
 		rules = append(rules, "Duplicate words are not allowed.")
-	}
-	if g.Config.FinishedAllowMove {
-		rules = append(rules, "Tiles can be moved when game is finished.")
 	}
 	return rules
 }

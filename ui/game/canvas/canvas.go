@@ -33,6 +33,7 @@ type (
 		mainColor  string
 		tileColor  string
 		dragColor  string
+		errorColor string
 	}
 
 	// Config contains the parameters to create a Canvas.
@@ -124,6 +125,7 @@ func (cfg Config) New(board *board.Board, canvasParentDivQuery string) *Canvas {
 	mainColor := divColor(".mainColor")
 	dragColor := divColor(".dragColor")
 	tileColor := divColor(".tileColor")
+	errorColor := divColor(".errorColor")
 	ctx := jsContext{
 		ctx: &contextElement,
 	}
@@ -139,9 +141,10 @@ func (cfg Config) New(board *board.Board, canvasParentDivQuery string) *Canvas {
 		draw: drawMetrics{
 			tileLength: cfg.TileLength,
 		},
-		mainColor: mainColor,
-		dragColor: dragColor,
-		tileColor: tileColor,
+		mainColor:  mainColor,
+		dragColor:  dragColor,
+		tileColor:  tileColor,
+		errorColor: errorColor,
 	}
 	return &c
 }
@@ -256,15 +259,17 @@ func (c *Canvas) Redraw() {
 	c.drawUsedTiles(false)
 	switch {
 	case c.gameStatus == game.NotStarted:
-		c.ctx.FillText("Not Started",
-			c.draw.usedMin.x+2*c.draw.tileLength,
-			c.draw.usedMin.y+3*c.draw.tileLength-c.draw.textOffset)
+		c.drawErrorMessage("Not Started")
+		return
 	case c.selection.moveState == rect:
 		c.drawSelectionRectangle()
 	case len(c.selection.tiles) > 0:
 		c.ctx.SetStrokeColor(c.dragColor)
 		c.drawUnusedTiles(true)
 		c.drawUsedTiles(true)
+	}
+	if c.gameStatus == game.Finished {
+		c.drawErrorMessage("Game Finished")
 	}
 }
 
@@ -273,6 +278,14 @@ func (c *Canvas) SetGameStatus(s game.Status) {
 	c.gameStatus = s
 	c.selection.setMoveState(none)
 	c.selection.tiles = make(map[tile.ID]tileSelection)
+}
+
+// drawErrorMEssage draws the specified message at the top of the canvas
+func (c *Canvas) drawErrorMessage(m string) {
+	c.ctx.SetFillColor(c.errorColor)
+	c.ctx.FillText(m,
+		c.draw.usedMin.x+10*c.draw.tileLength,
+		c.draw.unusedMin.y-c.draw.textOffset)
 }
 
 // drawUsedTiles pants the unused tiles.
@@ -420,7 +433,7 @@ func (c *Canvas) moveEnd(pp pixelPosition) {
 
 func (c Canvas) canMove() bool {
 	switch c.gameStatus {
-	case game.InProgress, game.FinishedAllowMove:
+	case game.InProgress, game.Finished: // TODO: draw text on canvas similar to "not started" message if game is finished...
 		return true
 	}
 	return false

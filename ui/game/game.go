@@ -90,15 +90,13 @@ func (g *Game) createWithConfig(event js.Value) {
 		return
 	}
 	allowDuplicates := dom.Checked(".allowDuplicates")
-	finishedAllowMove := dom.Checked(".finishedAllowMove")
 	m := message.Message{
 		Type: message.Create,
 		GameConfig: &game.Config{
-			CheckOnSnag:       checkOnSnag,
-			Penalize:          penalize,
-			MinLength:         minLength,
-			AllowDuplicates:   allowDuplicates,
-			FinishedAllowMove: finishedAllowMove,
+			CheckOnSnag:     checkOnSnag,
+			Penalize:        penalize,
+			MinLength:       minLength,
+			AllowDuplicates: allowDuplicates,
 		},
 	}
 	g.setTabActive(m)
@@ -250,7 +248,7 @@ func (g *Game) updateStatus(m message.Message) {
 		statusText = "In Progress"
 		startDisabled = true
 		finishDisabled = m.TilesLeft > 0
-	case game.Finished, game.FinishedAllowMove:
+	case game.Finished:
 		statusText = "Finished"
 		snagDisabled = true
 		swapDisabled = true
@@ -276,7 +274,7 @@ func (g *Game) updateTilesLeft(m message.Message) {
 		dom.SetButtonDisabled(".game .actions>.swap", true)
 		// enable the finish button if the game is not being started or is already finished
 		switch m.GameStatus {
-		case game.NotStarted, game.Finished, game.FinishedAllowMove:
+		case game.NotStarted, game.Finished:
 			// NOOP
 		default:
 			dom.SetButtonDisabled(".game .actions>.finish", false)

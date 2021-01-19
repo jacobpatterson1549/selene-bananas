@@ -51,8 +51,8 @@ func TestMessageJSON(t *testing.T) {
 			j: `{"type":11}`,
 		},
 		{
-			m: Message{Type: 1, BoardConfig: &board.Config{NumRows: 23, NumCols: 21}, GameConfig: &game.Config{CheckOnSnag: true, Penalize: true, MinLength: 3, FinishedAllowMove: true}},
-			j: `{"type":1,"boardConfig":{"r":23,"c":21},"gameConfig":{"checkOnSnag":true,"penalize":true,"minLength":3,"finishedAllowMove":true}}`,
+			m: Message{Type: 1, BoardConfig: &board.Config{NumRows: 23, NumCols: 21}, GameConfig: &game.Config{CheckOnSnag: true, Penalize: true, MinLength: 3}},
+			j: `{"type":1,"boardConfig":{"r":23,"c":21},"gameConfig":{"checkOnSnag":true,"penalize":true,"minLength":3}}`,
 		},
 	}
 	for i, test := range MessageJSONTests {

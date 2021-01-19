@@ -104,6 +104,7 @@ table tbody td:nth-last-of-type(even) {
 #canvas-colors>.mainColor { color: {{ .Colors.CanvasPrimary }}; }
 #canvas-colors>.dragColor { color: {{ .Colors.CanvasDrag }}; }
 #canvas-colors>.tileColor { color: {{ .Colors.CanvasTile }}; }
+#canvas-colors>.errorColor { color: {{ .Colors.LogError }}; }
 .tab>.content>.game>.canvas {
     border: 1px dotted;
 }

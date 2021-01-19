@@ -15,7 +15,5 @@ type (
 		MinLength int `json:"minLength,omitempty"`
 		// AllowDuplicates is a flag for whether or not to allow duplicate words when checking the board
 		AllowDuplicates bool `json:"allowDuplicates,omitempty"`
-		// FinishedAllowMove is a flag on whether or not the ui should allow tiles to be moved after the game is finished.
-		FinishedAllowMove bool `json:"finishedAllowMove,omitempty"`
 	}
 )
