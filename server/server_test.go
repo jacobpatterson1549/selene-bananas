@@ -83,7 +83,7 @@ func TestHandleFileVersion(t *testing.T) {
 
 func TestHandleFile(t *testing.T) {
 	s := Server{
-		cacheMaxAge:  "max-age=???",
+		cacheMaxAge: "max-age=???",
 	}
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest("", "/file", nil)

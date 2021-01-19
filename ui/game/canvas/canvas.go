@@ -433,7 +433,7 @@ func (c *Canvas) moveEnd(pp pixelPosition) {
 
 func (c Canvas) canMove() bool {
 	switch c.gameStatus {
-	case game.InProgress, game.Finished: // TODO: draw text on canvas similar to "not started" message if game is finished...
+	case game.InProgress, game.Finished:
 		return true
 	}
 	return false
