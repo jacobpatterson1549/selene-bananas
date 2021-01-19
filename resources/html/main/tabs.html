@@ -37,6 +37,14 @@
             {{ template "game.html" . }}
         </div>
     </div>
+    <input type="checkbox" class="has-final-boards" hidden>
+    <div class="tab login-required">
+        <input id="tab-final-boards" type="radio" name="tab-group">
+        <label class="button" for="tab-final-boards">Final Boards</label>
+        <div class="content">
+            {{ template "final_boards.html" . }}
+        </div>
+    </div>
     <div class="tab">
         <input id="tab-about" type="radio" name="tab-group">
         <label class="button" for="tab-about">About</label>

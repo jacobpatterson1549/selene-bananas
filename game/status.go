@@ -12,7 +12,7 @@ const (
 	// Finished is the status of a game that has no tiles left and has a winner that has used all his tiles to form one group of interconnected words.
 	Finished
 	// FinishedAllowMove is the status of a game that is finished, and but allows tiles to be moved.
-	FinishedAllowMove
+	FinishedAllowMove // TODO: Delete, make inherently true
 )
 
 // String returns the display value for the status.

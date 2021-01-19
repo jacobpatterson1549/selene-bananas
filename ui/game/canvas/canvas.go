@@ -101,7 +101,8 @@ type (
 )
 
 const (
-	none moveState = iota
+	padding int       = 5 // pixels
+	none    moveState = iota
 	swap
 	rect
 	drag
@@ -109,12 +110,14 @@ const (
 )
 
 // New Creates a canvas from the config.
-func (cfg Config) New(board *board.Board) *Canvas {
-	parentDiv := dom.QuerySelector(".game>.canvas")
-	element := dom.QuerySelector(".game>.canvas>canvas")
+func (cfg Config) New(board *board.Board, canvasParentDivQuery string) *Canvas {
+	canvasQuery := canvasParentDivQuery + ">canvas"
+	parentDiv := dom.QuerySelector(canvasParentDivQuery)
+	element := dom.QuerySelector(canvasQuery)
 	contextElement := element.Call("getContext", "2d")
 	divColor := func(query string) string {
-		div := element.Call("querySelector", query)
+		absoluteQuery := "#canvas-colors>" + query
+		div := dom.QuerySelector(absoluteQuery)
 		color := dom.Color(div)
 		return color
 	}
@@ -144,15 +147,14 @@ func (cfg Config) New(board *board.Board) *Canvas {
 }
 
 // UpdateSize sets the draw properties of the canvas for it's current size in the window.
-func (c *Canvas) UpdateSize() {
-	c.draw.width = c.parentDiv.Get("offsetWidth").Int()
-	padding := 5
+func (c *Canvas) UpdateSize(width int) {
+	c.draw.width = width
 	c.draw.textOffset = (c.draw.tileLength * 3) / 20
 	c.draw.unusedMin.x = padding
 	c.draw.unusedMin.y = c.draw.tileLength
 	c.draw.usedMin.x = padding
 	c.draw.usedMin.y = c.draw.tileLength * 4
-	c.draw.numCols = (c.draw.width - c.draw.usedMin.x - padding) / c.draw.tileLength
+	c.draw.numCols = (c.draw.width - 2*padding) / c.draw.tileLength
 	c.draw.numRows = 500 / c.draw.numCols
 	c.draw.height = c.draw.usedMin.y + c.draw.numRows*c.draw.tileLength
 	c.element.Set("width", c.draw.width)
@@ -163,10 +165,28 @@ func (c *Canvas) UpdateSize() {
 	c.ctx.SetLineWidth(float64(c.draw.tileLength) / 10)
 }
 
+// ParentDivOffsetWidth is the offsetWidth of the parent div.
+func (c Canvas) ParentDivOffsetWidth() int {
+	return c.parentDiv.Get("offsetWidth").Int()
+}
+
+// DesiredWidth is width the canvas needs to safely draw the board.  Uses the TileLength, numCols, and badding
+func (cfg Config) DesiredWidth(b board.Board) int {
+	width := cfg.TileLength * b.NumCols
+	width += 2 * padding
+	return width
+}
+
+// TileLength is the drawing size of the tiles length/height.
+func (c Canvas) TileLength() int {
+	return c.draw.tileLength
+}
+
 // SetTileLength sets the drawing size of the tiles length/height.
 func (c *Canvas) SetTileLength(tileLength int) {
 	c.draw.tileLength = tileLength
-	c.UpdateSize()
+	parentDivOffsetWidth := c.ParentDivOffsetWidth()
+	c.UpdateSize(parentDivOffsetWidth)
 }
 
 // InitDom registers canvas dom functions by adding an event listeners to the canvas element.

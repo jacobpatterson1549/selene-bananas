@@ -398,7 +398,7 @@ func (g *Game) handleGameFinish(ctx context.Context, m message.Message, out chan
 	}
 	g.status = game.Finished
 	info := fmt.Sprintf(
-		"WINNER! - %v won, creating %v words, getting %v points.  Other players each get 1 point",
+		"WINNER! - %v won, creating %v words, getting %v points.  Other players each get 1 point.  View other player's boards on the 'Final Boards' tab,",
 		m.PlayerName,
 		len(usedWords),
 		p.WinPoints,
@@ -651,6 +651,9 @@ func (g *Game) resizeBoard(m message.Message) (*message.Message, error) {
 		GamePlayers:   g.playerNames(),
 		GameID:        g.id,
 		GameRules:     g.Rules(),
+	}
+	if g.status == game.Finished {
+		m2.FinalBoards = g.playerFinalBoards()
 	}
 	return &m2, nil
 }

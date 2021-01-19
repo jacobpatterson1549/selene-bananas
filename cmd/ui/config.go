@@ -65,7 +65,7 @@ func (m mainFlags) canvas(ctx context.Context, wg *sync.WaitGroup, log *log.Log,
 		Log:        log,
 		TileLength: m.tileLength,
 	}
-	canvas := cfg.New(board)
+	canvas := cfg.New(board, ".game>.canvas")
 	canvas.InitDom(ctx, wg)
 	return canvas
 }

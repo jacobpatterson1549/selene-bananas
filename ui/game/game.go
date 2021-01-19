@@ -22,10 +22,11 @@ import (
 type (
 	// Game handles managing the state of the board and drawing it on the canvas.
 	Game struct {
-		log    *log.Log
-		board  *board.Board
-		canvas *canvas.Canvas
-		Socket Socket
+		log         *log.Log
+		board       *board.Board
+		canvas      *canvas.Canvas
+		Socket      Socket
+		finalBoards map[string]board.Board
 	}
 
 	// Config contains the parameters to create a Game.
@@ -66,6 +67,7 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		"sendChat":          dom.NewJsEventFunc(g.sendChat),
 		"resizeTiles":       dom.NewJsFunc(g.resizeTiles),
 		"refreshTileLength": dom.NewJsFunc(g.refreshTileLength),
+		"viewFinalBoard":    dom.NewJsFunc(g.viewFinalBoard),
 	}
 	dom.RegisterFuncs(ctx, wg, "game", jsFuncs)
 }
@@ -126,6 +128,7 @@ func (g *Game) setHas(hasGame bool) {
 
 // Leave changes the view for game by hiding it.
 func (g *Game) Leave() {
+	g.setFinalBoards(nil)
 	g.setHas(false)
 	dom.SetChecked("#tab-lobby", true)
 }
@@ -256,6 +259,7 @@ func (g *Game) updateStatus(m message.Message) {
 	default:
 		return
 	}
+	g.setFinalBoards(m.FinalBoards)
 	dom.SetValue(".game>.info .status", statusText)
 	dom.SetButtonDisabled(".game .actions>.snag", snagDisabled)
 	dom.SetButtonDisabled(".game .actions>.swap", swapDisabled)
@@ -323,7 +327,8 @@ func (g *Game) setTabActive(m message.Message) {
 	dom.SetChecked(".create", false)
 	dom.SetChecked("#tab-game", true)
 	// the tab now has a size, so update the canvas and board
-	g.canvas.UpdateSize()
+	parentDivOffsetWidth := g.canvas.ParentDivOffsetWidth()
+	g.canvas.UpdateSize(parentDivOffsetWidth)
 	cfg := board.Config{
 		NumCols: g.canvas.NumCols(),
 		NumRows: g.canvas.NumRows(),
@@ -359,4 +364,56 @@ func (g *Game) setRules(rules []string) {
 		li.Set("innerHTML", r)
 		rulesList.Call("appendChild", li)
 	}
+}
+
+// setFinalBoards performs the actions needed to allow final boards to be viewed.
+// If no boards are specified, the tab is hidden.
+// The board canvas is always cleared, requiring the user to select one, if any.
+func (g *Game) setFinalBoards(finalBoards map[string]board.Board) {
+	hasFinalBoards := len(finalBoards) != 0
+	dom.SetChecked(".has-final-boards", hasFinalBoards)
+	playersList := dom.QuerySelector(".final-boards .player-list form")
+	playersList.Set("innerHTML", "")
+	g.finalBoards = finalBoards
+	for playerName := range finalBoards {
+		div := g.newFinalBoardDiv(playerName)
+		playersList.Call("appendChild", div)
+	}
+	canvas := dom.QuerySelector(".final-boards .canvas canvas")
+	canvas.Set("height", 0)
+}
+
+// newFinalBoardLi creates a new div to trigger drawing the board.
+func (g *Game) newFinalBoardDiv(playerName string) js.Value {
+	clone := dom.CloneElement(".final-boards .player-list template")
+	cloneChildren := clone.Get("children")
+	div := cloneChildren.Index(0)
+	divChildren := div.Get("children")
+	id := playerName + "-final-board"
+	input := divChildren.Index(0)
+	input.Set("id", id)
+	label := divChildren.Index(1)
+	label.Set("htmlFor", id)
+	label.Set("innerHTML", playerName)
+	return div
+}
+
+// viewFinalBoard draws the board for the clicked player on the .final-boards canvas.
+func (g *Game) viewFinalBoard() {
+	checkedLabel := dom.QuerySelector(".player-list input:checked+label")
+	playerName := checkedLabel.Get("innerHTML").String()
+	b, ok := g.finalBoards[playerName]
+	if !ok {
+		g.log.Error("could not view final board for " + playerName)
+		return
+	}
+	tileLength := g.canvas.TileLength()
+	cfg := canvas.Config{
+		Log:        g.log,
+		TileLength: tileLength,
+	}
+	canvas := cfg.New(&b, ".final-boards .canvas")
+	width := cfg.DesiredWidth(b)
+	canvas.UpdateSize(width)
+	canvas.Redraw()
 }

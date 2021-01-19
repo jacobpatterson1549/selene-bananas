@@ -1,7 +1,9 @@
+/* TODO: make better use of .has*:not(:checked)+* */
 .has-log:not(:checked)+.log,
 .tabs>.has-login:checked~.logout-required,
 .tabs>.has-login:not(:checked)~.login-required,
 .tabs>.has-game:not(:checked)+.tab,
+.tabs>.has-final-boards:not(:checked)+.tab,
 .tabs>.tab>input,
 .tabs>.tab>.content,
 .tabs>.tab>.content>.lobby>.has-websocket:not(:checked)~.connected,
@@ -99,9 +101,9 @@ table tbody td:nth-last-of-type(even) {
 .tab>.content>.game>.canvas>.move-state.rect:checked~canvas { cursor: crosshair; }
 .tab>.content>.game>.canvas>.move-state.drag:checked~canvas { cursor: grabbing;  }
 .tab>.content>.game>.canvas>.move-state.grab:checked~canvas { cursor: pointer;   }
-.tab>.content>.game>.canvas>canvas>.mainColor { color: {{ .Colors.CanvasPrimary }}; }
-.tab>.content>.game>.canvas>canvas>.dragColor { color: {{ .Colors.CanvasDrag }}; }
-.tab>.content>.game>.canvas>canvas>.tileColor { color: {{ .Colors.CanvasTile }}; }
+#canvas-colors>.mainColor { color: {{ .Colors.CanvasPrimary }}; }
+#canvas-colors>.dragColor { color: {{ .Colors.CanvasDrag }}; }
+#canvas-colors>.tileColor { color: {{ .Colors.CanvasTile }}; }
 .tab>.content>.game>.canvas {
     border: 1px dotted;
 }
