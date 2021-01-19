@@ -85,16 +85,8 @@ func (cfg Config) Validate() error {
 // MarshalJSON implements the encoding/json.Marshaler interface.
 // Returns an object containing the array of unused tiles, map of tile positions, and the board config.
 func (b Board) MarshalJSON() ([]byte, error) {
-	unusedTiles := make([]tile.Tile, 0, len(b.UnusedTiles))
-	for _, id := range b.UnusedTileIDs {
-		t := b.UnusedTiles[id]
-		unusedTiles = append(unusedTiles, t)
-	}
-	usedTiles := make([]tile.Position, 0, len(b.UsedTiles))
-	// TODO: populate usedTiles array in ascending order by x coords, then y coords
-	for _, tp := range b.UsedTiles {
-		usedTiles = append(usedTiles, tp)
-	}
+	unusedTiles := b.sortedUnusedTiles()
+	usedTiles := b.sortUsedTiles()
 	jb := jsonBoard{
 		UnusedTiles: unusedTiles,
 		UsedTiles:   usedTiles,
@@ -127,6 +119,40 @@ func (b *Board) UnmarshalJSON(d []byte) error {
 	}
 	b.Config = jb.Config
 	return nil
+}
+
+// sortedUnusedTiles returns a new array of the unused tiles, sorted by the UnusedTileIDs array.
+func (b Board) sortedUnusedTiles() []tile.Tile {
+	unusedTiles := make([]tile.Tile, 0, len(b.UnusedTiles))
+	for _, id := range b.UnusedTileIDs {
+		t := b.UnusedTiles[id]
+		unusedTiles = append(unusedTiles, t)
+	}
+	return unusedTiles
+}
+
+// sortUsedTiles returns a new array of the used tiles, sorted by x position, then y position.
+func (b Board) sortUsedTiles() []tile.Position {
+	usedTiles := make([]tile.Position, 0, len(b.UsedTiles))
+	xPositions := make([]int, 0)
+	for x := range b.UsedTileLocs {
+		xPositions = append(xPositions, int(x))
+	}
+	sort.Ints(xPositions)
+	for _, x := range xPositions {
+		yLocs := b.UsedTileLocs[tile.X(x)]
+		yPositions := make([]int, 0, len(yLocs))
+		for y := range yLocs {
+			yPositions = append(yPositions, int(y))
+		}
+		sort.Ints(yPositions)
+		for _, y := range yPositions {
+			t := yLocs[tile.Y(y)]
+			tp := b.UsedTiles[t.ID]
+			usedTiles = append(usedTiles, tp)
+		}
+	}
+	return usedTiles
 }
 
 // AddTile adds a tile to the board's unused tiles.
