@@ -134,24 +134,17 @@ func (b Board) sortedUnusedTiles() []tile.Tile {
 // sortUsedTiles returns a new array of the used tiles, sorted by x position, then y position.
 func (b Board) sortUsedTiles() []tile.Position {
 	usedTiles := make([]tile.Position, 0, len(b.UsedTiles))
-	xPositions := make([]int, 0)
-	for x := range b.UsedTileLocs {
-		xPositions = append(xPositions, int(x))
+	for _, tp := range b.UsedTiles {
+		usedTiles = append(usedTiles, tp)
 	}
-	sort.Ints(xPositions)
-	for _, x := range xPositions {
-		yLocs := b.UsedTileLocs[tile.X(x)]
-		yPositions := make([]int, 0, len(yLocs))
-		for y := range yLocs {
-			yPositions = append(yPositions, int(y))
+	sort.Slice(usedTiles, func(i, j int) bool {
+		switch {
+		case usedTiles[i].X != usedTiles[j].X:
+			return usedTiles[i].X < usedTiles[j].X
+		default:
+			return usedTiles[i].Y < usedTiles[j].Y
 		}
-		sort.Ints(yPositions)
-		for _, y := range yPositions {
-			t := yLocs[tile.Y(y)]
-			tp := b.UsedTiles[t.ID]
-			usedTiles = append(usedTiles, tp)
-		}
-	}
+	})
 	return usedTiles
 }
 
