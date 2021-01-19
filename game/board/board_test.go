@@ -557,7 +557,7 @@ func TestResize(t *testing.T) {
 
 func TestMarshal(t *testing.T) {
 	b := Board{
-		UnusedTiles: map[tile.ID]tile.Tile{ // should be ignored
+		UnusedTiles: map[tile.ID]tile.Tile{
 			1: {
 				ID: 1,
 				Ch: "A",
@@ -576,7 +576,7 @@ func TestMarshal(t *testing.T) {
 				Y: 4,
 			},
 		},
-		UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{ // should be ignored
+		UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{
 			3: {
 				4: {
 					ID: 2,
@@ -602,7 +602,7 @@ func TestMarshal(t *testing.T) {
 func TestUnMarshal(t *testing.T) {
 	j := `{"UnusedTiles":[{"id":1,"ch":"A"}],"UsedTiles":[{"t":{"id":2,"ch":"B"},"x":3,"y":4}],"r":17,"c":22}`
 	want := Board{
-		UnusedTiles: map[tile.ID]tile.Tile{ // should be ignored
+		UnusedTiles: map[tile.ID]tile.Tile{
 			1: {
 				ID: 1,
 				Ch: "A",
@@ -621,7 +621,7 @@ func TestUnMarshal(t *testing.T) {
 				Y: 4,
 			},
 		},
-		UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{ // should be ignored
+		UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{
 			3: {
 				4: {
 					ID: 2,
