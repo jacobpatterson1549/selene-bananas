@@ -122,6 +122,7 @@ func (cfg Config) NewServer() (*Server, error) {
 	if err := cfg.validate(); err != nil {
 		return nil, fmt.Errorf("creating server: validation: %w", err)
 	}
+	var gameConfig game.Config
 	data := struct {
 		Name        string
 		ShortName   string
@@ -135,7 +136,7 @@ func (cfg Config) NewServer() (*Server, error) {
 		Description: "a tile-based word-forming game",
 		Version:     cfg.Version,
 		Colors:      cfg.ColorConfig,
-		Rules:       game.Rules(),
+		Rules:       gameConfig.Rules(),
 	}
 	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
 	if cfg.HTTPSPort <= 0 {

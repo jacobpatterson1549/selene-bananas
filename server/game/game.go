@@ -634,37 +634,6 @@ func (g Game) handleInfoChanged(send messageSender) {
 	send(m)
 }
 
-// Rules creates a list of the shared rules for any game.
-func Rules() []string {
-	return []string{
-		"Create or join a game from the Lobby after refreshing the games list.",
-		"Any player can join a game that is not started, but active games can only be joined by players who started in them.",
-		"After all players have joined the game, click the Start button to start the game.",
-		"Arrange unused tiles in the game area form vertical and horizontal English words.",
-		"Click the Snag button to get a new tile if all tiles are used in words. This also gives other players a new tile.",
-		"Click the Swap button and then a tile to exchange it for three others.",
-		"Click the Finish button to run the scoring function when there are no tiles left to use.  The scoring function determines if all of the player's tiles are used and form a continuous block of English words.  If successful, the player wins. Otherwise, the player's potential winning score is decremented and play continues.",
-	}
-}
-
-// Rules creates a list of rules for the specific game.
-func (g Game) Rules() []string {
-	rules := Rules()
-	if g.Config.CheckOnSnag {
-		rules = append(rules, "Words are checked to be valid when a player tries to snag a new letter.")
-	}
-	if g.Config.Penalize {
-		rules = append(rules, "If a player tries to snag unsuccessfully, the amount potential of win points is decremented")
-	}
-	if g.Config.MinLength > 2 {
-		rules = append(rules, fmt.Sprintf("All words must be at least %d letters long", g.Config.MinLength))
-	}
-	if !g.Config.AllowDuplicates {
-		rules = append(rules, "Duplicate words are not allowed.")
-	}
-	return rules
-}
-
 // resizeBoard refreshes the board for the specified player using the config.
 func (g *Game) resizeBoard(m message.Message) (*message.Message, error) {
 	p := g.players[m.PlayerName]
@@ -683,7 +652,7 @@ func (g *Game) resizeBoard(m message.Message) (*message.Message, error) {
 			Status:    g.status,
 			Players:   g.playerNames(),
 			ID:        g.id,
-			Rules:     g.Rules(),
+			Config:    &g.Config.Config,
 		},
 	}
 	if g.status == game.Finished {

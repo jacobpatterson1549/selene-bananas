@@ -246,7 +246,7 @@ func (g *Game) UpdateInfo(m message.Message) {
 	}
 	g.canvas.Redraw()
 	if m.Type == message.Join {
-		g.setRules(m.Game.Rules)
+		g.setRules(m.Game.Config.Rules())
 		g.id = m.Game.ID
 	}
 }

@@ -18,8 +18,6 @@ type Info struct {
 	CreatedAt int64 `json:"createdAt,omitempty"`
 	// Config is the specific options used to create the game.
 	Config *Config `json:"config,omitempty"`
-	// Rules are the specific rules for the game. The human-readable form of some config options
-	Rules []string `json:"rules,omitempty"` // TODO: remove rules, add game.Config.Rules():[]string function
 	// FinalBoards is used to describe the state of all player's boards when a game is finished.
 	FinalBoards map[string]board.Board `json:"finalBoards,omitempty"`
 }
