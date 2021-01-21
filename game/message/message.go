@@ -3,9 +3,7 @@ package message
 
 import (
 	"github.com/jacobpatterson1549/selene-bananas/game"
-	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
-	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 
 type (
@@ -14,20 +12,16 @@ type (
 
 	// Message contains information to or from a socket for a game/lobby.
 	Message struct {
-		Type          Type                   `json:"type"`
-		Info          string                 `json:"info,omitempty"`
-		Tiles         []tile.Tile            `json:"tiles,omitempty"`
-		TilePositions []tile.Position        `json:"tilePositions,omitempty"`
-		TilesLeft     int                    `json:"tilesLeft,omitempty"`
-		GameInfos     []game.Info            `json:"gameInfos,omitempty"`
-		GameID        game.ID                `json:"gameID,omitempty"`
-		GameStatus    game.Status            `json:"gameStatus,omitempty"`
-		GamePlayers   []string               `json:"gamePlayers,omitempty"`
-		GameRules     []string               `json:"rules,omitempty"`
-		PlayerName    player.Name            `json:"-"`
-		BoardConfig   *board.Config          `json:"boardConfig,omitempty"`
-		GameConfig    *game.Config           `json:"gameConfig,omitempty"`
-		FinalBoards   map[string]board.Board `json:"finalBoards,omitempty"`
+		// Type is the purpose of the message.
+		Type Type `json:"type"`
+		// Info is a message to show to the player.
+		Info string `json:"info,omitempty"`
+		// Game is the info for the current game the player is in.
+		Game *game.Info `json:"game,omitempty"`
+		// Games contains the information about all the available games.
+		Games []game.Info `json:"games,omitempty"`
+		// PlayerName is the name of the player the message is to/from.
+		PlayerName player.Name `json:"-"`
 	}
 )
 
@@ -51,7 +45,7 @@ const (
 	Swap
 	// TilesMoved is a MessageType that users send to the server whenever they change the state of their boards.
 	TilesMoved
-	// Infos is a MessageType that users/servers send to request/report changes in the games in a lobby.
+	// Infos is a MessageType that the server sends to report changes in the games in a lobby.
 	Infos
 	// PlayerDelete is a MessageType that gets sent to inform the game that a player's account has been deleted.
 	PlayerDelete

@@ -71,7 +71,7 @@ func TestAddTile(t *testing.T) {
 		t.Errorf("unwanted error while adding tile that TileState already has")
 	}
 	tp := tile.Position{Tile: tl}
-	err = b.MoveTiles([]tile.Position{tp})
+	err = b.MoveTiles(map[tile.ID]tile.Position{tl.ID: tp})
 	if err != nil {
 		t.Errorf("unwanted error: %v", err)
 	}
@@ -282,13 +282,13 @@ func TestMoveTilesSwap(t *testing.T) {
 	t2 := tile.Tile{ID: 2}
 	b.AddTile(t1)
 	b.AddTile(t2)
-	b.MoveTiles([]tile.Position{
-		{Tile: t1, X: 1, Y: 1},
-		{Tile: t2, X: 2, Y: 2},
+	b.MoveTiles(map[tile.ID]tile.Position{
+		t1.ID: {Tile: t1, X: 1, Y: 1},
+		t2.ID: {Tile: t2, X: 2, Y: 2},
 	})
-	b.MoveTiles([]tile.Position{
-		{Tile: t1, X: 2, Y: 2},
-		{Tile: t2, X: 1, Y: 1},
+	b.MoveTiles(map[tile.ID]tile.Position{
+		t1.ID: {Tile: t1, X: 2, Y: 2},
+		t2.ID: {Tile: t2, X: 1, Y: 1},
 	})
 	want, got := 2, len(b.UsedTileLocs)
 	if want != got {
@@ -315,16 +315,6 @@ func TestMoveTiles(t *testing.T) {
 		{ // hasTile == false
 			tilePositions: []tile.Position{{Tile: tile.Tile{ID: 1}}},
 		},
-		{ // tile moved twice
-			tilePositions: []tile.Position{
-				{Tile: tile.Tile{ID: 1}},
-				{Tile: tile.Tile{ID: 1}},
-			},
-			board: Board{
-				UnusedTiles:   map[tile.ID]tile.Tile{1: {ID: 1}},
-				UnusedTileIDs: []tile.ID{1},
-			},
-		},
 		{ // tiles move to same position
 			tilePositions: []tile.Position{
 				{Tile: tile.Tile{ID: 1}},
@@ -336,6 +326,8 @@ func TestMoveTiles(t *testing.T) {
 					2: {ID: 2},
 				},
 				UnusedTileIDs: []tile.ID{1, 2},
+				UsedTiles:     map[tile.ID]tile.Position{},
+				UsedTileLocs:  map[tile.X]map[tile.Y]tile.Tile{},
 			},
 		},
 		{ // tile already at desired location
@@ -384,7 +376,11 @@ func TestMoveTiles(t *testing.T) {
 			NumCols: 10,
 			NumRows: 10,
 		}
-		err := test.board.MoveTiles(test.tilePositions)
+		tilePositionsM := make(map[tile.ID]tile.Position, len(test.tilePositions))
+		for _, tp := range test.tilePositions {
+			tilePositionsM[tp.Tile.ID] = tp
+		}
+		err := test.board.MoveTiles(tilePositionsM)
 		switch {
 		case err != nil:
 			if test.wantOk {
@@ -516,6 +512,10 @@ func TestResize(t *testing.T) {
 			Y:    1,
 		},
 	}
+	tilePositionsM := make(map[tile.ID]tile.Position, len(tilePositions))
+	for _, tp := range tilePositions {
+		tilePositionsM[tp.Tile.ID] = tp
+	}
 	for i, test := range resizeTests {
 		cfg := Config{
 			NumCols: 20,
@@ -525,7 +525,7 @@ func TestResize(t *testing.T) {
 		if err != nil {
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		}
-		if err = b.MoveTiles(tilePositions); err != nil {
+		if err = b.MoveTiles(tilePositionsM); err != nil {
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		}
 		cfg.NumCols += test.deltaNumCols
@@ -534,7 +534,7 @@ func TestResize(t *testing.T) {
 		switch {
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
-		case b.NumCols != cfg.NumCols, b.NumRows != cfg.NumRows:
+		case b.Config.NumCols != cfg.NumCols, b.Config.NumRows != cfg.NumRows:
 			t.Errorf("resizing should update max board dimensions, wanted %v, got %v", cfg, b)
 		case test.wantTile2Unused:
 			switch {
@@ -589,7 +589,7 @@ func TestMarshal(t *testing.T) {
 			NumCols: 22,
 		},
 	}
-	want := `{"UnusedTiles":[{"id":1,"ch":"A"}],"UsedTiles":[{"t":{"id":2,"ch":"B"},"x":3,"y":4}],"r":17,"c":22}`
+	want := `{"tiles":[{"id":1,"ch":"A"}],"tilePositions":[{"t":{"id":2,"ch":"B"},"x":3,"y":4}],"config":{"r":17,"c":22}}`
 	got, err := json.Marshal(b)
 	switch {
 	case err != nil:
@@ -654,7 +654,7 @@ func TestMarshalOrderedTiles(t *testing.T) {
 		`{"t":{"id":2,"ch":"B"},"x":2,"y":3},` +
 		`{"t":{"id":6,"ch":"F"},"x":3,"y":1},` +
 		`{"t":{"id":3,"ch":"C"},"x":3,"y":2}`
-	want := `{"UnusedTiles":[` + unusedTiles + `],"UsedTiles":[` + usedTiles + `],"r":0,"c":0}`
+	want := `{"tiles":[` + unusedTiles + `],"tilePositions":[` + usedTiles + `]}`
 	got, err := json.Marshal(b)
 	switch {
 	case err != nil:
@@ -665,7 +665,7 @@ func TestMarshalOrderedTiles(t *testing.T) {
 }
 
 func TestUnMarshal(t *testing.T) {
-	j := `{"UnusedTiles":[{"id":1,"ch":"A"}],"UsedTiles":[{"t":{"id":2,"ch":"B"},"x":3,"y":4}],"r":17,"c":22}`
+	j := `{"tiles":[{"id":1,"ch":"A"}],"tilePositions":[{"t":{"id":2,"ch":"B"},"x":3,"y":4}],"config":{"r":17,"c":22}}`
 	want := Board{
 		UnusedTiles: map[tile.ID]tile.Tile{
 			1: {
@@ -710,7 +710,7 @@ func TestUnMarshal(t *testing.T) {
 }
 
 func TestMarshalBadJson(t *testing.T) {
-	j := `{"UnusedTiles":"NOT_AN_ARRAY"}`
+	j := `{"tiles":"NOT_AN_ARRAY"}`
 	var got Board
 	err := json.Unmarshal([]byte(j), &got)
 	if err == nil {

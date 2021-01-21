@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/jacobpatterson1549/selene-bananas/game"
+	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	gameController "github.com/jacobpatterson1549/selene-bananas/server/game"
@@ -204,7 +205,7 @@ func (l *Lobby) createGame(ctx context.Context, m message.Message) {
 		id++
 	}
 	gameCfg := l.gameCfg
-	gameCfg.Config = *m.GameConfig
+	gameCfg.Config = *m.Game.Config
 	g, err := gameCfg.NewGame(id)
 	if err != nil {
 		return
@@ -224,9 +225,13 @@ func (l *Lobby) createGame(ctx context.Context, m message.Message) {
 		messageHandler: mh,
 	}
 	m2 := message.Message{
-		Type:        message.Join,
-		PlayerName:  m.PlayerName,
-		BoardConfig: m.BoardConfig,
+		Type:       message.Join,
+		PlayerName: m.PlayerName,
+		Game: &game.Info{
+			Board: &board.Board{
+				Config: m.Game.Board.Config,
+			},
+		},
 	}
 	writeMessages <- m2 // this will update the game's info
 }
@@ -283,8 +288,8 @@ func (l *Lobby) addSocket(ctx context.Context, ps playerSocket) {
 	l.sockets[ps.playerName] = mh
 	infos := l.gameInfos()
 	m := message.Message{
-		Type:      message.Infos,
-		GameInfos: infos,
+		Type:  message.Infos,
+		Games: infos,
 	}
 	writeMessages <- m
 }
@@ -302,9 +307,9 @@ func (l *Lobby) removeSocket(pn player.Name) {
 
 // sendGameMessage sends a message to the game with the id specified in the message's GameID field.
 func (l *Lobby) sendGameMessage(m message.Message) {
-	gmh, ok := l.games[m.GameID]
+	gmh, ok := l.games[m.Game.ID]
 	if !ok {
-		l.sendSocketErrorMessage(m, fmt.Sprintf("no game with id %v, please refresh games", m.GameID))
+		l.sendSocketErrorMessage(m, fmt.Sprintf("no game with id %v, please refresh games", m.Game.ID))
 		return
 	}
 	gmh.writeMessages <- m
@@ -345,17 +350,13 @@ func (l Lobby) gameInfos() []game.Info {
 
 // handleGameInfo updates the game info for the game.
 func (l *Lobby) handleGameInfoChanged(m message.Message) {
-	if len(m.GameInfos) != 1 {
-		log.Printf("wanted 1 gameInfo to have changed, got %v", len(m.GameInfos))
-		return
-	}
-	i := m.GameInfos[0]
+	i := m.Game
 	mh, ok := l.games[i.ID]
 	if !ok {
 		l.log.Printf("no game to update info for with id %v", i.ID)
 		return
 	}
-	mh.info = i
+	mh.info = *i
 	l.games[i.ID] = mh
 	l.gameInfosChanged()
 }
@@ -364,8 +365,8 @@ func (l *Lobby) handleGameInfoChanged(m message.Message) {
 func (l Lobby) gameInfosChanged() {
 	infos := l.gameInfos()
 	m := message.Message{
-		Type:      message.Infos,
-		GameInfos: infos,
+		Type:  message.Infos,
+		Games: infos,
 	}
 	for _, mh := range l.sockets {
 		mh.writeMessages <- m

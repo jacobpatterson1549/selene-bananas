@@ -242,7 +242,7 @@ func (g *Game) handleGameJoin(ctx context.Context, m message.Message, out chan<-
 func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, out chan<- message.Message) error {
 	newTiles := g.unusedTiles[:g.NumNewTiles]
 	g.unusedTiles = g.unusedTiles[g.NumNewTiles:]
-	b, err := m.BoardConfig.New(newTiles)
+	b, err := m.Game.Board.Config.New(newTiles)
 	if err != nil {
 		return err
 	}
@@ -261,11 +261,13 @@ func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, out chan<
 	for n := range g.players {
 		if n != m.PlayerName {
 			out <- message.Message{
-				Type:        message.TilesChange,
-				PlayerName:  n,
-				Info:        fmt.Sprintf("%v joined the game", m.PlayerName),
-				TilesLeft:   len(g.unusedTiles),
-				GamePlayers: gamePlayers,
+				Type:       message.TilesChange,
+				PlayerName: n,
+				Info:       fmt.Sprintf("%v joined the game", m.PlayerName),
+				Game: &game.Info{
+					TilesLeft: len(g.unusedTiles),
+					Players:   gamePlayers,
+				},
 			}
 		}
 	}
@@ -305,7 +307,7 @@ func (g *Game) handleGameStatusChange(ctx context.Context, m message.Message, ou
 
 // handleGameStart starts the game.
 func (g *Game) handleGameStart(ctx context.Context, m message.Message, out chan<- message.Message) error {
-	if m.GameStatus != game.InProgress {
+	if m.Game.Status != game.InProgress {
 		return gameWarning("can only set game status to started")
 	}
 	g.status = game.InProgress
@@ -315,8 +317,10 @@ func (g *Game) handleGameStart(ctx context.Context, m message.Message, out chan<
 			Type:       message.StatusChange,
 			PlayerName: n,
 			Info:       info,
-			GameStatus: g.status,
-			TilesLeft:  len(g.unusedTiles),
+			Game: &game.Info{
+				Status:    g.status,
+				TilesLeft: len(g.unusedTiles),
+			},
 		}
 	}
 	return nil
@@ -387,7 +391,7 @@ func (g Game) checkWords(pn player.Name) ([]string, error) {
 func (g *Game) handleGameFinish(ctx context.Context, m message.Message, out chan<- message.Message) error {
 	p := g.players[m.PlayerName]
 	switch {
-	case m.GameStatus != game.Finished:
+	case m.Game.Status != game.Finished:
 		return gameWarning("can only attempt to set game that is in progress to finished")
 	case len(g.unusedTiles) != 0:
 		return gameWarning("snag first")
@@ -411,11 +415,13 @@ func (g *Game) handleGameFinish(ctx context.Context, m message.Message, out chan
 	finalBoards := g.playerFinalBoards()
 	for n := range g.players {
 		out <- message.Message{
-			Type:        message.StatusChange,
-			PlayerName:  n,
-			Info:        info,
-			GameStatus:  messageStatus,
-			FinalBoards: finalBoards,
+			Type:       message.StatusChange,
+			PlayerName: n,
+			Info:       info,
+			Game: &game.Info{
+				Status:      messageStatus,
+				FinalBoards: finalBoards,
+			},
 		}
 	}
 	return nil
@@ -447,9 +453,10 @@ func (g *Game) handleGameSnag(ctx context.Context, m message.Message, out chan<-
 			Type:       message.TilesChange,
 			PlayerName: n2,
 		}
+		var tiles []tile.Tile
 		switch {
 		case n2 == m.PlayerName:
-			m2.Tiles = g.unusedTiles[:1]
+			tiles = g.unusedTiles[:1]
 			m2.Info = "snagged a tile"
 			if err := g.players[n2].Board.AddTile(g.unusedTiles[0]); err != nil {
 				return err
@@ -459,16 +466,19 @@ func (g *Game) handleGameSnag(ctx context.Context, m message.Message, out chan<-
 			m2.Info = fmt.Sprintf("%v snagged a tile", m.PlayerName)
 		default:
 			m2.Info = fmt.Sprintf("%v snagged a tile, adding a tile to your pile", m.PlayerName)
-			m2.Tiles = g.unusedTiles[:1]
+			tiles = g.unusedTiles[:1]
 			if err := g.players[n2].Board.AddTile(g.unusedTiles[0]); err != nil {
 				return err
 			}
 			g.unusedTiles = g.unusedTiles[1:]
 		}
+		m2.Game = &game.Info{
+			Board: board.New(tiles, nil),
+		}
 		snagPlayerMessages[n2] = m2
 	}
 	for _, m := range snagPlayerMessages {
-		m.TilesLeft = len(g.unusedTiles)
+		m.Game.TilesLeft = len(g.unusedTiles)
 		out <- m
 	}
 	return nil
@@ -479,12 +489,13 @@ func (g *Game) handleGameSwap(ctx context.Context, m message.Message, out chan<-
 	switch {
 	case g.status != game.InProgress:
 		return gameWarningNotInProgress
-	case len(m.Tiles) != 1:
+	case len(m.Game.Board.UnusedTiles) != 1:
 		return gameWarning("no tile specified for swap")
 	case len(g.unusedTiles) == 0:
 		return gameWarning("no tiles left to swap, user what you have to finish")
 	}
-	t := m.Tiles[0]
+	tid := m.Game.Board.UnusedTileIDs[0]
+	t := m.Game.Board.UnusedTiles[tid]
 	p := g.players[m.PlayerName]
 	err := p.Board.RemoveTile(t)
 	if err != nil {
@@ -505,12 +516,16 @@ func (g *Game) handleGameSwap(ctx context.Context, m message.Message, out chan<-
 		m2 := message.Message{
 			Type:       message.TilesChange,
 			PlayerName: n,
-			TilesLeft:  len(g.unusedTiles),
+			Game: &game.Info{
+				TilesLeft: len(g.unusedTiles),
+			},
 		}
 		switch {
 		case n == m.PlayerName:
 			m2.Info = fmt.Sprintf("swapping %v tile", t.Ch)
-			m2.Tiles = newTiles
+			m2.Game = &game.Info{
+				Board: board.New(newTiles, nil),
+			}
 		default:
 			m2.Info = fmt.Sprintf("%v swapped a tile", m.PlayerName)
 		}
@@ -526,7 +541,7 @@ func (g *Game) handleGameTilesMoved(ctx context.Context, m message.Message, out 
 		return gameWarningNotInProgress
 	}
 	p := g.players[m.PlayerName]
-	return p.Board.MoveTiles(m.TilePositions)
+	return p.Board.MoveTiles(m.Game.Board.UsedTiles)
 }
 
 // handleBoardRefresh sends the player's board back to the player.
@@ -590,8 +605,8 @@ func (g Game) handleInfoChanged(out chan<- message.Message) {
 		CreatedAt: g.createdAt,
 	}
 	out <- message.Message{
-		Type:      message.Infos,
-		GameInfos: []game.Info{i},
+		Type: message.Infos,
+		Game: &i,
 	}
 }
 
@@ -630,24 +645,25 @@ func (g Game) Rules() []string {
 func (g *Game) resizeBoard(m message.Message) (*message.Message, error) {
 	p := g.players[m.PlayerName]
 	b := p.Board
-	rr, err := b.Resize(*m.BoardConfig)
+	rr, err := b.Resize(m.Game.Board.Config)
 	if err != nil {
 		return nil, err
 	}
 	m2 := message.Message{
-		Info:          rr.Info,
-		Tiles:         rr.Tiles,
-		TilePositions: rr.TilePositions,
-		Type:          message.Join,
-		PlayerName:    m.PlayerName,
-		TilesLeft:     len(g.unusedTiles),
-		GameStatus:    g.status,
-		GamePlayers:   g.playerNames(),
-		GameID:        g.id,
-		GameRules:     g.Rules(),
+		Info:       rr.Info,
+		Type:       message.Join,
+		PlayerName: m.PlayerName,
+		Game: &game.Info{
+			Board:     board.New(rr.Tiles, rr.TilePositions),
+			TilesLeft: len(g.unusedTiles),
+			Status:    g.status,
+			Players:   g.playerNames(),
+			ID:        g.id,
+			Rules:     g.Rules(),
+		},
 	}
 	if g.status == game.Finished {
-		m2.FinalBoards = g.playerFinalBoards()
+		m2.Game.FinalBoards = g.playerFinalBoards()
 	}
 	return &m2, nil
 }

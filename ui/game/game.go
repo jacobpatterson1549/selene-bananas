@@ -22,6 +22,7 @@ import (
 type (
 	// Game handles managing the state of the board and drawing it on the canvas.
 	Game struct {
+		id          game.ID
 		log         *log.Log
 		board       *board.Board
 		canvas      *canvas.Canvas
@@ -92,11 +93,13 @@ func (g *Game) createWithConfig(event js.Value) {
 	allowDuplicates := dom.Checked(".allowDuplicates")
 	m := message.Message{
 		Type: message.Create,
-		GameConfig: &game.Config{
-			CheckOnSnag:     checkOnSnag,
-			Penalize:        penalize,
-			MinLength:       minLength,
-			AllowDuplicates: allowDuplicates,
+		Game: &game.Info{
+			Config: &game.Config{
+				CheckOnSnag:     checkOnSnag,
+				Penalize:        penalize,
+				MinLength:       minLength,
+				AllowDuplicates: allowDuplicates,
+			},
 		},
 	}
 	g.setTabActive(m)
@@ -112,9 +115,9 @@ func (g *Game) join(event js.Value) {
 		g.log.Error("could not get Id of game: " + err.Error())
 		return
 	}
+	g.id = game.ID(id)
 	m := message.Message{
-		Type:   message.Join,
-		GameID: game.ID(id),
+		Type: message.Join,
 	}
 	g.setTabActive(m)
 }
@@ -124,8 +127,14 @@ func (g *Game) setHas(hasGame bool) {
 	dom.SetChecked(".has-game", hasGame)
 }
 
+// ID gets the ID of the game.
+func (g Game) ID() game.ID {
+	return g.id
+}
+
 // Leave changes the view for game by hiding it.
 func (g *Game) Leave() {
+	g.id = 0
 	g.setFinalBoards(nil)
 	g.setHas(false)
 	dom.SetChecked("#tab-lobby", true)
@@ -143,16 +152,20 @@ func (g *Game) delete() {
 // Start triggers the game to start for everyone.
 func (g *Game) Start() {
 	g.Socket.Send(message.Message{
-		Type:       message.StatusChange,
-		GameStatus: game.InProgress,
+		Type: message.StatusChange,
+		Game: &game.Info{
+			Status: game.InProgress,
+		},
 	})
 }
 
 // finish triggers the game to finish for everyone by checking the players tiles.
 func (g *Game) finish() {
 	g.Socket.Send(message.Message{
-		Type:       message.StatusChange,
-		GameStatus: game.Finished,
+		Type: message.StatusChange,
+		Game: &game.Info{
+			Status: game.Finished,
+		},
 	})
 }
 
@@ -187,7 +200,7 @@ func (g *Game) sendChat(event js.Value) {
 // replacegameTiles completely replaces the games used and unused tiles.
 func (g *Game) replaceGameTiles(m message.Message) {
 	g.resetTiles()
-	for _, tp := range m.TilePositions {
+	for _, tp := range m.Game.Board.UsedTiles {
 		g.board.UsedTiles[tp.Tile.ID] = tp
 		if _, ok := g.board.UsedTileLocs[tp.X]; !ok {
 			g.board.UsedTileLocs[tp.X] = make(map[tile.Y]tile.Tile)
@@ -199,9 +212,10 @@ func (g *Game) replaceGameTiles(m message.Message) {
 
 // addUnusedTilesappends new tiles onto the game.
 func (g *Game) addUnusedTiles(m message.Message) {
-	tileStrings := make([]string, len(m.Tiles))
-	for i, t := range m.Tiles {
-		tileStrings[i] = `"` + string(t.Ch) + `"`
+	tileStrings := make([]string, 0, len(m.Game.Board.UnusedTiles))
+	for _, t := range m.Game.Board.UnusedTiles {
+		tileText := `"` + string(t.Ch) + `"`
+		tileStrings = append(tileStrings, tileText)
 		if err := g.board.AddTile(t); err != nil {
 			g.log.Error("could not add unused tile(s): " + err.Error())
 			return
@@ -223,14 +237,16 @@ func (g *Game) UpdateInfo(m message.Message) {
 	g.updateTilesLeft(m)
 	g.updatePlayers(m)
 	switch {
-	case len(m.TilePositions) > 0:
+	case m.Game.Board == nil:
+		// NOOP
+	case len(m.Game.Board.UsedTiles) > 0:
 		g.replaceGameTiles(m)
-	case len(m.Tiles) > 0:
+	case len(m.Game.Board.UnusedTiles) > 0:
 		g.addUnusedTiles(m)
 	}
 	g.canvas.Redraw()
 	if m.Type == message.Join {
-		g.setRules(m.GameRules)
+		g.setRules(m.Game.Rules)
 	}
 }
 
@@ -238,7 +254,7 @@ func (g *Game) UpdateInfo(m message.Message) {
 func (g *Game) updateStatus(m message.Message) {
 	var statusText string
 	var snagDisabled, swapDisabled, startDisabled, finishDisabled bool
-	switch m.GameStatus {
+	switch m.Game.Status {
 	case game.NotStarted:
 		statusText = "Not Started"
 		snagDisabled = true
@@ -247,7 +263,7 @@ func (g *Game) updateStatus(m message.Message) {
 	case game.InProgress:
 		statusText = "In Progress"
 		startDisabled = true
-		finishDisabled = m.TilesLeft > 0
+		finishDisabled = m.Game.TilesLeft > 0
 	case game.Finished:
 		statusText = "Finished"
 		snagDisabled = true
@@ -257,23 +273,23 @@ func (g *Game) updateStatus(m message.Message) {
 	default:
 		return
 	}
-	g.setFinalBoards(m.FinalBoards)
+	g.setFinalBoards(m.Game.FinalBoards)
 	dom.SetValue(".game>.info .status", statusText)
 	dom.SetButtonDisabled(".game .actions>.snag", snagDisabled)
 	dom.SetButtonDisabled(".game .actions>.swap", swapDisabled)
 	dom.SetButtonDisabled(".game .actions>.start", startDisabled)
 	dom.SetButtonDisabled(".game .actions>.finish", finishDisabled)
-	g.canvas.SetGameStatus(m.GameStatus)
+	g.canvas.SetGameStatus(m.Game.Status)
 }
 
 // updateTilesLeft updates the TilesLeft label.  Other labels are updated if there are no tiles left.
 func (g *Game) updateTilesLeft(m message.Message) {
-	dom.SetValue(".game>.info .tiles-left", strconv.Itoa(m.TilesLeft))
-	if m.TilesLeft == 0 {
+	dom.SetValue(".game>.info .tiles-left", strconv.Itoa(m.Game.TilesLeft))
+	if m.Game.TilesLeft == 0 {
 		dom.SetButtonDisabled(".game .actions>.snag", true)
 		dom.SetButtonDisabled(".game .actions>.swap", true)
 		// enable the finish button if the game is not being started or is already finished
-		switch m.GameStatus {
+		switch m.Game.Status {
 		case game.NotStarted, game.Finished:
 			// NOOP
 		default:
@@ -284,8 +300,8 @@ func (g *Game) updateTilesLeft(m message.Message) {
 
 // updatePlayers sets the players list display from the message.
 func (g *Game) updatePlayers(m message.Message) {
-	if len(m.GamePlayers) > 0 {
-		players := strings.Join(m.GamePlayers, ",")
+	if len(m.Game.Players) > 0 {
+		players := strings.Join(m.Game.Players, ",")
 		dom.SetValue(".game>.info .players", players)
 	}
 }
@@ -341,13 +357,14 @@ func (g *Game) setTabActive(m message.Message) {
 
 // setBoardSize updates the board size due to a recent canvas update, adds the updated size to the message, and sends it.
 func (g *Game) setBoardSize(m message.Message) {
-	g.board.NumCols = g.canvas.NumCols()
-	g.board.NumRows = g.canvas.NumRows()
+	g.board.Config.NumCols = g.canvas.NumCols()
+	g.board.Config.NumRows = g.canvas.NumRows()
 	g.resetTiles()
-	m.BoardConfig = &board.Config{
-		NumCols: g.board.NumCols,
-		NumRows: g.board.NumRows,
+	if m.Game.Board == nil {
+		var b board.Board
+		m.Game.Board = &b
 	}
+	m.Game.Board.Config = g.board.Config
 	g.Socket.Send(m)
 }
 

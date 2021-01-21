@@ -195,8 +195,11 @@ func (s *Socket) readMessage() (*message.Message, error) {
 		s.log.Printf("socket reading message with type %v", m.Type)
 	}
 	m.PlayerName = s.playerName
+	if m.Game == nil {
+		return nil, fmt.Errorf("recieved message not relating to game")
+	}
 	if m.Type != message.Join {
-		m.GameID = s.gameID
+		m.Game.ID = s.gameID
 	}
 	return &m, nil
 }
@@ -208,7 +211,7 @@ func (s *Socket) writeMessage(m message.Message) error {
 	}
 	switch m.Type {
 	case message.Join:
-		s.gameID = m.GameID
+		s.gameID = m.Game.ID
 	case message.Delete, message.Leave:
 		s.gameID = 0
 	}

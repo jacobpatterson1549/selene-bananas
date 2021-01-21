@@ -140,8 +140,12 @@ func TestCreateGame(t *testing.T) {
 		games:    make(map[game.ID]gameMessageHandler, 1),
 	}
 	m := message.Message{
-		BoardConfig: &board.Config{NumRows: 23, NumCols: 21},
-		GameConfig:  &game.Config{CheckOnSnag: true, Penalize: true, MinLength: 3},
+		Game: &game.Info{
+			Board: &board.Board{
+				Config: board.Config{NumRows: 23, NumCols: 21},
+			},
+			Config: &game.Config{CheckOnSnag: true, Penalize: true, MinLength: 3},
+		},
 	}
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)

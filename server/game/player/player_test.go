@@ -41,8 +41,8 @@ func TestNewPlayer(t *testing.T) {
 			if test.winPoints != p.WinPoints {
 				t.Errorf("wanted %v winPoints, got %v", test.winPoints, p.WinPoints)
 			}
-			b.NumCols = 22
-			if p.Board.NumCols != 22 {
+			b.Config.NumCols = 22
+			if p.Board.Config.NumCols != 22 {
 				t.Errorf("board reference not set correctly")
 			}
 		}

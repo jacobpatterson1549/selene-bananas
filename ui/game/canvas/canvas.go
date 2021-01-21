@@ -175,7 +175,7 @@ func (c Canvas) ParentDivOffsetWidth() int {
 
 // DesiredWidth is width the canvas needs to safely draw the board.  Uses the TileLength, numCols, and badding
 func (cfg Config) DesiredWidth(b board.Board) int {
-	width := cfg.TileLength * b.NumCols
+	width := cfg.TileLength * b.Config.NumCols
 	width += 2 * padding
 	return width
 }
@@ -460,11 +460,16 @@ func (c *Canvas) swap() {
 	if err := c.board.RemoveTile(endTS.tile); err != nil {
 		c.log.Error("removing tile while swapping: " + err.Error())
 	}
+	tiles := []tile.Tile{
+		endTS.tile,
+	}
+	b := board.New(tiles, nil)
+	g := game.Info{
+		Board: b,
+	}
 	c.Socket.Send(message.Message{
 		Type: message.Swap,
-		Tiles: []tile.Tile{
-			endTS.tile,
-		},
+		Game: &g,
 	})
 }
 
@@ -581,17 +586,25 @@ func (c *Canvas) moveSelectedTiles() {
 	if len(tilePositions) == 0 {
 		return
 	}
-	if !c.board.CanMoveTiles(tilePositions) {
+	tilePositionsM := make(map[tile.ID]tile.Position, len(tilePositions))
+	for _, tp := range tilePositions {
+		tilePositionsM[tp.Tile.ID] = tp
+	}
+	if !c.board.CanMoveTiles(tilePositionsM) {
 		return
 	}
-	if err := c.board.MoveTiles(tilePositions); err != nil {
+	if err := c.board.MoveTiles(tilePositionsM); err != nil {
 		c.log.Error("moving tiles to presumably valid locations: " + err.Error())
 		return
 	}
+	b := board.New(nil, tilePositions)
+	g := game.Info{
+		Board: b,
+	}
 	if c.gameStatus == game.InProgress {
 		c.Socket.Send(message.Message{
-			Type:          message.TilesMoved,
-			TilePositions: tilePositions,
+			Type: message.TilesMoved,
+			Game: &g,
 		})
 	}
 }

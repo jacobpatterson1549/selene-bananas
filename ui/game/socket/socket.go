@@ -10,10 +10,9 @@ import (
 	"sync"
 	"syscall/js"
 
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
-	gameController "github.com/jacobpatterson1549/selene-bananas/ui/game"
-	"github.com/jacobpatterson1549/selene-bananas/ui/game/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
 
@@ -23,8 +22,8 @@ type (
 		log       *log.Log
 		webSocket js.Value
 		user      User
-		game      *gameController.Game
-		lobby     *lobby.Lobby
+		game      Game
+		lobby     Lobby
 		jsFuncs   struct {
 			onOpen    js.Func
 			onClose   js.Func
@@ -37,8 +36,8 @@ type (
 	Config struct {
 		Log   *log.Log
 		User  User
-		Game  *gameController.Game
-		Lobby *lobby.Lobby
+		Game  Game
+		Lobby Lobby
 	}
 
 	// User is the state of the current user.
@@ -49,6 +48,21 @@ type (
 		Username() string
 		// Logout releases the use credentials from the browser.
 		Logout()
+	}
+
+	// Game is the game the user is currently playing.
+	Game interface {
+		// ID is the id for the game.
+		ID() game.ID
+		// Leave removes the user from his current game.
+		Leave()
+		// UpdateInfo updates the game for the specified message.
+		UpdateInfo(m message.Message)
+	}
+
+	// Lobby is used to display available games and give users a place to join a game from.
+	Lobby interface {
+		SetGameInfos(gameInfos []game.Info, username string)
 	}
 )
 
@@ -173,7 +187,7 @@ func (s *Socket) onMessage(event js.Value) {
 	case message.Leave:
 		s.handleGameLeave(m)
 	case message.Infos:
-		s.lobby.SetGameInfos(m.GameInfos, s.user.Username())
+		s.lobby.SetGameInfos(m.Games, s.user.Username())
 	case message.PlayerDelete:
 		s.handlePlayerDelete(m)
 	case message.Join, message.StatusChange, message.TilesChange:
@@ -196,6 +210,13 @@ func (s *Socket) Send(m message.Message) {
 	if !s.isOpen() {
 		s.log.Error("websocket not open")
 		return
+	}
+	if m.Game == nil {
+		var g game.Info
+		m.Game = &g
+	}
+	if m.Type != message.Create { // all messages except CREATE are for a specific game
+		m.Game.ID = s.game.ID()
 	}
 	messageJSON, err := json.Marshal(m)
 	if err != nil {

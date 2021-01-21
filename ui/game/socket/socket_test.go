@@ -16,7 +16,11 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom/url"
 )
 
-type mockUser string
+type (
+	mockUser  string
+	mockGame  game.ID
+	mockLobby struct{}
+)
 
 func (u mockUser) JWT() string {
 	return string(u)
@@ -27,6 +31,22 @@ func (u mockUser) Username() string {
 }
 
 func (u *mockUser) Logout() {
+	// NOOP
+}
+
+func (g mockGame) ID() game.ID {
+	return game.ID(g)
+}
+
+func (g mockGame) Leave() {
+	// NOOP
+}
+
+func (g mockGame) UpdateInfo(m message.Message) {
+	// NOOP
+}
+
+func (l mockLobby) SetGameInfos(gameInfos []game.Info, username string) {
 	// NOOP
 }
 
@@ -118,19 +138,21 @@ func TestMessageJSON(t *testing.T) {
 		MinLength:       9,
 		AllowDuplicates: true,
 	}
+	b := board.New(tiles, tilePositions)
+	b.Config = boardConfig
 	m := message.Message{
-		Type:          message.Create,
-		Info:          "message test",
-		Tiles:         tiles,
-		TilePositions: tilePositions,
-		GameInfos:     gameInfos,
-		GameID:        6,
-		GameStatus:    game.InProgress,
-		GamePlayers:   gamePlayers,
-		BoardConfig:   &boardConfig,
-		GameConfig:    &gameConfig,
+		Type: message.Create,
+		Info: "message test",
+		Game: &game.Info{
+			ID:      6,
+			Board:   b,
+			Status:  game.InProgress,
+			Players: gamePlayers,
+			Config:  &gameConfig,
+		},
+		Games: gameInfos,
 	}
-	wantS := `{"type":1,"info":"message test","tiles":[{"id":1,"ch":"A"},{"id":2,"ch":"B"}],"tilePositions":[{"t":{"id":3,"ch":"C"},"x":4,"y":5}],"gameInfos":[{"id":9,"status":1,"players":[],"createdAt":111}],"gameID":6,"gameStatus":2,"gamePlayers":["selene","bob"],"boardConfig":{"c":7,"r":8},"gameConfig":{"checkOnSnag":true,"penalize":true,"minLength":9,"allowDuplicates":true}}`
+	wantS := `{"type":1,"info":"message test","game":{"id":6,"status":2,"board":{"tiles":[{"id":1,"ch":"A"},{"id":2,"ch":"B"}],"tilePositions":[{"t":{"id":3,"ch":"C"},"x":4,"y":5}],"config":{"c":7,"r":8}},"players":["selene","bob"],"config":{"checkOnSnag":true,"penalize":true,"minLength":9,"allowDuplicates":true}},"games":[{"id":9,"status":1,"createdAt":111}]}`
 	gotS, errS := json.Marshal(m)
 	if errS != nil {
 		t.Fatalf("stringify: %v", errS)
@@ -156,7 +178,7 @@ func TestSend(t *testing.T) {
 	webSocket.Set("readyState", 1)
 	sendCalled := false
 	sendFunc := func(this js.Value, args []js.Value) interface{} {
-		want := `{"type":15,"info":"selene : hi"}`
+		want := `{"type":15,"info":"selene : hi","game":{"id":21}}`
 		got := args[0].String()
 		if want != got {
 			t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
@@ -168,8 +190,10 @@ func TestSend(t *testing.T) {
 	defer sendJsFunc.Release()
 	webSocket.Set("send", sendJsFunc)
 	m := message.Message{Type: 15, Info: "selene : hi"}
+	g := mockGame(21)
 	s := Socket{
 		webSocket: webSocket,
+		game:      g,
 	}
 	s.Send(m)
 	if !sendCalled {

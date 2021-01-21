@@ -37,9 +37,9 @@ type (
 
 	// jsonBoard is used for serialization with the json/encoding package
 	jsonBoard struct {
-		UnusedTiles []tile.Tile
-		UsedTiles   []tile.Position
-		Config
+		Tiles         []tile.Tile     `json:"tiles,omitempty"`
+		TilePositions []tile.Position `json:"tilePositions,omitempty"`
+		Config        *Config         `json:"config,omitempty"`
 	}
 )
 
@@ -71,6 +71,15 @@ func (cfg Config) New(unusedTiles []tile.Tile) (*Board, error) {
 	return &b, nil
 }
 
+// New creates a new board with the tiles as unusedTiles and tilePositions as used tiles.  The config is preserved.
+func New(tiles []tile.Tile, tilePositions []tile.Position) *Board {
+	jb := jsonBoard{
+		Tiles:         tiles,
+		TilePositions: tilePositions,
+	}
+	return jb.Board()
+}
+
 // Validate returns an error if the number of rows or columns is invalid.
 func (cfg Config) Validate() error {
 	switch {
@@ -86,11 +95,13 @@ func (cfg Config) Validate() error {
 // Returns an object containing the array of unused tiles, map of tile positions, and the board config.
 func (b Board) MarshalJSON() ([]byte, error) {
 	unusedTiles := b.sortedUnusedTiles()
-	usedTiles := b.sortUsedTiles()
+	usedTiles := b.sortedUsedTiles()
 	jb := jsonBoard{
-		UnusedTiles: unusedTiles,
-		UsedTiles:   usedTiles,
-		Config:      b.Config,
+		Tiles:         unusedTiles,
+		TilePositions: usedTiles,
+	}
+	if b.Config.NumRows != 0 || b.Config.NumCols != 0 { // do not marshal zero value
+		jb.Config = &b.Config
 	}
 	return json.Marshal(jb)
 }
@@ -102,23 +113,32 @@ func (b *Board) UnmarshalJSON(d []byte) error {
 	if err := json.Unmarshal(d, &jb); err != nil {
 		return err
 	}
-	b.UnusedTiles = make(map[tile.ID]tile.Tile, len(jb.UnusedTiles))
-	b.UnusedTileIDs = make([]tile.ID, 0, len(jb.UnusedTiles))
-	for _, t := range jb.UnusedTiles {
+	*b = *jb.Board()
+	return nil
+}
+
+// Board creates a new Board from the JsonBoard.
+func (jb jsonBoard) Board() *Board {
+	var b Board
+	b.UnusedTiles = make(map[tile.ID]tile.Tile, len(jb.Tiles))
+	b.UnusedTileIDs = make([]tile.ID, 0, len(jb.Tiles))
+	for _, t := range jb.Tiles {
 		b.UnusedTiles[t.ID] = t
 		b.UnusedTileIDs = append(b.UnusedTileIDs, t.ID)
 	}
-	b.UsedTiles = make(map[tile.ID]tile.Position, len(jb.UsedTiles))
+	b.UsedTiles = make(map[tile.ID]tile.Position, len(jb.TilePositions))
 	b.UsedTileLocs = make(map[tile.X]map[tile.Y]tile.Tile)
-	for _, tp := range jb.UsedTiles {
+	for _, tp := range jb.TilePositions {
 		b.UsedTiles[tp.Tile.ID] = tp
 		if _, ok := b.UsedTileLocs[tp.X]; !ok {
 			b.UsedTileLocs[tp.X] = make(map[tile.Y]tile.Tile)
 		}
 		b.UsedTileLocs[tp.X][tp.Y] = tp.Tile
 	}
-	b.Config = jb.Config
-	return nil
+	if jb.Config != nil {
+		b.Config = *jb.Config
+	}
+	return &b
 }
 
 // sortedUnusedTiles returns a new array of the unused tiles, sorted by the UnusedTileIDs array.
@@ -131,8 +151,8 @@ func (b Board) sortedUnusedTiles() []tile.Tile {
 	return unusedTiles
 }
 
-// sortUsedTiles returns a new array of the used tiles, sorted by x position, then y position.
-func (b Board) sortUsedTiles() []tile.Position {
+// sortedUsedTiles returns a new array of the used tiles, sorted by x position, then y position.
+func (b Board) sortedUsedTiles() []tile.Position {
 	usedTiles := make([]tile.Position, 0, len(b.UsedTiles))
 	for _, tp := range b.UsedTiles {
 		usedTiles = append(usedTiles, tp)
@@ -198,7 +218,7 @@ func (b *Board) removeUsedTile(t tile.Tile) {
 
 // MoveTiles moves the tiles to the specified positions.
 // No action is taken and an error is returned if the tiles cannot be moved.
-func (b *Board) MoveTiles(tilePositions []tile.Position) error {
+func (b *Board) MoveTiles(tilePositions map[tile.ID]tile.Position) error {
 	if !b.CanMoveTiles(tilePositions) {
 		return errors.New("cannot move tiles that the player does not have or cannot move tiles to the same spot as others")
 	}
@@ -227,13 +247,13 @@ func (b *Board) MoveTiles(tilePositions []tile.Position) error {
 
 // CanMoveTiles determines if the player's tiles can be moved to/in the used area
 // without overlapping any other tiles
-func (b Board) CanMoveTiles(tilePositions []tile.Position) bool {
+func (b Board) CanMoveTiles(tilePositions map[tile.ID]tile.Position) bool {
 	ids := make(map[tile.ID]struct{}, len(tilePositions))
 	positions := make(map[tile.X]map[tile.Y]struct{}, len(b.UsedTileLocs))
 	for _, tp := range tilePositions {
 		// ensure the tile position and id is valid
 		switch {
-		case tp.X < 0, tp.Y < 0, int(tp.X) >= b.NumCols, int(tp.Y) >= b.NumRows,
+		case tp.X < 0, tp.Y < 0, int(tp.X) >= b.Config.NumCols, int(tp.Y) >= b.Config.NumRows,
 			!b.hasTile(tp.Tile):
 			return false
 		}
