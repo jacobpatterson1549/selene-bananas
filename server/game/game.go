@@ -65,13 +65,16 @@ type (
 	}
 
 	// messageHandler is a function which handles message.Messages, returning responses to the output channel.
-	messageHandler func(ctx context.Context, m message.Message, out chan<- message.Message) error
+	messageHandler func(ctx context.Context, m message.Message, send messageSender) error
 
 	// UserDao makes changes to the stored state of users in the game
 	UserDao interface {
 		// UpdatePointsIncrement increments points for the specified usernames based on the userPointsIncrementFunc
 		UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error
 	}
+
+	// messageSender is a function that sends a message somewhere.
+	messageSender func(m message.Message)
 )
 
 const (
@@ -148,6 +151,7 @@ func (g *Game) initializeUnusedTiles() error {
 func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-chan message.Message, out chan<- message.Message) {
 	idleTicker := time.NewTicker(g.IdlePeriod)
 	active := false
+	messageSender := g.sendMessage(out)
 	messageHandlers := map[message.Type]messageHandler{
 		message.Join:         g.handleGameJoin,
 		message.Delete:       g.handleGameDelete,
@@ -164,7 +168,7 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 		case <-ctx.Done():
 			return
 		case m := <-in:
-			g.handleMessage(ctx, m, out, &active, messageHandlers)
+			g.handleMessage(ctx, m, messageSender, &active, messageHandlers)
 			if m.Type == message.Delete {
 				return
 			}
@@ -172,7 +176,7 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 			var m message.Message
 			if !active {
 				g.Log.Printf("deleted game %v due to inactivity", g.id)
-				g.handleGameDelete(ctx, m, out)
+				g.handleGameDelete(ctx, m, messageSender)
 				return
 			}
 			active = false
@@ -180,8 +184,20 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 	}
 }
 
+// sendMessage creates a messageSender that adds the gameId to the message before sending it on the out channel.
+func (g *Game) sendMessage(out chan<- message.Message) messageSender {
+	return func(m message.Message) {
+		if m.Game == nil {
+			var g game.Info
+			m.Game = &g
+		}
+		m.Game.ID = g.id
+		out <- m
+	}
+}
+
 // handleMessage handles the message with the appropriate message handler.
-func (g *Game) handleMessage(ctx context.Context, m message.Message, out chan<- message.Message, active *bool, messageHandlers map[message.Type]messageHandler) {
+func (g *Game) handleMessage(ctx context.Context, m message.Message, send messageSender, active *bool, messageHandlers map[message.Type]messageHandler) {
 	if g.Debug {
 		g.Log.Printf("game reading message with type %v", m.Type)
 	}
@@ -191,7 +207,7 @@ func (g *Game) handleMessage(ctx context.Context, m message.Message, out chan<- 
 	} else if _, ok := g.players[m.PlayerName]; !ok && m.Type != message.Join {
 		err = fmt.Errorf("game does not have player named '%v'", m.PlayerName)
 	} else {
-		err = mh(ctx, m, out)
+		err = mh(ctx, m, send)
 		*active = true
 	}
 	if err != nil {
@@ -203,21 +219,22 @@ func (g *Game) handleMessage(ctx context.Context, m message.Message, out chan<- 
 			mt = message.SocketError
 			g.Log.Printf("game error: %v", err)
 		}
-		out <- message.Message{
+		m := message.Message{
 			Type:       mt,
 			PlayerName: m.PlayerName,
 			Info:       err.Error(),
 		}
+		send(m)
 	}
 }
 
 // handleGameJoin adds the player from the message to the game.
-func (g *Game) handleGameJoin(ctx context.Context, m message.Message, out chan<- message.Message) error {
+func (g *Game) handleGameJoin(ctx context.Context, m message.Message, send messageSender) error {
 	_, ok := g.players[m.PlayerName]
 	var err error
 	switch {
 	case ok:
-		err = g.handleBoardRefresh(ctx, m, out)
+		err = g.handleBoardRefresh(ctx, m, send)
 	case g.status != game.NotStarted:
 		err = gameWarning("cannot join game that has been started")
 	case len(g.players) >= g.MaxPlayers:
@@ -225,21 +242,22 @@ func (g *Game) handleGameJoin(ctx context.Context, m message.Message, out chan<-
 	case len(g.unusedTiles) < g.NumNewTiles:
 		err = gameWarning("not enough tiles to join the game")
 	default:
-		err = g.handleAddPlayer(ctx, m, out)
+		err = g.handleAddPlayer(ctx, m, send)
 	}
 	if err != nil {
 		// kick the player here, returning an error will not remove them from the game
-		out <- message.Message{
+		m := message.Message{
 			Type:       message.Leave,
 			PlayerName: m.PlayerName,
 		}
+		send(m)
 		return err
 	}
 	return nil
 }
 
 // handleAddPlayer adds the player to the game.
-func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, out chan<- message.Message) error {
+func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, send messageSender) error {
 	newTiles := g.unusedTiles[:g.NumNewTiles]
 	g.unusedTiles = g.unusedTiles[g.NumNewTiles:]
 	b, err := m.Game.Board.Config.New(newTiles)
@@ -256,11 +274,11 @@ func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, out chan<
 		return fmt.Errorf("creating board message: %w", err)
 	}
 	m2.Info = "joining game"
-	out <- *m2
+	send(*m2)
 	gamePlayers := g.playerNames() // also called in g.ResizeBoard
 	for n := range g.players {
 		if n != m.PlayerName {
-			out <- message.Message{
+			m := message.Message{
 				Type:       message.TilesChange,
 				PlayerName: n,
 				Info:       fmt.Sprintf("%v joined the game", m.PlayerName),
@@ -269,51 +287,53 @@ func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, out chan<
 					Players:   gamePlayers,
 				},
 			}
+			send(m)
 		}
 	}
-	g.handleInfoChanged(out)
+	g.handleInfoChanged(send)
 	return nil
 }
 
 // handleGameDelete sends game leave messages to all players in the game.
-func (g *Game) handleGameDelete(ctx context.Context, m message.Message, out chan<- message.Message) error {
+func (g *Game) handleGameDelete(ctx context.Context, m message.Message, send messageSender) error {
 	for n := range g.players {
-		out <- message.Message{
+		m := message.Message{
 			Type:       message.Leave,
 			PlayerName: n,
 			Info:       "game deleted",
 		}
+		send(m)
 	}
 	return nil
 }
 
 // handleGameStatusChange changes the status of the game.
-func (g *Game) handleGameStatusChange(ctx context.Context, m message.Message, out chan<- message.Message) error {
+func (g *Game) handleGameStatusChange(ctx context.Context, m message.Message, send messageSender) error {
 	switch g.status {
 	case game.NotStarted:
-		if err := g.handleGameStart(ctx, m, out); err != nil {
+		if err := g.handleGameStart(ctx, m, send); err != nil {
 			return err
 		}
 	case game.InProgress:
-		if err := g.handleGameFinish(ctx, m, out); err != nil {
+		if err := g.handleGameFinish(ctx, m, send); err != nil {
 			return err
 		}
 	default:
 		return fmt.Errorf("cannot change game state from %v", g.status)
 	}
-	g.handleInfoChanged(out)
+	g.handleInfoChanged(send)
 	return nil
 }
 
 // handleGameStart starts the game.
-func (g *Game) handleGameStart(ctx context.Context, m message.Message, out chan<- message.Message) error {
+func (g *Game) handleGameStart(ctx context.Context, m message.Message, send messageSender) error {
 	if m.Game.Status != game.InProgress {
 		return gameWarning("can only set game status to started")
 	}
 	g.status = game.InProgress
 	info := fmt.Sprintf("%v started the game", m.PlayerName)
 	for n := range g.players {
-		out <- message.Message{
+		m := message.Message{
 			Type:       message.StatusChange,
 			PlayerName: n,
 			Info:       info,
@@ -322,6 +342,7 @@ func (g *Game) handleGameStart(ctx context.Context, m message.Message, out chan<
 				TilesLeft: len(g.unusedTiles),
 			},
 		}
+		send(m)
 	}
 	return nil
 }
@@ -388,7 +409,7 @@ func (g Game) checkWords(pn player.Name) ([]string, error) {
 
 // handleGameStart tries to finish the game for the player sending the message by checking to see if the player wins.
 // If the player has won, game cleanup logic is triggered.
-func (g *Game) handleGameFinish(ctx context.Context, m message.Message, out chan<- message.Message) error {
+func (g *Game) handleGameFinish(ctx context.Context, m message.Message, send messageSender) error {
 	p := g.players[m.PlayerName]
 	switch {
 	case m.Game.Status != game.Finished:
@@ -414,7 +435,7 @@ func (g *Game) handleGameFinish(ctx context.Context, m message.Message, out chan
 	messageStatus := game.Finished
 	finalBoards := g.playerFinalBoards()
 	for n := range g.players {
-		out <- message.Message{
+		m := message.Message{
 			Type:       message.StatusChange,
 			PlayerName: n,
 			Info:       info,
@@ -423,13 +444,14 @@ func (g *Game) handleGameFinish(ctx context.Context, m message.Message, out chan
 				FinalBoards: finalBoards,
 			},
 		}
+		send(m)
 	}
 	return nil
 }
 
 // handleGameSnag adds a tile to all the players.
 // The order that the players receive their tiles is randomized, some players may not receive tiles if there are none left.
-func (g *Game) handleGameSnag(ctx context.Context, m message.Message, out chan<- message.Message) error {
+func (g *Game) handleGameSnag(ctx context.Context, m message.Message, send messageSender) error {
 	switch {
 	case g.status != game.InProgress:
 		return gameWarningNotInProgress
@@ -479,13 +501,13 @@ func (g *Game) handleGameSnag(ctx context.Context, m message.Message, out chan<-
 	}
 	for _, m := range snagPlayerMessages {
 		m.Game.TilesLeft = len(g.unusedTiles)
-		out <- m
+		send(m)
 	}
 	return nil
 }
 
 // handleGameSwap swaps a tile for the player for three others, if possible.
-func (g *Game) handleGameSwap(ctx context.Context, m message.Message, out chan<- message.Message) error {
+func (g *Game) handleGameSwap(ctx context.Context, m message.Message, send messageSender) error {
 	switch {
 	case g.status != game.InProgress:
 		return gameWarningNotInProgress
@@ -529,13 +551,13 @@ func (g *Game) handleGameSwap(ctx context.Context, m message.Message, out chan<-
 		default:
 			m2.Info = fmt.Sprintf("%v swapped a tile", m.PlayerName)
 		}
-		out <- m2
+		send(m2)
 	}
 	return nil
 }
 
 // handleGameTilesMoved updates the player's board.
-func (g *Game) handleGameTilesMoved(ctx context.Context, m message.Message, out chan<- message.Message) error {
+func (g *Game) handleGameTilesMoved(ctx context.Context, m message.Message, send messageSender) error {
 	switch {
 	case g.status != game.InProgress:
 		return gameWarningNotInProgress
@@ -545,24 +567,25 @@ func (g *Game) handleGameTilesMoved(ctx context.Context, m message.Message, out 
 }
 
 // handleBoardRefresh sends the player's board back to the player.
-func (g *Game) handleBoardRefresh(ctx context.Context, m message.Message, out chan<- message.Message) error {
+func (g *Game) handleBoardRefresh(ctx context.Context, m message.Message, send messageSender) error {
 	m2, err := g.resizeBoard(m)
 	if err != nil {
 		return err
 	}
-	out <- *m2
+	send(*m2)
 	return nil
 }
 
 // handleGameChat sends a chat message from a player to everyone in the game.
-func (g *Game) handleGameChat(ctx context.Context, m message.Message, out chan<- message.Message) error {
+func (g *Game) handleGameChat(ctx context.Context, m message.Message, send messageSender) error {
 	info := fmt.Sprintf("%v : %v", m.PlayerName, m.Info)
 	for n := range g.players {
-		out <- message.Message{
+		m2 := message.Message{
 			Type:       message.Chat,
 			PlayerName: n,
 			Info:       info,
 		}
+		send(m2)
 	}
 	return nil
 }
@@ -597,17 +620,18 @@ func (g Game) playerNames() []string {
 }
 
 // handleInfoChanged sends the game's info in a message.
-func (g Game) handleInfoChanged(out chan<- message.Message) {
+func (g Game) handleInfoChanged(send messageSender) {
 	i := game.Info{
 		ID:        g.id,
 		Status:    g.status,
 		Players:   g.playerNames(),
 		CreatedAt: g.createdAt,
 	}
-	out <- message.Message{
+	m := message.Message{
 		Type: message.Infos,
 		Game: &i,
 	}
+	send(m)
 }
 
 // Rules creates a list of the shared rules for any game.

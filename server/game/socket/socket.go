@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 )
@@ -21,7 +20,6 @@ type (
 		conn           *websocket.Conn
 		timeFunc       func() int64
 		playerName     player.Name
-		gameID         game.ID // mutable
 		active         bool
 		readWait       time.Duration
 		writeWait      time.Duration
@@ -198,9 +196,6 @@ func (s *Socket) readMessage() (*message.Message, error) {
 	if m.Game == nil {
 		return nil, fmt.Errorf("recieved message not relating to game")
 	}
-	if m.Type != message.Join {
-		m.Game.ID = s.gameID
-	}
 	return &m, nil
 }
 
@@ -208,12 +203,6 @@ func (s *Socket) readMessage() (*message.Message, error) {
 func (s *Socket) writeMessage(m message.Message) error {
 	if s.debug {
 		s.log.Printf("socket writing message with type %v", m.Type)
-	}
-	switch m.Type {
-	case message.Join:
-		s.gameID = m.Game.ID
-	case message.Delete, message.Leave:
-		s.gameID = 0
 	}
 	if err := s.conn.WriteJSON(m); err != nil {
 		return fmt.Errorf("writing socket message: %v", err)

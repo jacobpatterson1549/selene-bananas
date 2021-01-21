@@ -247,6 +247,7 @@ func (g *Game) UpdateInfo(m message.Message) {
 	g.canvas.Redraw()
 	if m.Type == message.Join {
 		g.setRules(m.Game.Rules)
+		g.id = m.Game.ID
 	}
 }
 
@@ -360,6 +361,10 @@ func (g *Game) setBoardSize(m message.Message) {
 	g.board.Config.NumCols = g.canvas.NumCols()
 	g.board.Config.NumRows = g.canvas.NumRows()
 	g.resetTiles()
+	if m.Game == nil {
+		var i game.Info
+		m.Game = &i
+	}
 	if m.Game.Board == nil {
 		var b board.Board
 		m.Game.Board = &b
