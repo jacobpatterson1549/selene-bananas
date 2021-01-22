@@ -76,7 +76,7 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 // startCreate opens the game tab in create mode.
 func (g *Game) startCreate() {
 	g.setHas(true)
-	dom.SetChecked(".create", true)
+	dom.SetChecked("#game-create", true)
 	dom.SetChecked("#tab-game", true)
 }
 
@@ -122,9 +122,9 @@ func (g *Game) join(event js.Value) {
 	g.setTabActive(m)
 }
 
-// setHas sets the .has-game input.
+// setHas sets the #has-game input.
 func (g *Game) setHas(hasGame bool) {
-	dom.SetChecked(".has-game", hasGame)
+	dom.SetChecked("#has-game", hasGame)
 }
 
 // ID gets the ID of the game.
@@ -339,7 +339,7 @@ func (g *Game) resizeTiles() {
 // setTabActive performs the actions need to activate the game tab and create or join a game.
 func (g *Game) setTabActive(m message.Message) {
 	g.setHas(true)
-	dom.SetChecked(".create", false)
+	dom.SetChecked("#game-create", false)
 	dom.SetChecked("#tab-game", true)
 	// the tab now has a size, so update the canvas and board
 	parentDivOffsetWidth := g.canvas.ParentDivOffsetWidth()
@@ -391,7 +391,7 @@ func (g *Game) setRules(rules []string) {
 // The board canvas is always cleared, requiring the user to select one, if any.
 func (g *Game) setFinalBoards(finalBoards map[string]board.Board) {
 	hasFinalBoards := len(finalBoards) != 0
-	dom.SetChecked(".has-final-boards", hasFinalBoards)
+	dom.SetChecked("#has-final-boards", hasFinalBoards)
 	playersList := dom.QuerySelector(".final-boards .player-list form")
 	playersList.Set("innerHTML", "")
 	g.finalBoards = finalBoards

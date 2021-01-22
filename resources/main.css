@@ -1,20 +1,12 @@
-/* TODO: make better use of .has*:not(:checked)+* */
-.has-log:not(:checked)+.log,
-.tabs>.has-login:checked~.logout-required,
-.tabs>.has-login:not(:checked)~.login-required,
-.tabs>.has-game:not(:checked)+.tab,
-.tabs>.has-final-boards:not(:checked)+.tab,
+.hide-next:checked + *,
+.show-next:not(:checked) + *,
 .tabs>.tab>input,
 .tabs>.tab>.content,
-.tabs>.tab>.content>.lobby>.has-websocket:not(:checked)~.connected,
-.tabs>.tab>.content>.lobby>.has-websocket:checked~.connect,
-.tabs>.tab>.content>.game>.info #hide-info:not(:checked)+legend+div,
-.tabs>.tab>.content>.game>.chat #hide-chat:not(:checked)+legend+div,
-.tabs>.tab>.content>.game>.tile-length #hide-tile-length:not(:checked)+legend+div,
-.tabs>.tab>.content>.game>.rules #hide-rules:not(:checked)+legend+div,
-.tabs>.tab>.content>.game>.create:checked~:not(.create),
-.tabs>.tab>.content>.game>.create:not(:checked)+.create,
-.tabs>.tab>.content>.game>.canvas>.move-state {
+#has-login:checked ~ .logout-required,
+#has-login:not(:checked) ~ .login-required,
+#has-websocket:not(:checked) ~ .connected,
+#game-create:checked ~ :not(.create),
+.move-state {
     display: none;
 }
 
@@ -96,20 +88,20 @@ table tbody td:nth-last-of-type(even) {
     width: 3em;
 }
 
-.tab>.content>.game>.canvas>.move-state.none:checked~canvas { cursor: default;   }
-.tab>.content>.game>.canvas>.move-state.swap:checked~canvas { cursor: progress;  }
-.tab>.content>.game>.canvas>.move-state.rect:checked~canvas { cursor: crosshair; }
-.tab>.content>.game>.canvas>.move-state.drag:checked~canvas { cursor: grabbing;  }
-.tab>.content>.game>.canvas>.move-state.grab:checked~canvas { cursor: pointer;   }
+.move-state.none:checked~canvas { cursor: default;   }
+.move-state.swap:checked~canvas { cursor: progress;  }
+.move-state.rect:checked~canvas { cursor: crosshair; }
+.move-state.drag:checked~canvas { cursor: grabbing;  }
+.move-state.grab:checked~canvas { cursor: pointer;   }
 #canvas-colors>.mainColor { color: {{ .Colors.CanvasPrimary }}; }
 #canvas-colors>.dragColor { color: {{ .Colors.CanvasDrag }}; }
 #canvas-colors>.tileColor { color: {{ .Colors.CanvasTile }}; }
 #canvas-colors>.errorColor { color: {{ .Colors.LogError }}; }
-.tab>.content>.game>.canvas {
+.canvas {
     border: 1px dotted;
 }
 
-.tab>.content>.about>ul.icons>li>svg {
+ul.icons>li>svg {
     height: 1em;
     margin-right: .25em;
 }

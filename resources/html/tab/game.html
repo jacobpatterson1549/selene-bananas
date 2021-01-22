@@ -1,33 +1,35 @@
 <div class="game">
-    <input type="checkbox" class="create" hidden checked>
+    <input type="checkbox" class="show-next" id="game-create" hidden checked>
     <form class="create" onsubmit="game.createWithConfig(event)">
         <fieldset>
-            <legend>Game Options</legend>
             <div>
-                <label title="Check words to ensure they are in a group and valid whenever a snag command is issued.">
-                    <div>Check words on snag:</div>
-                    <input type="checkbox" class="checkOnSnag" checked>
-                </label>
-                <label title="Decrease the player's potential win points if his words are not valid or all in one group.">
-                    <div>Penalize on invalid snag:</div>
-                    <input type="checkbox" class="penalize">
-                </label>
-                <label title="The minimum length of valid words.">
-                    <div>Minimum word length:</div>
-                    <input type="number" class="minLength" min=2 max=10 value=2>
-                </label>
-                <label title="Whether or not duplicate words are allowed on the board.">
-                    <div>Allow Duplicate words:</div>
-                    <input type="checkbox" class="allowDuplicates" checked>
-                </label>
-                <input class="button" type="submit" value="Create" disabled>
+                <legend>Game Options</legend>
+                <div>
+                    <label title="Check words to ensure they are in a group and valid whenever a snag command is issued.">
+                        <div>Check words on snag:</div>
+                        <input type="checkbox" class="checkOnSnag" checked>
+                    </label>
+                    <label title="Decrease the player's potential win points if his words are not valid or all in one group.">
+                        <div>Penalize on invalid snag:</div>
+                        <input type="checkbox" class="penalize">
+                    </label>
+                    <label title="The minimum length of valid words.">
+                        <div>Minimum word length:</div>
+                        <input type="number" class="minLength" min=2 max=10 value=2>
+                    </label>
+                    <label title="Whether or not duplicate words are allowed on the board.">
+                        <div>Allow Duplicate words:</div>
+                        <input type="checkbox" class="allowDuplicates" checked>
+                    </label>
+                    <input class="button" type="submit" value="Create" disabled>
+                </div>
             </div>
         </fieldset>
     </form>
     <form class="info">
         <fieldset>
-            <input type="checkbox" id="hide-info" hidden checked>
-            <legend><label class="button" for="hide-info" title="Information about the game.">Info</label></legend>
+            <legend><label class="button" for="game-info" title="Information about the game.">Info</label></legend>
+            <input type="checkbox" class="hide-next" id="game-info" hidden checked>
             <div>
                 <label>
                     <div>Status:</div>
@@ -46,8 +48,8 @@
     </form>
     <form class="chat" onsubmit="game.sendChat(event)">
         <fieldset>
-            <input type="checkbox" id="hide-chat" hidden checked>
-            <legend><label class="button" for="hide-chat" title="Send messages to the logs of other players in the game.">Chat</label></legend>
+            <legend><label class="button" for="game-chat" title="Send messages to the logs of other players in the game.">Chat</label></legend>
+            <input type="checkbox" class="show-next" id="game-chat" hidden checked>
             <div>
                 <label>
                     <div>Message</div>
@@ -59,8 +61,8 @@
     </form>
     <form class="tile-length">
         <fieldset>
-            <input type="checkbox" id="hide-tile-length" hidden>
-            <legend><label class="button" for="hide-tile-length" title="Change the size of the tiles in the .">Tile Length</label></legend>
+            <legend><label class="button" for="game-tile-length" title="Change the size of the tiles in the .">Tile Length</label></legend>
+            <input type="checkbox" class="show-next" id="game-tile-length" hidden>
             <div>
                 <label>
                     <div>Pixels</div>
@@ -72,8 +74,8 @@
     </form>
     <form class="rules">
         <fieldset>
-            <input type="checkbox" id="hide-rules" hidden>
-            <legend><label class="button" for="hide-rules" title="Rules for the game.">Rules</label></legend>
+            <legend><label class="button" for="game-rules" title="Rules for the game.">Rules</label></legend>
+            <input type="checkbox" class="show-next" id="game-rules" hidden>
             <div>
                 <ul>
                 </ul>

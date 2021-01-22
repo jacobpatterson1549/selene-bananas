@@ -70,7 +70,7 @@ func (r request) do() (*http.Response, error) {
 	default:
 		return nil, errors.New("unknown method: " + f.Method)
 	}
-	if dom.Checked(".has-login") {
+	if dom.Checked("#has-login") {
 		jwt := r.user.JWT()
 		req.Headers["Authorization"] = "Bearer " + jwt
 	}

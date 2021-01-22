@@ -140,7 +140,7 @@ func (s *Socket) webSocketURL(f dom.Form) string {
 // onMessage is called when the websocket opens.
 func (s *Socket) onOpen(errC chan<- error) func() {
 	return func() {
-		dom.SetChecked(".has-websocket", true)
+		dom.SetChecked("#has-websocket", true)
 		errC <- nil
 	}
 }
@@ -160,8 +160,8 @@ func (s *Socket) closeWebSocket() {
 	s.webSocket.Set("onerror", nil)
 	s.webSocket.Set("onmessage", nil)
 	s.releaseWebSocketJsFuncs()
-	dom.SetChecked(".has-websocket", false)
-	dom.SetChecked(".has-game", false)
+	dom.SetChecked("#has-websocket", false)
+	dom.SetChecked("#has-game", false)
 	dom.SetChecked("#tab-lobby", true)
 }
 

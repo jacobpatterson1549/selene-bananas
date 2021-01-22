@@ -45,14 +45,14 @@ func (l *Log) Chat(text string) {
 
 // Clear clears the log.
 func (l *Log) Clear() {
-	dom.SetChecked(".has-log", false)
+	dom.SetChecked("#has-log", false)
 	logScrollElement := dom.QuerySelector(".log>.scroll")
 	logScrollElement.Set("innerHTML", "")
 }
 
 // add writes a log item with the specified class.
 func (l *Log) add(class, text string) {
-	dom.SetChecked(".has-log", true)
+	dom.SetChecked("#has-log", true)
 	clone := dom.CloneElement(".log>template")
 	cloneChildren := clone.Get("children")
 	logItemElement := cloneChildren.Index(0)

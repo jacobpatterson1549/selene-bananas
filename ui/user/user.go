@@ -77,7 +77,7 @@ func (u *User) login(jwt string) {
 	u.setUsernamesReadOnly(string(ui.Name))
 	dom.SetValue("input.points", strconv.Itoa(ui.Points))
 	dom.SetChecked("#tab-lobby", true)
-	dom.SetChecked(".has-login", true)
+	dom.SetChecked("#has-login", true)
 }
 
 // logoutButtonClick handles logging out the user when the button has been clicked.
@@ -89,7 +89,7 @@ func (u *User) logoutButtonClick(event js.Value) {
 // Logout logs out the user.
 func (u *User) Logout() {
 	u.Socket.Close()
-	dom.SetChecked(".has-login", false)
+	dom.SetChecked("#has-login", false)
 	u.setUsernamesReadOnly("")
 	dom.SetChecked("#tab-login-user", true)
 }

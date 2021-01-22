@@ -1,6 +1,6 @@
 <div class=tabs>
     <input type="text" class="jwt" hidden>
-    <input type="checkbox" class="has-login" hidden>
+    <input type="checkbox" id="has-login" hidden>
     <div class="tab logout-required">
         <input id="tab-login-user" type="radio" name="tab-group" checked>
         <label class="button" for="tab-login-user">Sign In</label>
@@ -29,7 +29,7 @@
             {{ template "lobby.html" . }}
         </div>
     </div>
-    <input type="checkbox" class="has-game" hidden>
+    <input type="checkbox" class="show-next" id="has-game" hidden>
     <div class="tab login-required">
         <input id="tab-game" type="radio" name="tab-group">
         <label class="button" for="tab-game">Game</label>
@@ -37,7 +37,7 @@
             {{ template "game.html" . }}
         </div>
     </div>
-    <input type="checkbox" class="has-final-boards" hidden>
+    <input type="checkbox" class="show-next" id="has-final-boards" hidden>
     <div class="tab login-required">
         <input id="tab-final-boards" type="radio" name="tab-group">
         <label class="button" for="tab-final-boards">Final Boards</label>
