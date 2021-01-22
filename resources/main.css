@@ -1,5 +1,7 @@
 .hide-next:checked + *,
 .show-next:not(:checked) + *,
+.hide-next,
+.show-next,
 .tabs>.tab>input,
 .tabs>.tab>.content,
 #has-login:checked ~ .logout-required,

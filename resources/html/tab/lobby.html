@@ -3,7 +3,7 @@
         {{ template "username.html" . }}
         <input type="submit" disabled>
     </form>
-    <input type="checkbox" class="hide-next" id="has-websocket" hidden>
+    <input type="checkbox" class="hide-next" id="has-websocket">
     <div>
         <form method="get" action="/lobby" onsubmit="lobby.connect(event)">
             <fieldset>

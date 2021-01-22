@@ -1,5 +1,5 @@
 <div class="game">
-    <input type="checkbox" class="show-next" id="game-create" hidden checked>
+    <input type="checkbox" class="show-next" id="game-create" checked>
     <form class="create" onsubmit="game.createWithConfig(event)">
         <fieldset>
             <div>
@@ -29,7 +29,7 @@
     <form class="info">
         <fieldset>
             <legend><label class="button" for="game-info" title="Information about the game.">Info</label></legend>
-            <input type="checkbox" class="hide-next" id="game-info" hidden checked>
+            <input type="checkbox" class="hide-next" id="game-info" checked>
             <div>
                 <label>
                     <div>Status:</div>
@@ -49,7 +49,7 @@
     <form class="chat" onsubmit="game.sendChat(event)">
         <fieldset>
             <legend><label class="button" for="game-chat" title="Send messages to the logs of other players in the game.">Chat</label></legend>
-            <input type="checkbox" class="show-next" id="game-chat" hidden checked>
+            <input type="checkbox" class="show-next" id="game-chat" checked>
             <div>
                 <label>
                     <div>Message</div>
@@ -62,7 +62,7 @@
     <form class="tile-length">
         <fieldset>
             <legend><label class="button" for="game-tile-length" title="Change the size of the tiles in the .">Tile Length</label></legend>
-            <input type="checkbox" class="show-next" id="game-tile-length" hidden>
+            <input type="checkbox" class="show-next" id="game-tile-length">
             <div>
                 <label>
                     <div>Pixels</div>
@@ -75,7 +75,7 @@
     <form class="rules">
         <fieldset>
             <legend><label class="button" for="game-rules" title="Rules for the game.">Rules</label></legend>
-            <input type="checkbox" class="show-next" id="game-rules" hidden>
+            <input type="checkbox" class="show-next" id="game-rules">
             <div>
                 <ul>
                 </ul>

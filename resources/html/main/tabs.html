@@ -29,7 +29,7 @@
             {{ template "lobby.html" . }}
         </div>
     </div>
-    <input type="checkbox" class="show-next" id="has-game" hidden>
+    <input type="checkbox" class="show-next" id="has-game">
     <div class="tab login-required">
         <input id="tab-game" type="radio" name="tab-group">
         <label class="button" for="tab-game">Game</label>
@@ -37,7 +37,7 @@
             {{ template "game.html" . }}
         </div>
     </div>
-    <input type="checkbox" class="show-next" id="has-final-boards" hidden>
+    <input type="checkbox" class="show-next" id="has-final-boards">
     <div class="tab login-required">
         <input id="tab-final-boards" type="radio" name="tab-group">
         <label class="button" for="tab-final-boards">Final Boards</label>
