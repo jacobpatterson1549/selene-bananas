@@ -194,7 +194,7 @@ func (s *Socket) readMessage() (*message.Message, error) {
 	}
 	m.PlayerName = s.playerName
 	if m.Game == nil {
-		return nil, fmt.Errorf("recieved message not relating to game")
+		return nil, fmt.Errorf("received message not relating to game")
 	}
 	return &m, nil
 }
