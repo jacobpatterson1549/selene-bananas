@@ -1,13 +1,11 @@
 .hide-next:checked + *,
-.show-next:not(:checked) + *,
 .hide-next,
-.show-next,
 .tabs>.tab>input,
 .tabs>.tab>.content,
 #has-login:checked ~ .logout-required,
 #has-login:not(:checked) ~ .login-required,
 #has-websocket:not(:checked) ~ .connected,
-#game-create:checked ~ :not(.create),
+#hide-game-create:not(:checked) ~ :not(.create),
 .move-state {
     display: none;
 }

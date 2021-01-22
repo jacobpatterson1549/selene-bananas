@@ -75,8 +75,8 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 
 // startCreate opens the game tab in create mode.
 func (g *Game) startCreate() {
-	g.setHas(true)
-	dom.SetChecked("#game-create", true)
+	g.hide(false)
+	dom.SetChecked("#hide-game-create", false)
 	dom.SetChecked("#tab-game", true)
 }
 
@@ -122,9 +122,9 @@ func (g *Game) join(event js.Value) {
 	g.setTabActive(m)
 }
 
-// setHas sets the #has-game input.
-func (g *Game) setHas(hasGame bool) {
-	dom.SetChecked("#has-game", hasGame)
+// hide sets the #hide-game input.
+func (g *Game) hide(hideGame bool) {
+	dom.SetChecked("#hide-game", hideGame)
 }
 
 // ID gets the ID of the game.
@@ -136,7 +136,7 @@ func (g Game) ID() game.ID {
 func (g *Game) Leave() {
 	g.id = 0
 	g.setFinalBoards(nil)
-	g.setHas(false)
+	g.hide(true)
 	dom.SetChecked("#tab-lobby", true)
 }
 
@@ -338,8 +338,8 @@ func (g *Game) resizeTiles() {
 
 // setTabActive performs the actions need to activate the game tab and create or join a game.
 func (g *Game) setTabActive(m message.Message) {
-	g.setHas(true)
-	dom.SetChecked("#game-create", false)
+	g.hide(false)
+	dom.SetChecked("#hide-game-create", true)
 	dom.SetChecked("#tab-game", true)
 	// the tab now has a size, so update the canvas and board
 	parentDivOffsetWidth := g.canvas.ParentDivOffsetWidth()
@@ -390,8 +390,8 @@ func (g *Game) setRules(rules []string) {
 // If no boards are specified, the tab is hidden.
 // The board canvas is always cleared, requiring the user to select one, if any.
 func (g *Game) setFinalBoards(finalBoards map[string]board.Board) {
-	hasFinalBoards := len(finalBoards) != 0
-	dom.SetChecked("#has-final-boards", hasFinalBoards)
+	hideFinalBoards := len(finalBoards) == 0
+	dom.SetChecked("#hide-final-boards", hideFinalBoards)
 	playersList := dom.QuerySelector(".final-boards .player-list form")
 	playersList.Set("innerHTML", "")
 	g.finalBoards = finalBoards

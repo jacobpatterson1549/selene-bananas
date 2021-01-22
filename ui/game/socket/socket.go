@@ -161,7 +161,7 @@ func (s *Socket) closeWebSocket() {
 	s.webSocket.Set("onmessage", nil)
 	s.releaseWebSocketJsFuncs()
 	dom.SetChecked("#has-websocket", false)
-	dom.SetChecked("#has-game", false)
+	dom.SetChecked("#hide-game", true)
 	dom.SetChecked("#tab-lobby", true)
 }
 

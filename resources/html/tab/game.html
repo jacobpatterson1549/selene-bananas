@@ -1,5 +1,5 @@
 <div class="game">
-    <input type="checkbox" class="show-next" id="game-create" checked>
+    <input type="checkbox" class="hide-next" id="hide-game-create">
     <form class="create" onsubmit="game.createWithConfig(event)">
         <fieldset>
             <div>
@@ -62,7 +62,7 @@
     <form class="tile-length">
         <fieldset>
             <legend><label class="button" for="game-tile-length" title="Change the size of the tiles in the .">Tile Length</label></legend>
-            <input type="checkbox" class="show-next" id="game-tile-length">
+            <input type="checkbox" class="hide-next" id="game-tile-length" checked>
             <div>
                 <label>
                     <div>Pixels</div>
@@ -75,7 +75,7 @@
     <form class="rules">
         <fieldset>
             <legend><label class="button" for="game-rules" title="Rules for the game.">Rules</label></legend>
-            <input type="checkbox" class="show-next" id="game-rules">
+            <input type="checkbox" class="hide-next" id="game-rules" checked>
             <div>
                 <ul>
                 </ul>
