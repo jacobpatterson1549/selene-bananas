@@ -54,11 +54,16 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	if err = ud.Setup(ctx); err != nil {
 		return nil, fmt.Errorf("setting up user dao: %w", err)
 	}
+	socketManagerConfig := socketManagerConfig(m, log, timeFunc)
+	socketManager, err := socketManagerConfig.NewManager()
+	if err != nil {
+		return nil, fmt.Errorf("creating socket manager ")
+	}
 	lobbyCfg, err := lobbyConfig(m, log, ud, timeFunc)
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby config: %w", err)
 	}
-	lobby, err := lobbyCfg.NewLobby()
+	lobby, err := lobbyCfg.NewLobby(socketManager)
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby: %w", err)
 	}
@@ -144,14 +149,11 @@ func lobbyConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int
 	if err != nil {
 		return nil, fmt.Errorf("creating game config: %w", err)
 	}
-	socketCfg := socketConfig(m, log, timeFunc)
 	cfg := lobby.Config{
-		Debug:      m.debugGame,
-		Log:        log,
-		MaxGames:   4,
-		MaxSockets: 32,
-		GameCfg:    *gameCfg,
-		SocketCfg:  socketCfg,
+		Debug:    m.debugGame,
+		Log:      log,
+		MaxGames: 4,
+		GameCfg:  *gameCfg,
 	}
 	return &cfg, nil
 }
@@ -193,16 +195,23 @@ func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int6
 	return &cfg, nil
 }
 
-// socketConfig creates the configuration for players connecting to the lobby and games.
-func socketConfig(m mainFlags, log *log.Logger, timeFunc func() int64) socket.Config {
-	cfg := socket.Config{
+// socketManagerConfig creates the configuration for creating new sockets (each tab that is connected to the lobby).
+func socketManagerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) socket.ManagerConfig {
+	socketCfg := socket.Config{
 		Debug:          m.debugGame,
 		Log:            log,
-		TimeFunc:       timeFunc,
+		Time:           timeFunc,
 		ReadWait:       60 * time.Second,
 		WriteWait:      10 * time.Second,
+		PingPeriod:     54 * time.Second, // readWait * 0.9
 		IdlePeriod:     15 * time.Minute,
 		HTTPPingPeriod: 10 * time.Minute,
+	}
+	cfg := socket.ManagerConfig{
+		Log:              log,
+		MaxSockets:       32,
+		MaxPlayerSockets: 5,
+		SocketConfig:     socketCfg,
 	}
 	return cfg
 }

@@ -9,23 +9,24 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
-	"github.com/jacobpatterson1549/selene-bananas/game/player"
 )
 
 type (
 	// Socket reads and writes messages to the browsers
-	Socket struct {
-		debug          bool
-		log            *log.Logger
-		conn           *websocket.Conn
-		timeFunc       func() int64
-		playerName     player.Name
-		active         bool
-		readWait       time.Duration
-		writeWait      time.Duration
-		pingPeriod     time.Duration
-		idlePeriod     time.Duration
-		httpPingPeriod time.Duration
+	Socket interface {
+		// Run writes Socket messages to the messages channel and reads incoming messages on separate goroutines.
+		// The Socket runs until the connection fails for an unexpected reason or the context is cancelled
+		// Messages the socket receives are sent to the read channel.
+		// Messages the socket sends are consumed from the read channel.
+		// TODO: remove CancelFunc arg.  This is an annoying circular reference.  Instead, the parent context should be cancelled.
+		Run(ctx context.Context, remove context.CancelFunc, read chan<- message.Message, write <-chan message.Message)
+	}
+
+	// gorillaWebSocket implements Socket for Gorilla Web Sockets.
+	gorillaWebSocket struct {
+		conn   *websocket.Conn
+		active bool
+		Config
 	}
 
 	// Config contains commonly shared Socket properties
@@ -34,13 +35,15 @@ type (
 		Debug bool
 		// Log is used to log errors and other information
 		Log *log.Logger
-		// TimeFunc is a function which should supply the current time since the unix epoch.
+		// Time is a function which should supply the current time since the unix epoch.
 		// Used to set ping/pong deadlines
-		TimeFunc func() int64
+		Time func() int64
 		// ReadWait is the amout of time that can pass between receiving client messages before timing out.
 		ReadWait time.Duration
 		// WriteWait is the amout of time that the socket can take to write a message.
 		WriteWait time.Duration
+		// PingPeriod is how often ping messages should be sent.  Should be less than ReadWait.
+		PingPeriod time.Duration
 		// IdlePeroid is the amount of time that can pass between handling messages that are not pings before the connection is idle and will be disconnected
 		IdlePeriod time.Duration
 		// HTTPPingPeriod is the amount of time between sending requests for the connection to send a http ping on a different socket
@@ -52,63 +55,58 @@ type (
 var errSocketClosed = fmt.Errorf("socket closed")
 
 // NewSocket creates a socket
-func (cfg Config) NewSocket(conn *websocket.Conn, playerName player.Name) (*Socket, error) {
-	if err := cfg.validate(conn, playerName); err != nil {
+func (cfg Config) NewSocket(conn *websocket.Conn) (Socket, error) {
+	if err := cfg.validate(conn); err != nil {
 		return nil, fmt.Errorf("creating socket: validation: %w", err)
 	}
-	pingPeriod := cfg.ReadWait * 9 / 10
-	s := Socket{
-		debug:          cfg.Debug,
-		log:            cfg.Log,
-		conn:           conn,
-		timeFunc:       cfg.TimeFunc,
-		playerName:     playerName,
-		readWait:       cfg.ReadWait,
-		writeWait:      cfg.WriteWait,
-		pingPeriod:     pingPeriod,
-		idlePeriod:     cfg.IdlePeriod,
-		httpPingPeriod: cfg.HTTPPingPeriod,
+	g := gorillaWebSocket{
+		conn:   conn,
+		Config: cfg,
 	}
-	return &s, nil
+	return &g, nil
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(conn *websocket.Conn, playerName player.Name) error {
+func (cfg Config) validate(conn *websocket.Conn) error {
 	switch {
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")
 	case conn == nil:
 		return fmt.Errorf("websocket connection required")
-	case cfg.TimeFunc == nil:
+	case cfg.Time == nil:
 		return fmt.Errorf("time func required required")
-	case len(playerName) == 0:
-		return fmt.Errorf("player name required")
 	case cfg.ReadWait <= 0:
 		return fmt.Errorf("positive read wait period required")
 	case cfg.WriteWait <= 0:
 		return fmt.Errorf("positive write wait period required")
+	case cfg.PingPeriod <= 0:
+		return fmt.Errorf("positive ping period required")
 	case cfg.IdlePeriod <= 0:
 		return fmt.Errorf("positive idle period required")
 	case cfg.HTTPPingPeriod <= 0:
 		return fmt.Errorf("positive http ping period required")
+	case cfg.PingPeriod >= cfg.ReadWait:
+		return fmt.Errorf("ping period should be less than read wait")
 	}
 	return nil
 }
 
-// Run writes Socket messages to the messages channel and reads incoming messages on separate goroutines.
-// The Socket runs until the connection fails for an unexpected reason or a message is received on the "done"< channel.
-// Messages the socket receives are sent to the provided channel.
-// Messages the socket sends are consumed from the returned channel.
-func (s *Socket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, readMessages chan<- message.Message, writeMessages <-chan message.Message) {
+func (s *gorillaWebSocket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, readMessages chan<- message.Message, writeMessages <-chan message.Message) {
 	readCtx, readCancelFunc := context.WithCancel(ctx)
 	writeCtx, writeCancelFunc := context.WithCancel(ctx)
 	go s.readMessages(readCtx, removeSocketFunc, writeCancelFunc, readMessages)
 	s.writeMessages(writeCtx, readCancelFunc, writeMessages)
 }
 
+// String implements the fmtStringer interface, uniquely identifying the socket by its address
+func (s gorillaWebSocket) String() string {
+	a := s.conn.RemoteAddr()
+	return fmt.Sprintf("socket on %v at %v", a.Network(), a.String())
+}
+
 // readMessages receives messages from the connected socket and writes the to the messages channel.
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancelFunc context.CancelFunc, messages chan<- message.Message) {
+func (s *gorillaWebSocket) readMessages(ctx context.Context, removeSocketFunc, writeCancelFunc context.CancelFunc, messages chan<- message.Message) {
 	defer func() {
 		removeSocketFunc()
 		writeCancelFunc()
@@ -118,14 +116,14 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 		m, err := s.readMessage()
 		select {
 		case <-ctx.Done():
-			CloseConn(s.conn, s.log, "server shut down")
+			s.closeConn("server shut down")
 			return
 		default:
 			if err != nil {
 				if err != errSocketClosed {
-					reason := fmt.Sprintf("reading socket messages stopped for %v: %v", s.playerName, err)
-					s.log.Print(reason)
-					CloseConn(s.conn, s.log, reason)
+					reason := fmt.Sprintf("reading socket messages stopped for player %v: %v", s, err)
+					s.Log.Print(reason)
+					s.closeConn(reason)
 				}
 				return
 			}
@@ -137,17 +135,17 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 
 // writeMessages sends messages added to the messages channel to the connected socket.
 // messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.CancelFunc, messages <-chan message.Message) {
-	pingTicker := time.NewTicker(s.pingPeriod)
-	httpPingTicker := time.NewTicker(s.httpPingPeriod)
-	idleTicker := time.NewTicker(s.idlePeriod)
+func (s *gorillaWebSocket) writeMessages(ctx context.Context, readCancelFunc context.CancelFunc, messages <-chan message.Message) {
+	pingTicker := time.NewTicker(s.PingPeriod)
+	httpPingTicker := time.NewTicker(s.HTTPPingPeriod)
+	idleTicker := time.NewTicker(s.IdlePeriod)
 	var closeReason string
 	defer func() {
 		pingTicker.Stop()
 		httpPingTicker.Stop()
 		idleTicker.Stop()
 		readCancelFunc()
-		CloseConn(s.conn, s.log, closeReason)
+		s.closeConn(closeReason)
 	}()
 	var err error
 	for { // BLOCKING
@@ -172,8 +170,8 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 		}
 		if err != nil {
 			if err != errSocketClosed {
-				closeReason = fmt.Sprintf("writing socket messages stopped for %v: %v", s.playerName, err)
-				s.log.Print(closeReason)
+				closeReason = fmt.Sprintf("writing socket messages stopped for player %v: %v", s, err)
+				s.Log.Print(closeReason)
 			}
 			return
 		}
@@ -181,7 +179,7 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 }
 
 // readMessage reads the next message from the connection.
-func (s *Socket) readMessage() (*message.Message, error) {
+func (s *gorillaWebSocket) readMessage() (*message.Message, error) {
 	var m message.Message
 	if err := s.conn.ReadJSON(&m); err != nil { // BLOCKING
 		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
@@ -189,10 +187,10 @@ func (s *Socket) readMessage() (*message.Message, error) {
 		}
 		return nil, errSocketClosed
 	}
-	if s.debug {
-		s.log.Printf("socket reading message with type %v", m.Type)
+	if s.Debug {
+		s.Log.Printf("socket reading message with type %v", m.Type)
 	}
-	m.PlayerName = s.playerName
+	// m.PlayerName = s.playerName // TODO: ensure socket manager or lobby adds player name to message
 	if m.Game == nil {
 		return nil, fmt.Errorf("received message not relating to game")
 	}
@@ -200,9 +198,9 @@ func (s *Socket) readMessage() (*message.Message, error) {
 }
 
 // writeMessage writes a message to the connection.
-func (s *Socket) writeMessage(m message.Message) error {
-	if s.debug {
-		s.log.Printf("socket writing message with type %v", m.Type)
+func (s *gorillaWebSocket) writeMessage(m message.Message) error {
+	if s.Debug {
+		s.Log.Printf("socket writing message with type %v", m.Type)
 	}
 	if err := s.conn.WriteJSON(m); err != nil {
 		return fmt.Errorf("writing socket message: %v", err)
@@ -214,7 +212,7 @@ func (s *Socket) writeMessage(m message.Message) error {
 }
 
 // writePing writes a ping message to the connection.
-func (s *Socket) writePing() error {
+func (s *gorillaWebSocket) writePing() error {
 	if err := s.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 		return err
 	}
@@ -222,23 +220,23 @@ func (s *Socket) writePing() error {
 }
 
 // refreshDeadline is called when a wait needs to be refreshed.
-func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
-	now := s.timeFunc()
+func (s *gorillaWebSocket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
+	now := s.Time()
 	nowTime := time.Unix(now, 0)
 	deadline := nowTime.Add(period)
 	if err := refreshDeadlineFunc(deadline); err != nil {
 		err = fmt.Errorf("error refreshing ping/pong deadline: %w", err)
-		s.log.Print(err)
+		s.Log.Print(err)
 		return err
 	}
 	return nil
 }
 
-// CloseConn closes the websocket connection without reporting any errors.
-func CloseConn(conn *websocket.Conn, log *log.Logger, reason string) {
+// closeConn closes the websocket connection without reporting any errors.
+func (s *gorillaWebSocket) closeConn(reason string) {
 	data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
-	if err := conn.WriteMessage(websocket.CloseMessage, data); err != nil {
-		log.Printf("closing connection: writing close message: %v", err)
+	if err := s.conn.WriteMessage(websocket.CloseMessage, data); err != nil {
+		s.Log.Printf("closing connection: writing close message: %v", err)
 	}
-	conn.Close()
+	s.conn.Close()
 }

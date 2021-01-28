@@ -2,7 +2,7 @@
 
 BUILD_DIR := build
 GO_LIST := go list
-GO_TEST := go test --cover # -race
+GO_TEST := go test --cover -timeout 30s # -race # -run TestFuncName
 GO_BUILD := go build # -race
 GO_BENCH := go test -bench=.
 GO_WASM_ARGS := GOOS=js GOARCH=wasm
