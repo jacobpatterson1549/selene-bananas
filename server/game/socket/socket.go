@@ -5,16 +5,16 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 )
 
 type (
 	// Socket reads and writes messages to the browsers
 	Socket struct {
-		conn   *websocket.Conn
+		conn   Conn
 		active bool
 		Config
 	}
@@ -40,12 +40,30 @@ type (
 		// Heroku servers shut down if 30 minutes passess between HTTP requests
 		HTTPPingPeriod time.Duration
 	}
+
+	// Conn is the connection than backs the socket
+	Conn interface {
+		// ReadJSON reads the next json message from the connection.
+		ReadJSON(v interface{}) error
+		// WriteJSON writes the message as json to the connection.
+		WriteJSON(v interface{}) error
+		// Close closes the connection.
+		Close() error
+		// WritePing writes a ping message on the connection.
+		WritePing() error
+		// WriteClose writes a close message on the connection and always closes it.
+		WriteClose(reason string) error
+		// IsUnexpectedCloseError determines if the error message is an unexpected close error.
+		IsUnexpectedCloseError(err error) bool
+		// RemoteAddr gets the remote network address of the connection.
+		RemoteAddr() net.Addr
+	}
 )
 
 var errSocketClosed = fmt.Errorf("socket closed")
 
 // NewSocket creates a socket
-func (cfg Config) NewSocket(conn *websocket.Conn) (*Socket, error) {
+func (cfg Config) NewSocket(conn Conn) (*Socket, error) {
 	if err := cfg.validate(conn); err != nil {
 		return nil, fmt.Errorf("creating socket: validation: %w", err)
 	}
@@ -57,7 +75,7 @@ func (cfg Config) NewSocket(conn *websocket.Conn) (*Socket, error) {
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(conn *websocket.Conn) error {
+func (cfg Config) validate(conn Conn) error {
 	switch {
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")
@@ -151,7 +169,7 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 		case m := <-messages:
 			err = s.writeMessage(m)
 		case <-pingTicker.C:
-			err = s.writePing()
+			err = s.conn.WritePing()
 		case <-httpPingTicker.C:
 			err = s.writeMessage(message.Message{
 				Type: message.SocketHTTPPing,
@@ -177,7 +195,7 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 func (s *Socket) readMessage() (*message.Message, error) {
 	var m message.Message
 	if err := s.conn.ReadJSON(&m); err != nil { // BLOCKING
-		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
+		if s.conn.IsUnexpectedCloseError(err) {
 			return nil, fmt.Errorf("unexpected socket closure: %v", err)
 		}
 		return nil, errSocketClosed
@@ -206,14 +224,6 @@ func (s *Socket) writeMessage(m message.Message) error {
 	return nil
 }
 
-// writePing writes a ping message to the connection.
-func (s *Socket) writePing() error {
-	if err := s.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-		return err
-	}
-	return nil
-}
-
 // refreshDeadline is called when a wait needs to be refreshed.
 func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
 	now := s.TimeFunc()
@@ -229,9 +239,6 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 
 // closeConn closes the websocket connection without reporting any errors.
 func (s *Socket) closeConn(reason string) {
-	data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
-	if err := s.conn.WriteMessage(websocket.CloseMessage, data); err != nil {
-		s.Log.Printf("closing connection: writing close message: %v", err)
-	}
+	s.conn.WriteClose(reason)
 	s.conn.Close()
 }

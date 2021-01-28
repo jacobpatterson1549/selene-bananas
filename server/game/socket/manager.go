@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/websocket"
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
@@ -15,7 +14,7 @@ import (
 type (
 	// Manager handles sending messages to different sockets,
 	Manager struct {
-		upgrader      *websocket.Upgrader
+		upgrader      Upgrader
 		playerSockets map[player.Name][]Socket
 		playerGames   map[player.Name]map[game.ID]Socket
 		ManagerConfig
@@ -32,6 +31,12 @@ type (
 		// The config for creating new sockets
 		SocketConfig Config
 	}
+
+	// Upgrader turns a http request into a websocket.
+	Upgrader interface {
+		// Upgrade creates a Conn from the HTTP request.
+		Upgrade(w http.ResponseWriter, r *http.Request) (Conn, error)
+	}
 )
 
 // NewManager creates a new socket manager from the config.
@@ -39,7 +44,7 @@ func (cfg ManagerConfig) NewManager() (*Manager, error) {
 	if err := cfg.validate(); err != nil {
 		return nil, fmt.Errorf("creating socket manager: validation: %w", err)
 	}
-	u := new(websocket.Upgrader)
+	u := newGorillaUpgrader()
 	sm := Manager{
 		upgrader:      u,
 		playerSockets: make(map[player.Name][]Socket, cfg.MaxSockets),
@@ -77,7 +82,11 @@ func (sm *Manager) AddSocket(pn player.Name, w http.ResponseWriter, r *http.Requ
 	if len(sm.playerSockets[pn]) >= sm.MaxPlayerSockets {
 		return fmt.Errorf("player has reached quota of sockets, close an existing one")
 	}
-	conn, err := sm.upgrader.Upgrade(w, r, nil)
+	c, err := sm.upgrader.Upgrade(w, r)
+	conn, ok := c.(Conn)
+	if !ok {
+		return fmt.Errorf("%T is an invalid Conn", c)
+	}
 	if err != nil {
 		return fmt.Errorf("upgrading to websocket connection: %w", err)
 	}

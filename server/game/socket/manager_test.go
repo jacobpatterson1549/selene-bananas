@@ -1,58 +1,30 @@
 package socket
 
 import (
-	"bufio"
-	"bytes"
-	"io"
+	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
-	"net/http/httptest"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 )
 
 type (
-	MockHijacker struct {
-		http.ResponseWriter
-		net.Conn
-		*bufio.ReadWriter
-	}
-
-	RedirectConn struct {
-		net.Conn
-		io.Writer
+	upgradeFunc  func(w http.ResponseWriter, r *http.Request) (Conn, error)
+	mockUpgrader struct {
+		upgradeFunc upgradeFunc
 	}
 )
 
-func (h MockHijacker) Header() http.Header {
-	return h.ResponseWriter.Header()
+func (u mockUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn, error) {
+	return u.upgradeFunc(w, r)
 }
 
-func (h MockHijacker) Write(p []byte) (int, error) {
-	return h.ReadWriter.Write(p)
-}
-
-func (h MockHijacker) WriteHeader(statusCode int) {
-	h.ResponseWriter.WriteHeader(statusCode)
-}
-
-func (h MockHijacker) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return h.Conn, h.ReadWriter, nil
-}
-
-func (w RedirectConn) Write(p []byte) (int, error) {
-	return w.Writer.Write(p)
-}
-
-func newSocketManager(t *testing.T, maxSockets int, maxPlayerSockets int) *Manager {
+func newSocketManager(maxSockets int, maxPlayerSockets int, uf upgradeFunc) *Manager {
 	log := log.New(ioutil.Discard, "test", log.LstdFlags)
 	timeFunc := func() int64 { return 21 }
 	socketCfg := Config{
@@ -70,46 +42,22 @@ func newSocketManager(t *testing.T, maxSockets int, maxPlayerSockets int) *Manag
 		MaxPlayerSockets: maxPlayerSockets,
 		SocketConfig:     socketCfg,
 	}
-	sm, err := managerCfg.NewManager()
-	if err != nil {
-		t.Fatalf("creating basic socket manager: %v", err)
-	}
-	return sm
-}
 
-func newWebSocketResponse() http.ResponseWriter {
-	w := httptest.NewRecorder()
-	client, _ := net.Pipe()
-	sr := strings.NewReader("reader")
-	br := bufio.NewReader(sr)
-	var bb bytes.Buffer
-	bw := bufio.NewWriter(&bb)
-	rw := bufio.NewReadWriter(br, bw)
-	rc := RedirectConn{
-		Conn:   client,
-		Writer: bw,
+	sm := Manager{
+		upgrader: mockUpgrader{
+			upgradeFunc: uf,
+		},
+		playerSockets: make(map[player.Name][]Socket, managerCfg.MaxSockets),
+		playerGames:   make(map[player.Name]map[game.ID]Socket),
+		ManagerConfig: managerCfg,
 	}
-	h := MockHijacker{
-		Conn:           rc,
-		ReadWriter:     rw,
-		ResponseWriter: w,
-	}
-	return &h
-}
-
-func newWebSocketRequest() *http.Request {
-	r := httptest.NewRequest("GET", "/", nil)
-	r.Header.Add("Connection", "upgrade")
-	r.Header.Add("Upgrade", "websocket")
-	r.Header.Add("Sec-Websocket-Version", "13")
-	r.Header.Add("Sec-WebSocket-Key", "3D8mi1hwk11RYYWU8rsdIg==")
-	return r
+	return &sm
 }
 
 func mockConnection(playerName string) (player.Name, http.ResponseWriter, *http.Request) {
 	pn := player.Name(playerName)
-	w := newWebSocketResponse()
-	r := newWebSocketRequest()
+	var w http.ResponseWriter
+	var r *http.Request
 	return pn, w, r
 }
 
@@ -154,7 +102,6 @@ func TestNewManager(t *testing.T) {
 			},
 			wantOk: true,
 			want: Manager{
-				upgrader:      &websocket.Upgrader{},
 				playerSockets: map[player.Name][]Socket{},
 				playerGames:   map[player.Name]map[game.ID]Socket{},
 				ManagerConfig: ManagerConfig{
@@ -166,7 +113,7 @@ func TestNewManager(t *testing.T) {
 		},
 	}
 	for i, test := range newManagerTests {
-		sm, err := test.ManagerConfig.NewManager()
+		got, err := test.ManagerConfig.NewManager()
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -174,14 +121,22 @@ func TestNewManager(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
-		case !reflect.DeepEqual(test.want, *sm):
-			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, *sm)
+		case got.upgrader == nil:
+			t.Errorf("Test %v: upgrader nil", i)
+		default:
+			got.upgrader = nil
+			if !reflect.DeepEqual(test.want, *got) {
+				t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, *got)
+			}
 		}
 	}
 }
 
 func TestAddSocket(t *testing.T) {
-	m := newSocketManager(t, 1, 1)
+	uf := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
+		return &mockConn{}, nil
+	}
+	m := newSocketManager(1, 1, uf)
 	pn, w, r := mockConnection("selene")
 	err := m.AddSocket(pn, w, r)
 	if err != nil {
@@ -197,9 +152,11 @@ func TestAddSocket(t *testing.T) {
 }
 
 func TestAddSocketBadConnUpgrade(t *testing.T) {
-	m := newSocketManager(t, 1, 1)
+	uf := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
+		return nil, fmt.Errorf("upgrade error")
+	}
+	m := newSocketManager(1, 1, uf)
 	pn, w, r := mockConnection("selene")
-	r.Method = "POST"
 	err := m.AddSocket(pn, w, r)
 	if err == nil {
 		t.Error("wanted error creating socket with bad request")
@@ -207,7 +164,10 @@ func TestAddSocketBadConnUpgrade(t *testing.T) {
 }
 
 func TestAddSocketBadSocketConfig(t *testing.T) {
-	m := newSocketManager(t, 1, 1)
+	uf := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
+		return &mockConn{}, nil
+	}
+	m := newSocketManager(1, 1, uf)
 	m.ManagerConfig.SocketConfig.TimeFunc = nil
 	pn, w, r := mockConnection("selene")
 	err := m.AddSocket(pn, w, r)
@@ -217,7 +177,10 @@ func TestAddSocketBadSocketConfig(t *testing.T) {
 }
 
 func TestAddSocketMax(t *testing.T) {
-	sm := newSocketManager(t, 1, 1)
+	uf := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
+		return &mockConn{}, nil
+	}
+	sm := newSocketManager(1, 1, uf)
 	pn, w, r := mockConnection("selene")
 	err := sm.AddSocket(pn, w, r)
 	if err != nil {
@@ -231,7 +194,10 @@ func TestAddSocketMax(t *testing.T) {
 }
 
 func TestAddSocketTwo(t *testing.T) {
-	sm := newSocketManager(t, 2, 2)
+	uf := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
+		return &mockConn{}, nil
+	}
+	sm := newSocketManager(2, 2, uf)
 	pn1, w, r := mockConnection("fred")
 	err := sm.AddSocket(pn1, w, r)
 	if err != nil {
@@ -252,7 +218,10 @@ func TestAddSocketTwo(t *testing.T) {
 }
 
 func TestAddSocketTwoSamePlayer(t *testing.T) {
-	sm := newSocketManager(t, 2, 1)
+	uf := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
+		return &mockConn{}, nil
+	}
+	sm := newSocketManager(2, 1, uf)
 	pn, w, r := mockConnection("fred")
 	err := sm.AddSocket(pn, w, r)
 	if err != nil {
@@ -266,6 +235,6 @@ func TestAddSocketTwoSamePlayer(t *testing.T) {
 }
 
 // func TestJoinGame(t *testing.T) {
-// 	m := newSocketManager(t, 1, 1)
+// 	m := newSocketManager(1, 1)
 // 	s := mockSocket()
 // }
