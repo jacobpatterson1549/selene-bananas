@@ -9,10 +9,13 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 )
 
@@ -49,12 +52,12 @@ func (w RedirectConn) Write(p []byte) (int, error) {
 	return w.Writer.Write(p)
 }
 
-func newSocketManager(t *testing.T, maxSockets int, maxPlayerSockets int) Manager {
+func newSocketManager(t *testing.T, maxSockets int, maxPlayerSockets int) *Manager {
 	log := log.New(ioutil.Discard, "test", log.LstdFlags)
 	timeFunc := func() int64 { return 21 }
 	socketCfg := Config{
 		Log:            log,
-		Time:           timeFunc,
+		TimeFunc:       timeFunc,
 		ReadWait:       2 * time.Second,
 		WriteWait:      1 * time.Second,
 		PingPeriod:     1 * time.Second,
@@ -67,11 +70,11 @@ func newSocketManager(t *testing.T, maxSockets int, maxPlayerSockets int) Manage
 		MaxPlayerSockets: maxPlayerSockets,
 		SocketConfig:     socketCfg,
 	}
-	m, err := managerCfg.NewManager()
+	sm, err := managerCfg.NewManager()
 	if err != nil {
 		t.Fatalf("creating basic socket manager: %v", err)
 	}
-	return m
+	return sm
 }
 
 func newWebSocketResponse() http.ResponseWriter {
@@ -110,54 +113,69 @@ func mockConnection(playerName string) (player.Name, http.ResponseWriter, *http.
 	return pn, w, r
 }
 
-func TestManagerConfigValidate(t *testing.T) {
+func TestNewManager(t *testing.T) {
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
-	managerConfigValidateTests := []struct {
-		Log              *log.Logger
-		MaxSockets       int
-		MaxPlayerSockets int
-		wantOk           bool
+	newManagerTests := []struct {
+		ManagerConfig ManagerConfig
+		wantOk        bool
+		want          Manager
 	}{
 		{},
 		{ // no log
-			MaxSockets:       1,
-			MaxPlayerSockets: 1,
+			ManagerConfig: ManagerConfig{
+				MaxSockets:       1,
+				MaxPlayerSockets: 1,
+			},
 		},
 		{ // low maxSockets
-			Log:              testLog,
-			MaxPlayerSockets: 1,
+			ManagerConfig: ManagerConfig{
+				Log:              testLog,
+				MaxPlayerSockets: 1,
+			},
 		},
 		{ // low maxPlayerSockets
-			Log:        testLog,
-			MaxSockets: 1,
+			ManagerConfig: ManagerConfig{
+				Log:        testLog,
+				MaxSockets: 1,
+			},
 		},
 		{ // maxSockets < maxPlayerSockets
-			Log:              testLog,
-			MaxSockets:       1,
-			MaxPlayerSockets: 2,
+			ManagerConfig: ManagerConfig{
+				Log:              testLog,
+				MaxSockets:       1,
+				MaxPlayerSockets: 2,
+			},
 		},
 		{
-			Log:              testLog,
-			MaxSockets:       10,
-			MaxPlayerSockets: 3,
-			wantOk:           true,
+			ManagerConfig: ManagerConfig{
+				Log:              testLog,
+				MaxSockets:       10,
+				MaxPlayerSockets: 3,
+			},
+			wantOk: true,
+			want: Manager{
+				upgrader:      &websocket.Upgrader{},
+				playerSockets: map[player.Name][]Socket{},
+				playerGames:   map[player.Name]map[game.ID]Socket{},
+				ManagerConfig: ManagerConfig{
+					Log:              testLog,
+					MaxSockets:       10,
+					MaxPlayerSockets: 3,
+				},
+			},
 		},
 	}
-	for i, test := range managerConfigValidateTests {
-		cfg := ManagerConfig{
-			Log:              test.Log,
-			MaxSockets:       test.MaxSockets,
-			MaxPlayerSockets: test.MaxPlayerSockets,
-			// Not setting SocketConfig here because it is checked every time a socket is created
-		}
-		err := cfg.validate()
+	for i, test := range newManagerTests {
+		sm, err := test.ManagerConfig.NewManager()
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case !reflect.DeepEqual(test.want, *sm):
+			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, *sm)
 		}
 	}
 }
@@ -169,8 +187,7 @@ func TestAddSocket(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unwanted error adding socket: %v", err)
 	}
-	gwsm := m.(*gorillaWebSocketManager)
-	n := gwsm.numSockets()
+	n := m.numSockets()
 	switch {
 	case err != nil:
 		t.Errorf("problem adding socket: %v", err)
@@ -191,7 +208,7 @@ func TestAddSocketBadConnUpgrade(t *testing.T) {
 
 func TestAddSocketBadSocketConfig(t *testing.T) {
 	m := newSocketManager(t, 1, 1)
-	m.(*gorillaWebSocketManager).Config.SocketConfig.Time = nil
+	m.ManagerConfig.SocketConfig.TimeFunc = nil
 	pn, w, r := mockConnection("selene")
 	err := m.AddSocket(pn, w, r)
 	if err == nil {
@@ -200,50 +217,49 @@ func TestAddSocketBadSocketConfig(t *testing.T) {
 }
 
 func TestAddSocketMax(t *testing.T) {
-	m := newSocketManager(t, 1, 1)
+	sm := newSocketManager(t, 1, 1)
 	pn, w, r := mockConnection("selene")
-	err := m.AddSocket(pn, w, r)
+	err := sm.AddSocket(pn, w, r)
 	if err != nil {
 		t.Fatalf("unwanted error adding socket: %v", err)
 	}
 	pn, w, r = mockConnection("selene")
-	err = m.AddSocket(pn, w, r) // only one socket allowed
+	err = sm.AddSocket(pn, w, r) // only one socket allowed
 	if err == nil {
 		t.Errorf("wanted error adding socket when maxSockets reached")
 	}
 }
 
 func TestAddSocketTwo(t *testing.T) {
-	m := newSocketManager(t, 2, 2)
+	sm := newSocketManager(t, 2, 2)
 	pn1, w, r := mockConnection("fred")
-	err := m.AddSocket(pn1, w, r)
+	err := sm.AddSocket(pn1, w, r)
 	if err != nil {
 		t.Fatalf("unwanted error adding socket: %v", err)
 	}
 	pn2, w, r := mockConnection("barney")
-	err = m.AddSocket(pn2, w, r)
-	gwsm := m.(*gorillaWebSocketManager)
+	err = sm.AddSocket(pn2, w, r)
 	switch {
 	case err != nil:
 		t.Errorf("problem adding socket: %v", err)
-	case len(gwsm.playerSockets) != 2:
-		t.Errorf("wanted 2 players to have a socket, got %v", len(gwsm.playerSockets))
-	case len(gwsm.playerSockets[pn1]) != 1:
-		t.Errorf("wanted 1 socket for %v, got %v", pn1, len(gwsm.playerSockets[pn1]))
-	case len(gwsm.playerSockets[pn2]) != 1:
-		t.Errorf("wanted 1 socket for %v, got %v", pn2, len(gwsm.playerSockets[pn2]))
+	case len(sm.playerSockets) != 2:
+		t.Errorf("wanted 2 players to have a socket, got %v", len(sm.playerSockets))
+	case len(sm.playerSockets[pn1]) != 1:
+		t.Errorf("wanted 1 socket for %v, got %v", pn1, len(sm.playerSockets[pn1]))
+	case len(sm.playerSockets[pn2]) != 1:
+		t.Errorf("wanted 1 socket for %v, got %v", pn2, len(sm.playerSockets[pn2]))
 	}
 }
 
 func TestAddSocketTwoSamePlayer(t *testing.T) {
-	m := newSocketManager(t, 2, 1)
+	sm := newSocketManager(t, 2, 1)
 	pn, w, r := mockConnection("fred")
-	err := m.AddSocket(pn, w, r)
+	err := sm.AddSocket(pn, w, r)
 	if err != nil {
 		t.Fatalf("unwanted error adding socket: %v", err)
 	}
 	pn, w, r = mockConnection("fred")
-	err = m.AddSocket(pn, w, r)
+	err = sm.AddSocket(pn, w, r)
 	if err == nil {
 		t.Errorf("wanted error adding socket for same player over maxPlayerSockets")
 	}

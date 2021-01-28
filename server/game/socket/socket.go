@@ -13,17 +13,7 @@ import (
 
 type (
 	// Socket reads and writes messages to the browsers
-	Socket interface {
-		// Run writes Socket messages to the messages channel and reads incoming messages on separate goroutines.
-		// The Socket runs until the connection fails for an unexpected reason or the context is cancelled
-		// Messages the socket receives are sent to the read channel.
-		// Messages the socket sends are consumed from the read channel.
-		// TODO: remove CancelFunc arg.  This is an annoying circular reference.  Instead, the parent context should be cancelled.
-		Run(ctx context.Context, remove context.CancelFunc, read chan<- message.Message, write <-chan message.Message)
-	}
-
-	// gorillaWebSocket implements Socket for Gorilla Web Sockets.
-	gorillaWebSocket struct {
+	Socket struct {
 		conn   *websocket.Conn
 		active bool
 		Config
@@ -35,9 +25,9 @@ type (
 		Debug bool
 		// Log is used to log errors and other information
 		Log *log.Logger
-		// Time is a function which should supply the current time since the unix epoch.
+		// TimeFunc is a function which should supply the current time since the unix epoch.
 		// Used to set ping/pong deadlines
-		Time func() int64
+		TimeFunc func() int64
 		// ReadWait is the amout of time that can pass between receiving client messages before timing out.
 		ReadWait time.Duration
 		// WriteWait is the amout of time that the socket can take to write a message.
@@ -55,15 +45,15 @@ type (
 var errSocketClosed = fmt.Errorf("socket closed")
 
 // NewSocket creates a socket
-func (cfg Config) NewSocket(conn *websocket.Conn) (Socket, error) {
+func (cfg Config) NewSocket(conn *websocket.Conn) (*Socket, error) {
 	if err := cfg.validate(conn); err != nil {
 		return nil, fmt.Errorf("creating socket: validation: %w", err)
 	}
-	g := gorillaWebSocket{
+	s := Socket{
 		conn:   conn,
 		Config: cfg,
 	}
-	return &g, nil
+	return &s, nil
 }
 
 // validate ensures the configuration has no errors.
@@ -73,7 +63,7 @@ func (cfg Config) validate(conn *websocket.Conn) error {
 		return fmt.Errorf("log required")
 	case conn == nil:
 		return fmt.Errorf("websocket connection required")
-	case cfg.Time == nil:
+	case cfg.TimeFunc == nil:
 		return fmt.Errorf("time func required required")
 	case cfg.ReadWait <= 0:
 		return fmt.Errorf("positive read wait period required")
@@ -91,7 +81,12 @@ func (cfg Config) validate(conn *websocket.Conn) error {
 	return nil
 }
 
-func (s *gorillaWebSocket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, readMessages chan<- message.Message, writeMessages <-chan message.Message) {
+// Run writes Socket messages to the messages channel and reads incoming messages on separate goroutines.
+// The Socket runs until the connection fails for an unexpected reason or the context is cancelled
+// Messages the socket receives are sent to the read channel.
+// Messages the socket sends are consumed from the read channel.
+// TODO: remove CancelFunc arg.  This is an annoying circular reference.  Instead, the parent context should be cancelled.
+func (s *Socket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, readMessages chan<- message.Message, writeMessages <-chan message.Message) {
 	readCtx, readCancelFunc := context.WithCancel(ctx)
 	writeCtx, writeCancelFunc := context.WithCancel(ctx)
 	go s.readMessages(readCtx, removeSocketFunc, writeCancelFunc, readMessages)
@@ -99,14 +94,14 @@ func (s *gorillaWebSocket) Run(ctx context.Context, removeSocketFunc context.Can
 }
 
 // String implements the fmtStringer interface, uniquely identifying the socket by its address
-func (s gorillaWebSocket) String() string {
+func (s Socket) String() string {
 	a := s.conn.RemoteAddr()
 	return fmt.Sprintf("socket on %v at %v", a.Network(), a.String())
 }
 
 // readMessages receives messages from the connected socket and writes the to the messages channel.
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *gorillaWebSocket) readMessages(ctx context.Context, removeSocketFunc, writeCancelFunc context.CancelFunc, messages chan<- message.Message) {
+func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancelFunc context.CancelFunc, messages chan<- message.Message) {
 	defer func() {
 		removeSocketFunc()
 		writeCancelFunc()
@@ -135,7 +130,7 @@ func (s *gorillaWebSocket) readMessages(ctx context.Context, removeSocketFunc, w
 
 // writeMessages sends messages added to the messages channel to the connected socket.
 // messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *gorillaWebSocket) writeMessages(ctx context.Context, readCancelFunc context.CancelFunc, messages <-chan message.Message) {
+func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.CancelFunc, messages <-chan message.Message) {
 	pingTicker := time.NewTicker(s.PingPeriod)
 	httpPingTicker := time.NewTicker(s.HTTPPingPeriod)
 	idleTicker := time.NewTicker(s.IdlePeriod)
@@ -179,7 +174,7 @@ func (s *gorillaWebSocket) writeMessages(ctx context.Context, readCancelFunc con
 }
 
 // readMessage reads the next message from the connection.
-func (s *gorillaWebSocket) readMessage() (*message.Message, error) {
+func (s *Socket) readMessage() (*message.Message, error) {
 	var m message.Message
 	if err := s.conn.ReadJSON(&m); err != nil { // BLOCKING
 		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
@@ -198,7 +193,7 @@ func (s *gorillaWebSocket) readMessage() (*message.Message, error) {
 }
 
 // writeMessage writes a message to the connection.
-func (s *gorillaWebSocket) writeMessage(m message.Message) error {
+func (s *Socket) writeMessage(m message.Message) error {
 	if s.Debug {
 		s.Log.Printf("socket writing message with type %v", m.Type)
 	}
@@ -212,7 +207,7 @@ func (s *gorillaWebSocket) writeMessage(m message.Message) error {
 }
 
 // writePing writes a ping message to the connection.
-func (s *gorillaWebSocket) writePing() error {
+func (s *Socket) writePing() error {
 	if err := s.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 		return err
 	}
@@ -220,8 +215,8 @@ func (s *gorillaWebSocket) writePing() error {
 }
 
 // refreshDeadline is called when a wait needs to be refreshed.
-func (s *gorillaWebSocket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
-	now := s.Time()
+func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
+	now := s.TimeFunc()
 	nowTime := time.Unix(now, 0)
 	deadline := nowTime.Add(period)
 	if err := refreshDeadlineFunc(deadline); err != nil {
@@ -233,7 +228,7 @@ func (s *gorillaWebSocket) refreshDeadline(refreshDeadlineFunc func(t time.Time)
 }
 
 // closeConn closes the websocket connection without reporting any errors.
-func (s *gorillaWebSocket) closeConn(reason string) {
+func (s *Socket) closeConn(reason string) {
 	data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
 	if err := s.conn.WriteMessage(websocket.CloseMessage, data); err != nil {
 		s.Log.Printf("closing connection: writing close message: %v", err)

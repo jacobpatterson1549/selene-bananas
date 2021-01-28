@@ -1,6 +1,7 @@
 package socket
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,12 +13,12 @@ import (
 )
 
 type (
-	// gorillaSocketManager handles sending messages to different sockets,
-	gorillaWebSocketManager struct {
+	// Manager handles sending messages to different sockets,
+	Manager struct {
 		upgrader      *websocket.Upgrader
 		playerSockets map[player.Name][]Socket
 		playerGames   map[player.Name]map[game.ID]Socket
-		Config        ManagerConfig
+		ManagerConfig
 	}
 
 	// ManagerConfig is used to create a socket Manager.
@@ -31,28 +32,21 @@ type (
 		// The config for creating new sockets
 		SocketConfig Config
 	}
-
-	// Manager handles sending messages to different sockets,
-	Manager interface {
-		AddSocket(playerName player.Name, w http.ResponseWriter, r *http.Request) error
-		SendMessage(m message.Message)
-		SendGameMessage(m message.Message, id game.ID)
-	}
 )
 
 // NewManager creates a new socket manager from the config.
-func (cfg ManagerConfig) NewManager() (Manager, error) {
+func (cfg ManagerConfig) NewManager() (*Manager, error) {
 	if err := cfg.validate(); err != nil {
-		return nil, fmt.Errorf("creating lobby: validation: %w", err)
+		return nil, fmt.Errorf("creating socket manager: validation: %w", err)
 	}
 	u := new(websocket.Upgrader)
-	g := gorillaWebSocketManager{
+	sm := Manager{
 		upgrader:      u,
 		playerSockets: make(map[player.Name][]Socket, cfg.MaxSockets),
 		playerGames:   make(map[player.Name]map[game.ID]Socket),
-		Config:        cfg,
+		ManagerConfig: cfg,
 	}
-	return &g, nil
+	return &sm, nil
 }
 
 // validate ensures the configuration has no errors.
@@ -68,39 +62,49 @@ func (cfg ManagerConfig) validate() error {
 	return nil
 }
 
-func (g *gorillaWebSocketManager) AddSocket(pn player.Name, w http.ResponseWriter, r *http.Request) error {
-	if g.numSockets() >= g.Config.MaxSockets {
-		return fmt.Errorf("no room for another socket")
-	}
-	if len(g.playerSockets[pn]) >= g.Config.MaxPlayerSockets {
-		return fmt.Errorf("player has reached quota of sockets, close an existing one")
-	}
-	conn, err := g.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return fmt.Errorf("upgrading to websocket connection: %w", err)
-	}
-	s, err := g.Config.SocketConfig.NewSocket(conn)
-	if err != nil {
-		return fmt.Errorf("creating socket in manager: %v", err)
-	}
-	g.playerSockets[pn] = append(g.playerSockets[pn], s)
+// Run consumes messages from the message channel.  This channel is used to create sockets and send messages to them.
+// The messages recieved from sockets are send on an "out" channel to be read games.
+func (sm *Manager) Run(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+	// TODO
 	return nil
 }
 
-func (g *gorillaWebSocketManager) SendMessage(m message.Message) {
+// AddSocket adds a socket for the player to the manager.
+func (sm *Manager) AddSocket(pn player.Name, w http.ResponseWriter, r *http.Request) error {
+	if sm.numSockets() >= sm.MaxSockets {
+		return fmt.Errorf("no room for another socket")
+	}
+	if len(sm.playerSockets[pn]) >= sm.MaxPlayerSockets {
+		return fmt.Errorf("player has reached quota of sockets, close an existing one")
+	}
+	conn, err := sm.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return fmt.Errorf("upgrading to websocket connection: %w", err)
+	}
+	s, err := sm.SocketConfig.NewSocket(conn)
+	if err != nil {
+		return fmt.Errorf("creating socket in manager: %v", err)
+	}
+	sm.playerSockets[pn] = append(sm.playerSockets[pn], *s)
+	return nil
+}
+
+// SendMessage delivers a message to the socket for a player in the specified game.
+func (sm *Manager) SendMessage(m message.Message) {
 	// TODO
 	// TODO: add player name to message
 	// TODO: log if messages is to close socket
 }
 
-func (g *gorillaWebSocketManager) SendGameMessage(m message.Message, id game.ID) {
+// SendGameMessage delivers a message to all sockets in a particular game.
+func (sm *Manager) SendGameMessage(m message.Message, id game.ID) {
 	// TODO
 }
 
 // numSockets sums the number of sockets for each player.  Not thread safe.
-func (g gorillaWebSocketManager) numSockets() int {
+func (sm Manager) numSockets() int {
 	numSockets := 0
-	for _, sockets := range g.playerSockets {
+	for _, sockets := range sm.playerSockets {
 		numSockets += len(sockets)
 	}
 	return numSockets

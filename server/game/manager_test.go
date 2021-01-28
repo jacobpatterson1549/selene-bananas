@@ -34,7 +34,7 @@ func TestNewManager(t *testing.T) {
 			},
 			wantOk: true,
 			want: Manager{
-				games: map[game.ID]message.OutChannel{},
+				games: map[game.ID]chan<- message.Message{},
 				ManagerConfig: ManagerConfig{
 					Log:      testLog,
 					MaxGames: 10,
@@ -121,7 +121,7 @@ func TestGameCreate(t *testing.T) {
 	}
 	for i, test := range gameCreateTests {
 		gm := Manager{
-			games:         make(map[game.ID]message.OutChannel, 1),
+			games:         make(map[game.ID]chan<- message.Message, 1),
 			lastID:        3,
 			ManagerConfig: test.ManagerConfig,
 		}
@@ -186,7 +186,7 @@ func TestGameDelete(t *testing.T) {
 		in := make(chan message.Message)
 		gIn := make(chan message.Message)
 		gm := Manager{
-			games: map[game.ID]message.OutChannel{
+			games: map[game.ID]chan<- message.Message{
 				5: gIn,
 			},
 			ManagerConfig: ManagerConfig{
@@ -258,7 +258,7 @@ func TestHandleGameMessage(t *testing.T) {
 		in := make(chan message.Message)
 		gIn := make(chan message.Message)
 		gm := Manager{
-			games: map[game.ID]message.OutChannel{
+			games: map[game.ID]chan<- message.Message{
 				3: gIn,
 			},
 			ManagerConfig: ManagerConfig{

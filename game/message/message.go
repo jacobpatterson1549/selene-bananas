@@ -2,6 +2,8 @@
 package message
 
 import (
+	"net/http"
+
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 )
@@ -22,6 +24,15 @@ type (
 		Games []game.Info `json:"games,omitempty"`
 		// PlayerName is the name of the player the message is to/from.
 		PlayerName player.Name `json:"-"`
+		// AddSocketRequest contains info about the socket to add for a player.
+		AddSocketRequest AddSocketRequest `json:"-"`
+	}
+
+	// AddSocketRequest is used to add players from http requests.
+	AddSocketRequest struct {
+		http.ResponseWriter
+		*http.Request
+		Result chan<- error
 	}
 )
 
@@ -59,4 +70,6 @@ const (
 	Chat
 	// BoardSize refreshes the board size for the current game by reading the NumCols and NumRows fields.
 	BoardSize
+	// AddSocket is used to add a socket for a player.
+	AddSocket
 )

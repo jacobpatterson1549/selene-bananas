@@ -19,9 +19,9 @@ type (
 
 	// Lobby is the place users can create, join, and participate in games.
 	Lobby interface {
-		Run(ctx context.Context)
+		Run(ctx context.Context) error
 		AddUser(username string, w http.ResponseWriter, r *http.Request) error
-		RemoveUser(username string)
+		RemoveUser(username string) error
 	}
 )
 
@@ -100,7 +100,11 @@ func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request)
 		s.handleError(w, err)
 		return
 	}
-	s.lobby.RemoveUser(username)
+	if err := s.lobby.RemoveUser(username); err != nil {
+		err = fmt.Errorf("websocket error: %w", err)
+		s.handleError(w, err)
+		return
+	}
 }
 
 // handleUserDelete deletes the user from the database.
@@ -117,5 +121,9 @@ func (s Server) handleUserDelete(w http.ResponseWriter, r *http.Request) {
 		s.handleError(w, err)
 		return
 	}
-	s.lobby.RemoveUser(username)
+	if err := s.lobby.RemoveUser(username); err != nil {
+		err = fmt.Errorf("websocket error: %w", err)
+		s.handleError(w, err)
+		return
+	}
 }

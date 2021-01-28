@@ -16,7 +16,7 @@ type (
 	Manager struct {
 		// games maps game ids to the channel each games listens to for incoming messages
 		// OutChannels are stored here because the Manager writes to the game, which in turn reads from the Manager's channel as an InChannel
-		games map[game.ID]message.OutChannel
+		games map[game.ID]chan<- message.Message
 		// lastID is the ID of themost recently created game.  The next new game should get a larger ID.
 		lastID game.ID
 		// ManagerConfig contains configruation properties of the Manager.
@@ -40,7 +40,7 @@ func (cfg ManagerConfig) NewManager() (*Manager, error) {
 		return nil, fmt.Errorf("creating game manager: validation: %w", err)
 	}
 	m := Manager{
-		games:         make(map[game.ID]message.OutChannel, cfg.MaxGames),
+		games:         make(map[game.ID]chan<- message.Message, cfg.MaxGames),
 		ManagerConfig: cfg,
 	}
 	return &m, nil
@@ -48,10 +48,10 @@ func (cfg ManagerConfig) NewManager() (*Manager, error) {
 
 // Run consumes messages from the "in" channel, processing them on a new goroutine until the "in" channel closes.
 // The results of messages are sent on the "out" channel to be read by the subscriber.
-func (gm *Manager) Run(ctx context.Context, in message.InChannel) (out message.InChannel) {
-	outC := make(chan message.Message)
+func (gm *Manager) Run(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+	out := make(chan message.Message)
 	go func() {
-		defer close(outC)
+		defer close(out)
 		for {
 			select {
 			case <-ctx.Done():
@@ -60,11 +60,11 @@ func (gm *Manager) Run(ctx context.Context, in message.InChannel) (out message.I
 				if !ok {
 					return
 				}
-				gm.handleMessage(ctx, m, outC)
+				gm.handleMessage(ctx, m, out)
 			}
 		}
 	}()
-	return outC
+	return out
 }
 
 // validate ensures the configuration has no errors.
@@ -79,7 +79,7 @@ func (cfg ManagerConfig) validate() error {
 }
 
 // handleMessage takes appropriate actions for different message types.
-func (gm *Manager) handleMessage(ctx context.Context, m message.Message, out message.OutChannel) {
+func (gm *Manager) handleMessage(ctx context.Context, m message.Message, out chan<- message.Message) {
 	switch m.Type {
 	case message.Create:
 		gm.createGame(ctx, m, out)
@@ -91,7 +91,7 @@ func (gm *Manager) handleMessage(ctx context.Context, m message.Message, out mes
 }
 
 // createGame allocates a new game, adding it to the open games.
-func (gm *Manager) createGame(ctx context.Context, m message.Message, out message.OutChannel) {
+func (gm *Manager) createGame(ctx context.Context, m message.Message, out chan<- message.Message) {
 	if len(gm.games) >= gm.MaxGames {
 		err := fmt.Errorf("the maximum number of games have already been created (%v)", gm.MaxGames)
 		gm.sendError(err, m.PlayerName, out)
@@ -113,7 +113,7 @@ func (gm *Manager) createGame(ctx context.Context, m message.Message, out messag
 }
 
 // deleteGame removes a game from the manager, notifying the game that it is being deleted so it can notify users.
-func (gm *Manager) deleteGame(ctx context.Context, m message.Message, out message.OutChannel) {
+func (gm *Manager) deleteGame(ctx context.Context, m message.Message, out chan<- message.Message) {
 	gIn, err := gm.getGame(m)
 	if err != nil {
 		gm.sendError(err, m.PlayerName, out)
@@ -124,7 +124,7 @@ func (gm *Manager) deleteGame(ctx context.Context, m message.Message, out messag
 }
 
 // handleGameMessage passes an error to the game the message is for.
-func (gm *Manager) handleGameMessage(ctx context.Context, m message.Message, out message.OutChannel) {
+func (gm *Manager) handleGameMessage(ctx context.Context, m message.Message, out chan<- message.Message) {
 	gIn, err := gm.getGame(m)
 	if err != nil {
 		gm.sendError(err, m.PlayerName, out)
@@ -134,7 +134,7 @@ func (gm *Manager) handleGameMessage(ctx context.Context, m message.Message, out
 }
 
 // getGame retrieves the game from the manager for the message, if the manager has a game for the message's game ID.
-func (gm Manager) getGame(m message.Message) (message.OutChannel, error) {
+func (gm Manager) getGame(m message.Message) (chan<- message.Message, error) {
 	if m.Game == nil {
 		return nil, errors.New("no game for manager to handle in message")
 	}
@@ -146,7 +146,7 @@ func (gm Manager) getGame(m message.Message) (message.OutChannel, error) {
 }
 
 // sendError adds a message for the player on the channel
-func (gm *Manager) sendError(err error, pn player.Name, out message.OutChannel) {
+func (gm *Manager) sendError(err error, pn player.Name, out chan<- message.Message) {
 	err = fmt.Errorf("player %v: %w", pn, err)
 	gm.Log.Print(err)
 	m := message.Message{

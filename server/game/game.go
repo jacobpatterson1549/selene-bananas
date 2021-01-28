@@ -112,6 +112,8 @@ func (cfg Config) validate(id game.ID) error {
 		return fmt.Errorf("log required")
 	case id <= 0:
 		return fmt.Errorf("positive id required")
+	case cfg.TimeFunc == nil:
+		return fmt.Errorf("time func required required")
 	case cfg.UserDao == nil:
 		return fmt.Errorf("user dao required")
 	case cfg.MaxPlayers <= 0:
@@ -148,7 +150,8 @@ func (g *Game) initializeUnusedTiles() error {
 }
 
 // Run runs the game until the context is closed.
-func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-chan message.Message, out chan<- message.Message) {
+func (g *Game) Run(ctx context.Context, in <-chan message.Message, out chan<- message.Message) {
+	// TODO: ensure this only works once with runMu:sync.Mutex and alreadyRun:bool (add test, make game.Run be async)
 	idleTicker := time.NewTicker(g.IdlePeriod)
 	active := false
 	messageSender := g.sendMessage(out)
@@ -162,12 +165,14 @@ func (g *Game) Run(ctx context.Context, removeGameFunc context.CancelFunc, in <-
 		message.Chat:         g.handleGameChat,
 		message.BoardSize:    g.handleBoardRefresh,
 	}
-	defer removeGameFunc()
 	for { // BLOCKING
 		select {
 		case <-ctx.Done():
 			return
-		case m := <-in:
+		case m, ok := <-in:
+			if !ok {
+				return
+			}
 			g.handleMessage(ctx, m, messageSender, &active, messageHandlers)
 			if m.Type == message.Delete {
 				return
@@ -304,6 +309,7 @@ func (g *Game) handleGameDelete(ctx context.Context, m message.Message, send mes
 		}
 		send(m)
 	}
+	g.handleInfoChanged(send)
 	return nil
 }
 

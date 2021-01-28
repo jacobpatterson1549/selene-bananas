@@ -21,6 +21,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/server"
 	"github.com/jacobpatterson1549/selene-bananas/server/auth"
 	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
+	"github.com/jacobpatterson1549/selene-bananas/server/game"
 	gameController "github.com/jacobpatterson1549/selene-bananas/server/game"
 	"github.com/jacobpatterson1549/selene-bananas/server/game/lobby"
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
@@ -55,15 +56,12 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		return nil, fmt.Errorf("setting up user dao: %w", err)
 	}
 	socketManagerConfig := socketManagerConfig(m, log, timeFunc)
-	socketManager, err := socketManagerConfig.NewManager()
+	gameManagerConfig, err := gameManagerConfig(m, log, ud, timeFunc)
 	if err != nil {
-		return nil, fmt.Errorf("creating socket manager ")
+		return nil, fmt.Errorf("creating game manager config: %w", err)
 	}
-	lobbyCfg, err := lobbyConfig(m, log, ud, timeFunc)
-	if err != nil {
-		return nil, fmt.Errorf("creating lobby config: %w", err)
-	}
-	lobby, err := lobbyCfg.NewLobby(socketManager)
+	lobbyCfg := lobbyConfig(log, socketManagerConfig, *gameManagerConfig)
+	lobby, err := lobbyCfg.NewLobby()
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby: %w", err)
 	}
@@ -144,16 +142,25 @@ func userDaoConfig(d db.Database) user.DaoConfig {
 }
 
 // lobbyConfig creates the configuration for managing players of games.
-func lobbyConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*lobby.Config, error) {
+func lobbyConfig(log *log.Logger, smCfg socket.ManagerConfig, gmCfg game.ManagerConfig) lobby.Config {
+	cfg := lobby.Config{
+		Log:                 log,
+		SocketManagerConfig: smCfg,
+		GameManagerConfig:   gmCfg,
+	}
+	return cfg
+}
+
+// gameManagerConfig creates the configuration for managing games.
+func gameManagerConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*game.ManagerConfig, error) {
 	gameCfg, err := gameConfig(m, log, ud, timeFunc)
 	if err != nil {
 		return nil, fmt.Errorf("creating game config: %w", err)
 	}
-	cfg := lobby.Config{
-		Debug:    m.debugGame,
-		Log:      log,
-		MaxGames: 4,
-		GameCfg:  *gameCfg,
+	cfg := game.ManagerConfig{
+		Log:        log,
+		MaxGames:   4,
+		GameConfig: *gameCfg,
 	}
 	return &cfg, nil
 }
@@ -200,7 +207,7 @@ func socketManagerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) so
 	socketCfg := socket.Config{
 		Debug:          m.debugGame,
 		Log:            log,
-		Time:           timeFunc,
+		TimeFunc:       timeFunc,
 		ReadWait:       60 * time.Second,
 		WriteWait:      10 * time.Second,
 		PingPeriod:     54 * time.Second, // readWait * 0.9
