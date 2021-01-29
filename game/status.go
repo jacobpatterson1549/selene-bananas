@@ -11,6 +11,8 @@ const (
 	InProgress
 	// Finished is the status of a game that has no tiles left and has a winner that has used all his tiles to form one group of interconnected words.
 	Finished
+	// Deleted is the status of a game that has been deleted from the server.
+	Deleted
 )
 
 // String returns the display value for the status.

@@ -12,8 +12,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
-	gameController "github.com/jacobpatterson1549/selene-bananas/server/game"
-	"github.com/jacobpatterson1549/selene-bananas/server/game/socket"
 )
 
 type (
@@ -21,6 +19,7 @@ type (
 	Lobby struct {
 		runMu         sync.Mutex
 		running       bool
+		finished      bool
 		socketManager SocketManager
 		gameManager   GameManager
 		// socketMessages is the channel for sending messages to the socket manager.  Used to add and remove sockets
@@ -34,10 +33,6 @@ type (
 	Config struct {
 		// Log is used to log errors and other information
 		Log *log.Logger
-		// SocketManagerConfig is used to create a socket manager
-		SocketManagerConfig socket.ManagerConfig
-		// GameManager is used to create a game Manager
-		GameManagerConfig gameController.ManagerConfig
 	}
 
 	// messageHandler is a channel that can write message.Messages and be cancelled.
@@ -64,31 +59,28 @@ type (
 )
 
 // NewLobby creates a new game lobby.
-func (cfg Config) NewLobby() (*Lobby, error) {
-	if err := cfg.validate(); err != nil {
+func (cfg Config) NewLobby(sm SocketManager, gm GameManager) (*Lobby, error) {
+	if err := cfg.validate(sm, gm); err != nil {
 		return nil, fmt.Errorf("creating lobby: validation: %w", err)
 	}
-	socketManager, err := cfg.SocketManagerConfig.NewManager()
-	if err != nil {
-		return nil, fmt.Errorf("creating socket manager: %w", err)
-	}
-	gameManager, err := cfg.GameManagerConfig.NewManager()
-	if err != nil {
-		return nil, fmt.Errorf("creating game manager: %w", err)
-	}
 	l := Lobby{
-		socketManager: socketManager,
-		gameManager:   gameManager,
+		socketManager: sm,
+		gameManager:   gm,
+		games:         make(map[game.ID]game.Info),
 		Config:        cfg,
 	}
 	return &l, nil
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate() error {
+func (cfg Config) validate(sm SocketManager, gm GameManager) error {
 	switch {
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")
+	case sm == nil:
+		return fmt.Errorf("socket manager required")
+	case gm == nil:
+		return fmt.Errorf("game manager required")
 	}
 	return nil
 }
@@ -97,21 +89,21 @@ func (cfg Config) validate() error {
 func (l *Lobby) Run(ctx context.Context) error {
 	l.runMu.Lock()
 	defer l.runMu.Unlock()
-	if l.running {
+	if l.running || l.finished {
 		return fmt.Errorf("lobby already running or has finished running, it can only be run once")
 	}
 	l.running = true
 	l.socketMessages = make(chan message.Message)
 	gameMessages := make(chan message.Message)
-	l.games = make(map[game.ID]game.Info) //  this be sized to GameManager.Config.MaxGames. oh well.
-	defer close(l.socketMessages)
-	defer close(gameMessages)
 	socketMessagesOut := l.socketManager.Run(ctx, l.socketMessages)
 	gameMessagesOut := l.gameManager.Run(ctx, gameMessages)
 	go func() {
+		defer close(l.socketMessages)
+		defer close(gameMessages)
 		for { // BLOCKING
 			select {
 			case <-ctx.Done():
+				l.finished = true
 				return
 			case m := <-socketMessagesOut:
 				gameMessages <- m
@@ -132,7 +124,7 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 	m := message.Message{
 		Type:       message.AddSocket,
 		PlayerName: player.Name(username),
-		AddSocketRequest: message.AddSocketRequest{
+		AddSocketRequest: &message.AddSocketRequest{
 			ResponseWriter: w,
 			Request:        r,
 			Result:         result,
@@ -171,32 +163,31 @@ func (l *Lobby) handleGameMessage(m message.Message) {
 // handleGameInfo updates the game info for the game.
 func (l *Lobby) handleGameInfoChanged(m message.Message) {
 	if m.Game == nil {
-		l.Log.Print("cannot update game info when no game is provided")
+		m2 := message.Message{
+			Type:       message.SocketError,
+			Info:       "cannot update game info when no game is provided",
+			PlayerName: m.PlayerName,
+		}
+		l.socketMessages <- m2
+		l.Log.Print(m2.Info)
 		return
 	}
-	l.games[m.Game.ID] = *m.Game
-	l.gameInfosChanged()
-}
-
-// gameInfos gets the gameInfos for the lobby.
-func (l *Lobby) gameInfos() []game.Info {
+	switch m.Game.Status {
+	case game.Deleted:
+		delete(l.games, m.Game.ID)
+	default:
+		l.games[m.Game.ID] = *m.Game
+	}
 	infos := make([]game.Info, 0, len(l.games))
 	for _, info := range l.games {
 		infos = append(infos, info)
 	}
-	// TODO: add test to ensure this is sorted
 	sort.Slice(infos, func(i, j int) bool {
 		return infos[i].ID < infos[j].ID
 	})
-	return infos
-}
-
-// gameInfosChanged notifies all sockets that the game infos have changed by sending them the new infos.
-func (l *Lobby) gameInfosChanged() {
-	infos := l.gameInfos()
-	m := message.Message{
+	m2 := message.Message{
 		Type:  message.Infos,
 		Games: infos,
 	}
-	l.socketMessages <- m // TODO: ensure this gets sent to all sockets
+	l.socketMessages <- m2 // TODO: ensure this gets sent to all sockets
 }

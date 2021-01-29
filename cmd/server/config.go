@@ -56,12 +56,20 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		return nil, fmt.Errorf("setting up user dao: %w", err)
 	}
 	socketManagerConfig := socketManagerConfig(m, log, timeFunc)
+	socketManager, err := socketManagerConfig.NewManager()
+	if err != nil {
+		return nil, fmt.Errorf("creating socket manager: %w", err)
+	}
 	gameManagerConfig, err := gameManagerConfig(m, log, ud, timeFunc)
 	if err != nil {
 		return nil, fmt.Errorf("creating game manager config: %w", err)
 	}
-	lobbyCfg := lobbyConfig(log, socketManagerConfig, *gameManagerConfig)
-	lobby, err := lobbyCfg.NewLobby()
+	gameManager, err := gameManagerConfig.NewManager()
+	if err != nil {
+		return nil, fmt.Errorf("creating game manager: %w", err)
+	}
+	lobbyCfg := lobbyConfig(log)
+	lobby, err := lobbyCfg.NewLobby(socketManager, gameManager)
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby: %w", err)
 	}
@@ -142,11 +150,9 @@ func userDaoConfig(d db.Database) user.DaoConfig {
 }
 
 // lobbyConfig creates the configuration for managing players of games.
-func lobbyConfig(log *log.Logger, smCfg socket.ManagerConfig, gmCfg game.ManagerConfig) lobby.Config {
+func lobbyConfig(log *log.Logger) lobby.Config {
 	cfg := lobby.Config{
-		Log:                 log,
-		SocketManagerConfig: smCfg,
-		GameManagerConfig:   gmCfg,
+		Log: log,
 	}
 	return cfg
 }

@@ -309,6 +309,7 @@ func (g *Game) handleGameDelete(ctx context.Context, m message.Message, send mes
 		}
 		send(m)
 	}
+	g.status = game.Deleted
 	g.handleInfoChanged(send)
 	return nil
 }

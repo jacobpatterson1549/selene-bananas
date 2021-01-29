@@ -1,6 +1,8 @@
 package game
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestStringStatus(t *testing.T) {
 	statuses := []Status{
@@ -9,6 +11,7 @@ func TestStringStatus(t *testing.T) {
 		InProgress,
 		InProgress,
 		Finished,
+		Deleted,
 		-1,
 	}
 	statusStrings := make(map[string]struct{})
@@ -19,5 +22,19 @@ func TestStringStatus(t *testing.T) {
 	got := len(statusStrings)
 	if want != got {
 		t.Errorf("wanted %v unique status strings, got %v", want, got)
+	}
+}
+
+func TestStringStatusUnknown(t *testing.T) {
+	unknownStatuses := []Status{
+		0,
+		Deleted,
+	}
+	want := "?"
+	for i, s := range unknownStatuses {
+		got := s.String()
+		if want != got {
+			t.Errorf("Test %v: wanted status string of '%v' for status %v, got '%v'", i, want, s, got)
+		}
 	}
 }

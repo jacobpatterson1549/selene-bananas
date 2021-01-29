@@ -25,7 +25,7 @@ type (
 		// PlayerName is the name of the player the message is to/from.
 		PlayerName player.Name `json:"-"`
 		// AddSocketRequest contains info about the socket to add for a player.
-		AddSocketRequest AddSocketRequest `json:"-"`
+		AddSocketRequest *AddSocketRequest `json:"-"`
 	}
 
 	// AddSocketRequest is used to add players from http requests.
