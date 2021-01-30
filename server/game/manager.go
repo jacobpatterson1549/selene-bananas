@@ -9,11 +9,13 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/server/runner"
 )
 
 type (
 	// Manager runs games.
 	Manager struct {
+		runner.Runner
 		// games maps game ids to the channel each games listens to for incoming messages
 		// OutChannels are stored here because the Manager writes to the game, which in turn reads from the Manager's channel as an InChannel
 		games map[game.ID]chan<- message.Message
@@ -48,10 +50,14 @@ func (cfg ManagerConfig) NewManager() (*Manager, error) {
 
 // Run consumes messages from the "in" channel, processing them on a new goroutine until the "in" channel closes.
 // The results of messages are sent on the "out" channel to be read by the subscriber.
-func (gm *Manager) Run(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+func (gm *Manager) Run(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
+	if err := gm.Runner.Run(); err != nil {
+		return nil, fmt.Errorf("running socket manager: %v", err)
+	}
 	out := make(chan message.Message)
 	go func() {
 		defer close(out)
+		defer gm.Runner.Finish()
 		for {
 			select {
 			case <-ctx.Done():
@@ -64,7 +70,7 @@ func (gm *Manager) Run(ctx context.Context, in <-chan message.Message) <-chan me
 			}
 		}
 	}()
-	return out
+	return out, nil
 }
 
 // validate ensures the configuration has no errors.
@@ -134,7 +140,7 @@ func (gm *Manager) handleGameMessage(ctx context.Context, m message.Message, out
 }
 
 // getGame retrieves the game from the manager for the message, if the manager has a game for the message's game ID.
-func (gm Manager) getGame(m message.Message) (chan<- message.Message, error) {
+func (gm *Manager) getGame(m message.Message) (chan<- message.Message, error) {
 	if m.Game == nil {
 		return nil, errors.New("no game for manager to handle in message")
 	}

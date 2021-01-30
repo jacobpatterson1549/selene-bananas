@@ -47,12 +47,12 @@ type (
 
 	// SocketManager handles connections from multiple players.
 	SocketManager interface {
-		Run(ctx context.Context, in <-chan message.Message) <-chan message.Message
+		Run(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error)
 	}
 
 	// GameManager handles passing messages to multiple games.
 	GameManager interface {
-		Run(ctx context.Context, in <-chan message.Message) <-chan message.Message
+		Run(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error)
 	}
 )
 
@@ -90,8 +90,14 @@ func (l *Lobby) Run(ctx context.Context) error {
 	}
 	l.socketMessages = make(chan message.Message)
 	gameMessages := make(chan message.Message)
-	socketMessagesOut := l.socketManager.Run(ctx, l.socketMessages)
-	gameMessagesOut := l.gameManager.Run(ctx, gameMessages)
+	socketMessagesOut, err := l.socketManager.Run(ctx, l.socketMessages)
+	if err != nil {
+		return fmt.Errorf("running socket manager: %w", err)
+	}
+	gameMessagesOut, err := l.gameManager.Run(ctx, gameMessages)
+	if err != nil {
+		return fmt.Errorf("game socket manager: %w", err)
+	}
 	go func() {
 		defer close(l.socketMessages)
 		defer close(gameMessages)

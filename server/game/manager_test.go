@@ -19,7 +19,7 @@ func TestNewManager(t *testing.T) {
 	newManagerTests := []struct {
 		ManagerConfig ManagerConfig
 		wantOk        bool
-		want          Manager
+		want          *Manager
 	}{
 		{}, // no log
 		{ // low MaxGames
@@ -33,7 +33,7 @@ func TestNewManager(t *testing.T) {
 				MaxGames: 10,
 			},
 			wantOk: true,
-			want: Manager{
+			want: &Manager{
 				games: map[game.ID]chan<- message.Message{},
 				ManagerConfig: ManagerConfig{
 					Log:      testLog,
@@ -51,31 +51,71 @@ func TestNewManager(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
-		case !reflect.DeepEqual(test.want, *got):
-			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, *got)
+		case !reflect.DeepEqual(test.want, got):
+			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
 		}
 	}
 }
 
-func TestRun(t *testing.T) {
-	stopFuncs := []func(cancelFunc context.CancelFunc, in chan message.Message){
-		func(cancelFunc context.CancelFunc, in chan message.Message) {
-			cancelFunc()
+func TestRunManager(t *testing.T) {
+	runManagerTests := []struct {
+		alreadyRunning bool
+		stopFunc       func(cancelFunc context.CancelFunc, in chan message.Message)
+	}{
+		{
+			alreadyRunning: true,
 		},
-		func(cancelFunc context.CancelFunc, in chan message.Message) {
-			close(in)
+		{
+			stopFunc: func(cancelFunc context.CancelFunc, in chan message.Message) {
+				cancelFunc()
+			},
+		},
+		{
+			stopFunc: func(cancelFunc context.CancelFunc, in chan message.Message) {
+				close(in)
+			},
 		},
 	}
-	for i, stopFunc := range stopFuncs {
+	for i, test := range runManagerTests {
 		var gm Manager
+		if test.alreadyRunning {
+			ctx := context.Background()
+			ctx, cancelFunc := context.WithCancel(ctx)
+			defer cancelFunc()
+			in := make(chan message.Message)
+			_, err := gm.Run(ctx, in)
+			if err != nil {
+				t.Errorf("Test %v: unwanted error running socket manager: %v", i, err)
+				continue
+			}
+		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
+		defer cancelFunc()
 		in := make(chan message.Message)
-		out := gm.Run(ctx, in)
-		stopFunc(cancelFunc, in)
-		_, ok := <-out
-		if ok {
-			t.Errorf("Test %v: wanted 'out' channel to be closed after 'in' channel was closed", i)
+		out, err := gm.Run(ctx, in)
+		switch {
+		case test.alreadyRunning:
+			if err == nil {
+				t.Errorf("Test %v: wanted error running socket manager that should already be running", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		default:
+			if !gm.IsRunning() {
+				t.Errorf("Test %v wanted socket manager to be running", i)
+			}
+			test.stopFunc(cancelFunc, in)
+			_, ok := <-out
+			if ok {
+				t.Errorf("Test %v: wanted 'out' channel to be closed after 'in' channel was closed", i)
+			}
+			if gm.IsRunning() {
+				t.Errorf("Test %v: wanted socket manager to not be running after it finished", i)
+			}
+			if _, err := gm.Run(ctx, in); err == nil {
+				t.Errorf("Test %v: wanted error running socket manager after it is finished", i)
+			}
 		}
 	}
 }
@@ -127,7 +167,11 @@ func TestGameCreate(t *testing.T) {
 		}
 		ctx := context.Background()
 		in := make(chan message.Message)
-		out := gm.Run(ctx, in)
+		out, err := gm.Run(ctx, in)
+		if err != nil {
+			t.Errorf("Test %v: unwanted error running game manager: %v", i, err)
+			continue
+		}
 		m := message.Message{
 			Type: message.Create,
 		}
@@ -194,7 +238,11 @@ func TestGameDelete(t *testing.T) {
 			},
 		}
 		ctx := context.Background()
-		out := gm.Run(ctx, in)
+		out, err := gm.Run(ctx, in)
+		if err != nil {
+			t.Errorf("Test %v: unwanted error running game manager: %v", i, err)
+			continue
+		}
 		messageHandled := false
 		go func() { // mock game
 			_, ok := <-gIn
@@ -266,7 +314,11 @@ func TestHandleGameMessage(t *testing.T) {
 			},
 		}
 		ctx := context.Background()
-		out := gm.Run(ctx, in)
+		out, err := gm.Run(ctx, in)
+		if err != nil {
+			t.Errorf("Test %v: unwanted error running game manager: %v", i, err)
+			continue
+		}
 		messageHandled := false
 		go func() { // mock game
 			_, ok := <-gIn

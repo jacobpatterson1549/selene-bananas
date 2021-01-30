@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
+	"github.com/jacobpatterson1549/selene-bananas/server/runner"
 )
 
 type (
 	// Socket reads and writes messages to the browsers
 	Socket struct {
+		runner.Runner
 		conn   Conn
 		active bool
 		Config
@@ -101,30 +103,25 @@ func (cfg Config) validate(conn Conn) error {
 
 // Run writes Socket messages to the messages channel and reads incoming messages on separate goroutines.
 // The Socket runs until the connection fails for an unexpected reason or the context is cancelled
-// Messages the socket receives are sent to the read channel.
-// Messages the socket sends are consumed from the read channel.
-// TODO: remove CancelFunc arg.  This is an annoying circular reference.  Instead, the parent context should be cancelled.
-func (s *Socket) Run(ctx context.Context, removeSocketFunc context.CancelFunc, readMessages chan<- message.Message, writeMessages <-chan message.Message) {
-	readCtx, readCancelFunc := context.WithCancel(ctx)
-	writeCtx, writeCancelFunc := context.WithCancel(ctx)
-	go s.readMessages(readCtx, removeSocketFunc, writeCancelFunc, readMessages)
-	s.writeMessages(writeCtx, readCancelFunc, writeMessages)
+func (s *Socket) Run(ctx context.Context, in chan<- message.Message, out <-chan message.Message) error {
+	if err := s.Runner.Run(); err != nil {
+		return fmt.Errorf("running socket: %v", err)
+	}
+	ctx, cancelFunc := context.WithCancel(ctx)
+	go s.readMessages(ctx, in)
+	go s.writeMessages(ctx, cancelFunc, out)
+	return nil
 }
 
 // String implements the fmtStringer interface, uniquely identifying the socket by its address
-func (s Socket) String() string {
+func (s *Socket) String() string {
 	a := s.conn.RemoteAddr()
 	return fmt.Sprintf("socket on %v at %v", a.Network(), a.String())
 }
 
 // readMessages receives messages from the connected socket and writes the to the messages channel.
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancelFunc context.CancelFunc, messages chan<- message.Message) {
-	defer func() {
-		removeSocketFunc()
-		writeCancelFunc()
-		s.conn.Close()
-	}()
+func (s *Socket) readMessages(ctx context.Context, messages chan<- message.Message) {
 	for { // BLOCKING
 		m, err := s.readMessage()
 		select {
@@ -148,7 +145,8 @@ func (s *Socket) readMessages(ctx context.Context, removeSocketFunc, writeCancel
 
 // writeMessages sends messages added to the messages channel to the connected socket.
 // messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.CancelFunc, messages <-chan message.Message) {
+func (s *Socket) writeMessages(ctx context.Context, cancelFunc context.CancelFunc, messages <-chan message.Message) {
+	s.active = false
 	pingTicker := time.NewTicker(s.PingPeriod)
 	httpPingTicker := time.NewTicker(s.HTTPPingPeriod)
 	idleTicker := time.NewTicker(s.IdlePeriod)
@@ -157,7 +155,7 @@ func (s *Socket) writeMessages(ctx context.Context, readCancelFunc context.Cance
 		pingTicker.Stop()
 		httpPingTicker.Stop()
 		idleTicker.Stop()
-		readCancelFunc()
+		cancelFunc()
 		s.closeConn(closeReason)
 	}()
 	var err error
@@ -241,4 +239,5 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 func (s *Socket) closeConn(reason string) {
 	s.conn.WriteClose(reason)
 	s.conn.Close()
+	s.Runner.Finish()
 }

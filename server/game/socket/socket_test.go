@@ -39,3 +39,13 @@ func (c *mockConn) IsUnexpectedCloseError(err error) bool {
 func (c *mockConn) RemoteAddr() net.Addr {
 	return c.RemoteAddrFunc()
 }
+
+type mockAddr string
+
+func (a mockAddr) Network() string {
+	return string(a)
+}
+
+func (a mockAddr) String() string {
+	return string(a)
+}
