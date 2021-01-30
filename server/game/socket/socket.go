@@ -16,7 +16,7 @@ type (
 	// Socket reads and writes messages to the browsers
 	Socket struct {
 		runner.Runner
-		conn   Conn
+		Conn
 		active bool
 		Config
 	}
@@ -70,7 +70,7 @@ func (cfg Config) NewSocket(conn Conn) (*Socket, error) {
 		return nil, fmt.Errorf("creating socket: validation: %w", err)
 	}
 	s := Socket{
-		conn:   conn,
+		Conn:   conn,
 		Config: cfg,
 	}
 	return &s, nil
@@ -111,12 +111,6 @@ func (s *Socket) Run(ctx context.Context, in chan<- message.Message, out <-chan 
 	go s.readMessages(ctx, in)
 	go s.writeMessages(ctx, cancelFunc, out)
 	return nil
-}
-
-// String implements the fmtStringer interface, uniquely identifying the socket by its address
-func (s *Socket) String() string {
-	a := s.conn.RemoteAddr()
-	return fmt.Sprintf("socket on %v at %v", a.Network(), a.String())
 }
 
 // readMessages receives messages from the connected socket and writes the to the messages channel.
@@ -167,7 +161,7 @@ func (s *Socket) writeMessages(ctx context.Context, cancelFunc context.CancelFun
 		case m := <-messages:
 			err = s.writeMessage(m)
 		case <-pingTicker.C:
-			err = s.conn.WritePing()
+			err = s.Conn.WritePing()
 		case <-httpPingTicker.C:
 			err = s.writeMessage(message.Message{
 				Type: message.SocketHTTPPing,
@@ -192,8 +186,8 @@ func (s *Socket) writeMessages(ctx context.Context, cancelFunc context.CancelFun
 // readMessage reads the next message from the connection.
 func (s *Socket) readMessage() (*message.Message, error) {
 	var m message.Message
-	if err := s.conn.ReadJSON(&m); err != nil { // BLOCKING
-		if s.conn.IsUnexpectedCloseError(err) {
+	if err := s.Conn.ReadJSON(&m); err != nil { // BLOCKING
+		if s.Conn.IsUnexpectedCloseError(err) {
 			return nil, fmt.Errorf("unexpected socket closure: %v", err)
 		}
 		return nil, errSocketClosed
@@ -213,7 +207,7 @@ func (s *Socket) writeMessage(m message.Message) error {
 	if s.Debug {
 		s.Log.Printf("socket writing message with type %v", m.Type)
 	}
-	if err := s.conn.WriteJSON(m); err != nil {
+	if err := s.Conn.WriteJSON(m); err != nil {
 		return fmt.Errorf("writing socket message: %v", err)
 	}
 	if m.Type == message.PlayerDelete {
@@ -237,7 +231,7 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 
 // closeConn closes the websocket connection without reporting any errors.
 func (s *Socket) closeConn(reason string) {
-	s.conn.WriteClose(reason)
-	s.conn.Close()
+	s.Conn.WriteClose(reason)
+	s.Conn.Close()
 	s.Runner.Finish()
 }

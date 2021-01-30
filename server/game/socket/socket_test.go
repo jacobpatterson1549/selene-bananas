@@ -1,6 +1,13 @@
 package socket
 
-import "net"
+import (
+	"io/ioutil"
+	"log"
+	"net"
+	"reflect"
+	"testing"
+	"time"
+)
 
 type mockConn struct {
 	ReadJSONFunc               func(v interface{}) error
@@ -43,9 +50,145 @@ func (c *mockConn) RemoteAddr() net.Addr {
 type mockAddr string
 
 func (a mockAddr) Network() string {
-	return string(a)
+	return string(a) + "_NETWORK"
 }
 
 func (a mockAddr) String() string {
 	return string(a)
+}
+
+func TestNewSocket(t *testing.T) {
+	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
+	timeFunc := func() int64 { return 89 }
+	conn0 := &mockConn{}
+	newSocketTests := []struct {
+		wantOk bool
+		want   *Socket
+		Conn
+		Config
+	}{
+		{}, // no Log
+		{ // no conn
+			Config: Config{
+				Log: testLog,
+			},
+		},
+		{ // no TimeFunc
+			Conn: conn0,
+			Config: Config{
+				Log: testLog,
+			},
+		},
+		{ // bad ReadWait
+			Conn: conn0,
+			Config: Config{
+				Log:      testLog,
+				TimeFunc: timeFunc,
+			},
+		},
+		{ // bad WriteWait
+			Conn: conn0,
+			Config: Config{
+				Log:      testLog,
+				TimeFunc: timeFunc,
+				ReadWait: 2 * time.Second,
+			},
+		},
+		{ // bad PingPeriod
+			Conn: conn0,
+			Config: Config{
+				Log:        testLog,
+				TimeFunc:   timeFunc,
+				ReadWait:   2 * time.Second,
+				WriteWait:  2 * time.Second,
+				PingPeriod: 1 * time.Second,
+			},
+		},
+		{ // bad IdlePeriod
+			Conn: conn0,
+			Config: Config{
+				Log:        testLog,
+				TimeFunc:   timeFunc,
+				ReadWait:   2 * time.Second,
+				WriteWait:  2 * time.Second,
+				PingPeriod: 1 * time.Second,
+			},
+		},
+		{ // bad HTTPPingPeriod
+			Conn: conn0,
+			Config: Config{
+				Log:        testLog,
+				TimeFunc:   timeFunc,
+				ReadWait:   2 * time.Second,
+				WriteWait:  2 * time.Second,
+				PingPeriod: 1 * time.Second,
+				IdlePeriod: 1 * time.Hour,
+			},
+		},
+		{ // PingPeriod not less than ReadWait
+			Conn: conn0,
+			Config: Config{
+				Log:            testLog,
+				TimeFunc:       timeFunc,
+				ReadWait:       1 * time.Second,
+				WriteWait:      2 * time.Second,
+				PingPeriod:     1 * time.Second,
+				IdlePeriod:     1 * time.Hour,
+				HTTPPingPeriod: 15 * time.Minute,
+			},
+		},
+		{ // ok
+			Conn: conn0,
+			Config: Config{
+				Log:            testLog,
+				TimeFunc:       timeFunc,
+				ReadWait:       2 * time.Second,
+				WriteWait:      2 * time.Second,
+				PingPeriod:     1 * time.Second,
+				IdlePeriod:     1 * time.Hour,
+				HTTPPingPeriod: 15 * time.Minute,
+			},
+			want: &Socket{
+				Conn: conn0,
+				Config: Config{
+					Log:            testLog,
+					TimeFunc:       nil, // funcs cannot be compared
+					ReadWait:       2 * time.Second,
+					WriteWait:      2 * time.Second,
+					PingPeriod:     1 * time.Second,
+					IdlePeriod:     1 * time.Hour,
+					HTTPPingPeriod: 15 * time.Minute,
+				},
+			},
+			wantOk: true,
+		},
+	}
+	for i, test := range newSocketTests {
+		got, err := test.Config.NewSocket(test.Conn)
+		switch {
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		default:
+			test.want.Config.TimeFunc = nil
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("Test %v: sockets not equal:\nwanted: %v\ngot:    %v", i, test.want, got)
+			}
+		}
+	}
+}
+
+func TestSocketRun(t *testing.T) {
+	// TODO
+}
+
+func TestSocketReadMessages(t *testing.T) {
+	// TODO
+}
+
+func TestSocketWriteMessages(t *testing.T) {
+	// TODO
 }
