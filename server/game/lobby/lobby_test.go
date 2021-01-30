@@ -66,7 +66,6 @@ func TestNewLobby(t *testing.T) {
 			gm:     &testGameManeger,
 			wantOk: true,
 			want: &Lobby{
-				running:       false,
 				socketManager: &testSocketManager,
 				gameManager:   &testGameManeger,
 				games:         map[game.ID]game.Info{},
@@ -112,8 +111,6 @@ func TestRun(t *testing.T) {
 	switch {
 	case err != nil:
 		t.Errorf("unwanted error running lobby: %v", err)
-	case !l.running:
-		t.Errorf("wanted lobby to be running")
 	case !socketManagerRun:
 		t.Errorf("wanted socket manager to be run")
 	case !gameManagerRun:
@@ -126,9 +123,6 @@ func TestRun(t *testing.T) {
 	}
 	cancelFunc()
 	<-l.socketMessages // wait for it to be closed
-	if !l.finished {
-		t.Errorf("wanted lobby to be finished running")
-	}
 	ctx3 := context.Background()
 	err = l.Run(ctx3)
 	if err == nil {
@@ -139,7 +133,7 @@ func TestRun(t *testing.T) {
 func TestAddUser(t *testing.T) {
 	n := "selene"
 	addUserTests := []struct {
-		Lobby        *Lobby
+		running      bool
 		pn           player.Name
 		w            http.ResponseWriter
 		r            *http.Request
@@ -147,15 +141,9 @@ func TestAddUser(t *testing.T) {
 		wantOk       bool
 		wantM        message.Message
 	}{
+		{},
 		{
-			Lobby: &Lobby{
-				running: false,
-			},
-		},
-		{
-			Lobby: &Lobby{
-				running: true,
-			},
+			running: true,
 			wantM: message.Message{
 				Type:             message.AddSocket,
 				PlayerName:       player.Name(n),
@@ -164,10 +152,8 @@ func TestAddUser(t *testing.T) {
 			addSocketErr: errors.New("add socket error"),
 		},
 		{
-			Lobby: &Lobby{
-				running: true,
-			},
-			wantOk: true,
+			running: true,
+			wantOk:  true,
 			wantM: message.Message{
 				Type:             message.AddSocket,
 				PlayerName:       player.Name(n),
@@ -176,11 +162,23 @@ func TestAddUser(t *testing.T) {
 		},
 	}
 	for i, test := range addUserTests {
-		test.Lobby.socketMessages = make(chan message.Message)
+		smOut := make(chan message.Message)
+		l := &Lobby{
+			socketManager: &mockManager{
+				RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+					return smOut
+				},
+			},
+			gameManager: &mockManager{
+				RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+					return nil
+				},
+			},
+		}
 		w := httptest.NewRecorder()
 		r := new(http.Request)
 		go func() {
-			gotM := <-test.Lobby.socketMessages
+			gotM := <-l.socketMessages
 			if gotM.AddSocketRequest == nil {
 				t.Errorf("Test %v: AddSocketRequest not set in message", i)
 				return
@@ -192,9 +190,15 @@ func TestAddUser(t *testing.T) {
 				t.Errorf("Test %v: messages not equal\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
 			}
 			gotM.AddSocketRequest.Result <- test.addSocketErr
-
 		}()
-		err := test.Lobby.AddUser(n, w, r)
+		if test.running {
+			ctx := context.Background()
+			if err := l.Run(ctx); err != nil {
+				t.Errorf("Test %v: unwanted error running lobby: %v", i, err)
+				continue
+			}
+		}
+		err := l.AddUser(n, w, r)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -208,18 +212,14 @@ func TestAddUser(t *testing.T) {
 
 func TestRemoveUser(t *testing.T) {
 	removeUserTests := []struct {
-		Lobby      *Lobby
+		running    bool
 		playerName string
 		wantOk     bool
 		wantM      message.Message
 	}{
-		{ // not running
-			Lobby: &Lobby{},
-		},
-		{ // happy path
-			Lobby: &Lobby{
-				running: true,
-			},
+		// {},
+		{
+			running:    true,
 			playerName: "selene",
 			wantOk:     true,
 			wantM: message.Message{
@@ -229,8 +229,33 @@ func TestRemoveUser(t *testing.T) {
 		},
 	}
 	for i, test := range removeUserTests {
-		test.Lobby.socketMessages = make(chan message.Message, 1)
-		err := test.Lobby.RemoveUser(test.playerName)
+		smOut := make(chan message.Message)
+		l := &Lobby{
+			socketManager: &mockManager{
+				RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+					return smOut
+				},
+			},
+			gameManager: &mockManager{
+				RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+					return nil
+				},
+			},
+		}
+		go func() {
+			gotM := <-l.socketMessages
+			if !reflect.DeepEqual(test.wantM, gotM) {
+				t.Errorf("Test %v: messages not equal\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
+			}
+		}()
+		if test.running {
+			ctx := context.Background()
+			if err := l.Run(ctx); err != nil {
+				t.Errorf("Test %v: unwanted error running lobby: %v", i, err)
+				continue
+			}
+		}
+		err := l.RemoveUser(test.playerName)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -238,11 +263,6 @@ func TestRemoveUser(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
-		default:
-			gotM := <-test.Lobby.socketMessages
-			if !reflect.DeepEqual(test.wantM, gotM) {
-				t.Errorf("Test %v: messages not equal\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
-			}
 		}
 	}
 }

@@ -7,19 +7,17 @@ import (
 	"log"
 	"net/http"
 	"sort"
-	"sync"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/server/runner"
 )
 
 type (
 	// Lobby is the place users can create, join, and participate in games
 	Lobby struct {
-		runMu         sync.Mutex
-		running       bool
-		finished      bool
+		runner.Runner
 		socketManager SocketManager
 		gameManager   GameManager
 		// socketMessages is the channel for sending messages to the socket manager.  Used to add and remove sockets
@@ -87,12 +85,9 @@ func (cfg Config) validate(sm SocketManager, gm GameManager) error {
 
 // Run runs the lobby until the context is closed.
 func (l *Lobby) Run(ctx context.Context) error {
-	l.runMu.Lock()
-	defer l.runMu.Unlock()
-	if l.running || l.finished {
-		return fmt.Errorf("lobby already running or has finished running, it can only be run once")
+	if err := l.Runner.Run(); err != nil {
+		return fmt.Errorf("running lobby: %v", err)
 	}
-	l.running = true
 	l.socketMessages = make(chan message.Message)
 	gameMessages := make(chan message.Message)
 	socketMessagesOut := l.socketManager.Run(ctx, l.socketMessages)
@@ -100,10 +95,10 @@ func (l *Lobby) Run(ctx context.Context) error {
 	go func() {
 		defer close(l.socketMessages)
 		defer close(gameMessages)
+		defer l.Runner.Finish()
 		for { // BLOCKING
 			select {
 			case <-ctx.Done():
-				l.finished = true
 				return
 			case m := <-socketMessagesOut:
 				gameMessages <- m
@@ -117,7 +112,7 @@ func (l *Lobby) Run(ctx context.Context) error {
 
 // AddUser adds a user to the lobby, it opens a new websocket (player) for the username.
 func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request) error {
-	if !l.running {
+	if !l.Runner.IsRunning() {
 		return fmt.Errorf("lobby not running")
 	}
 	result := make(chan error)
@@ -139,7 +134,7 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 
 // RemoveUser removes the user from the lobby and a game, if any.
 func (l *Lobby) RemoveUser(username string) error {
-	if !l.running {
+	if !l.Runner.IsRunning() {
 		return fmt.Errorf("lobby not running")
 	}
 	m := message.Message{
