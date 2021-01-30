@@ -11,12 +11,12 @@ import (
 type (
 	// gorillaUpgrader implements the socket.Upgrader interface by wrapping a gorilla/websocket upgrader.
 	gorillaUpgrader struct {
-		Upgrader *websocket.Upgrader
+		*websocket.Upgrader
 	}
 
 	// gorillaConn implements the Conn interface by wrapping a gorilla/websocket GorillaConnection.
 	gorillaConn struct {
-		Conn *websocket.Conn
+		*websocket.Conn
 	}
 )
 

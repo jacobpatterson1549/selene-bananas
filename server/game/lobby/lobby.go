@@ -189,5 +189,5 @@ func (l *Lobby) handleGameInfoChanged(m message.Message) {
 		Type:  message.Infos,
 		Games: infos,
 	}
-	l.socketMessages <- m2 // TODO: ensure this gets sent to all sockets
+	l.socketMessages <- m2
 }

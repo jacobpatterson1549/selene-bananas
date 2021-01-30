@@ -67,10 +67,10 @@ func (cfg ManagerConfig) validate() error {
 	return nil
 }
 
-// Run consumes messages from the message channel.  This channel is used to create sockets and send messages to them.
-// The messages recieved from sockets are send on an "out" channel to be read games.
+// Run consumes messages from the message channel.  This channel is used to create sockets and send messages from games to them.
+// The messages recieved from sockets are send on an "out" channel to be read by games.
 func (sm *Manager) Run(ctx context.Context, in <-chan message.Message) <-chan message.Message {
-	// TODO
+	// TODO: implement socketManager.Run
 	return nil
 }
 
@@ -82,11 +82,7 @@ func (sm *Manager) AddSocket(pn player.Name, w http.ResponseWriter, r *http.Requ
 	if len(sm.playerSockets[pn]) >= sm.MaxPlayerSockets {
 		return fmt.Errorf("player has reached quota of sockets, close an existing one")
 	}
-	c, err := sm.upgrader.Upgrade(w, r)
-	conn, ok := c.(Conn)
-	if !ok {
-		return fmt.Errorf("%T is an invalid Conn", c)
-	}
+	conn, err := sm.upgrader.Upgrade(w, r)
 	if err != nil {
 		return fmt.Errorf("upgrading to websocket connection: %w", err)
 	}
@@ -96,18 +92,6 @@ func (sm *Manager) AddSocket(pn player.Name, w http.ResponseWriter, r *http.Requ
 	}
 	sm.playerSockets[pn] = append(sm.playerSockets[pn], *s)
 	return nil
-}
-
-// SendMessage delivers a message to the socket for a player in the specified game.
-func (sm *Manager) SendMessage(m message.Message) {
-	// TODO
-	// TODO: add player name to message
-	// TODO: log if messages is to close socket
-}
-
-// SendGameMessage delivers a message to all sockets in a particular game.
-func (sm *Manager) SendGameMessage(m message.Message, id game.ID) {
-	// TODO
 }
 
 // numSockets sums the number of sockets for each player.  Not thread safe.
