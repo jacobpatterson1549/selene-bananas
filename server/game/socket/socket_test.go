@@ -288,7 +288,93 @@ func TestRunSocket(t *testing.T) {
 }
 
 func TestSocketReadMessages(t *testing.T) {
-	// TODO
+	readMessagesTests := []struct {
+		readMessageErr         error
+		isUnexpectedCloseError bool
+		gameMissing            bool
+		alreadyCancelled       bool
+		wantOk                 bool
+	}{
+		{
+			readMessageErr: errors.New("normal close"),
+		},
+		{
+			readMessageErr:         errors.New("unexpected close"),
+			isUnexpectedCloseError: true,
+		},
+		{
+			gameMissing:            true,
+			isUnexpectedCloseError: true,
+		},
+		{
+			alreadyCancelled: true,
+		},
+		{
+			wantOk: true,
+		},
+	}
+	for i, test := range readMessagesTests {
+		testIn := make(chan message.Message)
+		defer close(testIn)
+		closeMessageWritten := false
+		conn := mockConn{
+			ReadJSONFunc: func(m *message.Message) error {
+				src := <-testIn
+				if test.readMessageErr != nil {
+					return test.readMessageErr
+				}
+				if !test.gameMissing {
+					src.Game = &game.Info{}
+				}
+				mockConnReadMessage(m, src)
+				return nil
+			},
+			IsUnexpectedCloseErrorFunc: func(err error) bool {
+				return test.isUnexpectedCloseError
+			},
+			CloseFunc: func() error {
+				return nil
+			},
+			WriteCloseFunc: func(reason string) error {
+				closeMessageWritten = true
+				return nil
+			},
+		}
+		s := Socket{
+			Conn: &conn,
+			Config: Config{
+				Log: log.New(ioutil.Discard, "test", log.LstdFlags),
+			},
+		}
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		defer cancelFunc()
+		out := make(chan message.Message, 1) // check the active flag before reading from this
+		var wg sync.WaitGroup                // Done called by closeFunc when readMessages() returns
+		wg.Add(1)                            // decremented when read errs
+		go s.readMessages(ctx, out, &wg)
+		if test.alreadyCancelled {
+			cancelFunc()
+		}
+		testIn <- message.Message{}
+		switch {
+		case !test.wantOk:
+			wg.Wait()
+			if s.active {
+				t.Errorf("Test %v: wanted socket to be not active because it failed after reading a message", i)
+			}
+			if test.isUnexpectedCloseError != closeMessageWritten {
+				t.Errorf("Test %v: wanted close message to be written when error is unexpected", i)
+			}
+		case !s.active:
+			t.Errorf("Test %v: wanted socket to still be active", i)
+		default:
+			_, ok := <-out
+			if !ok {
+				t.Errorf("Test %v: wanted message to be read", i)
+			}
+		}
+	}
 }
 
 func TestSocketWriteMessages(t *testing.T) {

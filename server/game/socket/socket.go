@@ -126,7 +126,7 @@ func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- 
 
 // readMessages receives messages from the connected socket and writes the to the messages channel.
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *Socket) readMessages(ctx context.Context, in chan<- message.Message, wg *sync.WaitGroup) {
+func (s *Socket) readMessages(ctx context.Context, out chan<- message.Message, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for { // BLOCKING
 		m, err := s.readMessage()
@@ -135,15 +135,16 @@ func (s *Socket) readMessages(ctx context.Context, in chan<- message.Message, wg
 			return
 		default:
 			if err != nil {
+				var reason string
 				if err != errSocketClosed {
-					reason := fmt.Sprintf("reading socket messages stopped for player %v: %v", s, err)
+					reason = fmt.Sprintf("reading socket messages stopped for player %v: %v", s, err)
 					s.Log.Print(reason)
 					s.Conn.WriteClose(reason)
 				}
 				return
 			}
 		}
-		in <- *m
+		out <- *m
 		s.active = true
 	}
 }
