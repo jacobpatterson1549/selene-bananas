@@ -2,7 +2,6 @@ package socket
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"log"
@@ -34,11 +33,11 @@ func newSocketManager(maxSockets int, maxPlayerSockets int, uf upgradeFunc) *Man
 	socketCfg := Config{
 		Log:            log,
 		TimeFunc:       timeFunc,
-		ReadWait:       2 * time.Second,
-		WriteWait:      1 * time.Second,
-		PingPeriod:     1 * time.Second,
-		IdlePeriod:     3 * time.Minute,
-		HTTPPingPeriod: 1 * time.Minute,
+		ReadWait:       2 * time.Hour,
+		WriteWait:      1 * time.Hour,
+		PingPeriod:     1 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
+		IdlePeriod:     3 * time.Hour,
+		HTTPPingPeriod: 2 * time.Hour,
 	}
 	managerCfg := ManagerConfig{
 		Log:              log,
@@ -236,11 +235,11 @@ func TestManagerAddSocket(t *testing.T) {
 			Config: Config{
 				Log:            log.New(ioutil.Discard, "scLog", log.LstdFlags),
 				TimeFunc:       func() int64 { return 22 },
-				ReadWait:       2 * time.Second,
-				WriteWait:      1 * time.Second,
-				PingPeriod:     1 * time.Second,
-				IdlePeriod:     3 * time.Minute,
-				HTTPPingPeriod: 1 * time.Minute,
+				ReadWait:       2 * time.Hour,
+				WriteWait:      1 * time.Hour,
+				PingPeriod:     1 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
+				IdlePeriod:     3 * time.Hour,
+				HTTPPingPeriod: 2 * time.Hour,
 			},
 			wantOk: true,
 		},
@@ -261,10 +260,13 @@ func TestManagerAddSocket(t *testing.T) {
 					socketRun = true
 					<-blockingChannel1
 					// Socket expects to set the value to be a message with a game
-					err := json.Unmarshal([]byte(`{"game":{}}`), v)
-					if err != nil {
-						t.Fatal("unwanted error: " + err.Error())
+					m := message.Message{
+						Game: &game.Info{},
 					}
+					mr := reflect.ValueOf(m)
+					vr := reflect.ValueOf(v)
+					vre := vr.Elem()
+					vre.Set(mr)
 					close(blockingChannel2)
 					return nil
 				},
@@ -374,10 +376,13 @@ func TestManagerAddSecondSocket(t *testing.T) {
 				ReadJSONFunc: func(v interface{}) error {
 					<-blockingChannel
 					// Socket expects to set the value to be a message with a game
-					err := json.Unmarshal([]byte(`{"game":{}}`), v)
-					if err != nil {
-						t.Fatal("unwanted error: " + err.Error())
+					m := message.Message{
+						Game: &game.Info{},
 					}
+					mr := reflect.ValueOf(m)
+					vr := reflect.ValueOf(v)
+					vre := vr.Elem()
+					vre.Set(mr)
 					return nil
 				},
 			}, nil

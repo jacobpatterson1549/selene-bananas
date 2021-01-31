@@ -91,7 +91,7 @@ func TestNewSocket(t *testing.T) {
 			Config: Config{
 				Log:      testLog,
 				TimeFunc: timeFunc,
-				ReadWait: 2 * time.Second,
+				ReadWait: 2 * time.Hour,
 			},
 		},
 		{ // bad PingPeriod
@@ -99,9 +99,9 @@ func TestNewSocket(t *testing.T) {
 			Config: Config{
 				Log:        testLog,
 				TimeFunc:   timeFunc,
-				ReadWait:   2 * time.Second,
-				WriteWait:  2 * time.Second,
-				PingPeriod: 1 * time.Second,
+				ReadWait:   2 * time.Hour,
+				WriteWait:  2 * time.Hour,
+				PingPeriod: 1 * time.Hour,
 			},
 		},
 		{ // bad IdlePeriod
@@ -109,9 +109,9 @@ func TestNewSocket(t *testing.T) {
 			Config: Config{
 				Log:        testLog,
 				TimeFunc:   timeFunc,
-				ReadWait:   2 * time.Second,
-				WriteWait:  2 * time.Second,
-				PingPeriod: 1 * time.Second,
+				ReadWait:   2 * time.Hour,
+				WriteWait:  2 * time.Hour,
+				PingPeriod: 1 * time.Hour,
 			},
 		},
 		{ // bad HTTPPingPeriod
@@ -119,9 +119,9 @@ func TestNewSocket(t *testing.T) {
 			Config: Config{
 				Log:        testLog,
 				TimeFunc:   timeFunc,
-				ReadWait:   2 * time.Second,
-				WriteWait:  2 * time.Second,
-				PingPeriod: 1 * time.Second,
+				ReadWait:   2 * time.Hour,
+				WriteWait:  2 * time.Hour,
+				PingPeriod: 1 * time.Hour,
 				IdlePeriod: 1 * time.Hour,
 			},
 		},
@@ -130,11 +130,11 @@ func TestNewSocket(t *testing.T) {
 			Config: Config{
 				Log:            testLog,
 				TimeFunc:       timeFunc,
-				ReadWait:       1 * time.Second,
-				WriteWait:      2 * time.Second,
-				PingPeriod:     1 * time.Second,
+				ReadWait:       1 * time.Hour,
+				WriteWait:      2 * time.Hour,
+				PingPeriod:     1 * time.Hour,
 				IdlePeriod:     1 * time.Hour,
-				HTTPPingPeriod: 15 * time.Minute,
+				HTTPPingPeriod: 15 * time.Hour,
 			},
 		},
 		{ // ok
@@ -142,22 +142,21 @@ func TestNewSocket(t *testing.T) {
 			Config: Config{
 				Log:            testLog,
 				TimeFunc:       timeFunc,
-				ReadWait:       2 * time.Second,
-				WriteWait:      2 * time.Second,
-				PingPeriod:     1 * time.Second,
+				ReadWait:       2 * time.Hour,
+				WriteWait:      2 * time.Hour,
+				PingPeriod:     1 * time.Hour,
 				IdlePeriod:     1 * time.Hour,
-				HTTPPingPeriod: 15 * time.Minute,
+				HTTPPingPeriod: 15 * time.Hour,
 			},
 			want: &Socket{
 				Conn: conn0,
 				Config: Config{
 					Log:            testLog,
-					TimeFunc:       nil, // funcs cannot be compared
-					ReadWait:       2 * time.Second,
-					WriteWait:      2 * time.Second,
-					PingPeriod:     1 * time.Second,
+					ReadWait:       2 * time.Hour,
+					WriteWait:      2 * time.Hour,
+					PingPeriod:     1 * time.Hour,
 					IdlePeriod:     1 * time.Hour,
-					HTTPPingPeriod: 15 * time.Minute,
+					HTTPPingPeriod: 15 * time.Hour,
 				},
 			},
 			wantOk: true,
@@ -173,7 +172,7 @@ func TestNewSocket(t *testing.T) {
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		default:
-			test.want.Config.TimeFunc = nil
+			got.Config.TimeFunc = nil // funcs cannot be compared
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("Test %v: sockets not equal:\nwanted: %v\ngot:    %v", i, test.want, got)
 			}
