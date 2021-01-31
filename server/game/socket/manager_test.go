@@ -29,10 +29,8 @@ func (u mockUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn, err
 
 func newSocketManager(maxSockets int, maxPlayerSockets int, uf upgradeFunc) *Manager {
 	log := log.New(ioutil.Discard, "test", log.LstdFlags)
-	timeFunc := func() int64 { return 21 }
 	socketCfg := Config{
 		Log:            log,
-		TimeFunc:       timeFunc,
 		ReadWait:       2 * time.Hour,
 		WriteWait:      1 * time.Hour,
 		PingPeriod:     1 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
@@ -234,7 +232,6 @@ func TestManagerAddSocket(t *testing.T) {
 			maxPlayerSockets: 1,
 			Config: Config{
 				Log:            log.New(ioutil.Discard, "scLog", log.LstdFlags),
-				TimeFunc:       func() int64 { return 22 },
 				ReadWait:       2 * time.Hour,
 				WriteWait:      1 * time.Hour,
 				PingPeriod:     1 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
@@ -245,9 +242,9 @@ func TestManagerAddSocket(t *testing.T) {
 		},
 	}
 	for i, test := range managerAddSocketTests {
+		readBlocker1 := make(chan struct{})
+		readBlocker2 := make(chan struct{})
 		socketRun := false
-		blockingChannel1 := make(chan struct{})
-		blockingChannel2 := make(chan struct{})
 		upgradeFunc := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
 			if test.upgradeErr != nil {
 				return nil, test.upgradeErr
@@ -257,17 +254,12 @@ func TestManagerAddSocket(t *testing.T) {
 					return mockAddr("an.addr")
 				},
 				ReadJSONFunc: func(v interface{}) error {
-					socketRun = true
-					<-blockingChannel1
-					// Socket expects to set the value to be a message with a game
-					m := message.Message{
-						Game: &game.Info{},
+					<-readBlocker1
+					if !socketRun {
+						socketRun = true
+						close(readBlocker2)
 					}
-					mr := reflect.ValueOf(m)
-					vr := reflect.ValueOf(v)
-					vre := vr.Elem()
-					vre.Set(mr)
-					close(blockingChannel2)
+					mockConnReadMinimalMessage(v)
 					return nil
 				},
 			}, nil
@@ -298,8 +290,9 @@ func TestManagerAddSocket(t *testing.T) {
 		case len(sm.playerSockets[pn]) != 1:
 			t.Errorf("Test %v: wanted 1 socket for %v, got %v", i, pn, len(sm.playerSockets[pn]))
 		default:
-			close(blockingChannel1)
-			<-blockingChannel2
+			// test if the socket is running by sending it a message.  this relies on sm.handleSocketMessage
+			close(readBlocker1)
+			<-readBlocker2
 			if !socketRun {
 				t.Errorf("Test %v: wanted socket to be run", i)
 			}
@@ -375,14 +368,7 @@ func TestManagerAddSecondSocket(t *testing.T) {
 				},
 				ReadJSONFunc: func(v interface{}) error {
 					<-blockingChannel
-					// Socket expects to set the value to be a message with a game
-					m := message.Message{
-						Game: &game.Info{},
-					}
-					mr := reflect.ValueOf(m)
-					vr := reflect.ValueOf(v)
-					vre := vr.Elem()
-					vre.Set(mr)
+					mockConnReadMinimalMessage(v)
 					return nil
 				},
 			}, nil

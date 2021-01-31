@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
@@ -27,9 +28,6 @@ type (
 		Debug bool
 		// Log is used to log errors and other information
 		Log *log.Logger
-		// TimeFunc is a function which should supply the current time since the unix epoch.
-		// Used to set ping/pong deadlines
-		TimeFunc func() int64
 		// ReadWait is the amout of time that can pass between receiving client messages before timing out.
 		ReadWait time.Duration
 		// WriteWait is the amout of time that the socket can take to write a message.
@@ -83,8 +81,6 @@ func (cfg Config) validate(conn Conn) error {
 		return fmt.Errorf("log required")
 	case conn == nil:
 		return fmt.Errorf("websocket connection required")
-	case cfg.TimeFunc == nil:
-		return fmt.Errorf("time func required required")
 	case cfg.ReadWait <= 0:
 		return fmt.Errorf("positive read wait period required")
 	case cfg.WriteWait <= 0:
@@ -101,56 +97,68 @@ func (cfg Config) validate(conn Conn) error {
 	return nil
 }
 
-// Run writes Socket messages to the messages channel and reads incoming messages on separate goroutines.
-// The Socket runs until the connection fails for an unexpected reason or the context is cancelled
-func (s *Socket) Run(ctx context.Context, in chan<- message.Message, out <-chan message.Message) error {
+// Run writes messages from the connection to the shared "out" channel.
+// Run writes messages recieved from the "in" channel to the connection,
+// Run writes Socket messages that are recieved to the outbound channel and reads incoming messages onto the inbound channel on separate goroutines.
+// The Socket runs until the connection fails for an unexpected reason or the context is cancelled.
+func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- message.Message) error {
 	if err := s.Runner.Run(); err != nil {
 		return fmt.Errorf("running socket: %v", err)
 	}
-	ctx, cancelFunc := context.WithCancel(ctx)
-	go s.readMessages(ctx, in)
-	go s.writeMessages(ctx, cancelFunc, out)
+	pingTicker := time.NewTicker(s.PingPeriod)
+	httpPingTicker := time.NewTicker(s.HTTPPingPeriod)
+	idleTicker := time.NewTicker(s.IdlePeriod)
+	var wg sync.WaitGroup
+	go func() {
+		wg.Wait()
+		pingTicker.Stop()
+		httpPingTicker.Stop()
+		idleTicker.Stop()
+		s.Runner.Finish()
+		s.Conn.Close()
+	}()
+	wg.Add(1)
+	go s.readMessages(ctx, out, &wg)
+	wg.Add(1)
+	go s.writeMessages(ctx, in, &wg, pingTicker, httpPingTicker, idleTicker)
 	return nil
 }
 
 // readMessages receives messages from the connected socket and writes the to the messages channel.
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *Socket) readMessages(ctx context.Context, messages chan<- message.Message) {
+func (s *Socket) readMessages(ctx context.Context, in chan<- message.Message, wg *sync.WaitGroup) {
+	defer wg.Done()
 	for { // BLOCKING
 		m, err := s.readMessage()
 		select {
 		case <-ctx.Done():
-			s.closeConn("server shut down")
 			return
 		default:
 			if err != nil {
 				if err != errSocketClosed {
 					reason := fmt.Sprintf("reading socket messages stopped for player %v: %v", s, err)
 					s.Log.Print(reason)
-					s.closeConn(reason)
+					s.Conn.WriteClose(reason)
 				}
 				return
 			}
 		}
-		messages <- *m
+		in <- *m
 		s.active = true
 	}
 }
 
-// writeMessages sends messages added to the messages channel to the connected socket.
-// messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *Socket) writeMessages(ctx context.Context, cancelFunc context.CancelFunc, messages <-chan message.Message) {
+// writeMessages sends messages from the outbound messages channel to the connected socket.
+// Messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel.
+// The tickers are used to periodically write messages or check for read activity.
+func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, wg *sync.WaitGroup,
+	pingTicker, httpPingTicker, idleTicker *time.Ticker) {
 	s.active = false
-	pingTicker := time.NewTicker(s.PingPeriod)
-	httpPingTicker := time.NewTicker(s.HTTPPingPeriod)
-	idleTicker := time.NewTicker(s.IdlePeriod)
 	var closeReason string
 	defer func() {
-		pingTicker.Stop()
-		httpPingTicker.Stop()
-		idleTicker.Stop()
-		cancelFunc()
-		s.closeConn(closeReason)
+		s.Conn.WriteClose(closeReason)
+		s.Log.Print(closeReason)
+		wg.Done()
 	}()
 	var err error
 	for { // BLOCKING
@@ -158,7 +166,7 @@ func (s *Socket) writeMessages(ctx context.Context, cancelFunc context.CancelFun
 		case <-ctx.Done():
 			closeReason = "server shutting down"
 			return
-		case m := <-messages:
+		case m := <-out:
 			err = s.writeMessage(m)
 		case <-pingTicker.C:
 			err = s.Conn.WritePing()
@@ -176,7 +184,6 @@ func (s *Socket) writeMessages(ctx context.Context, cancelFunc context.CancelFun
 		if err != nil {
 			if err != errSocketClosed {
 				closeReason = fmt.Sprintf("writing socket messages stopped for player %v: %v", s, err)
-				s.Log.Print(closeReason)
 			}
 			return
 		}
@@ -214,24 +221,4 @@ func (s *Socket) writeMessage(m message.Message) error {
 		return fmt.Errorf("player deleted")
 	}
 	return nil
-}
-
-// refreshDeadline is called when a wait needs to be refreshed.
-func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
-	now := s.TimeFunc()
-	nowTime := time.Unix(now, 0)
-	deadline := nowTime.Add(period)
-	if err := refreshDeadlineFunc(deadline); err != nil {
-		err = fmt.Errorf("error refreshing ping/pong deadline: %w", err)
-		s.Log.Print(err)
-		return err
-	}
-	return nil
-}
-
-// closeConn closes the websocket connection without reporting any errors.
-func (s *Socket) closeConn(reason string) {
-	s.Conn.WriteClose(reason)
-	s.Conn.Close()
-	s.Runner.Finish()
 }

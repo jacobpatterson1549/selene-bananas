@@ -72,8 +72,6 @@ func (cfg ManagerConfig) validate() error {
 }
 
 // Run consumes messages from the message channel.  This channel is used to create sockets and send messages from games to them.
-// The messages recieved from sockets are send on an "out" channel to be read by games.
-// Run consumes messages from the message channel.  This channel is used to create sockets and send messages from games to them.
 // The messages recieved from sockets are sent on an "out" channel to be read by games.
 func (sm *Manager) Run(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
 	if err := sm.Runner.Run(); err != nil {
