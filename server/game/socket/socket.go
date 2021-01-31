@@ -44,9 +44,9 @@ type (
 	// Conn is the connection than backs the socket
 	Conn interface {
 		// ReadJSON reads the next json message from the connection.
-		ReadJSON(v interface{}) error
+		ReadJSON(m *message.Message) error
 		// WriteJSON writes the message as json to the connection.
-		WriteJSON(v interface{}) error
+		WriteJSON(m message.Message) error
 		// Close closes the connection.
 		Close() error
 		// WritePing writes a ping message on the connection.

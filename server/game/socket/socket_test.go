@@ -16,8 +16,8 @@ import (
 )
 
 type mockConn struct {
-	ReadJSONFunc               func(v interface{}) error
-	WriteJSONFunc              func(v interface{}) error
+	ReadJSONFunc               func(m *message.Message) error
+	WriteJSONFunc              func(m message.Message) error
 	CloseFunc                  func() error
 	WritePingFunc              func() error
 	WriteCloseFunc             func(reason string) error
@@ -25,12 +25,12 @@ type mockConn struct {
 	RemoteAddrFunc             func() net.Addr
 }
 
-func (c *mockConn) ReadJSON(v interface{}) error {
-	return c.ReadJSONFunc(v)
+func (c *mockConn) ReadJSON(m *message.Message) error {
+	return c.ReadJSONFunc(m)
 }
 
-func (c *mockConn) WriteJSON(v interface{}) error {
-	return c.WriteJSONFunc(v)
+func (c *mockConn) WriteJSON(m message.Message) error {
+	return c.WriteJSONFunc(m)
 }
 
 func (c *mockConn) Close() error {
@@ -53,20 +53,20 @@ func (c *mockConn) RemoteAddr() net.Addr {
 	return c.RemoteAddrFunc()
 }
 
-// mockConnReadMessage reads the message into the interface value using reflection.
-func mockConnReadMessage(v interface{}, m message.Message) {
-	mr := reflect.ValueOf(m)
-	vr := reflect.ValueOf(v)
-	vre := vr.Elem()
-	vre.Set(mr)
+// mockConnReadMessage reads the src message into the destination value using reflection.
+func mockConnReadMessage(dest *message.Message, src message.Message) {
+	srcV := reflect.ValueOf(src)
+	destV := reflect.ValueOf(dest)
+	destVE := destV.Elem()
+	destVE.Set(srcV)
 }
 
 // ReadMinimalMessage reads a message into the json that will not cause an error.
-func mockConnReadMinimalMessage(v interface{}) {
-	m := message.Message{
+func mockConnReadMinimalMessage(dest *message.Message) {
+	src := message.Message{
 		Game: &game.Info{},
 	}
-	mockConnReadMessage(v, m)
+	mockConnReadMessage(dest, src)
 }
 
 type mockAddr string
@@ -214,7 +214,7 @@ func TestRunSocket(t *testing.T) {
 		readBlocker := make(chan struct{})
 		var wg sync.WaitGroup
 		conn := mockConn{
-			ReadJSONFunc: func(v interface{}) error {
+			ReadJSONFunc: func(m *message.Message) error {
 				<-readBlocker
 				return errors.New("unexpected close")
 			},
@@ -225,7 +225,7 @@ func TestRunSocket(t *testing.T) {
 				wg.Done()
 				return nil
 			},
-			WriteJSONFunc: func(v interface{}) error {
+			WriteJSONFunc: func(m message.Message) error {
 				return nil
 			},
 			WriteCloseFunc: func(reason string) error {

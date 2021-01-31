@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/jacobpatterson1549/selene-bananas/game/message"
 )
 
 type (
@@ -36,13 +37,13 @@ func (u *gorillaUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn,
 }
 
 // ReadJSON reads the next json message from the GorillaConnection.
-func (c *gorillaConn) ReadJSON(v interface{}) error {
-	return c.ReadJSON(v)
+func (c *gorillaConn) ReadJSON(m *message.Message) error {
+	return c.ReadJSON(m)
 }
 
 // WriteJSON writes the message as json to the GorillaConnection.
-func (c *gorillaConn) WriteJSON(v interface{}) error {
-	return c.Conn.WriteJSON(v)
+func (c *gorillaConn) WriteJSON(m message.Message) error {
+	return c.Conn.WriteJSON(m)
 }
 
 // Close closes the underlying GorillaConnection.

@@ -213,7 +213,6 @@ func socketManagerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) so
 	socketCfg := socket.Config{
 		Debug:          m.debugGame,
 		Log:            log,
-		TimeFunc:       timeFunc,
 		ReadWait:       60 * time.Second,
 		WriteWait:      10 * time.Second,
 		PingPeriod:     54 * time.Second, // readWait * 0.9

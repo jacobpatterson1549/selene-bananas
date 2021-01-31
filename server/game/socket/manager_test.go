@@ -253,13 +253,13 @@ func TestManagerAddSocket(t *testing.T) {
 				RemoteAddrFunc: func() net.Addr {
 					return mockAddr("an.addr")
 				},
-				ReadJSONFunc: func(v interface{}) error {
+				ReadJSONFunc: func(m *message.Message) error {
 					<-readBlocker1
 					if !socketRun {
 						socketRun = true
 						close(readBlocker2)
 					}
-					mockConnReadMinimalMessage(v)
+					mockConnReadMinimalMessage(m)
 					return nil
 				},
 			}, nil
@@ -366,9 +366,9 @@ func TestManagerAddSecondSocket(t *testing.T) {
 					secondSocketAddr = true
 					return mockAddr(socket1Addr)
 				},
-				ReadJSONFunc: func(v interface{}) error {
+				ReadJSONFunc: func(m *message.Message) error {
 					<-blockingChannel
-					mockConnReadMinimalMessage(v)
+					mockConnReadMinimalMessage(m)
 					return nil
 				},
 			}, nil
