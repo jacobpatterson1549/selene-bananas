@@ -211,13 +211,12 @@ func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int6
 // socketManagerConfig creates the configuration for creating new sockets (each tab that is connected to the lobby).
 func socketManagerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) socket.ManagerConfig {
 	socketCfg := socket.Config{
-		Debug:          m.debugGame,
-		Log:            log,
-		ReadWait:       60 * time.Second,
-		WriteWait:      10 * time.Second,
-		PingPeriod:     54 * time.Second, // readWait * 0.9
-		IdlePeriod:     15 * time.Minute,
-		HTTPPingPeriod: 10 * time.Minute,
+		Debug:               m.debugGame,
+		Log:                 log,
+		ReadWait:            60 * time.Second,
+		WriteWait:           10 * time.Second,
+		PingPeriod:          54 * time.Second, // readWait * 0.9
+		ActivityCheckPeriod: 10 * time.Minute,
 	}
 	cfg := socket.ManagerConfig{
 		Log:              log,

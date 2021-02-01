@@ -113,58 +113,44 @@ func TestNewSocket(t *testing.T) {
 				Log:        testLog,
 				ReadWait:   2 * time.Hour,
 				WriteWait:  2 * time.Hour,
-				PingPeriod: 1 * time.Hour,
 			},
 		},
-		{ // bad IdlePeriod
+		{ // bad ActivityCheckPeriod
 			Conn: conn0,
 			Config: Config{
 				Log:        testLog,
 				ReadWait:   2 * time.Hour,
 				WriteWait:  2 * time.Hour,
 				PingPeriod: 1 * time.Hour,
-			},
-		},
-		{ // bad HTTPPingPeriod
-			Conn: conn0,
-			Config: Config{
-				Log:        testLog,
-				ReadWait:   2 * time.Hour,
-				WriteWait:  2 * time.Hour,
-				PingPeriod: 1 * time.Hour,
-				IdlePeriod: 1 * time.Hour,
 			},
 		},
 		{ // PingPeriod not less than ReadWait
 			Conn: conn0,
 			Config: Config{
-				Log:            testLog,
-				ReadWait:       1 * time.Hour,
-				WriteWait:      2 * time.Hour,
-				PingPeriod:     1 * time.Hour,
-				IdlePeriod:     1 * time.Hour,
-				HTTPPingPeriod: 15 * time.Hour,
+				Log:                 testLog,
+				ReadWait:            1 * time.Hour,
+				WriteWait:           2 * time.Hour,
+				PingPeriod:          1 * time.Hour,
+				ActivityCheckPeriod: 15 * time.Hour,
 			},
 		},
 		{ // ok
 			Conn: conn0,
 			Config: Config{
-				Log:            testLog,
-				ReadWait:       2 * time.Hour,
-				WriteWait:      2 * time.Hour,
-				PingPeriod:     1 * time.Hour,
-				IdlePeriod:     1 * time.Hour,
-				HTTPPingPeriod: 15 * time.Hour,
+				Log:                 testLog,
+				ReadWait:            2 * time.Hour,
+				WriteWait:           2 * time.Hour,
+				PingPeriod:          1 * time.Hour,
+				ActivityCheckPeriod: 15 * time.Hour,
 			},
 			want: &Socket{
 				Conn: conn0,
 				Config: Config{
-					Log:            testLog,
-					ReadWait:       2 * time.Hour,
-					WriteWait:      2 * time.Hour,
-					PingPeriod:     1 * time.Hour,
-					IdlePeriod:     1 * time.Hour,
-					HTTPPingPeriod: 15 * time.Hour,
+					Log:                 testLog,
+					ReadWait:            2 * time.Hour,
+					WriteWait:           2 * time.Hour,
+					PingPeriod:          1 * time.Hour,
+					ActivityCheckPeriod: 15 * time.Hour,
 				},
 			},
 			wantOk: true,
@@ -233,17 +219,16 @@ func TestRunSocket(t *testing.T) {
 			},
 		}
 		cfg := Config{
-			Log:            log.New(ioutil.Discard, "test", log.LstdFlags),
-			ReadWait:       2 * time.Hour,
-			WriteWait:      2 * time.Hour,
-			PingPeriod:     1 * time.Hour,
-			IdlePeriod:     1 * time.Hour,
-			HTTPPingPeriod: 15 * time.Hour,
+			Log:                 log.New(ioutil.Discard, "test", log.LstdFlags),
+			ReadWait:            2 * time.Hour,
+			WriteWait:           2 * time.Hour,
+			PingPeriod:          1 * time.Hour,
+			ActivityCheckPeriod: 3 * time.Hour,
 		}
 		s := Socket{
-			Conn:   &conn,
-			Config: cfg,
-			active: true,
+			Conn:       &conn,
+			Config:     cfg,
+			readActive: true,
 		}
 		if test.alreadyRunning {
 			ctx := context.Background()
@@ -270,7 +255,7 @@ func TestRunSocket(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
-		case s.active:
+		case s.readActive:
 			t.Errorf("Test %v: socket should be set to not active when starting a run", i)
 		default:
 			if !s.IsRunning() {
@@ -363,13 +348,13 @@ func TestSocketReadMessages(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			wg.Wait()
-			if s.active {
+			if s.readActive {
 				t.Errorf("Test %v: wanted socket to be not active because it failed after reading a message", i)
 			}
 			if test.isUnexpectedCloseError != closeMessageWritten {
 				t.Errorf("Test %v: wanted close message to be written when error is unexpected", i)
 			}
-		case !s.active:
+		case !s.readActive:
 			t.Errorf("Test %v: wanted socket to still be active", i)
 		default:
 			_, ok := <-out
@@ -389,9 +374,8 @@ func TestSocketWriteMessages(t *testing.T) {
 		writeErr     error
 		pingTick     bool
 		pingErr      error
-		httpPingTick bool
-		activeTick   bool
-		active       bool
+		activityTick bool
+		readActive   bool
 		wantOk       bool
 	}{
 		{ // context canceled
@@ -431,24 +415,21 @@ func TestSocketWriteMessages(t *testing.T) {
 			pingTick: true,
 			pingErr:  errors.New("error writing ping"),
 		},
-		{ // http ping to keep heroku server alive
-			httpPingTick: true,
+		{ // activity check: ok
+			activityTick: true,
 			wantM: message.Message{
 				Type: message.SocketHTTPPing,
 			},
-			wantOk: true,
-		},
-		{ // http ping to keep heroku server alive
-			httpPingTick: true,
-			writeErr:     errors.New("error writing HTTP ping"),
-		},
-		{ // socket activity check, but socket is not active
-			activeTick: true,
-		},
-		{ // socket activity check
-			activeTick: true,
-			active:     true,
+			readActive: true,
 			wantOk:     true,
+		},
+		{ // activity check, but no recent read activity
+			activityTick: true,
+		},
+		{ // activity check, but ping write fails
+			activityTick: true,
+			readActive:   true,
+			writeErr:     errors.New("error writing activity check ping"),
 		},
 	}
 	for i, test := range writeMessagesTests {
@@ -458,13 +439,9 @@ func TestSocketWriteMessages(t *testing.T) {
 		pingTicker := &time.Ticker{
 			C: pingC,
 		}
-		httpPingC := make(chan time.Time, 1)
-		httpPingTicker := &time.Ticker{
-			C: httpPingC,
-		}
-		idleC := make(chan time.Time, 1)
-		idleTicker := &time.Ticker{
-			C: idleC,
+		activityCheckC := make(chan time.Time, 1)
+		activityCheckTicker := &time.Ticker{
+			C: activityCheckC,
 		}
 		conn := mockConn{
 			CloseFunc: func() error {
@@ -503,21 +480,19 @@ func TestSocketWriteMessages(t *testing.T) {
 			close(out)
 		case test.pingTick:
 			pingC <- time.Now()
-		case test.httpPingTick:
-			httpPingC <- time.Now()
-		case test.activeTick:
-			if test.active {
-				s.active = true
+		case test.activityTick:
+			if test.readActive {
+				s.readActive = true
 			}
-			idleC <- time.Now()
+			activityCheckC <- time.Now()
 		default:
 			out <- test.m
 		}
-		go s.writeMessages(ctx, out, &wg, pingTicker, httpPingTicker, idleTicker)
+		go s.writeMessages(ctx, out, &wg, pingTicker, activityCheckTicker)
 		switch {
 		case !test.wantOk:
 			wg.Wait()
-			if s.active {
+			if s.readActive {
 				t.Errorf("Test %v: wanted socket to be not active because it failed after reading a message", i)
 			}
 			if !closeMessageWritten {
@@ -527,16 +502,13 @@ func TestSocketWriteMessages(t *testing.T) {
 			if _, ok := <-pingC; !ok {
 				t.Errorf("Test %v: wanted websocket ping to close mock ping channel", i)
 			}
-		case test.activeTick:
-		// 	// TODO: yield to the writeMessages() goroutine so the idle tick can be handled
-		// 	runtime.Gosched()
-		// 	if s.active {
-		// 		t.Errorf("Test %v: wanted socket to not be active after idle tick", i)
-		// 	}
 		default:
 			gotM := <-writtenMessages
 			if !reflect.DeepEqual(test.wantM, gotM) {
 				t.Errorf("Test %v: messages not equal:\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
+			}
+			if test.activityTick && s.readActive {
+				t.Errorf("Test %v: wanted socket to not be active after activity check tick", i)
 			}
 		}
 	}

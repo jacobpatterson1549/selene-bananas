@@ -18,7 +18,7 @@ type (
 	Socket struct {
 		runner.Runner
 		Conn
-		active bool // TODO: rename this to readActive
+		readActive bool
 		Config
 	}
 
@@ -34,11 +34,9 @@ type (
 		WriteWait time.Duration
 		// PingPeriod is how often ping messages should be sent.  Should be less than ReadWait.
 		PingPeriod time.Duration
-		// IdlePeroid is the amount of time that can pass between handling messages that are not pings before the connection is idle and will be disconnected
-		IdlePeriod time.Duration
-		// HTTPPingPeriod is the amount of time between sending requests for the connection to send a http ping on a different socket
-		// Heroku servers shut down if 30 minutes passess between HTTP requests
-		HTTPPingPeriod time.Duration
+		// ActivityPeroid is the amount of time to check for read activity.
+		// Also sends a HTTP ping on a different socket, as Heroku servers shut down if 30 minutes passess between HTTP requests.
+		ActivityCheckPeriod time.Duration
 	}
 
 	// Conn is the connection than backs the socket
@@ -87,10 +85,8 @@ func (cfg Config) validate(conn Conn) error {
 		return fmt.Errorf("positive write wait period required")
 	case cfg.PingPeriod <= 0:
 		return fmt.Errorf("positive ping period required")
-	case cfg.IdlePeriod <= 0:
-		return fmt.Errorf("positive idle period required")
-	case cfg.HTTPPingPeriod <= 0:
-		return fmt.Errorf("positive http ping period required")
+	case cfg.ActivityCheckPeriod <= 0:
+		return fmt.Errorf("positive activity check period required")
 	case cfg.PingPeriod >= cfg.ReadWait:
 		return fmt.Errorf("ping period should be less than read wait")
 	}
@@ -106,22 +102,20 @@ func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- 
 		return fmt.Errorf("running socket: %v", err)
 	}
 	pingTicker := time.NewTicker(s.PingPeriod)
-	httpPingTicker := time.NewTicker(s.HTTPPingPeriod)
-	idleTicker := time.NewTicker(s.IdlePeriod)
+	activityCheckTicker := time.NewTicker(s.ActivityCheckPeriod)
 	var wg sync.WaitGroup
 	go func() {
 		wg.Wait()
 		pingTicker.Stop()
-		httpPingTicker.Stop()
-		idleTicker.Stop()
+		activityCheckTicker.Stop()
 		s.Runner.Finish()
 		s.Conn.Close()
 	}()
-	s.active = false
+	s.readActive = false
 	wg.Add(1)
 	go s.readMessages(ctx, out, &wg)
 	wg.Add(1)
-	go s.writeMessages(ctx, in, &wg, pingTicker, httpPingTicker, idleTicker)
+	go s.writeMessages(ctx, in, &wg, pingTicker, activityCheckTicker)
 	return nil
 }
 
@@ -146,7 +140,7 @@ func (s *Socket) readMessages(ctx context.Context, out chan<- message.Message, w
 			}
 		}
 		out <- *m
-		s.active = true
+		s.readActive = true
 	}
 }
 
@@ -154,7 +148,7 @@ func (s *Socket) readMessages(ctx context.Context, out chan<- message.Message, w
 // Messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel.
 // The tickers are used to periodically write messages or check for read activity.
 func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, wg *sync.WaitGroup,
-	pingTicker, httpPingTicker, idleTicker *time.Ticker) {
+	pingTicker, activityTicker *time.Ticker) {
 	var closeReason string
 	defer func() {
 		s.Conn.WriteClose(closeReason)
@@ -175,16 +169,8 @@ func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, 
 			err = s.writeMessage(m)
 		case <-pingTicker.C:
 			err = s.Conn.WritePing()
-		case <-httpPingTicker.C:
-			err = s.writeMessage(message.Message{
-				Type: message.SocketHTTPPing,
-			})
-		case <-idleTicker.C:
-			if !s.active {
-				closeReason = "closing socket due to inactivity"
-				return
-			}
-			s.active = false
+		case <-activityTicker.C:
+			err = s.handleActivityCheck()
 		}
 		if err != nil {
 			closeReason = fmt.Sprintf("writing socket messages stopped for player %v: %v", s, err)
@@ -224,4 +210,16 @@ func (s *Socket) writeMessage(m message.Message) error {
 		return fmt.Errorf("player deleted")
 	}
 	return nil
+}
+
+// handleActivityCheck ensures the socket has read a message recently.  If so, it writes an HTTPPing message.
+func (s *Socket) handleActivityCheck() error {
+	if !s.readActive {
+		return fmt.Errorf("closing socket due to inactivity")
+	}
+	s.readActive = false
+	m := message.Message{
+		Type: message.SocketHTTPPing,
+	}
+	return s.writeMessage(m)
 }

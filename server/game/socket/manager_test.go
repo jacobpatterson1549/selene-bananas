@@ -30,12 +30,11 @@ func (u mockUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn, err
 func newSocketManager(maxSockets int, maxPlayerSockets int, uf upgradeFunc) *Manager {
 	log := log.New(ioutil.Discard, "test", log.LstdFlags)
 	socketCfg := Config{
-		Log:            log,
-		ReadWait:       2 * time.Hour,
-		WriteWait:      1 * time.Hour,
-		PingPeriod:     1 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
-		IdlePeriod:     3 * time.Hour,
-		HTTPPingPeriod: 2 * time.Hour,
+		Log:                 log,
+		ReadWait:            2 * time.Hour,
+		WriteWait:           1 * time.Hour,
+		PingPeriod:          1 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
+		ActivityCheckPeriod: 3 * time.Hour,
 	}
 	managerCfg := ManagerConfig{
 		Log:              log,
@@ -231,12 +230,11 @@ func TestManagerAddSocket(t *testing.T) {
 			maxSockets:       1,
 			maxPlayerSockets: 1,
 			Config: Config{
-				Log:            log.New(ioutil.Discard, "scLog", log.LstdFlags),
-				ReadWait:       2 * time.Hour,
-				WriteWait:      1 * time.Hour,
-				PingPeriod:     1 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
-				IdlePeriod:     3 * time.Hour,
-				HTTPPingPeriod: 2 * time.Hour,
+				Log:                 log.New(ioutil.Discard, "scLog", log.LstdFlags),
+				ReadWait:            2 * time.Hour,
+				WriteWait:           1 * time.Hour,
+				PingPeriod:          1 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
+				ActivityCheckPeriod: 3 * time.Hour,
 			},
 			wantOk: true,
 		},
