@@ -2,6 +2,7 @@
 package message
 
 import (
+	"net"
 	"net/http"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
@@ -24,6 +25,8 @@ type (
 		Games []game.Info `json:"games,omitempty"`
 		// PlayerName is the name of the player the message is to/from.
 		PlayerName player.Name `json:"-"`
+		// Addr is the socket remote address the message is from
+		Addr net.Addr `json:"-"`
 		// AddSocketRequest contains info about the socket to add for a player.
 		AddSocketRequest *AddSocketRequest `json:"-"`
 	}

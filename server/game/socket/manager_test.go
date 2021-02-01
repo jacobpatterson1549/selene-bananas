@@ -1,6 +1,7 @@
 package socket
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io/ioutil"
@@ -352,24 +353,34 @@ func TestManagerAddSecondSocket(t *testing.T) {
 		},
 	}
 	for i, test := range managerAddSecondSocketTests {
-		secondSocketAddr := false
 		blockingChannel := make(chan struct{})
 		defer close(blockingChannel)
+		j := 0
+		readJSONFunc := func(m *message.Message) error {
+			<-blockingChannel
+			mockConnReadMinimalMessage(m)
+			return nil
+		}
 		upgradeFunc := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
-			return &mockConn{
-				RemoteAddrFunc: func() net.Addr {
-					if secondSocketAddr {
+			j++
+			switch j {
+			case 1:
+				return &mockConn{
+					RemoteAddrFunc: func() net.Addr {
+						return mockAddr(socket1Addr)
+					},
+					ReadJSONFunc: readJSONFunc,
+				}, nil
+			case 2:
+				return &mockConn{
+					RemoteAddrFunc: func() net.Addr {
 						return mockAddr(test.socket2Addr)
-					}
-					secondSocketAddr = true
-					return mockAddr(socket1Addr)
-				},
-				ReadJSONFunc: func(m *message.Message) error {
-					<-blockingChannel
-					mockConnReadMinimalMessage(m)
-					return nil
-				},
-			}, nil
+					},
+					ReadJSONFunc: readJSONFunc,
+				}, nil
+			default:
+				return nil, errors.New("too many calls to upgrade")
+			}
 		}
 		sm := newSocketManager(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
 		ctx := context.Background()
@@ -402,20 +413,6 @@ func TestManagerAddSecondSocket(t *testing.T) {
 	}
 }
 
-func TestAddSocketIsRun(t *testing.T) {
-	uf := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
-		return &mockConn{}, nil
-	}
-	sm := newSocketManager(1, 1, uf)
-	ctx := context.Background()
-	in := make(chan message.Message)
-	_, err := sm.Run(ctx, in)
-	if err != nil {
-		t.Fatalf("unwanted error running socket manager: %v", err)
-	}
-	// ensure socket run started
-}
-
 func TestManagerHandleGameMessage(t *testing.T) {
 	// TODO: test message recieved from game 'in' channel
 	// * normal message
@@ -424,10 +421,375 @@ func TestManagerHandleGameMessage(t *testing.T) {
 	// * message without game[Id]: do not send, only log
 	// * game leave, delete message:
 	// * player delete message -> should close socket input streams
+	// * no socket for player in game: ok, don't send message
 }
 
 func TestManagerHandleSocketMessage(t *testing.T) {
-	// TODO: test message recieved from a socket
-	// join game add to game until
-	// leave game
+	addr1 := mockAddr("addr1")
+	addr2 := mockAddr("addr2")
+	socketIns := []chan<- message.Message{
+		make(chan<- message.Message, 1),
+	}
+	handleSocketMessageTests := []struct {
+		playerSockets     map[player.Name]map[net.Addr]chan<- message.Message
+		playerGames       map[player.Name]map[game.ID]net.Addr
+		m                 message.Message
+		wantPlayerSockets map[player.Name]map[net.Addr]chan<- message.Message
+		wantPlayerGames   map[player.Name]map[game.ID]net.Addr
+		want              message.Message
+		wantOk            bool
+		skipOutSend       bool
+	}{
+		{ // no playerName on message
+		},
+		{ // no address for message
+			m: message.Message{
+				PlayerName: "barney",
+			},
+		},
+		{ // no socket for message
+			m: message.Message{
+				PlayerName: "barney",
+				Addr:       addr1,
+			},
+		},
+		{ // no player for message
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": nil,
+			},
+			m: message.Message{
+				PlayerName: "barney",
+			},
+		},
+		{ // no game
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			m: message.Message{
+				PlayerName: "fred",
+				Addr:       addr1,
+			},
+		},
+		{ // addr not in game
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			m: message.Message{
+				Type:       message.Snag,
+				PlayerName: "fred",
+				Addr:       addr2,
+				Game: &game.Info{
+					ID: 9,
+				},
+			},
+		},
+		{ // player not in game
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			m: message.Message{
+				Type:       message.Snag,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					ID: 9,
+				},
+			},
+		},
+		{ // player playing other game
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+					addr2: nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					1: addr1,
+				},
+			},
+			m: message.Message{
+				Type:       message.Snag,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					ID: 2,
+				},
+			},
+		},
+		{ // player playing game at different address
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+					addr2: nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					1: addr1,
+					2: addr2,
+				},
+			},
+			m: message.Message{
+				Type:       message.Snag,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					ID: 2,
+				},
+			},
+		},
+		{ // create game
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			m: message.Message{
+				Type:       message.Create,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					Config: &game.Config{}, // this should be populated, but the gameManager checks this
+				},
+			},
+			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			wantOk: true,
+		},
+		{ // join game
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			playerGames: make(map[player.Name]map[game.ID]net.Addr),
+			m: message.Message{
+				Type:       message.Join,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					ID: 9,
+				},
+			},
+			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					9: addr1,
+				},
+			},
+			wantOk: true,
+		},
+		{ // join game that is already joined, NOOP
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					9: addr1,
+				},
+			},
+			m: message.Message{
+				Type:       message.Join,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					ID: 9,
+				},
+			},
+			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					9: addr1,
+				},
+			},
+			wantOk:      true,
+			skipOutSend: true,
+		},
+		{ // join game from other socket, other socket should leave game
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+					addr2: socketIns[0],
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					9: addr2,
+				},
+			},
+			m: message.Message{
+				Type:       message.Join,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					ID: 9,
+				},
+			},
+			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+					addr2: socketIns[0],
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					9: addr1,
+				},
+			},
+			wantOk: true,
+		},
+		{ // join game, switching games
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					7: addr1,
+				},
+			},
+			m: message.Message{
+				Type:       message.Join,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					ID: 8,
+				},
+			},
+			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					8: addr1,
+				},
+			},
+			wantOk: true,
+		},
+		{ // leave game
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					9: addr1,
+				},
+			},
+			m: message.Message{
+				Type:       message.Leave,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					ID: 9,
+				},
+			},
+			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
+			wantOk:          true,
+			skipOutSend:     true, // don't tell the game the socket is not listening
+		},
+		{ // player delete
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					9: addr1,
+				},
+			},
+			m: message.Message{
+				Type:       message.PlayerDelete,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					ID: 9,
+				},
+			},
+			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
+			wantPlayerGames:   map[player.Name]map[game.ID]net.Addr{},
+			wantOk:            true,
+		},
+	}
+	for i, test := range handleSocketMessageTests {
+		var bb bytes.Buffer
+		log := log.New(&bb, "test", log.LstdFlags)
+		sm := Manager{
+			playerSockets: test.playerSockets,
+			playerGames:   test.playerGames,
+			ManagerConfig: ManagerConfig{
+				Log: log,
+			},
+		}
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		defer cancelFunc()
+		gameOut := make(chan message.Message, 1)
+		sm.handleSocketMessage(ctx, test.m, gameOut)
+		switch {
+		case !test.wantOk:
+			if bb.Len() == 0 {
+				t.Errorf("Test %v: wanted error logged for bad message", i)
+			}
+		case !reflect.DeepEqual(test.wantPlayerSockets, sm.playerSockets):
+			t.Errorf("Test %v: player sockets not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerSockets, sm.playerSockets)
+		case !reflect.DeepEqual(test.wantPlayerGames, sm.playerGames):
+			t.Errorf("Test %v: playergames not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerGames, sm.playerGames)
+		default:
+			switch len(gameOut) {
+			case 0:
+				if !test.skipOutSend {
+					t.Errorf("Test %v: wanted message to be sent to game manager", i)
+				}
+			case 1:
+				if test.skipOutSend {
+					t.Errorf("Test %v: wanted no message to be sent to game manager", i)
+					continue
+				}
+				got := <-gameOut
+				if !reflect.DeepEqual(test.m, got) { // dumb check to ensure the messages is passed through without modification
+					t.Errorf("Test %v: game messages not equal:\nwanted: %v\ngot:    %v", i, test.want, got)
+				}
+			default:
+				t.Errorf("too many messages sent on out channel")
+			}
+			for n, addrs := range test.playerSockets {
+				for a, socketIn := range addrs {
+					if socketIn != nil && len(socketIn) != 1 {
+						t.Errorf("Test %v: wanted 1 message to be sent to %v at %v", i, n, a)
+					}
+				}
+			}
+		}
+	}
 }

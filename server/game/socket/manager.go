@@ -14,7 +14,8 @@ import (
 )
 
 type (
-	// Manager handles sending messages to different sockets,
+	// Manager handles sending messages to different sockets.
+	// The manager allows for players to open multiple sockets, but multiple sockets cannot play in the same game before first leaving.
 	Manager struct {
 		runner.Runner
 		upgrader      Upgrader
@@ -27,7 +28,7 @@ type (
 	// ManagerConfig is used to create a socket Manager.
 	ManagerConfig struct {
 		// Log is used to log errors and other information
-		Log *log.Logger // TODO: use this
+		Log *log.Logger
 		// The maximum number of sockets.
 		MaxSockets int
 		// The maximum number of sockets each player can open.  Must be no more than maxSockets.
@@ -114,7 +115,7 @@ func (sm *Manager) AddSocket(ctx context.Context, pn player.Name, w http.Respons
 	if err != nil {
 		return fmt.Errorf("upgrading to websocket connection: %w", err)
 	}
-	s, err := sm.SocketConfig.NewSocket(conn)
+	s, err := sm.SocketConfig.NewSocket(pn, conn)
 	if err != nil {
 		return fmt.Errorf("creating socket in manager: %v", err)
 	}
@@ -122,17 +123,16 @@ func (sm *Manager) AddSocket(ctx context.Context, pn player.Name, w http.Respons
 	if err := s.Run(ctx, socketIn, sm.socketOut); err != nil {
 		return fmt.Errorf("running socket")
 	}
-	a := conn.RemoteAddr()
-	if sm.hasSocket(a) {
-		return fmt.Errorf("socket already exists with address of %v", a)
+	if sm.hasSocket(s.Addr) {
+		return fmt.Errorf("socket already exists with address of %v", s.Addr)
 	}
 	playerSockets, ok := sm.playerSockets[pn]
 	switch {
 	case ok:
-		playerSockets[a] = socketIn
+		playerSockets[s.Addr] = socketIn
 	default:
 		sm.playerSockets[pn] = map[net.Addr]chan<- message.Message{
-			a: socketIn,
+			s.Addr: socketIn,
 		}
 	}
 	return nil
@@ -159,10 +159,6 @@ func (sm *Manager) hasSocket(a net.Addr) bool {
 	return false
 }
 
-func (sm *Manager) removeSocket(a net.Addr) {
-
-}
-
 // handleGameMessage writes the message to the appropriate sockets in the manager.
 func (sm *Manager) handleGameMessage(ctx context.Context, m message.Message) {
 	// TODO
@@ -170,5 +166,110 @@ func (sm *Manager) handleGameMessage(ctx context.Context, m message.Message) {
 
 // handleSocketMessage writes the socket message to to the out channel, possibly taking action.
 func (sm *Manager) handleSocketMessage(ctx context.Context, m message.Message, out chan<- message.Message) {
-	// TODO
+	if len(m.PlayerName) == 0 {
+		sm.Log.Printf("Received message without player name (%v).  Cannot send message back.", m.PlayerName)
+		return
+	}
+	if m.Addr == nil {
+		sm.Log.Printf("Received message without player address (%v) for %v.  Cannot send message back.", m.Addr, m.PlayerName)
+		return
+	}
+	socketAddrs, ok := sm.playerSockets[m.PlayerName]
+	if !ok {
+		sm.Log.Printf("Received message from socket from unknown player (%v).  Cannot send message back.", m.PlayerName)
+		return
+	}
+	_, ok = socketAddrs[m.Addr]
+	if !ok {
+		sm.Log.Printf("Received message from '%v' from unknown address: %v.  Cannot send message back.", m.PlayerName, m.Addr)
+		return
+	}
+	if m.Game == nil {
+		sm.Log.Printf("Received message without game: %v", m)
+		return
+	}
+	switch m.Type {
+	case message.Create, message.Join:
+		// NOOP
+	default:
+		games, ok := sm.playerGames[m.PlayerName]
+		switch {
+		case !ok:
+			sm.Log.Printf("player %v at %v not playering any game,", m.PlayerName, m.Addr)
+			return
+		default:
+			addr, ok := games[m.Game.ID]
+			if !ok {
+				sm.Log.Printf("Player %v at %v not in game %v", m.PlayerName, m.Addr, m.Game.ID)
+				return
+			}
+			if addr != m.Addr {
+				sm.Log.Printf("Player %v at %v playing game %v on a different socket (%v)", m.PlayerName, m.Addr, m.Game.ID, addr)
+				return
+			}
+		}
+	}
+	switch m.Type {
+	case message.Join:
+		sm.joinGame(ctx, m, out)
+	case message.PlayerDelete:
+		sm.removeSocket(ctx, m, out)
+	case message.Leave:
+		sm.leaveGame(ctx, m, out)
+	default:
+		out <- m
+	}
+}
+
+// joinGame adds the socket to the game.
+// If the socket is in a different game, that game is left.
+// If a different socket is in the game for the player, that socket leaves the game.
+func (sm *Manager) joinGame(ctx context.Context, m message.Message, out chan<- message.Message) {
+	games, ok := sm.playerGames[m.PlayerName]
+	switch {
+	case !ok:
+		games = make(map[game.ID]net.Addr, 1)
+		sm.playerGames[m.PlayerName] = games
+	default:
+		// remove other addr from the game
+		addr2, ok := games[m.Game.ID]
+		if ok {
+			if m.Addr == addr2 {
+				return // do not rejoin the game if already joined
+			}
+			m2 := message.Message{
+				Type: message.Leave,
+				Info: "leaving game because it is being played on a different socket",
+			}
+			socketIns := sm.playerSockets[m.PlayerName][addr2]
+			socketIns <- m2
+		}
+		// remove the addr from its previously joined game if it is different
+		for id, addr := range games {
+			if addr == m.Addr {
+				delete(games, id)
+				break
+			}
+		}
+	}
+	games[m.Game.ID] = m.Addr
+	out <- m
+}
+
+// removeSocket removes the socket from the manager.
+func (sm *Manager) removeSocket(ctx context.Context, m message.Message, out chan<- message.Message) {
+	delete(sm.playerSockets[m.PlayerName], m.Addr)
+	if len(sm.playerSockets[m.PlayerName]) == 0 {
+		delete(sm.playerSockets, m.PlayerName)
+	}
+	sm.leaveGame(ctx, m, out)
+	out <- m
+}
+
+// leaveGame removes the socket from any game it is in..
+func (sm *Manager) leaveGame(ctx context.Context, m message.Message, out chan<- message.Message) {
+	delete(sm.playerGames[m.PlayerName], m.Game.ID)
+	if len(sm.playerGames[m.PlayerName]) == 0 {
+		delete(sm.playerGames, m.PlayerName)
+	}
 }

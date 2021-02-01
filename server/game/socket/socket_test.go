@@ -14,6 +14,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
+	"github.com/jacobpatterson1549/selene-bananas/game/player"
 )
 
 type mockConn struct {
@@ -82,34 +83,51 @@ func (a mockAddr) String() string {
 
 func TestNewSocket(t *testing.T) {
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
+	pn := player.Name("selene")
+	addr := mockAddr("selene.pc")
 	conn0 := &mockConn{}
 	newSocketTests := []struct {
-		wantOk bool
-		want   *Socket
+		wantOk     bool
+		want       *Socket
+		playerName player.Name
 		Conn
+		remoteAddr net.Addr
 		Config
 	}{
-		{}, // no Log
+		{}, // no playerName
 		{ // no conn
-			Config: Config{
-				Log: testLog,
-			},
+			playerName: pn,
+		},
+		{ // no remote addr
+			playerName: pn,
+			Conn:       conn0,
+		},
+		{ // no log
+			playerName: pn,
+			Conn:       conn0,
+			remoteAddr: addr,
 		},
 		{ // bad ReadWait
-			Conn: conn0,
+			playerName: pn,
+			Conn:       conn0,
+			remoteAddr: addr,
 			Config: Config{
 				Log: testLog,
 			},
 		},
 		{ // bad WriteWait
-			Conn: conn0,
+			playerName: pn,
+			Conn:       conn0,
+			remoteAddr: addr,
 			Config: Config{
 				Log:      testLog,
 				ReadWait: 2 * time.Hour,
 			},
 		},
 		{ // bad PingPeriod
-			Conn: conn0,
+			playerName: pn,
+			Conn:       conn0,
+			remoteAddr: addr,
 			Config: Config{
 				Log:       testLog,
 				ReadWait:  2 * time.Hour,
@@ -117,7 +135,9 @@ func TestNewSocket(t *testing.T) {
 			},
 		},
 		{ // bad ActivityCheckPeriod
-			Conn: conn0,
+			playerName: pn,
+			Conn:       conn0,
+			remoteAddr: addr,
 			Config: Config{
 				Log:        testLog,
 				ReadWait:   2 * time.Hour,
@@ -126,7 +146,9 @@ func TestNewSocket(t *testing.T) {
 			},
 		},
 		{ // PingPeriod not less than ReadWait
-			Conn: conn0,
+			playerName: pn,
+			Conn:       conn0,
+			remoteAddr: addr,
 			Config: Config{
 				Log:                 testLog,
 				ReadWait:            1 * time.Hour,
@@ -136,7 +158,9 @@ func TestNewSocket(t *testing.T) {
 			},
 		},
 		{ // ok
-			Conn: conn0,
+			playerName: pn,
+			Conn:       conn0,
+			remoteAddr: addr,
 			Config: Config{
 				Log:                 testLog,
 				ReadWait:            2 * time.Hour,
@@ -145,7 +169,9 @@ func TestNewSocket(t *testing.T) {
 				ActivityCheckPeriod: 15 * time.Hour,
 			},
 			want: &Socket{
-				Conn: conn0,
+				PlayerName: pn,
+				Addr:       addr,
+				Conn:       conn0,
 				Config: Config{
 					Log:                 testLog,
 					ReadWait:            2 * time.Hour,
@@ -158,7 +184,13 @@ func TestNewSocket(t *testing.T) {
 		},
 	}
 	for i, test := range newSocketTests {
-		got, err := test.Config.NewSocket(test.Conn)
+		switch test.Conn.(type) {
+		case *mockConn:
+			test.Conn.(*mockConn).RemoteAddrFunc = func() net.Addr {
+				return test.remoteAddr
+			}
+		}
+		got, err := test.Config.NewSocket(test.playerName, test.Conn)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -277,6 +309,8 @@ func TestRunSocket(t *testing.T) {
 }
 
 func TestSocketReadMessages(t *testing.T) {
+	pn := player.Name("selene")
+	addr := mockAddr("selene.pc.addr")
 	readMessagesTests := []struct {
 		readMessageErr         error
 		isUnexpectedCloseError bool
@@ -342,6 +376,8 @@ func TestSocketReadMessages(t *testing.T) {
 				Log:   log,
 				Debug: test.debug,
 			},
+			PlayerName: pn,
+			Addr:       addr,
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
@@ -372,9 +408,17 @@ func TestSocketReadMessages(t *testing.T) {
 		case bb.Len() != 0:
 			t.Errorf("Test %v: wanted no message to be logged", i)
 		default:
-			_, ok := <-out
+			got, ok := <-out
 			if !ok {
 				t.Errorf("Test %v: wanted message to be read", i)
+			}
+			want := message.Message{
+				Game:       &game.Info{},
+				PlayerName: pn,
+				Addr:       addr,
+			}
+			if !reflect.DeepEqual(want, got) {
+				t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, want, got)
 			}
 		}
 	}

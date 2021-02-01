@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
+	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/server/runner"
 )
 
@@ -20,6 +21,8 @@ type (
 		Conn
 		readActive bool
 		Config
+		PlayerName player.Name
+		net.Addr
 	}
 
 	// Config contains commonly shared Socket properties
@@ -61,36 +64,46 @@ type (
 var errSocketClosed = fmt.Errorf("socket closed")
 
 // NewSocket creates a socket
-func (cfg Config) NewSocket(conn Conn) (*Socket, error) {
-	if err := cfg.validate(conn); err != nil {
+func (cfg Config) NewSocket(pn player.Name, conn Conn) (*Socket, error) {
+	a, err := cfg.validate(pn, conn)
+	if err != nil {
 		return nil, fmt.Errorf("creating socket: validation: %w", err)
 	}
 	s := Socket{
-		Conn:   conn,
-		Config: cfg,
+		Conn:       conn,
+		Config:     cfg,
+		PlayerName: pn,
+		Addr:       a,
 	}
 	return &s, nil
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(conn Conn) error {
+func (cfg Config) validate(pn player.Name, conn Conn) (net.Addr, error) {
 	switch {
-	case cfg.Log == nil:
-		return fmt.Errorf("log required")
+	case len(pn) == 0:
+		return nil, fmt.Errorf("player name rquired")
 	case conn == nil:
-		return fmt.Errorf("websocket connection required")
-	case cfg.ReadWait <= 0:
-		return fmt.Errorf("positive read wait period required")
-	case cfg.WriteWait <= 0:
-		return fmt.Errorf("positive write wait period required")
-	case cfg.PingPeriod <= 0:
-		return fmt.Errorf("positive ping period required")
-	case cfg.ActivityCheckPeriod <= 0:
-		return fmt.Errorf("positive activity check period required")
-	case cfg.PingPeriod >= cfg.ReadWait:
-		return fmt.Errorf("ping period should be less than read wait")
+		return nil, fmt.Errorf("websocket connection required")
 	}
-	return nil
+	a := conn.RemoteAddr()
+	switch {
+	case a == nil:
+		return nil, fmt.Errorf("remote address of connection required")
+	case cfg.Log == nil:
+		return nil, fmt.Errorf("log required")
+	case cfg.ReadWait <= 0:
+		return nil, fmt.Errorf("positive read wait period required")
+	case cfg.WriteWait <= 0:
+		return nil, fmt.Errorf("positive write wait period required")
+	case cfg.PingPeriod <= 0:
+		return nil, fmt.Errorf("positive ping period required")
+	case cfg.ActivityCheckPeriod <= 0:
+		return nil, fmt.Errorf("positive activity check period required")
+	case cfg.PingPeriod >= cfg.ReadWait:
+		return nil, fmt.Errorf("ping period should be less than read wait")
+	}
+	return a, nil
 }
 
 // Run writes messages from the connection to the shared "out" channel.
@@ -191,10 +204,12 @@ func (s *Socket) readMessage() (*message.Message, error) {
 	if s.Debug {
 		s.Log.Printf("socket reading message with type %v", m.Type)
 	}
-	// m.PlayerName = s.playerName // TODO: ensure socket manager or lobby adds player name to message
 	if m.Game == nil {
 		return nil, fmt.Errorf("received message not relating to game")
 	}
+	// Add the player name and address so subscribers of the socket can know who to send responses to because the out channel is shared.
+	m.PlayerName = s.PlayerName
+	m.Addr = s.Addr
 	return &m, nil
 }
 
