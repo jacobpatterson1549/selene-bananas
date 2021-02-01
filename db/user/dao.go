@@ -17,7 +17,7 @@ type (
 
 	// DaoConfig contains commonly shared Dao properties.
 	DaoConfig struct {
-		// Debug is a flag that causes the socket to log the types non-ping/pong messages that are read/written.
+		// DB is used to persist the user changes
 		DB db.Database
 		// ReadFileFunc is used to fetch setup queries.
 		ReadFileFunc func(filename string) ([]byte, error)
