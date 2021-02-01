@@ -1,6 +1,7 @@
 package socket
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io/ioutil"
@@ -110,9 +111,9 @@ func TestNewSocket(t *testing.T) {
 		{ // bad PingPeriod
 			Conn: conn0,
 			Config: Config{
-				Log:        testLog,
-				ReadWait:   2 * time.Hour,
-				WriteWait:  2 * time.Hour,
+				Log:       testLog,
+				ReadWait:  2 * time.Hour,
+				WriteWait: 2 * time.Hour,
 			},
 		},
 		{ // bad ActivityCheckPeriod
@@ -282,6 +283,7 @@ func TestSocketReadMessages(t *testing.T) {
 		gameMissing            bool
 		alreadyCancelled       bool
 		wantOk                 bool
+		debug                  bool
 	}{
 		{
 			readMessageErr: errors.New("normal close"),
@@ -299,6 +301,10 @@ func TestSocketReadMessages(t *testing.T) {
 		},
 		{
 			wantOk: true,
+		},
+		{
+			wantOk: true,
+			debug:  true,
 		},
 	}
 	for i, test := range readMessagesTests {
@@ -328,10 +334,13 @@ func TestSocketReadMessages(t *testing.T) {
 				return nil
 			},
 		}
+		var bb bytes.Buffer
+		log := log.New(&bb, "test", log.LstdFlags)
 		s := Socket{
 			Conn: &conn,
 			Config: Config{
-				Log: log.New(ioutil.Discard, "test", log.LstdFlags),
+				Log:   log,
+				Debug: test.debug,
 			},
 		}
 		ctx := context.Background()
@@ -356,6 +365,12 @@ func TestSocketReadMessages(t *testing.T) {
 			}
 		case !s.readActive:
 			t.Errorf("Test %v: wanted socket to still be active", i)
+		case test.debug:
+			if bb.Len() == 0 {
+				t.Errorf("Test %v: wanted message to be logged", i)
+			}
+		case bb.Len() != 0:
+			t.Errorf("Test %v: wanted no message to be logged", i)
 		default:
 			_, ok := <-out
 			if !ok {
@@ -377,6 +392,7 @@ func TestSocketWriteMessages(t *testing.T) {
 		activityTick bool
 		readActive   bool
 		wantOk       bool
+		debug        bool
 	}{
 		{ // context canceled
 			cancel: true,
@@ -394,6 +410,12 @@ func TestSocketWriteMessages(t *testing.T) {
 				Info: "server says hi",
 			},
 			wantOk: true,
+		},
+		{ // normal message, with debug
+			m:      message.Message{},
+			wantM:  message.Message{},
+			wantOk: true,
+			debug:  true,
 		},
 		{ // socket/player removed
 			m: message.Message{
@@ -460,10 +482,13 @@ func TestSocketWriteMessages(t *testing.T) {
 				return test.pingErr
 			},
 		}
+		var bb bytes.Buffer
+		log := log.New(&bb, "test", log.LstdFlags)
 		s := Socket{
 			Conn: &conn,
 			Config: Config{
-				Log: log.New(ioutil.Discard, "test", log.LstdFlags),
+				Log:   log,
+				Debug: test.debug,
 			},
 		}
 		ctx := context.Background()
@@ -504,11 +529,17 @@ func TestSocketWriteMessages(t *testing.T) {
 			}
 		default:
 			gotM := <-writtenMessages
-			if !reflect.DeepEqual(test.wantM, gotM) {
+			switch {
+			case !reflect.DeepEqual(test.wantM, gotM):
 				t.Errorf("Test %v: messages not equal:\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
-			}
-			if test.activityTick && s.readActive {
+			case test.activityTick && s.readActive:
 				t.Errorf("Test %v: wanted socket to not be active after activity check tick", i)
+			case test.debug:
+				if bb.Len() == 0 {
+					t.Errorf("Test %v: wanted message to be logged", i)
+				}
+			case bb.Len() != 0:
+				t.Errorf("Test %v: wanted no message to be logged", i)
 			}
 		}
 	}
