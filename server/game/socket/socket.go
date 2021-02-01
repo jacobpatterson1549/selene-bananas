@@ -18,7 +18,7 @@ type (
 	Socket struct {
 		runner.Runner
 		Conn
-		active bool
+		active bool // TODO: rename this to readActive
 		Config
 	}
 
@@ -117,6 +117,7 @@ func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- 
 		s.Runner.Finish()
 		s.Conn.Close()
 	}()
+	s.active = false
 	wg.Add(1)
 	go s.readMessages(ctx, out, &wg)
 	wg.Add(1)
@@ -154,7 +155,6 @@ func (s *Socket) readMessages(ctx context.Context, out chan<- message.Message, w
 // The tickers are used to periodically write messages or check for read activity.
 func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, wg *sync.WaitGroup,
 	pingTicker, httpPingTicker, idleTicker *time.Ticker) {
-	s.active = false
 	var closeReason string
 	defer func() {
 		s.Conn.WriteClose(closeReason)
@@ -167,7 +167,11 @@ func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, 
 		case <-ctx.Done():
 			closeReason = "server shutting down"
 			return
-		case m := <-out:
+		case m, ok := <-out:
+			if !ok {
+				closeReason = "server not reading messages"
+				return
+			}
 			err = s.writeMessage(m)
 		case <-pingTicker.C:
 			err = s.Conn.WritePing()
@@ -183,9 +187,7 @@ func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, 
 			s.active = false
 		}
 		if err != nil {
-			if err != errSocketClosed {
-				closeReason = fmt.Sprintf("writing socket messages stopped for player %v: %v", s, err)
-			}
+			closeReason = fmt.Sprintf("writing socket messages stopped for player %v: %v", s, err)
 			return
 		}
 	}

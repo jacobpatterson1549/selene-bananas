@@ -243,6 +243,7 @@ func TestRunSocket(t *testing.T) {
 		s := Socket{
 			Conn:   &conn,
 			Config: cfg,
+			active: true,
 		}
 		if test.alreadyRunning {
 			ctx := context.Background()
@@ -269,6 +270,8 @@ func TestRunSocket(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case s.active:
+			t.Errorf("Test %v: socket should be set to not active when starting a run", i)
 		default:
 			if !s.IsRunning() {
 				t.Errorf("Test %v wanted socket to be running", i)
@@ -350,8 +353,8 @@ func TestSocketReadMessages(t *testing.T) {
 		ctx, cancelFunc := context.WithCancel(ctx)
 		defer cancelFunc()
 		out := make(chan message.Message, 1) // check the active flag before reading from this
-		var wg sync.WaitGroup                // Done called by closeFunc when readMessages() returns
-		wg.Add(1)                            // decremented when read errs
+		var wg sync.WaitGroup
+		wg.Add(1)
 		go s.readMessages(ctx, out, &wg)
 		if test.alreadyCancelled {
 			cancelFunc()
@@ -378,5 +381,163 @@ func TestSocketReadMessages(t *testing.T) {
 }
 
 func TestSocketWriteMessages(t *testing.T) {
-	// TODO
+	writeMessagesTests := []struct {
+		cancel       bool
+		outClosed    bool
+		m            message.Message
+		wantM        message.Message
+		writeErr     error
+		pingTick     bool
+		pingErr      error
+		httpPingTick bool
+		activeTick   bool
+		active       bool
+		wantOk       bool
+	}{
+		{ // context canceled
+			cancel: true,
+		},
+		{ // outbound channel closed
+			outClosed: true,
+		},
+		{ // normal message
+			m: message.Message{
+				Type: message.Chat,
+				Info: "server says hi",
+			},
+			wantM: message.Message{
+				Type: message.Chat,
+				Info: "server says hi",
+			},
+			wantOk: true,
+		},
+		{ // socket/player removed
+			m: message.Message{
+				Type: message.PlayerDelete,
+			},
+			wantM: message.Message{
+				Type: message.PlayerDelete,
+			},
+		},
+		{ // write error
+			m:        message.Message{},
+			writeErr: errors.New("problem writing message"),
+		},
+		{ // websocket ping
+			pingTick: true,
+			wantOk:   true,
+		},
+		{ // websocket ping
+			pingTick: true,
+			pingErr:  errors.New("error writing ping"),
+		},
+		{ // http ping to keep heroku server alive
+			httpPingTick: true,
+			wantM: message.Message{
+				Type: message.SocketHTTPPing,
+			},
+			wantOk: true,
+		},
+		{ // http ping to keep heroku server alive
+			httpPingTick: true,
+			writeErr:     errors.New("error writing HTTP ping"),
+		},
+		{ // socket activity check, but socket is not active
+			activeTick: true,
+		},
+		{ // socket activity check
+			activeTick: true,
+			active:     true,
+			wantOk:     true,
+		},
+	}
+	for i, test := range writeMessagesTests {
+		closeMessageWritten := false
+		writtenMessages := make(chan message.Message, 1)
+		pingC := make(chan time.Time, 1)
+		pingTicker := &time.Ticker{
+			C: pingC,
+		}
+		httpPingC := make(chan time.Time, 1)
+		httpPingTicker := &time.Ticker{
+			C: httpPingC,
+		}
+		idleC := make(chan time.Time, 1)
+		idleTicker := &time.Ticker{
+			C: idleC,
+		}
+		conn := mockConn{
+			CloseFunc: func() error {
+				return nil
+			},
+			WriteJSONFunc: func(m message.Message) error {
+				writtenMessages <- m
+				return test.writeErr
+			},
+			WriteCloseFunc: func(reason string) error {
+				closeMessageWritten = len(reason) > 0
+				return nil
+			},
+			WritePingFunc: func() error {
+				close(pingC)
+				return test.pingErr
+			},
+		}
+		s := Socket{
+			Conn: &conn,
+			Config: Config{
+				Log: log.New(ioutil.Discard, "test", log.LstdFlags),
+			},
+		}
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		defer cancelFunc()
+		out := make(chan message.Message, 1)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		defer cancelFunc()
+		switch {
+		case test.cancel:
+			cancelFunc()
+		case test.outClosed:
+			close(out)
+		case test.pingTick:
+			pingC <- time.Now()
+		case test.httpPingTick:
+			httpPingC <- time.Now()
+		case test.activeTick:
+			if test.active {
+				s.active = true
+			}
+			idleC <- time.Now()
+		default:
+			out <- test.m
+		}
+		go s.writeMessages(ctx, out, &wg, pingTicker, httpPingTicker, idleTicker)
+		switch {
+		case !test.wantOk:
+			wg.Wait()
+			if s.active {
+				t.Errorf("Test %v: wanted socket to be not active because it failed after reading a message", i)
+			}
+			if !closeMessageWritten {
+				t.Errorf("Test %v: wanted close message to be written", i)
+			}
+		case test.pingTick:
+			if _, ok := <-pingC; !ok {
+				t.Errorf("Test %v: wanted websocket ping to close mock ping channel", i)
+			}
+		case test.activeTick:
+		// 	// TODO: yield to the writeMessages() goroutine so the idle tick can be handled
+		// 	runtime.Gosched()
+		// 	if s.active {
+		// 		t.Errorf("Test %v: wanted socket to not be active after idle tick", i)
+		// 	}
+		default:
+			gotM := <-writtenMessages
+			if !reflect.DeepEqual(test.wantM, gotM) {
+				t.Errorf("Test %v: messages not equal:\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
+			}
+		}
+	}
 }
