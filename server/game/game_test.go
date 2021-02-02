@@ -21,46 +21,6 @@ func (ud mockUserDao) UpdatePointsIncrement(ctx context.Context, userPoints map[
 	return ud.UpdatePointsIncrementFunc(ctx, userPoints)
 }
 
-func TestInitializeUnusedTilesCorrectAmount(t *testing.T) {
-	g := Game{
-		Config: Config{
-			TileLetters: defaultTileLetters,
-		},
-	}
-	if err := g.initializeUnusedTiles(); err != nil {
-		t.Errorf("unwanted error: %v", err)
-	}
-	want := 144
-	got := len(g.unusedTiles)
-	if want != got {
-		t.Errorf("wanted %v tiles, but got %v", want, got)
-	}
-}
-
-func TestInitializeUnusedTilesAllLetters(t *testing.T) {
-	g := Game{
-		Config: Config{
-			TileLetters: defaultTileLetters,
-		},
-	}
-	if err := g.initializeUnusedTiles(); err != nil {
-		t.Errorf("unwanted error: %v", err)
-	}
-	m := make(map[rune]struct{}, 26)
-	for _, v := range g.unusedTiles {
-		ch := rune(v.Ch[0])
-		if ch < 'A' || ch > 'Z' {
-			t.Errorf("invalid tile: %v", v)
-		}
-		m[ch] = struct{}{}
-	}
-	want := 26
-	got := len(m)
-	if want != got {
-		t.Errorf("wanted %v different letters, but got %v", want, got)
-	}
-}
-
 func TestInitializeUnusedTilesShuffled(t *testing.T) {
 	createTilesShuffledTests := []struct {
 		want      tile.Letter
@@ -94,53 +54,80 @@ func TestInitializeUnusedTilesShuffled(t *testing.T) {
 	}
 }
 
-func TestInitializeUnusedTilesUniqueIds(t *testing.T) {
-	tileLetters := "AAAABBABACCABAC"
-	g := Game{
-		Config: Config{
-			TileLetters: tileLetters,
+func TestInitializeUnusedTiles(t *testing.T) {
+	initializeUnusedTilesTests := []struct {
+		tileLetters         string
+		wantNum             int
+		checkAllLettersUsed bool
+		wantErr             bool
+	}{
+		{
+			tileLetters:         defaultTileLetters,
+			wantNum:             144,
+			checkAllLettersUsed: true,
+		},
+		{
+			tileLetters: "AAAABBABACCABAC",
+		},
+		{
+			tileLetters: "SELENE",
+		},
+		{
+			tileLetters: ":(",
+			wantErr:     true,
 		},
 	}
-	if err := g.initializeUnusedTiles(); err != nil {
-		t.Errorf("unwanted error: %v", err)
-	}
-	tileIDs := make(map[tile.ID]struct{}, len(g.unusedTiles))
-	for _, tile := range g.unusedTiles {
-		if _, ok := tileIDs[tile.ID]; ok {
-			t.Errorf("tile id %v repeated", tile.ID)
+	for i, test := range initializeUnusedTilesTests {
+		g := Game{
+			Config: Config{
+				TileLetters: test.tileLetters,
+			},
 		}
-		tileIDs[tile.ID] = struct{}{}
-	}
-}
-
-func TestInitializeUnusedTilesCustom(t *testing.T) {
-	tileLetters := "SELENE"
-	g := Game{
-		Config: Config{
-			TileLetters: tileLetters,
-		},
-	}
-	if err := g.initializeUnusedTiles(); err != nil {
-		t.Errorf("unwanted error: %v", err)
-	}
-	for i, ti := range g.unusedTiles {
-		want := tile.Letter(tileLetters[i : i+1])
-		got := ti.Ch
-		if want != got {
-			t.Errorf("wanted %v tiles, but got %v", want, got)
+		err := g.initializeUnusedTiles()
+		if test.wantNum == 0 {
+			test.wantNum = len(test.tileLetters)
 		}
-	}
-}
-
-func TestInitializeUnusedTilesInvalid(t *testing.T) {
-	tileLetters := ":("
-	g := Game{
-		Config: Config{
-			TileLetters: tileLetters,
-		},
-	}
-	if err := g.initializeUnusedTiles(); err == nil {
-		t.Errorf("wanted error while initializing tiles with text: '%v'", tileLetters)
+		switch {
+		case test.wantErr:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case test.wantNum != len(g.unusedTiles):
+			t.Errorf("wanted %v tiles, but got %v", test.wantNum, len(g.unusedTiles))
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case test.checkAllLettersUsed:
+			m := make(map[rune]struct{}, 26)
+			for _, v := range g.unusedTiles {
+				ch := rune(v.Ch[0])
+				if ch < 'A' || ch > 'Z' {
+					t.Errorf("invalid tile: %v", v)
+				}
+				m[ch] = struct{}{}
+			}
+			want := 26
+			got := len(m)
+			if want != got {
+				t.Errorf("wanted %v different letters, but got %v", want, got)
+			}
+		default:
+			// unique ids:
+			tileIDs := make(map[tile.ID]struct{}, len(g.unusedTiles))
+			for _, tile := range g.unusedTiles {
+				if _, ok := tileIDs[tile.ID]; ok {
+					t.Errorf("tile id %v repeated", tile.ID)
+				}
+				tileIDs[tile.ID] = struct{}{}
+			}
+			// Letter char:
+			for i, ti := range g.unusedTiles {
+				want := tile.Letter(test.tileLetters[i : i+1])
+				got := ti.Ch
+				if want != got {
+					t.Errorf("wanted %v tiles, but got %v", want, got)
+				}
+			}
+		}
 	}
 }
 
