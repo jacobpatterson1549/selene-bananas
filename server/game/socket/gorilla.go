@@ -1,7 +1,6 @@
 package socket
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 
@@ -56,19 +55,10 @@ func (c *gorillaConn) WritePing() error {
 	return c.Conn.WriteMessage(websocket.PingMessage, nil)
 }
 
-// WriteClose writes a close message on the GorillaConnection and always closes it.
+// WriteClose writes a close message on the connection.  The connestion is NOT closed.
 func (c *gorillaConn) WriteClose(reason string) (err error) {
-	defer func() {
-		err2 := c.Close()
-		if err == nil {
-			err = err2
-		}
-	}()
 	data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
-	if err := c.Conn.WriteMessage(websocket.CloseMessage, data); err != nil {
-		return fmt.Errorf("closing GorillaConnection: writing close message: %w", err)
-	}
-	return nil
+	return c.Conn.WriteMessage(websocket.CloseMessage, data)
 }
 
 // IsUnexpectedCloseError determines if the error message is an unexpected close error.

@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -231,7 +232,10 @@ func TestRunSocket(t *testing.T) {
 	}
 	for i, test := range runSocketTests {
 		readBlocker := make(chan struct{})
+		var closedMu sync.Mutex
+		closedCount := 0
 		var wg sync.WaitGroup
+		wg.Add(3)
 		conn := mockConn{
 			ReadJSONFunc: func(m *message.Message) error {
 				<-readBlocker
@@ -241,7 +245,12 @@ func TestRunSocket(t *testing.T) {
 				return true
 			},
 			CloseFunc: func() error {
-				wg.Done()
+				closedMu.Lock()
+				defer closedMu.Unlock()
+				if closedCount <= 3 { // HACK readMessages(), writeMessages(), and Run() all call Close() to make this work.
+					wg.Done()
+					closedCount++
+				}
 				return nil
 			},
 			WriteJSONFunc: func(m message.Message) error {
@@ -294,7 +303,6 @@ func TestRunSocket(t *testing.T) {
 			if !s.IsRunning() {
 				t.Errorf("Test %v wanted socket to be running", i)
 			}
-			wg.Add(1)
 			close(readBlocker)
 			test.stopFunc(cancelFunc, in)
 			wg.Wait()
@@ -344,7 +352,6 @@ func TestSocketReadMessages(t *testing.T) {
 	for i, test := range readMessagesTests {
 		testIn := make(chan message.Message)
 		defer close(testIn)
-		closeMessageWritten := false
 		conn := mockConn{
 			ReadJSONFunc: func(m *message.Message) error {
 				src := <-testIn
@@ -364,7 +371,6 @@ func TestSocketReadMessages(t *testing.T) {
 				return nil
 			},
 			WriteCloseFunc: func(reason string) error {
-				closeMessageWritten = true
 				return nil
 			},
 		}
@@ -395,9 +401,6 @@ func TestSocketReadMessages(t *testing.T) {
 			wg.Wait()
 			if s.readActive {
 				t.Errorf("Test %v: wanted socket to be not active because it failed after reading a message", i)
-			}
-			if test.isUnexpectedCloseError != closeMessageWritten {
-				t.Errorf("Test %v: wanted close message to be written when error is unexpected", i)
 			}
 		case !s.readActive:
 			t.Errorf("Test %v: wanted socket to still be active", i)
@@ -499,7 +502,6 @@ func TestSocketWriteMessages(t *testing.T) {
 		},
 	}
 	for i, test := range writeMessagesTests {
-		closeMessageWritten := false
 		writtenMessages := make(chan message.Message, 1)
 		pingC := make(chan time.Time, 1)
 		pingTicker := &time.Ticker{
@@ -518,7 +520,6 @@ func TestSocketWriteMessages(t *testing.T) {
 				return test.writeErr
 			},
 			WriteCloseFunc: func(reason string) error {
-				closeMessageWritten = len(reason) > 0
 				return nil
 			},
 			WritePingFunc: func() error {
@@ -564,9 +565,6 @@ func TestSocketWriteMessages(t *testing.T) {
 			if s.readActive {
 				t.Errorf("Test %v: wanted socket to be not active because it failed after reading a message", i)
 			}
-			if !closeMessageWritten {
-				t.Errorf("Test %v: wanted close message to be written", i)
-			}
 		case test.pingTick:
 			if _, ok := <-pingC; !ok {
 				t.Errorf("Test %v: wanted websocket ping to close mock ping channel", i)
@@ -584,6 +582,57 @@ func TestSocketWriteMessages(t *testing.T) {
 				}
 			case bb.Len() != 0:
 				t.Errorf("Test %v: wanted no message to be logged", i)
+			}
+		}
+	}
+}
+
+func TestWriteClose(t *testing.T) {
+	writeCloseTests := []struct {
+		reason           string
+		alreadyClosed    bool
+		wantReasonLogged bool
+	}{
+		{},
+		{
+			reason:           "server halted",
+			wantReasonLogged: true,
+		},
+		{
+			alreadyClosed: true,
+		},
+	}
+	for i, test := range writeCloseTests {
+		writeCloseCalled := false
+		conn := mockConn{
+			WriteCloseFunc: func(reason string) error {
+				writeCloseCalled = true
+				if test.alreadyClosed {
+					return errors.New("already closed")
+				}
+				return nil
+			},
+		}
+		var bb bytes.Buffer
+		log := log.New(&bb, "test", 0)
+		s := Socket{
+			Conn: &conn,
+			Config: Config{
+				Log: log,
+			},
+		}
+		s.writeClose(test.reason)
+		switch {
+		case !writeCloseCalled:
+			t.Errorf("Test %v: write close not called", i)
+		case test.alreadyClosed:
+			if bb.Len() != 0 {
+				t.Errorf("Test %v: wanted no reason logged when already closed", i)
+			}
+		default:
+			got := string(bb.Bytes())
+			if !strings.Contains(got, test.reason) {
+				t.Errorf("Test %v: wanted logged reason to contain '%v', got '%v'", i, test.reason, got)
 			}
 		}
 	}

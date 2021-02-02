@@ -20,6 +20,10 @@ type (
 		runner.Runner
 		Conn
 		readActive bool
+		// The reason the read failed.  If a read fails, it is sent as the close message when the socket closes.
+		readCloseReason string
+		// The reason the writing by by the connection is stopping.  Is sent as the connection close reason if there is no read close reason.
+		writeCloseReason string
 		Config
 		PlayerName player.Name
 		net.Addr
@@ -52,7 +56,7 @@ type (
 		Close() error
 		// WritePing writes a ping message on the connection.
 		WritePing() error
-		// WriteClose writes a close message on the connection and always closes it.
+		// WriteClose writes a close message on the connection.  The connestion is NOT closed.
 		WriteClose(reason string) error
 		// IsUnexpectedCloseError determines if the error message is an unexpected close error.
 		IsUnexpectedCloseError(err error) bool
@@ -122,7 +126,7 @@ func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- 
 		pingTicker.Stop()
 		activityCheckTicker.Stop()
 		s.Runner.Finish()
-		s.Conn.Close()
+		s.Close()
 		// TODO: send playerDelete message, test this
 	}()
 	s.readActive = false
@@ -136,7 +140,10 @@ func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- 
 // readMessages receives messages from the connected socket and writes the to the messages channel.
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel.
 func (s *Socket) readMessages(ctx context.Context, out chan<- message.Message, wg *sync.WaitGroup) {
-	defer wg.Done()
+	defer func() {
+		s.Close() // will casue writeMessages() to fail
+		wg.Done()
+	}()
 	for { // BLOCKING
 		m, err := s.readMessage()
 		select {
@@ -144,11 +151,9 @@ func (s *Socket) readMessages(ctx context.Context, out chan<- message.Message, w
 			return
 		default:
 			if err != nil {
-				var reason string
 				if err != errSocketClosed {
-					reason = fmt.Sprintf("reading socket messages stopped for player %v: %v", s, err)
-					s.Log.Print(reason)
-					s.Conn.WriteClose(reason)
+					reason := fmt.Sprintf("reading socket messages stopped for player %v: %v", s, err)
+					s.writeClose(reason)
 				}
 				return
 			}
@@ -165,8 +170,8 @@ func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, 
 	pingTicker, activityTicker *time.Ticker) {
 	var closeReason string
 	defer func() {
-		s.Conn.WriteClose(closeReason)
-		s.Log.Print(closeReason)
+		s.writeClose(closeReason)
+		s.Close() // will casue readMessages() to fail
 		wg.Done()
 	}()
 	var err error
@@ -238,4 +243,12 @@ func (s *Socket) handleActivityCheck() error {
 		Type: message.SocketHTTPPing,
 	}
 	return s.writeMessage(m)
+}
+
+// writeClose writes a closeMessage with the reason and closes the connection, logging the reason if successful
+func (s *Socket) writeClose(reason string) {
+	if err := s.Conn.WriteClose(reason); err != nil {
+		return
+	}
+	s.Log.Print(reason)
 }
