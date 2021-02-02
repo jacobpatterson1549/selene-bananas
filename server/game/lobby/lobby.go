@@ -122,9 +122,10 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 		return fmt.Errorf("lobby not running")
 	}
 	result := make(chan error)
+	pn := player.Name(username)
 	m := message.Message{
 		Type:       message.AddSocket,
-		PlayerName: player.Name(username),
+		PlayerName: pn,
 		AddSocketRequest: &message.AddSocketRequest{
 			ResponseWriter: w,
 			Request:        r,
@@ -135,6 +136,13 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 	if err := <-result; err != nil {
 		return err
 	}
+	infos := l.gameInfos()
+	m2 := message.Message{
+		Type:       message.Infos,
+		PlayerName: pn,
+		Games:      infos,
+	}
+	l.socketMessages <- m2
 	return nil
 }
 
@@ -179,6 +187,16 @@ func (l *Lobby) handleGameInfoChanged(m message.Message) {
 	default:
 		l.games[m.Game.ID] = *m.Game
 	}
+	infos := l.gameInfos()
+	m2 := message.Message{
+		Type:  message.Infos,
+		Games: infos,
+	}
+	l.socketMessages <- m2
+}
+
+// game infos gets the sorted game infos for the Lobby.
+func (l *Lobby) gameInfos() []game.Info {
 	infos := make([]game.Info, 0, len(l.games))
 	for _, info := range l.games {
 		infos = append(infos, info)
@@ -186,9 +204,5 @@ func (l *Lobby) handleGameInfoChanged(m message.Message) {
 	sort.Slice(infos, func(i, j int) bool {
 		return infos[i].ID < infos[j].ID
 	})
-	m2 := message.Message{
-		Type:  message.Infos,
-		Games: infos,
-	}
-	l.socketMessages <- m2
+	return infos
 }

@@ -180,11 +180,10 @@ func TestAddUser(t *testing.T) {
 		},
 	}
 	for i, test := range addUserTests {
-		smOut := make(chan message.Message)
 		l := &Lobby{
 			socketManager: &mockManager{
 				RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
-					return smOut, nil
+					return nil, nil
 				},
 			},
 			gameManager: &mockManager{
@@ -195,10 +194,16 @@ func TestAddUser(t *testing.T) {
 		}
 		w := httptest.NewRecorder()
 		r := new(http.Request)
-		go func() {
-			gotM := <-l.socketMessages
-			if gotM.AddSocketRequest == nil {
-				t.Errorf("Test %v: AddSocketRequest not set in message", i)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() { // mock socket manager
+			defer wg.Done()
+			if !test.running {
+				return
+			}
+			gotM, ok := <-l.socketMessages
+			if !ok || gotM.Type != message.AddSocket || gotM.AddSocketRequest == nil {
+				t.Errorf("Test %v: AddSocketRequest not set in message: %v", i, gotM)
 				return
 			}
 			test.wantM.AddSocketRequest.ResponseWriter = w
@@ -208,6 +213,13 @@ func TestAddUser(t *testing.T) {
 				t.Errorf("Test %v: messages not equal\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
 			}
 			gotM.AddSocketRequest.Result <- test.addSocketErr
+			if !test.wantOk {
+				return
+			}
+			gotM = <-l.socketMessages
+			if gotM.Type != message.Infos {
+				t.Errorf("Test %v: wanted infos message to be sent for user, got %v", i, gotM)
+			}
 		}()
 		if test.running {
 			ctx := context.Background()
@@ -225,6 +237,7 @@ func TestAddUser(t *testing.T) {
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		}
+		wg.Wait()
 	}
 }
 
@@ -247,11 +260,10 @@ func TestRemoveUser(t *testing.T) {
 		},
 	}
 	for i, test := range removeUserTests {
-		smOut := make(chan message.Message)
 		l := &Lobby{
 			socketManager: &mockManager{
 				RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
-					return smOut, nil
+					return nil, nil
 				},
 			},
 			gameManager: &mockManager{
@@ -286,7 +298,7 @@ func TestRemoveUser(t *testing.T) {
 }
 
 func TestHandleSocketMessage(t *testing.T) {
-	smOut := make(chan message.Message)
+	smIn := make(chan message.Message)
 	var wg sync.WaitGroup
 	want := message.Message{
 		Info: "test message",
@@ -294,7 +306,7 @@ func TestHandleSocketMessage(t *testing.T) {
 	l := Lobby{
 		socketManager: &mockManager{
 			RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
-				return smOut, nil
+				return smIn, nil
 			},
 		},
 		gameManager: &mockManager{
@@ -316,7 +328,7 @@ func TestHandleSocketMessage(t *testing.T) {
 		t.Errorf("unwanted error: %v", err)
 	}
 	wg.Add(1)
-	smOut <- want
+	smIn <- want
 	wg.Wait()
 }
 
