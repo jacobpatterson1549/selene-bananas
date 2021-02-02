@@ -167,7 +167,7 @@ func (sm *Manager) handleGameMessage(ctx context.Context, m message.Message) {
 	case message.SocketError:
 		sm.sendSocketError(ctx, m)
 	case message.PlayerDelete:
-		sm.leaveGame(ctx, m)
+		sm.deletePlayer(ctx, m)
 	default:
 		sm.sendMessageForGame(ctx, m)
 	}
@@ -263,10 +263,7 @@ func (sm *Manager) sendSocketError(ctx context.Context, m message.Message) {
 		sm.sendMessageForGame(ctx, m)
 	default:
 		// TODO: when does an error message need to be sent to all sockets?  Could the addr be preserved?
-		socketAddrs, ok := sm.playerSockets[m.PlayerName]
-		if !ok {
-			return
-		}
+		socketAddrs := sm.playerSockets[m.PlayerName]
 		for _, socketIn := range socketAddrs {
 			socketIn <- m
 		}
@@ -353,5 +350,15 @@ func (sm *Manager) leaveGame(ctx context.Context, m message.Message) {
 	delete(sm.playerGames[m.PlayerName], m.Game.ID)
 	if len(sm.playerGames[m.PlayerName]) == 0 {
 		delete(sm.playerGames, m.PlayerName)
+	}
+}
+
+// deletePlayer removes the player's sockets and games.
+func (sm *Manager) deletePlayer(ctx context.Context, m message.Message) {
+	delete(sm.playerGames, m.PlayerName)
+	addrs := sm.playerSockets[m.PlayerName]
+	delete(sm.playerSockets, m.PlayerName)
+	for _, socketIn := range addrs {
+		close(socketIn)
 	}
 }

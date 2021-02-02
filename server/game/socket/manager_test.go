@@ -412,7 +412,6 @@ func TestManagerAddSecondSocket(t *testing.T) {
 		}
 	}
 }
-
 func TestManagerHandleGameMessage(t *testing.T) {
 	addr1 := mockAddr("addr1")
 	addr2 := mockAddr("addr2")
@@ -597,7 +596,7 @@ func TestManagerHandleGameMessage(t *testing.T) {
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
 			playerGames:   map[player.Name]map[game.ID]net.Addr{},
 			m: message.Message{
-				Type:       message.Snag,
+				Type:       message.TilesChange,
 				PlayerName: "fred",
 				Game: &game.Info{
 					ID: 2,
@@ -613,13 +612,37 @@ func TestManagerHandleGameMessage(t *testing.T) {
 			},
 			playerGames: map[player.Name]map[game.ID]net.Addr{},
 			m: message.Message{
-				Type:       message.Snag,
+				Type:       message.TilesChange,
 				PlayerName: "fred",
 				Game: &game.Info{
 					ID: 2,
 				},
 			},
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
+		},
+		{ // player not active in game, don't send message #3
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					1: addr1,
+				},
+			},
+			m: message.Message{
+				Type:       message.TilesChange,
+				PlayerName: "fred",
+				Game: &game.Info{
+					ID: 2,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					1: addr1,
+				},
+			},
 		},
 	}
 	for i, test := range handleGameMessageTests {
@@ -1022,6 +1045,122 @@ func TestManagerHandleSocketMessage(t *testing.T) {
 					}
 				}
 			}
+		}
+	}
+}
+
+// TestManagerHandleGameMessageDeletePlayer needs extra code to verify the sockets are closed.
+// This test alse tests the flow of game messages from the Run function.
+func TestManagerHandleGameMessageDeletePlayer(t *testing.T) {
+	c1 := make(chan message.Message)
+	c2 := make(chan message.Message, 1)
+	c3 := make(chan message.Message)
+	addr1 := mockAddr("addr1")
+	addr2 := mockAddr("addr2")
+	addr3 := mockAddr("addr3")
+	// player delete is sent from the lobby when the player is actually deleted
+	sm := Manager{
+		playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			"fred": {
+				addr1: c1,
+				addr3: c3,
+			},
+			"barney": {
+				addr2: c2,
+			},
+		},
+		playerGames: map[player.Name]map[game.ID]net.Addr{
+			"fred": {
+				1: addr1,
+			},
+			"barney": {
+				1: addr2,
+			},
+		},
+	}
+	m := message.Message{
+		Type:       message.PlayerDelete,
+		PlayerName: "fred",
+	}
+	wantPlayerSockets := map[player.Name]map[net.Addr]chan<- message.Message{
+		"barney": {
+			addr2: c2,
+		},
+	}
+	wantPlayerGames := map[player.Name]map[game.ID]net.Addr{
+		"barney": {
+			1: addr2,
+		},
+	}
+	ctx := context.Background()
+	ctx, cancelFunc := context.WithCancel(ctx)
+	gameOut := make(chan message.Message)
+	sm.Run(ctx, gameOut)
+	gameOut <- m
+	cancelFunc()
+	switch {
+	case !reflect.DeepEqual(wantPlayerSockets, sm.playerSockets):
+		t.Errorf("player sockets not equal:\nwanted: %v\ngot:    %v", wantPlayerSockets, sm.playerSockets)
+	case !reflect.DeepEqual(wantPlayerGames, sm.playerGames):
+		t.Errorf("player games not equal:\nwanted: %v\ngot:    %v", wantPlayerGames, sm.playerGames)
+	default:
+		// ensure the sockets are closed or left open
+		<-c1
+		<-c3
+		c2 <- message.Message{Info: "ok"}
+		m := <-c2
+		if m.Info != "ok" {
+			t.Errorf("wansted c2 to be left open")
+		}
+	}
+
+}
+
+// TestSendMessageForGameBadManagerState adds coverage for some scenarios where playerGames do do not have matching playerSocket entries
+func TestSendMessageForGameBadManagerState(t *testing.T) {
+	tests := []struct {
+		playerSockets map[player.Name]map[net.Addr]chan<- message.Message
+		playerGames   map[player.Name]map[game.ID]net.Addr
+	}{
+		{
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					1: mockAddr("addr1"),
+				},
+			},
+		},
+		{
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					1: mockAddr("addr1"),
+				},
+			},
+		},
+	}
+	for i, test := range tests {
+		var bb bytes.Buffer
+		log := log.New(&bb, "test", log.LstdFlags)
+		sm := Manager{
+			playerSockets: test.playerSockets,
+			playerGames:   test.playerGames,
+			ManagerConfig: ManagerConfig{
+				Log: log,
+			},
+		}
+		ctx := context.Background()
+		m := message.Message{
+			Game: &game.Info{
+				ID: 1,
+			},
+			PlayerName: "fred",
+		}
+		sm.sendMessageForGame(ctx, m)
+		if bb.Len() == 0 {
+			t.Errorf("Test %v: wanted error logged for bad manager state", i)
 		}
 	}
 }
