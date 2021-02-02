@@ -123,6 +123,7 @@ func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- 
 		activityCheckTicker.Stop()
 		s.Runner.Finish()
 		s.Conn.Close()
+		// TODO: send playerDelete message, test this
 	}()
 	s.readActive = false
 	wg.Add(1)

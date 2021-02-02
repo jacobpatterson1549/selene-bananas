@@ -161,7 +161,16 @@ func (sm *Manager) hasSocket(a net.Addr) bool {
 
 // handleGameMessage writes the message to the appropriate sockets in the manager.
 func (sm *Manager) handleGameMessage(ctx context.Context, m message.Message) {
-	// TODO
+	switch m.Type {
+	case message.Infos:
+		sm.sendMessageInfos(ctx, m)
+	case message.SocketError:
+		sm.sendSocketError(ctx, m)
+	case message.PlayerDelete:
+		sm.leaveGame(ctx, m)
+	default:
+		sm.sendMessageForGame(ctx, m)
+	}
 }
 
 // handleSocketMessage writes the socket message to to the out channel, possibly taking action.
@@ -215,10 +224,83 @@ func (sm *Manager) handleSocketMessage(ctx context.Context, m message.Message, o
 	case message.PlayerDelete:
 		sm.removeSocket(ctx, m, out)
 	case message.Leave:
-		sm.leaveGame(ctx, m, out)
+		sm.leaveGame(ctx, m)
 	default:
 		out <- m
 	}
+}
+
+// sendMessageInfos sends the game message with infos to sockets.
+func (sm *Manager) sendMessageInfos(ctx context.Context, m message.Message) {
+	switch len(m.PlayerName) {
+	case 0:
+		// send to all sockets (likely game info change)
+		for _, addrs := range sm.playerSockets {
+			for _, socketIn := range addrs {
+				socketIn <- m
+			}
+		}
+	default:
+		// only send to the sockets for the player that are not in a game.
+		addrsInGame := make(map[net.Addr]struct{}, 1)
+		games := sm.playerGames[m.PlayerName]
+		for _, addr := range games {
+			addrsInGame[addr] = struct{}{}
+		}
+		addrs := sm.playerSockets[m.PlayerName]
+		for addr, socketIn := range addrs {
+			if _, ok := addrsInGame[addr]; !ok {
+				socketIn <- m
+			}
+		}
+	}
+}
+
+// sendSocketError sends the game socket message to a specific socket if possible or all sockets for the player
+func (sm *Manager) sendSocketError(ctx context.Context, m message.Message) {
+	switch {
+	case m.Game != nil:
+		sm.sendMessageForGame(ctx, m)
+	default:
+		// TODO: when does an error message need to be sent to all sockets?  Could the addr be preserved?
+		socketAddrs, ok := sm.playerSockets[m.PlayerName]
+		if !ok {
+			return
+		}
+		for _, socketIn := range socketAddrs {
+			socketIn <- m
+		}
+	}
+}
+
+// sendMessageForGame sends the game message to the player at the address, if possible.
+func (sm *Manager) sendMessageForGame(ctx context.Context, m message.Message) {
+	if m.Game == nil {
+		sm.Log.Printf("no 'game' to send game message for in %v", m)
+	}
+	switch m.Type {
+	case message.Leave:
+		defer sm.leaveGame(ctx, m)
+	}
+	games, ok := sm.playerGames[m.PlayerName]
+	if !ok {
+		return
+	}
+	addr, ok := games[m.Game.ID]
+	if !ok {
+		return
+	}
+	socketAddrs, ok := sm.playerSockets[m.PlayerName]
+	if !ok {
+		sm.Log.Printf("could not send game socket error to %v, socket addrs not found - message: (%v)", m.PlayerName, m)
+		return
+	}
+	socketIn, ok := socketAddrs[addr]
+	if !ok {
+		sm.Log.Printf("could not send game socket error to %v at %v - message: (%v)", m.PlayerName, addr, m)
+		return
+	}
+	socketIn <- m
 }
 
 // joinGame adds the socket to the game.
@@ -262,12 +344,12 @@ func (sm *Manager) removeSocket(ctx context.Context, m message.Message, out chan
 	if len(sm.playerSockets[m.PlayerName]) == 0 {
 		delete(sm.playerSockets, m.PlayerName)
 	}
-	sm.leaveGame(ctx, m, out)
+	sm.leaveGame(ctx, m)
 	out <- m
 }
 
-// leaveGame removes the socket from any game it is in..
-func (sm *Manager) leaveGame(ctx context.Context, m message.Message, out chan<- message.Message) {
+// leaveGame removes the socket from any game it is in.
+func (sm *Manager) leaveGame(ctx context.Context, m message.Message) {
 	delete(sm.playerGames[m.PlayerName], m.Game.ID)
 	if len(sm.playerGames[m.PlayerName]) == 0 {
 		delete(sm.playerGames, m.PlayerName)

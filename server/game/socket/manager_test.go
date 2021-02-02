@@ -414,14 +414,246 @@ func TestManagerAddSecondSocket(t *testing.T) {
 }
 
 func TestManagerHandleGameMessage(t *testing.T) {
-	// TODO: test message recieved from game 'in' channel
-	// * normal message
-	// * messageType.Infos (send to all sockets)
-	// * socketError message: with and without game id
-	// * message without game[Id]: do not send, only log
-	// * game leave, delete message:
-	// * player delete message -> should close socket input streams
-	// * no socket for player in game: ok, don't send message
+	addr1 := mockAddr("addr1")
+	addr2 := mockAddr("addr2")
+	handleGameMessageTests := []struct {
+		playerSockets   map[player.Name]map[net.Addr]chan<- message.Message
+		playerGames     map[player.Name]map[game.ID]net.Addr
+		m               message.Message
+		wantPlayerGames map[player.Name]map[game.ID]net.Addr
+		wantErr         bool
+	}{
+		{}, // no game on message
+		{ // no game id on normal message
+			m: message.Message{
+				Type: message.TilesChange,
+			},
+		},
+		{ // normal message
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: make(chan<- message.Message, 1),
+				},
+				"barney": {
+					addr2: nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					2: addr1,
+				},
+				"barney": {
+					2: addr2,
+				},
+			},
+			m: message.Message{
+				Type:       message.TilesChange, // new tile info omitted, but message should only be sent to fred
+				PlayerName: "fred",
+				Game: &game.Info{
+					ID: 2,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					2: addr1,
+				},
+				"barney": {
+					2: addr2,
+				},
+			},
+		},
+		{ // game infos
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: make(chan<- message.Message, 1),
+				},
+				"barney": {
+					addr2: make(chan<- message.Message, 1),
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					2: addr1,
+				},
+				"barney": {
+					1: addr2,
+				},
+			},
+			m: message.Message{
+				Type:  message.Infos,
+				Games: []game.Info{},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					2: addr1,
+				},
+				"barney": {
+					1: addr2,
+				},
+			},
+		},
+		{ // game infos, with playerName: only send to player for sockets not in a game (likely only one new socket)
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1:             make(chan<- message.Message, 1),
+					addr2:             nil,
+					mockAddr("addr3"): make(chan<- message.Message, 1), //  // unlikely, but possible if player has two sockets not in games.  Unless the message knows the new socket address.
+				},
+				"barney": {
+					mockAddr("addr4"): nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					2: addr2,
+				},
+			},
+			m: message.Message{
+				Type:       message.Infos,
+				PlayerName: "fred",
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					2: addr2,
+				},
+			},
+		},
+		{ // socketErr message from game
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+					addr2: make(chan<- message.Message, 1),
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					1: addr1,
+					2: addr2,
+				},
+			},
+			m: message.Message{
+				Type:       message.SocketError,
+				PlayerName: "fred",
+				Game: &game.Info{
+					ID: 2,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					1: addr1,
+					2: addr2,
+				},
+			},
+		},
+		{ // socketErr message for player (which socket unknown)
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: make(chan<- message.Message, 1),
+					addr2: make(chan<- message.Message, 1),
+				},
+				"barney": {
+					mockAddr("addr3"): nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					1: addr1,
+					2: addr2,
+				},
+			},
+			m: message.Message{
+				PlayerName: "fred",
+				Type:       message.SocketError,
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					1: addr1,
+					2: addr2,
+				},
+			},
+		},
+		{ // game delete gets sent as a leave
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"barney": {
+					addr1: make(chan<- message.Message, 1),
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"barney": {
+					2: addr1,
+				},
+			},
+			m: message.Message{
+				Type:       message.Leave,
+				PlayerName: "barney",
+				Info:       "the game was deleted, so player should leave it",
+				Game: &game.Info{
+					ID: 2,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
+		},
+		{ // player not active in game, don't send message #1
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
+			playerGames:   map[player.Name]map[game.ID]net.Addr{},
+			m: message.Message{
+				Type:       message.Snag,
+				PlayerName: "fred",
+				Game: &game.Info{
+					ID: 2,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
+		},
+		{ // player not active in game, don't send message #2
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{},
+			m: message.Message{
+				Type:       message.Snag,
+				PlayerName: "fred",
+				Game: &game.Info{
+					ID: 2,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
+		},
+	}
+	for i, test := range handleGameMessageTests {
+		var bb bytes.Buffer
+		log := log.New(&bb, "test", log.LstdFlags)
+		sm := Manager{
+			playerSockets: test.playerSockets,
+			playerGames:   test.playerGames,
+			ManagerConfig: ManagerConfig{
+				Log: log,
+			},
+		}
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		defer cancelFunc()
+		sm.handleGameMessage(ctx, test.m)
+		switch {
+		case test.wantErr:
+			if bb.Len() == 0 {
+				t.Errorf("Test %v: wanted error logged for bad message", i)
+			}
+		case !reflect.DeepEqual(test.wantPlayerGames, sm.playerGames):
+			t.Errorf("Test %v: player games not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerGames, sm.playerGames)
+		default:
+			// ensure each non-nil socket has a message sent to it.  The test setup should only make buffered message channels if a message is expected to be sent on it.
+			for pn, addrs := range sm.playerSockets {
+				for addr, socketIn := range addrs {
+					if socketIn != nil && len(socketIn) != 1 {
+						t.Errorf("Test %v: wanted 1 message to be sent on socket for %v at %v", i, pn, addr)
+					}
+				}
+			}
+		}
+	}
 }
 
 func TestManagerHandleSocketMessage(t *testing.T) {
@@ -764,7 +996,7 @@ func TestManagerHandleSocketMessage(t *testing.T) {
 		case !reflect.DeepEqual(test.wantPlayerSockets, sm.playerSockets):
 			t.Errorf("Test %v: player sockets not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerSockets, sm.playerSockets)
 		case !reflect.DeepEqual(test.wantPlayerGames, sm.playerGames):
-			t.Errorf("Test %v: playergames not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerGames, sm.playerGames)
+			t.Errorf("Test %v: player games not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerGames, sm.playerGames)
 		default:
 			switch len(gameOut) {
 			case 0:
