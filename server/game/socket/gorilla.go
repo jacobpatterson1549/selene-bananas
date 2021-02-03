@@ -37,7 +37,7 @@ func (u *gorillaUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn,
 
 // ReadJSON reads the next json message from the GorillaConnection.
 func (c *gorillaConn) ReadJSON(m *message.Message) error {
-	return c.ReadJSON(m)
+	return c.Conn.ReadJSON(m)
 }
 
 // WriteJSON writes the message as json to the GorillaConnection.
