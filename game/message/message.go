@@ -35,7 +35,7 @@ type (
 	AddSocketRequest struct {
 		http.ResponseWriter
 		*http.Request
-		Result chan<- error // TODO: store new addr in this so game infos are only sent to the new socket.
+		Result chan<- Message
 	}
 )
 

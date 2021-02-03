@@ -121,7 +121,7 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 	if !l.Runner.IsRunning() {
 		return fmt.Errorf("lobby not running")
 	}
-	result := make(chan error)
+	result := make(chan message.Message)
 	pn := player.Name(username)
 	m := message.Message{
 		Type:       message.AddSocket,
@@ -133,15 +133,13 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 		},
 	}
 	l.socketMessages <- m
-	if err := <-result; err != nil {
-		return err
+	// The result contains the address of the new socket to get the game infos of the lobby for.
+	m2 := <-result
+	if m2.Type == message.SocketError {
+		return fmt.Errorf(m2.Info)
 	}
-	infos := l.gameInfos()
-	m2 := message.Message{
-		Type:       message.Infos,
-		PlayerName: pn,
-		Games:      infos,
-	}
+	m2.Type = message.Infos
+	m2.Games = l.gameInfos()
 	l.socketMessages <- m2
 	return nil
 }

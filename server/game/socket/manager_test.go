@@ -195,11 +195,83 @@ func TestRunManager(t *testing.T) {
 	}
 }
 
-func TestManagerAddSocket(t *testing.T) {
+func TestManagerAddSocketCheckResult(t *testing.T) {
+	managerAddSocketTests := []struct {
+		m      message.Message
+		wantOk bool
+	}{
+		{}, // no playerName in message
+		{
+			m: message.Message{
+				PlayerName: "selene",
+			},
+			wantOk: true,
+		},
+	}
+	for i, test := range managerAddSocketTests {
+		addr := mockAddr("selen.pc")
+		readBlocker := make(chan struct{})
+		defer close(readBlocker)
+		sm := Manager{
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
+			ManagerConfig: ManagerConfig{
+				MaxSockets:       1,
+				MaxPlayerSockets: 1,
+				SocketConfig: Config{
+					Log:                 log.New(ioutil.Discard, "scLog", log.LstdFlags),
+					ReadWait:            2 * time.Hour,
+					WriteWait:           1 * time.Hour,
+					PingPeriod:          1 * time.Hour,
+					ActivityCheckPeriod: 3 * time.Hour,
+				},
+			},
+			upgrader: mockUpgrader{
+				upgradeFunc: func(w http.ResponseWriter, r *http.Request) (Conn, error) {
+					return &mockConn{
+						RemoteAddrFunc: func() net.Addr {
+							return addr
+						},
+						ReadJSONFunc: func(m *message.Message) error {
+							<-readBlocker
+							mockConnReadMinimalMessage(m)
+							return nil
+						},
+					}, nil
+				},
+			},
+		}
+		ctx := context.Background()
+		result := make(chan message.Message, 1)
+		test.m.Type = message.AddSocket
+		test.m.AddSocketRequest = &message.AddSocketRequest{
+			Result: result,
+		}
+		sm.handleLobbyMessage(ctx, test.m)
+		got := <-result
+		switch {
+		case !test.wantOk:
+			if got.Type != message.SocketError {
+				t.Errorf("Test %v: wanted message to be socket error, got %v", i, got)
+			}
+		default:
+			switch {
+			case got.Type != message.Infos:
+				t.Errorf("Test %v: wanted message to be for game infos, got %v", i, got)
+			case addr != got.Addr:
+				t.Errorf("Test %v: wanted message addr to be %v, got %v", i, addr, got.Addr)
+			case len(sm.playerSockets) != 1:
+				t.Errorf("Test %v: wanted new socket to be added to manager", i)
+			}
+		}
+	}
+}
+
+func TestManagerHandleAddSocket(t *testing.T) {
 	managerAddSocketTests := []struct {
 		running          bool
 		maxSockets       int
 		maxPlayerSockets int
+		noPlayerName     bool
 		wantOk           bool
 		upgradeErr       error
 		Config
@@ -213,6 +285,12 @@ func TestManagerAddSocket(t *testing.T) {
 			running:          true,
 			maxSockets:       1,
 			maxPlayerSockets: 0,
+		},
+		{ // no playerName
+			running:          true,
+			maxSockets:       1,
+			maxPlayerSockets: 1,
+			noPlayerName:     true,
 		},
 		{ // bad upgrade
 			running:          true,
@@ -244,13 +322,14 @@ func TestManagerAddSocket(t *testing.T) {
 		readBlocker1 := make(chan struct{})
 		readBlocker2 := make(chan struct{})
 		socketRun := false
+		addr := mockAddr("an.addr")
 		upgradeFunc := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
 			if test.upgradeErr != nil {
 				return nil, test.upgradeErr
 			}
 			return &mockConn{
 				RemoteAddrFunc: func() net.Addr {
-					return mockAddr("an.addr")
+					return addr
 				},
 				ReadJSONFunc: func(m *message.Message) error {
 					<-readBlocker1
@@ -275,8 +354,11 @@ func TestManagerAddSocket(t *testing.T) {
 		}
 		sm.SocketConfig = test.Config
 		pn, w, r := mockConnection("selene")
+		if test.noPlayerName {
+			pn = ""
+		}
 		ctx := context.Background()
-		err := sm.AddSocket(ctx, pn, w, r)
+		s, err := sm.handleAddSocket(ctx, pn, w, r)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -284,6 +366,8 @@ func TestManagerAddSocket(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error adding socket: %v", i, err)
+		case addr != s.Addr:
+			t.Errorf("Test %v: wanted addr to be %v, got %v", i, addr, s.Addr)
 		case len(sm.playerSockets) != 1:
 			t.Errorf("Test %v: wanted 1 player to have a socket, got %v", i, len(sm.playerSockets))
 		case len(sm.playerSockets[pn]) != 1:
@@ -391,13 +475,13 @@ func TestManagerAddSecondSocket(t *testing.T) {
 			continue
 		}
 		pn1, w1, r1 := mockConnection(name1)
-		err1 := sm.AddSocket(ctx, pn1, w1, r1)
+		_, err1 := sm.handleAddSocket(ctx, pn1, w1, r1)
 		if err1 != nil {
 			t.Errorf("Test %v: unwanted error adding first socket: %v", i, err1)
 			continue
 		}
 		pn2, w2, r2 := mockConnection(test.name2)
-		err2 := sm.AddSocket(ctx, pn2, w2, r2)
+		_, err2 := sm.handleAddSocket(ctx, pn2, w2, r2)
 		switch {
 		case !test.wantOk:
 			if err2 == nil {
@@ -412,10 +496,10 @@ func TestManagerAddSecondSocket(t *testing.T) {
 		}
 	}
 }
-func TestManagerHandleGameMessage(t *testing.T) {
+func TestManagerHandleLobbyMessage(t *testing.T) {
 	addr1 := mockAddr("addr1")
 	addr2 := mockAddr("addr2")
-	handleGameMessageTests := []struct {
+	handleLobbyMessageTests := []struct {
 		playerSockets   map[player.Name]map[net.Addr]chan<- message.Message
 		playerGames     map[player.Name]map[game.ID]net.Addr
 		m               message.Message
@@ -491,12 +575,12 @@ func TestManagerHandleGameMessage(t *testing.T) {
 				},
 			},
 		},
-		{ // game infos, with playerName: only send to player for sockets not in a game (likely only one new socket)
+		{ // game infos, with addr: only send to player for the socket
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
 				"fred": {
 					addr1:             make(chan<- message.Message, 1),
 					addr2:             nil,
-					mockAddr("addr3"): make(chan<- message.Message, 1), //  // unlikely, but possible if player has two sockets not in games.  Unless the message knows the new socket address.
+					mockAddr("addr3"): nil,
 				},
 				"barney": {
 					mockAddr("addr4"): nil,
@@ -510,6 +594,7 @@ func TestManagerHandleGameMessage(t *testing.T) {
 			m: message.Message{
 				Type:       message.Infos,
 				PlayerName: "fred",
+				Addr:       addr1,
 			},
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
 				"fred": {
@@ -644,8 +729,21 @@ func TestManagerHandleGameMessage(t *testing.T) {
 				},
 			},
 		},
+		{ // AddSocket no AddSocketRequest
+			m: message.Message{
+				Type: message.AddSocket,
+			},
+			wantErr: true,
+		},
+		{ // AddSocket no AddSocketRquest.Result
+			m: message.Message{
+				Type:             message.AddSocket,
+				AddSocketRequest: &message.AddSocketRequest{},
+			},
+			wantErr: true,
+		},
 	}
-	for i, test := range handleGameMessageTests {
+	for i, test := range handleLobbyMessageTests {
 		var bb bytes.Buffer
 		log := log.New(&bb, "test", log.LstdFlags)
 		sm := Manager{
@@ -658,7 +756,7 @@ func TestManagerHandleGameMessage(t *testing.T) {
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		defer cancelFunc()
-		sm.handleGameMessage(ctx, test.m)
+		sm.handleLobbyMessage(ctx, test.m)
 		switch {
 		case test.wantErr:
 			if bb.Len() == 0 {

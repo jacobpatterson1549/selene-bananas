@@ -91,7 +91,7 @@ func (sm *Manager) Run(ctx context.Context, in <-chan message.Message) (<-chan m
 				if !ok {
 					return
 				}
-				sm.handleGameMessage(ctx, m)
+				sm.handleLobbyMessage(ctx, m)
 			case m := <-sm.socketOut:
 				sm.handleSocketMessage(ctx, m, out)
 			}
@@ -100,31 +100,54 @@ func (sm *Manager) Run(ctx context.Context, in <-chan message.Message) (<-chan m
 	return out, nil
 }
 
-// AddSocket runs and adds a socket for the player to the manager.
-func (sm *Manager) AddSocket(ctx context.Context, pn player.Name, w http.ResponseWriter, r *http.Request) error {
-	if !sm.Runner.IsRunning() {
-		return fmt.Errorf("socket manager not running")
+// handleAddSocket adds a socket and sends a response if on the result channel of the request.
+func (sm *Manager) addSocket(ctx context.Context, m message.Message) {
+	switch {
+	case m.AddSocketRequest == nil:
+		sm.Log.Printf("no AddSocketRequest on message: %v", m)
+		return
+	case m.AddSocketRequest.Result == nil:
+		sm.Log.Printf("no AddSocketRequest Result channel on message: %v", m)
+		return
 	}
+	s, err := sm.handleAddSocket(ctx, m.PlayerName, m.AddSocketRequest.ResponseWriter, m.AddSocketRequest.Request)
+	var m2 message.Message
+	switch {
+	case err != nil:
+		m2.Type = message.SocketError
+		m2.Info = err.Error()
+	default:
+		m2.Type = message.Infos
+		m2.Addr = s.Addr
+	}
+	m.AddSocketRequest.Result <- m2
+}
+
+// handleAddSocket runs and adds a socket for the player to the manager.
+func (sm *Manager) handleAddSocket(ctx context.Context, pn player.Name, w http.ResponseWriter, r *http.Request) (*Socket, error) {
 	if sm.numSockets() >= sm.MaxSockets {
-		return fmt.Errorf("no room for another socket")
+		return nil, fmt.Errorf("no room for another socket")
+	}
+	if len(pn) == 0 {
+		return nil, fmt.Errorf("player name required")
 	}
 	if len(sm.playerSockets[pn]) >= sm.MaxPlayerSockets {
-		return fmt.Errorf("player has reached quota of sockets, close an existing one")
+		return nil, fmt.Errorf("player has reached quota of sockets, close an existing one")
 	}
 	conn, err := sm.upgrader.Upgrade(w, r)
 	if err != nil {
-		return fmt.Errorf("upgrading to websocket connection: %w", err)
+		return nil, fmt.Errorf("upgrading to websocket connection: %w", err)
 	}
 	s, err := sm.SocketConfig.NewSocket(pn, conn)
 	if err != nil {
-		return fmt.Errorf("creating socket in manager: %v", err)
+		return nil, fmt.Errorf("creating socket in manager: %v", err)
 	}
 	socketIn := make(chan message.Message)
 	if err := s.Run(ctx, socketIn, sm.socketOut); err != nil {
-		return fmt.Errorf("running socket")
+		return nil, fmt.Errorf("running socket")
 	}
 	if sm.hasSocket(s.Addr) {
-		return fmt.Errorf("socket already exists with address of %v", s.Addr)
+		return nil, fmt.Errorf("socket already exists with address of %v", s.Addr)
 	}
 	playerSockets, ok := sm.playerSockets[pn]
 	switch {
@@ -135,7 +158,7 @@ func (sm *Manager) AddSocket(ctx context.Context, pn player.Name, w http.Respons
 			s.Addr: socketIn,
 		}
 	}
-	return nil
+	return s, nil
 }
 
 // numSockets sums the number of sockets for each player.  Not thread safe.
@@ -159,8 +182,8 @@ func (sm *Manager) hasSocket(a net.Addr) bool {
 	return false
 }
 
-// handleGameMessage writes the message to the appropriate sockets in the manager.
-func (sm *Manager) handleGameMessage(ctx context.Context, m message.Message) {
+// handleLobbyMessage writes the message to the appropriate sockets in the manager.
+func (sm *Manager) handleLobbyMessage(ctx context.Context, m message.Message) {
 	switch m.Type {
 	case message.Infos:
 		sm.sendMessageInfos(ctx, m)
@@ -168,6 +191,8 @@ func (sm *Manager) handleGameMessage(ctx context.Context, m message.Message) {
 		sm.sendSocketError(ctx, m)
 	case message.PlayerDelete:
 		sm.deletePlayer(ctx, m)
+	case message.AddSocket:
+		sm.addSocket(ctx, m)
 	default:
 		sm.sendMessageForGame(ctx, m)
 	}
@@ -230,26 +255,25 @@ func (sm *Manager) handleSocketMessage(ctx context.Context, m message.Message, o
 	}
 }
 
-// sendMessageInfos sends the game message with infos to sockets.
+// sendMessageInfos sends the game message with infos to the single socket or all.
+// When a socket is added, only it immediately needs game infos.  Otherwise, when any game info changes, all sockets must be notified.
 func (sm *Manager) sendMessageInfos(ctx context.Context, m message.Message) {
-	switch len(m.PlayerName) {
-	case 0:
+	switch {
+	case m.Addr != nil:
+		addrs, ok := sm.playerSockets[m.PlayerName]
+		if !ok {
+			sm.Log.Printf("no player to send infos to for %v", m)
+			return
+		}
+		socketIn, ok := addrs[m.Addr]
+		if !ok {
+			sm.Log.Printf("no socket for %v at %v", m.PlayerName, m.Addr)
+		}
+		socketIn <- m
+	default:
 		// send to all sockets (likely game info change)
 		for _, addrs := range sm.playerSockets {
 			for _, socketIn := range addrs {
-				socketIn <- m
-			}
-		}
-	default:
-		// only send to the sockets for the player that are not in a game.
-		addrsInGame := make(map[net.Addr]struct{}, 1)
-		games := sm.playerGames[m.PlayerName]
-		for _, addr := range games {
-			addrsInGame[addr] = struct{}{}
-		}
-		addrs := sm.playerSockets[m.PlayerName]
-		for addr, socketIn := range addrs {
-			if _, ok := addrsInGame[addr]; !ok {
 				socketIn <- m
 			}
 		}

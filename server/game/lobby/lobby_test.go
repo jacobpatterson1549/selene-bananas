@@ -212,7 +212,12 @@ func TestAddUser(t *testing.T) {
 			if !reflect.DeepEqual(test.wantM, gotM) {
 				t.Errorf("Test %v: messages not equal\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
 			}
-			gotM.AddSocketRequest.Result <- test.addSocketErr
+			var addSocketM message.Message
+			if test.addSocketErr != nil {
+				addSocketM.Type = message.SocketError
+				addSocketM.Info = test.addSocketErr.Error()
+			}
+			gotM.AddSocketRequest.Result <- addSocketM
 			if !test.wantOk {
 				return
 			}
