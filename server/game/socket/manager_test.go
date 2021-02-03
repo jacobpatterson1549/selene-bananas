@@ -602,6 +602,27 @@ func TestManagerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 		},
+		{ // game infos, with addr: only send to player for the socket, but no player socket exists
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
+			m: message.Message{
+				Type:       message.Infos,
+				PlayerName: "fred",
+				Addr:       addr1,
+			},
+			wantErr: true,
+		},
+		{ // game infos, with addr: only send to player for the socket, but no socket exists
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+				},
+			},
+			m: message.Message{
+				Type:       message.Infos,
+				PlayerName: "fred",
+				Addr:       addr1,
+			},
+			wantErr: true,
+		},
 		{ // socketErr message from game
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
 				"fred": {

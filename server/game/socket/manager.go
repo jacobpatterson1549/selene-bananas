@@ -186,7 +186,7 @@ func (sm *Manager) hasSocket(a net.Addr) bool {
 func (sm *Manager) handleLobbyMessage(ctx context.Context, m message.Message) {
 	switch m.Type {
 	case message.Infos:
-		sm.sendMessageInfos(ctx, m)
+		sm.sendGameInfos(ctx, m)
 	case message.SocketError:
 		sm.sendSocketError(ctx, m)
 	case message.PlayerDelete:
@@ -255,9 +255,9 @@ func (sm *Manager) handleSocketMessage(ctx context.Context, m message.Message, o
 	}
 }
 
-// sendMessageInfos sends the game message with infos to the single socket or all.
+// sendGameInfos sends the game message with infos to the single socket or all.
 // When a socket is added, only it immediately needs game infos.  Otherwise, when any game info changes, all sockets must be notified.
-func (sm *Manager) sendMessageInfos(ctx context.Context, m message.Message) {
+func (sm *Manager) sendGameInfos(ctx context.Context, m message.Message) {
 	switch {
 	case m.Addr != nil:
 		addrs, ok := sm.playerSockets[m.PlayerName]
@@ -268,6 +268,7 @@ func (sm *Manager) sendMessageInfos(ctx context.Context, m message.Message) {
 		socketIn, ok := addrs[m.Addr]
 		if !ok {
 			sm.Log.Printf("no socket for %v at %v", m.PlayerName, m.Addr)
+			return
 		}
 		socketIn <- m
 	default:
