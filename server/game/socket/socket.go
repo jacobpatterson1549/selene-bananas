@@ -123,11 +123,7 @@ func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- 
 	var wg sync.WaitGroup
 	go func() {
 		wg.Wait()
-		pingTicker.Stop()
-		activityCheckTicker.Stop()
-		s.Runner.Finish()
-		s.Close()
-		// TODO: send playerDelete message, test this
+		s.stop(out, pingTicker, activityCheckTicker)
 	}()
 	s.readActive = false
 	wg.Add(1)
@@ -166,8 +162,7 @@ func (s *Socket) readMessages(ctx context.Context, out chan<- message.Message, w
 // writeMessages sends messages from the outbound messages channel to the connected socket.
 // Messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel.
 // The tickers are used to periodically write messages or check for read activity.
-func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, wg *sync.WaitGroup,
-	pingTicker, activityTicker *time.Ticker) {
+func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, wg *sync.WaitGroup, pingTicker, activityCheckTicker *time.Ticker) {
 	var closeReason string
 	defer func() {
 		s.writeClose(closeReason)
@@ -188,7 +183,7 @@ func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, 
 			err = s.writeMessage(m)
 		case <-pingTicker.C:
 			err = s.Conn.WritePing()
-		case <-activityTicker.C:
+		case <-activityCheckTicker.C:
 			err = s.handleActivityCheck()
 		}
 		if err != nil {
@@ -251,4 +246,18 @@ func (s *Socket) writeClose(reason string) {
 		return
 	}
 	s.Log.Print(reason)
+}
+
+// stop cancels timers, closes the connection, and sends a message to remove it
+func (s *Socket) stop(out chan<- message.Message, pingTicker, activityCheckTicker *time.Ticker) {
+	pingTicker.Stop()
+	activityCheckTicker.Stop()
+	s.Runner.Finish()
+	s.Close()
+	m := message.Message{
+		Type:       message.PlayerDelete,
+		PlayerName: s.PlayerName,
+		Addr:       s.Addr,
+	}
+	out <- m
 }

@@ -267,10 +267,12 @@ func TestRunSocket(t *testing.T) {
 			PingPeriod:          1 * time.Hour,
 			ActivityCheckPeriod: 3 * time.Hour,
 		}
+		addr := mockAddr("some.addr")
 		s := Socket{
 			Conn:       &conn,
 			Config:     cfg,
 			readActive: true,
+			Addr:       addr,
 		}
 		if test.alreadyRunning {
 			ctx := context.Background()
@@ -308,6 +310,11 @@ func TestRunSocket(t *testing.T) {
 			wg.Wait()
 			if s.IsRunning() {
 				t.Errorf("Test %v: wanted socket to not be running after it finished", i)
+			}
+			got := <-out
+			switch {
+			case got.Type != message.PlayerDelete, got.PlayerName != s.PlayerName, got.Addr != addr:
+				t.Errorf("Test %v: wanted playerDelete with socket address and player name", i)
 			}
 			if err := s.Run(ctx, in, out); err == nil {
 				t.Errorf("Test %v: wanted error running socket after it is finished", i)
