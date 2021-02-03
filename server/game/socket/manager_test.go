@@ -259,6 +259,8 @@ func TestManagerAddSocketCheckResult(t *testing.T) {
 				t.Errorf("Test %v: wanted message to be for game infos, got %v", i, got)
 			case addr != got.Addr:
 				t.Errorf("Test %v: wanted message addr to be %v, got %v", i, addr, got.Addr)
+			case test.m.PlayerName != got.PlayerName:
+				t.Errorf("Test %v: wanted player name in message to be %v, got %v", i, test.m.PlayerName, got.PlayerName)
 			case len(sm.playerSockets) != 1:
 				t.Errorf("Test %v: wanted new socket to be added to manager", i)
 			}
@@ -613,8 +615,7 @@ func TestManagerHandleLobbyMessage(t *testing.T) {
 		},
 		{ // game infos, with addr: only send to player for the socket, but no socket exists
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
-				"fred": {
-				},
+				"fred": {},
 			},
 			m: message.Message{
 				Type:       message.Infos,

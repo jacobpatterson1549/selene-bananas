@@ -111,7 +111,9 @@ func (sm *Manager) addSocket(ctx context.Context, m message.Message) {
 		return
 	}
 	s, err := sm.handleAddSocket(ctx, m.PlayerName, m.AddSocketRequest.ResponseWriter, m.AddSocketRequest.Request)
-	var m2 message.Message
+	m2 := message.Message{
+		PlayerName: m.PlayerName,
+	}
 	switch {
 	case err != nil:
 		m2.Type = message.SocketError
