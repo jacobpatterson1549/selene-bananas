@@ -257,9 +257,6 @@ func (b Board) CanMoveTiles(tilePositions map[tile.ID]tile.Position) bool {
 			!b.hasTile(tp.Tile):
 			return false
 		}
-		if _, ok := ids[tp.Tile.ID]; ok {
-			return false
-		}
 		ids[tp.Tile.ID] = struct{}{}
 		// ensure no other tile is moved to the same spot
 		if _, ok := positions[tp.X]; !ok {

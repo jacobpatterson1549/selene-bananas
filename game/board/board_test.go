@@ -391,7 +391,7 @@ func TestMoveTiles(t *testing.T) {
 				UsedTileLocs:  map[tile.X]map[tile.Y]tile.Tile{2: {3: {ID: 4}}},
 			},
 		},
-		{ // tile is moved off board
+		{ // tile is moved off board (numRows = 10)
 			tilePositions: []tile.Position{{Tile: tile.Tile{ID: 1}, X: 2, Y: 99}},
 			board: Board{
 				UnusedTiles: map[tile.ID]tile.Tile{
