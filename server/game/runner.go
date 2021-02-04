@@ -97,11 +97,15 @@ func (r *Runner) handleMessage(ctx context.Context, m message.Message, out chan<
 
 // createGame allocates a new game, adding it to the open games.
 func (r *Runner) createGame(ctx context.Context, m message.Message, out chan<- message.Message) {
-	if len(r.games) >= r.MaxGames {
+	switch {
+	case len(r.games) >= r.MaxGames:
 		err := fmt.Errorf("the maximum number of games have already been created (%v)", r.MaxGames)
 		r.sendError(err, m.PlayerName, out)
 		return
-
+	case m.Game == nil, m.Game.Board == nil:
+		err := fmt.Errorf("board config required when creating game")
+		r.sendError(err, m.PlayerName, out)
+		return
 	}
 	id := r.lastID + 1
 	g, err := r.GameConfig.NewGame(id, r.UserDao)
@@ -113,7 +117,7 @@ func (r *Runner) createGame(ctx context.Context, m message.Message, out chan<- m
 	in := make(chan message.Message)
 	g.Run(ctx, in, out) // all games publish to the same "out" channel
 	r.games[id] = in
-	m.Type = message.Create
+	m.Type = message.Join
 	in <- m
 }
 

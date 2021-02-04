@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
+	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
+	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
 )
 
 func TestNewRunner(t *testing.T) {
@@ -84,12 +86,12 @@ func TestRunRunner(t *testing.T) {
 		},
 	}
 	for i, test := range runRunnerTests {
-		var gm Runner
+		var r Runner
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		defer cancelFunc()
 		in := make(chan message.Message)
-		out := gm.Run(ctx, in)
+		out := r.Run(ctx, in)
 		test.stopFunc(cancelFunc, in)
 		_, ok := <-out
 		if ok {
@@ -99,24 +101,32 @@ func TestRunRunner(t *testing.T) {
 }
 
 func TestGameCreate(t *testing.T) {
-	t.Skip() // TODO: fix game.Runner.TestGameCreate()
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
 	gameCreateTests := []struct {
-		UserDao      UserDao
+		m            message.Message
 		RunnerConfig RunnerConfig
 		wantOk       bool
 	}{
 		{ // happy path
-			UserDao: mockUserDao{},
+			m: message.Message{
+				Type:       message.Create,
+				PlayerName: "selene",
+				Game: &game.Info{
+					Board: &board.Board{
+						Config: board.Config{NumRows: 18, NumCols: 22},
+					},
+				},
+			},
 			RunnerConfig: RunnerConfig{
 				Log:      testLog,
 				MaxGames: 1,
 				GameConfig: Config{
-					Log:                    log.New(ioutil.Discard, "test", log.LstdFlags),
+					PlayerCfg:              playerController.Config{WinPoints: 10},
+					Log:                    testLog,
 					TimeFunc:               func() int64 { return 0 },
 					MaxPlayers:             1,
 					NumNewTiles:            1,
-					IdlePeriod:             1 * time.Minute,
+					IdlePeriod:             1 * time.Hour,
 					ShuffleUnusedTilesFunc: func(tiles []tile.Tile) {},
 					ShufflePlayersFunc:     func(playerNames []player.Name) {},
 				},
@@ -124,14 +134,45 @@ func TestGameCreate(t *testing.T) {
 			wantOk: true,
 		},
 		{ // no room for game
-			UserDao: mockUserDao{},
+			m: message.Message{
+				Type:       message.Create,
+				PlayerName: "selene",
+			},
 			RunnerConfig: RunnerConfig{
 				Log:      testLog,
 				MaxGames: 0,
 			},
 		},
+		{ // bad message: no game
+			m: message.Message{
+				Type:       message.Create,
+				PlayerName: "selene",
+			},
+			RunnerConfig: RunnerConfig{
+				Log:      testLog,
+				MaxGames: 1,
+			},
+		}, { // bad message: no board
+			m: message.Message{
+				Type:       message.Create,
+				PlayerName: "selene",
+				Game:       &game.Info{},
+			},
+			RunnerConfig: RunnerConfig{
+				Log:      testLog,
+				MaxGames: 1,
+			},
+		},
 		{ // bad gameConfig
-			UserDao: mockUserDao{},
+			m: message.Message{
+				Type:       message.Create,
+				PlayerName: "selene",
+				Game: &game.Info{
+					Board: &board.Board{
+						Config: board.Config{NumRows: 18, NumCols: 22},
+					},
+				},
+			},
 			RunnerConfig: RunnerConfig{
 				Log:      testLog,
 				MaxGames: 1,
@@ -142,37 +183,32 @@ func TestGameCreate(t *testing.T) {
 		},
 	}
 	for i, test := range gameCreateTests {
-		gm := Runner{
+		r := Runner{
 			games:        make(map[game.ID]chan<- message.Message),
 			lastID:       3,
+			UserDao:      mockUserDao{},
 			RunnerConfig: test.RunnerConfig,
 		}
 		ctx := context.Background()
 		in := make(chan message.Message)
-		out := gm.Run(ctx, in)
-		m := message.Message{
-			Type: message.Create,
-		}
-		in <- m
-		close(in)
-		gotNumGames := len(gm.games)
+		out := r.Run(ctx, in)
+		in <- test.m
+		gotM := <-out
+		gotNumGames := len(r.games)
 		switch {
 		case !test.wantOk:
 			if gotNumGames != 0 {
 				t.Errorf("Test %v: wanted no game to be created, got %v", i, gotNumGames)
 			}
-			m2 := <-out
-			if m2.Type != message.SocketError {
-				t.Errorf("Test %v: wanted returned message to be a warning that to game could be created, but was %v.  Info: %v", i, m2.Type, m2.Info)
+			if gotM.Type != message.SocketError {
+				t.Errorf("Test %v: wanted returned message to be a warning that to game could be created, but got %v", i, gotM)
 			}
-		default:
-			if gotNumGames != 1 {
-				t.Errorf("Test %v: wanted 1 game to be created, got %v", i, gotNumGames)
-			}
-			wantID := game.ID(4)
-			if _, ok := gm.games[wantID]; !ok {
-				t.Errorf("Test %v: wanted game of id %v to be created", i, wantID)
-			}
+		case gotNumGames != 1:
+			t.Errorf("Test %v: wanted 1 game to be created, got %v", i, gotNumGames)
+		case r.games[4] == nil:
+			t.Errorf("Test %v: wanted game of id 4 to be created", i)
+		case gotM.Type != message.Join, gotM.Game.ID != 4, gotM.PlayerName != "selene":
+			t.Errorf("Test %v: wanted join message for game 4 for player, got %v", i, gotM)
 		}
 	}
 }
@@ -208,7 +244,7 @@ func TestGameDelete(t *testing.T) {
 	for i, test := range gameDeleteTests {
 		in := make(chan message.Message)
 		gIn := make(chan message.Message)
-		gm := Runner{
+		r := Runner{
 			games: map[game.ID]chan<- message.Message{
 				5: gIn,
 			},
@@ -217,7 +253,7 @@ func TestGameDelete(t *testing.T) {
 			},
 		}
 		ctx := context.Background()
-		out := gm.Run(ctx, in)
+		out := r.Run(ctx, in)
 		messageHandled := false
 		go func() { // mock game
 			_, ok := <-gIn
@@ -229,7 +265,7 @@ func TestGameDelete(t *testing.T) {
 		}()
 		in <- test.m
 		m2 := <-out
-		gotNumGames := len(gm.games)
+		gotNumGames := len(r.games)
 		switch {
 		case !test.wantOk:
 			if gotNumGames != 1 {
@@ -280,7 +316,7 @@ func TestHandleGameMessage(t *testing.T) {
 	for i, test := range handleGameMessageTests {
 		in := make(chan message.Message)
 		gIn := make(chan message.Message)
-		gm := Runner{
+		r := Runner{
 			games: map[game.ID]chan<- message.Message{
 				3: gIn,
 			},
@@ -289,7 +325,7 @@ func TestHandleGameMessage(t *testing.T) {
 			},
 		}
 		ctx := context.Background()
-		out := gm.Run(ctx, in)
+		out := r.Run(ctx, in)
 		messageHandled := false
 		go func() { // mock game
 			_, ok := <-gIn
