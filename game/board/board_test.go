@@ -31,6 +31,58 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestNewFromBoard(t *testing.T) {
+	tiles := []tile.Tile{
+		{
+			ID: 1,
+			Ch: "A",
+		},
+	}
+	tilePositions := []tile.Position{
+		{
+			X: 3,
+			Y: 4,
+			Tile: tile.Tile{
+				ID: 2,
+				Ch: "B",
+			},
+		},
+	}
+	want := &Board{
+		UnusedTiles: map[tile.ID]tile.Tile{
+			1: {
+				ID: 1,
+				Ch: "A",
+			},
+		},
+		UnusedTileIDs: []tile.ID{
+			1,
+		},
+		UsedTiles: map[tile.ID]tile.Position{
+			2: {
+				Tile: tile.Tile{
+					ID: 2,
+					Ch: "B",
+				},
+				X: 3,
+				Y: 4,
+			},
+		},
+		UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{
+			3: {
+				4: {
+					ID: 2,
+					Ch: "B",
+				},
+			},
+		},
+	}
+	got := New(tiles, tilePositions)
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
+	}
+}
+
 func TestNewInvalidBoards(t *testing.T) {
 	invalidBoardConfigs := []Config{
 		{},
