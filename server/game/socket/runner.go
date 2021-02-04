@@ -281,7 +281,6 @@ func (r *Runner) sendSocketError(ctx context.Context, m message.Message) {
 	case m.Game != nil:
 		r.sendMessageForGame(ctx, m)
 	default:
-		// TODO: when does an error message need to be sent to all sockets?  Could the addr be preserved?
 		socketAddrs := r.playerSockets[m.PlayerName]
 		for _, socketIn := range socketAddrs {
 			socketIn <- m
