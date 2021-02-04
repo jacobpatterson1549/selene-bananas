@@ -10,7 +10,7 @@ import (
 )
 
 func TestCreate(t *testing.T) {
-	tokenizer := jwtTokenizer{
+	tokenizer := JwtTokenizer{
 		method:   jwt.SigningMethodHS256,
 		key:      []byte("secret"),
 		timeFunc: func() int64 { return 0 },
@@ -57,7 +57,7 @@ func TestReadUsername(t *testing.T) {
 	jwt.TimeFunc = func() time.Time { return time.Unix(0, 0) }
 	epochSecondsSupplier := func() int64 { return 0 }
 	for i, test := range readTests {
-		creationTokenizer := jwtTokenizer{
+		creationTokenizer := JwtTokenizer{
 			method:   test.creationSigningMethod,
 			key:      []byte("secret"),
 			timeFunc: epochSecondsSupplier,
@@ -67,7 +67,7 @@ func TestReadUsername(t *testing.T) {
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 			continue
 		}
-		var readTokenizer Tokenizer = jwtTokenizer{
+		var readTokenizer = JwtTokenizer{
 			method:   test.readSigningMethod,
 			key:      []byte("secret"),
 			timeFunc: epochSecondsSupplier,
@@ -135,7 +135,7 @@ func TestCreateReadWithTime(t *testing.T) {
 				return -1
 			}
 		}
-		var tokenizer Tokenizer = jwtTokenizer{
+		var tokenizer = JwtTokenizer{
 			method:   jwt.SigningMethodHS256,
 			key:      []byte("secret"),
 			timeFunc: epochSecondsSupplier,
@@ -180,23 +180,20 @@ func TestNewTokenizer(t *testing.T) {
 		TimeFunc:  timeFunc,
 		ValidSec:  validSec,
 	}
-	want := jwtTokenizer{
+	want := JwtTokenizer{
 		method:   jwt.SigningMethodHS256,
 		key:      key,
 		timeFunc: timeFunc,
 		validSec: validSec,
 	}
 	got, err := cfg.NewTokenizer()
-	gotJWT, ok := got.(jwtTokenizer)
 	switch {
 	case err != nil:
 		t.Errorf("unwanted error")
-	case !ok:
-		t.Errorf("wanted jwtTokenizer, got %T", got)
-	case want.method != gotJWT.method,
+	case want.method != got.method,
 		want.key == nil,
-		gotJWT.timeFunc == nil,
-		want.validSec != gotJWT.validSec:
+		got.timeFunc == nil,
+		want.validSec != got.validSec:
 		t.Errorf("not equal:\nwanted %v\ngot    %v", want, got)
 	}
 }

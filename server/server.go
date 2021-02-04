@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jacobpatterson1549/selene-bananas/server/auth"
 	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
 	"github.com/jacobpatterson1549/selene-bananas/server/game"
 )
@@ -25,7 +24,7 @@ type (
 	// Server runs the site
 	Server struct {
 		data          interface{}
-		tokenizer     auth.Tokenizer
+		tokenizer     Tokenizer
 		userDao       UserDao
 		lobby         Lobby
 		httpsServer   *http.Server
@@ -87,6 +86,12 @@ type (
 		ButtonActive string
 	}
 
+	// Tokenizer creates and reads tokens from http traffic.
+	Tokenizer interface {
+		Create(username string, points int) (string, error)
+		ReadUsername(tokenString string) (string, error)
+	}
+
 	// wrappedResponseWriter wraps response writing with another writer.
 	wrappedResponseWriter struct {
 		io.Writer
@@ -106,7 +111,7 @@ const (
 )
 
 // NewServer creates a Server from the Config
-func (cfg Config) NewServer(t auth.Tokenizer, ud UserDao, l Lobby) (*Server, error) {
+func (cfg Config) NewServer(t Tokenizer, ud UserDao, l Lobby) (*Server, error) {
 	if err := cfg.validate(t, ud, l); err != nil {
 		return nil, fmt.Errorf("creating server: validation: %w", err)
 	}
@@ -166,7 +171,7 @@ func (cfg Config) NewServer(t auth.Tokenizer, ud UserDao, l Lobby) (*Server, err
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(t auth.Tokenizer, ud UserDao, l Lobby) error {
+func (cfg Config) validate(t Tokenizer, ud UserDao, l Lobby) error {
 	switch {
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")
