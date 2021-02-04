@@ -77,7 +77,7 @@ func (r *Runner) Run(ctx context.Context, in <-chan message.Message) <-chan mess
 	out := make(chan message.Message)
 	go func() {
 		defer close(out)
-		for {
+		for { // BLOCKING
 			select {
 			case <-ctx.Done():
 				return

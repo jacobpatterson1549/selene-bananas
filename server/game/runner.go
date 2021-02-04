@@ -40,7 +40,7 @@ func (cfg RunnerConfig) NewRunner() (*Runner, error) {
 		return nil, fmt.Errorf("creating game runner: validation: %w", err)
 	}
 	m := Runner{
-		games:         make(map[game.ID]chan<- message.Message, cfg.MaxGames),
+		games:        make(map[game.ID]chan<- message.Message, cfg.MaxGames),
 		RunnerConfig: cfg,
 	}
 	return &m, nil
@@ -52,7 +52,7 @@ func (r *Runner) Run(ctx context.Context, in <-chan message.Message) <-chan mess
 	out := make(chan message.Message)
 	go func() {
 		defer close(out)
-		for {
+		for { // BLOCKING
 			select {
 			case <-ctx.Done():
 				return
@@ -106,7 +106,7 @@ func (r *Runner) createGame(ctx context.Context, m message.Message, out chan<- m
 	}
 	r.lastID = id
 	in := make(chan message.Message)
-	go g.Run(ctx, in, out) // all games publish to the same "out" channel
+	g.Run(ctx, in, out) // all games publish to the same "out" channel
 	r.games[id] = in
 	m.Type = message.Create
 	in <- m

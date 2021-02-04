@@ -149,7 +149,7 @@ func (g *Game) initializeUnusedTiles() error {
 	return nil
 }
 
-// Run runs the game until the context is closed.
+// Run runs the game asynchronously until the context is closed.
 func (g *Game) Run(ctx context.Context, in <-chan message.Message, out chan<- message.Message) {
 	idleTicker := time.NewTicker(g.IdlePeriod)
 	active := false
@@ -164,28 +164,30 @@ func (g *Game) Run(ctx context.Context, in <-chan message.Message, out chan<- me
 		message.Chat:         g.handleGameChat,
 		message.BoardSize:    g.handleBoardRefresh,
 	}
-	for { // BLOCKING
-		select {
-		case <-ctx.Done():
-			return
-		case m, ok := <-in:
-			if !ok {
+	go func() {
+		for { // BLOCKING
+			select {
+			case <-ctx.Done():
 				return
+			case m, ok := <-in:
+				if !ok {
+					return
+				}
+				g.handleMessage(ctx, m, messageSender, &active, messageHandlers)
+				if m.Type == message.Delete {
+					return
+				}
+			case <-idleTicker.C:
+				var m message.Message
+				if !active {
+					g.Log.Printf("deleted game %v due to inactivity", g.id)
+					g.handleGameDelete(ctx, m, messageSender)
+					return
+				}
+				active = false
 			}
-			g.handleMessage(ctx, m, messageSender, &active, messageHandlers)
-			if m.Type == message.Delete {
-				return
-			}
-		case <-idleTicker.C:
-			var m message.Message
-			if !active {
-				g.Log.Printf("deleted game %v due to inactivity", g.id)
-				g.handleGameDelete(ctx, m, messageSender)
-				return
-			}
-			active = false
 		}
-	}
+	}()
 }
 
 // sendMessage creates a messageSender that adds the gameId to the message before sending it on the out channel.

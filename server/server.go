@@ -204,8 +204,8 @@ func (cfg Config) validate() error {
 // When the HTTP/HTTPS servers stop, errors are logged to the error channel.
 func (s Server) Run(ctx context.Context) <-chan error {
 	errC := make(chan error, 2)
-	go s.runHTTPServer(ctx, errC)
-	go s.runHTTPSServer(ctx, errC)
+	s.runHTTPServer(ctx, errC)
+	s.runHTTPSServer(ctx, errC)
 	return errC
 }
 
@@ -232,34 +232,37 @@ func (Server) addMimeType(fileName string, w http.ResponseWriter) {
 	w.Header().Set(HeaderContentType, mimeType)
 }
 
-// runHTTPSServer runs the http server, adding the return error to the channel when done.
-// The server is not run if the HTTP address is not valid.
+// runHTTPSServer runs the http server asynchronously, adding the return error to the channel when done.
+// The server is only run if the HTTP address is valid.
 func (s Server) runHTTPServer(ctx context.Context, errC chan<- error) {
-	if !s.validHTTPAddr() {
-		return
+	if s.validHTTPAddr() {
+		go func() {
+			errC <- s.httpServer.ListenAndServe()
+		}()
 	}
-	errC <- s.httpServer.ListenAndServe()
 }
 
 // runHTTPSServer runs the https server in regards to the conviguration, adding the return error to the channel when done.
 func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
-	lobbyCtx, lobbyCancelFunc := context.WithCancel(ctx)
-	go s.lobby.Run(lobbyCtx)
-	s.httpsServer.RegisterOnShutdown(lobbyCancelFunc)
+	ctx, cancelFunc := context.WithCancel(ctx)
+	s.lobby.Run(ctx)
+	s.httpsServer.RegisterOnShutdown(cancelFunc)
 	s.log.Printf("starting https server at at https://127.0.0.1%v", s.httpsServer.Addr)
-	switch {
-	case s.validHTTPAddr():
-		if _, err := tls.LoadX509KeyPair(s.tlsCertFile, s.tlsKeyFile); err != nil {
-			s.log.Printf("Problem loading tls certificate: %v", err)
-			return
+	go func() {
+		switch {
+		case s.validHTTPAddr():
+			if _, err := tls.LoadX509KeyPair(s.tlsCertFile, s.tlsKeyFile); err != nil {
+				s.log.Printf("Problem loading tls certificate: %v", err)
+				return
+			}
+			errC <- s.httpsServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile)
+		default:
+			if len(s.tlsCertFile) != 0 || len(s.tlsKeyFile) != 0 {
+				s.log.Printf("Ignoring TLS_CERT_FILE/TLS_KEY_FILE variables since PORT was specified, using automated certificate management.")
+			}
+			errC <- s.httpsServer.ListenAndServe()
 		}
-		errC <- s.httpsServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile)
-	default:
-		if len(s.tlsCertFile) != 0 || len(s.tlsKeyFile) != 0 {
-			s.log.Printf("Ignoring TLS_CERT_FILE/TLS_KEY_FILE variables since PORT was specified, using automated certificate management.")
-		}
-		errC <- s.httpsServer.ListenAndServe()
-	}
+	}()
 }
 
 // Stop asks the server to shutdown and waits for the shutdown to complete.
