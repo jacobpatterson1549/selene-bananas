@@ -68,7 +68,7 @@ func (cfg Config) validate(socketRunner, gameRunner Runner) error {
 	switch {
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")
-	case gameRunner == nil:
+	case socketRunner == nil:
 		return fmt.Errorf("socket runner required")
 	case gameRunner == nil:
 		return fmt.Errorf("game runner required")

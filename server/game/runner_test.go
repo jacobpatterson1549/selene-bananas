@@ -26,6 +26,11 @@ func TestNewRunner(t *testing.T) {
 		want   *Runner
 	}{
 		{}, // no log
+		{ // no user dao
+			RunnerConfig: RunnerConfig{
+				Log: testLog,
+			},
+		},
 		{ // low MaxGames
 			UserDao: ud,
 			RunnerConfig: RunnerConfig{
