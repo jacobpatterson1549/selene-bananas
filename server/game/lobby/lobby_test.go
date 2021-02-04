@@ -2,7 +2,6 @@ package lobby
 
 import (
 	"context"
-	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,59 +15,59 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 )
 
-type mockManager struct {
-	RunFunc func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error)
+type mockRunner struct {
+	RunFunc func(ctx context.Context, in <-chan message.Message) <-chan message.Message
 }
 
-func (m *mockManager) Run(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
+func (m *mockRunner) Run(ctx context.Context, in <-chan message.Message) <-chan message.Message {
 	return m.RunFunc(ctx, in)
 }
 
 func TestNewLobby(t *testing.T) {
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
-	testSocketManager := mockManager{
-		RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
+	testSocketRunner := mockRunner{
+		RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
 			t.Error("sm run called")
-			return nil, nil
+			return nil
 		},
 	}
-	testGameManeger := mockManager{
-		RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
+	testGameManeger := mockRunner{
+		RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
 			t.Error("gm run called")
-			return nil, nil
+			return nil
 		},
 	}
 	newLobbyTests := []struct {
-		wantOk bool
-		want   *Lobby
-		sm     SocketManager
-		gm     GameManager
+		wantOk       bool
+		want         *Lobby
+		socketRunner Runner
+		gameRunner   Runner
 		Config
 	}{
 		{ // no log
 		},
-		{ // no socket manager
+		{ // no socket runner
 			Config: Config{
 				Log: testLog,
 			},
 		},
-		{ // no game manager
+		{ // no game runner
 			Config: Config{
 				Log: testLog,
 			},
-			sm: &testSocketManager,
+			socketRunner: &testSocketRunner,
 		},
 		{
 			Config: Config{
 				Log: testLog,
 			},
-			sm:     &testSocketManager,
-			gm:     &testGameManeger,
-			wantOk: true,
+			socketRunner: &testSocketRunner,
+			gameRunner:   &testGameManeger,
+			wantOk:       true,
 			want: &Lobby{
-				socketManager: &testSocketManager,
-				gameManager:   &testGameManeger,
-				games:         map[game.ID]game.Info{},
+				socketRunner: &testSocketRunner,
+				gameRunner:   &testGameManeger,
+				games:        map[game.ID]game.Info{},
 				Config: Config{
 					Log: testLog,
 				},
@@ -76,7 +75,7 @@ func TestNewLobby(t *testing.T) {
 		},
 	}
 	for i, test := range newLobbyTests {
-		got, err := test.Config.NewLobby(test.sm, test.gm)
+		got, err := test.Config.NewLobby(test.socketRunner, test.gameRunner)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -89,106 +88,57 @@ func TestNewLobby(t *testing.T) {
 }
 
 func TestRun(t *testing.T) {
-	runTests := []struct {
-		runSocketManagerErr error
-		runGameManagerErr   error
-	}{
-		{
-			runSocketManagerErr: errors.New("error running socket manager"),
+	socketRunnerRun := false
+	gameRunnerRun := false
+	l := Lobby{
+		socketRunner: &mockRunner{
+			RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+				socketRunnerRun = true
+				return nil
+			},
 		},
-		{
-			runGameManagerErr: errors.New("error running game manager"),
+		gameRunner: &mockRunner{
+			RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+				gameRunnerRun = true
+				return nil
+			},
 		},
-		{}, // happy path
 	}
-	for i, test := range runTests {
-		socketManagerRun := false
-		gameManagerRun := false
-		l := Lobby{
-			socketManager: &mockManager{
-				RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
-					socketManagerRun = true
-					return nil, test.runSocketManagerErr
-				},
-			},
-			gameManager: &mockManager{
-				RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
-					gameManagerRun = true
-					return nil, test.runGameManagerErr
-				},
-			},
-		}
-		ctx := context.Background()
-		ctx, cancelFunc := context.WithCancel(ctx)
-		defer cancelFunc()
-		err := l.Run(ctx)
-		switch {
-		case err != nil:
-			if !errors.Is(err, test.runSocketManagerErr) && !errors.Is(err, test.runGameManagerErr) {
-				t.Errorf("Test %v: unwanted error running lobby: %v", i, err)
-			}
-		case !socketManagerRun:
-			t.Errorf("Test %v: wanted socket manager to be run", i)
-		case !gameManagerRun:
-			t.Errorf("Test %v: wanted game manager to be run", i)
-		default:
-			ctx2 := context.Background()
-			err = l.Run(ctx2)
-			if err == nil {
-				t.Errorf("Test %v: wanted error while trying to run lobby while it is currently running", i)
-			}
-			cancelFunc()
-			<-l.socketMessages // wait for it to be closed
-			ctx3 := context.Background()
-			err = l.Run(ctx3)
-			if err == nil {
-				t.Errorf("Test %v: wanted error while trying to run lobby while after it has run", i)
-			}
-		}
+	ctx := context.Background()
+	ctx, cancelFunc := context.WithCancel(ctx)
+	defer cancelFunc()
+	l.Run(ctx)
+	switch {
+	case !socketRunnerRun:
+		t.Errorf("wanted socket runner to be run")
+	case !gameRunnerRun:
+		t.Errorf("wanted game runner to be run")
+	default:
+		cancelFunc()
+		<-l.socketMessages // wait for it to be closed
 	}
 }
 
 func TestAddUser(t *testing.T) {
 	n := "selene"
 	addUserTests := []struct {
-		running      bool
-		pn           player.Name
-		w            http.ResponseWriter
-		r            *http.Request
-		addSocketErr error
-		wantOk       bool
-		wantM        message.Message
+		wantOk bool
 	}{
 		{},
 		{
-			running: true,
-			wantM: message.Message{
-				Type:             message.AddSocket,
-				PlayerName:       player.Name(n),
-				AddSocketRequest: &message.AddSocketRequest{},
-			},
-			addSocketErr: errors.New("add socket error"),
-		},
-		{
-			running: true,
-			wantOk:  true,
-			wantM: message.Message{
-				Type:             message.AddSocket,
-				PlayerName:       player.Name(n),
-				AddSocketRequest: &message.AddSocketRequest{},
-			},
+			wantOk: true,
 		},
 	}
 	for i, test := range addUserTests {
 		l := &Lobby{
-			socketManager: &mockManager{
-				RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
-					return nil, nil
+			socketRunner: &mockRunner{
+				RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+					return nil
 				},
 			},
-			gameManager: &mockManager{
-				RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
-					return nil, nil
+			gameRunner: &mockRunner{
+				RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+					return nil
 				},
 			},
 		}
@@ -196,26 +146,29 @@ func TestAddUser(t *testing.T) {
 		r := new(http.Request)
 		var wg sync.WaitGroup
 		wg.Add(1)
-		go func() { // mock socket manager
+		go func() { // mock socket runner
 			defer wg.Done()
-			if !test.running {
-				return
-			}
 			gotM, ok := <-l.socketMessages
 			if !ok || gotM.Type != message.AddSocket || gotM.AddSocketRequest == nil {
 				t.Errorf("Test %v: AddSocketRequest not set in message: %v", i, gotM)
 				return
 			}
-			test.wantM.AddSocketRequest.ResponseWriter = w
-			test.wantM.AddSocketRequest.Request = r
-			test.wantM.AddSocketRequest.Result = gotM.AddSocketRequest.Result // created when called
-			if !reflect.DeepEqual(test.wantM, gotM) {
-				t.Errorf("Test %v: messages not equal\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
+			wantM := message.Message{
+				Type:       message.AddSocket,
+				PlayerName: player.Name("selene"),
+				AddSocketRequest: &message.AddSocketRequest{
+					ResponseWriter: w,
+					Request:        r,
+					Result:         gotM.AddSocketRequest.Result, // created when called,
+				},
+			}
+			if !reflect.DeepEqual(wantM, gotM) {
+				t.Errorf("Test %v: messages not equal\nwanted: %v\ngot:    %v", i, wantM, gotM)
 			}
 			var addSocketM message.Message
-			if test.addSocketErr != nil {
+			if !test.wantOk {
 				addSocketM.Type = message.SocketError
-				addSocketM.Info = test.addSocketErr.Error()
+				addSocketM.Info = "add socket error"
 			}
 			gotM.AddSocketRequest.Result <- addSocketM
 			if !test.wantOk {
@@ -226,13 +179,8 @@ func TestAddUser(t *testing.T) {
 				t.Errorf("Test %v: wanted infos message to be sent for user, got %v", i, gotM)
 			}
 		}()
-		if test.running {
-			ctx := context.Background()
-			if err := l.Run(ctx); err != nil {
-				t.Errorf("Test %v: unwanted error running lobby: %v", i, err)
-				continue
-			}
-		}
+		ctx := context.Background()
+		l.Run(ctx)
 		err := l.AddUser(n, w, r)
 		switch {
 		case !test.wantOk:
@@ -250,14 +198,10 @@ func TestRemoveUser(t *testing.T) {
 	removeUserTests := []struct {
 		running    bool
 		playerName string
-		wantOk     bool
 		wantM      message.Message
 	}{
-		{},
 		{
-			running:    true,
 			playerName: "selene",
-			wantOk:     true,
 			wantM: message.Message{
 				Type:       message.PlayerDelete,
 				PlayerName: player.Name("selene"),
@@ -266,38 +210,23 @@ func TestRemoveUser(t *testing.T) {
 	}
 	for i, test := range removeUserTests {
 		l := &Lobby{
-			socketManager: &mockManager{
-				RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
-					return nil, nil
+			socketRunner: &mockRunner{
+				RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+					return nil
 				},
 			},
-			gameManager: &mockManager{
-				RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
-					return nil, nil
+			gameRunner: &mockRunner{
+				RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+					return nil
 				},
 			},
 		}
-		go func() {
-			gotM := <-l.socketMessages
-			if !reflect.DeepEqual(test.wantM, gotM) {
-				t.Errorf("Test %v: messages not equal\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
-			}
-		}()
-		if test.running {
-			ctx := context.Background()
-			if err := l.Run(ctx); err != nil {
-				t.Errorf("Test %v: unwanted error running lobby: %v", i, err)
-				continue
-			}
-		}
-		err := l.RemoveUser(test.playerName)
-		switch {
-		case !test.wantOk:
-			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
-			}
-		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+		ctx := context.Background()
+		l.Run(ctx)
+		go l.RemoveUser(test.playerName)
+		gotM := <-l.socketMessages
+		if !reflect.DeepEqual(test.wantM, gotM) {
+			t.Errorf("Test %v: messages not equal\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
 		}
 	}
 }
@@ -309,13 +238,13 @@ func TestHandleSocketMessage(t *testing.T) {
 		Info: "test message",
 	}
 	l := Lobby{
-		socketManager: &mockManager{
-			RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
-				return smIn, nil
+		socketRunner: &mockRunner{
+			RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+				return smIn
 			},
 		},
-		gameManager: &mockManager{
-			RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
+		gameRunner: &mockRunner{
+			RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
 				go func() {
 					got := <-in
 					if !reflect.DeepEqual(want, got) {
@@ -323,15 +252,12 @@ func TestHandleSocketMessage(t *testing.T) {
 					}
 					wg.Done()
 				}()
-				return nil, nil
+				return nil
 			},
 		},
 	}
 	ctx := context.Background()
-	err := l.Run(ctx)
-	if err != nil {
-		t.Errorf("unwanted error: %v", err)
-	}
+	l.Run(ctx)
 	wg.Add(1)
 	smIn <- want
 	wg.Wait()
@@ -419,8 +345,8 @@ func TestHandleGameMessage(t *testing.T) {
 		gmOut := make(chan message.Message)
 		var wg sync.WaitGroup
 		l := Lobby{
-			socketManager: &mockManager{
-				RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
+			socketRunner: &mockRunner{
+				RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
 					go func() {
 						gotM := <-in
 						switch test.wantM.Type {
@@ -435,12 +361,12 @@ func TestHandleGameMessage(t *testing.T) {
 						}
 						wg.Done()
 					}()
-					return nil, nil
+					return nil
 				},
 			},
-			gameManager: &mockManager{
-				RunFunc: func(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error) {
-					return gmOut, nil
+			gameRunner: &mockRunner{
+				RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+					return gmOut
 				},
 			},
 			games: test.games,
@@ -449,10 +375,7 @@ func TestHandleGameMessage(t *testing.T) {
 			},
 		}
 		ctx := context.Background()
-		err := l.Run(ctx)
-		if err != nil {
-			t.Errorf("Test %v: unwanted error: %v", i, err)
-		}
+		l.Run(ctx)
 		wg.Add(1)
 		gmOut <- test.gameM
 		wg.Wait()

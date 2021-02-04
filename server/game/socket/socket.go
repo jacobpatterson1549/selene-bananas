@@ -11,13 +11,11 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
-	"github.com/jacobpatterson1549/selene-bananas/server/runner"
 )
 
 type (
 	// Socket reads and writes messages to the browsers
 	Socket struct {
-		runner.Runner
 		Conn
 		readActive bool
 		// The reason the read failed.  If a read fails, it is sent as the close message when the socket closes.
@@ -114,10 +112,7 @@ func (cfg Config) validate(pn player.Name, conn Conn) (net.Addr, error) {
 // Run writes messages recieved from the "in" channel to the connection,
 // Run writes Socket messages that are recieved to the outbound channel and reads incoming messages onto the inbound channel on separate goroutines.
 // The Socket runs until the connection fails for an unexpected reason or the context is cancelled.
-func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- message.Message) error {
-	if err := s.Runner.Run(); err != nil {
-		return fmt.Errorf("running socket: %v", err)
-	}
+func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- message.Message) {
 	pingTicker := time.NewTicker(s.PingPeriod)
 	activityCheckTicker := time.NewTicker(s.ActivityCheckPeriod)
 	var wg sync.WaitGroup
@@ -130,7 +125,6 @@ func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- 
 	go s.readMessages(ctx, out, &wg)
 	wg.Add(1)
 	go s.writeMessages(ctx, in, &wg, pingTicker, activityCheckTicker)
-	return nil
 }
 
 // readMessages receives messages from the connected socket and writes the to the messages channel.
@@ -252,7 +246,6 @@ func (s *Socket) writeClose(reason string) {
 func (s *Socket) stop(out chan<- message.Message, pingTicker, activityCheckTicker *time.Ticker) {
 	pingTicker.Stop()
 	activityCheckTicker.Stop()
-	s.Runner.Finish()
 	s.Close()
 	m := message.Message{
 		Type:       message.PlayerDelete,

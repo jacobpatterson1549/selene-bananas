@@ -213,9 +213,6 @@ func TestRunSocket(t *testing.T) {
 		stopFunc       func(cancelFunc context.CancelFunc, in chan<- message.Message)
 	}{
 		{
-			alreadyRunning: true,
-		},
-		{
 			stopFunc: func(cancelFunc context.CancelFunc, in chan<- message.Message) {
 				cancelFunc()
 			},
@@ -274,50 +271,23 @@ func TestRunSocket(t *testing.T) {
 			readActive: true,
 			Addr:       addr,
 		}
-		if test.alreadyRunning {
-			ctx := context.Background()
-			ctx, cancelFunc := context.WithCancel(ctx)
-			defer cancelFunc()
-			in := make(chan message.Message)
-			out := make(chan message.Message)
-			err := s.Run(ctx, in, out)
-			if err != nil {
-				t.Errorf("Test %v: unwanted error running socket: %v", i, err)
-				continue
-			}
-		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		defer cancelFunc()
 		in := make(chan message.Message)
 		out := make(chan message.Message)
-		err := s.Run(ctx, in, out)
+		s.Run(ctx, in, out)
 		switch {
-		case test.alreadyRunning:
-			if err == nil {
-				t.Errorf("Test %v: wanted error running socket that should already be running", i)
-			}
-		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case s.readActive:
 			t.Errorf("Test %v: socket should be set to not active when starting a run", i)
 		default:
-			if !s.IsRunning() {
-				t.Errorf("Test %v wanted socket to be running", i)
-			}
 			close(readBlocker)
 			test.stopFunc(cancelFunc, in)
 			wg.Wait()
-			if s.IsRunning() {
-				t.Errorf("Test %v: wanted socket to not be running after it finished", i)
-			}
 			got := <-out
 			switch {
 			case got.Type != message.PlayerDelete, got.PlayerName != s.PlayerName, got.Addr != addr:
 				t.Errorf("Test %v: wanted playerDelete with socket address and player name", i)
-			}
-			if err := s.Run(ctx, in, out); err == nil {
-				t.Errorf("Test %v: wanted error running socket after it is finished", i)
 			}
 		}
 	}

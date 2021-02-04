@@ -151,7 +151,6 @@ func (g *Game) initializeUnusedTiles() error {
 
 // Run runs the game until the context is closed.
 func (g *Game) Run(ctx context.Context, in <-chan message.Message, out chan<- message.Message) {
-	// TODO: ensure this only works once with runMu:sync.Mutex and alreadyRun:bool (add test, make game.Run be async)
 	idleTicker := time.NewTicker(g.IdlePeriod)
 	active := false
 	messageSender := g.sendMessage(out)

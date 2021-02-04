@@ -203,7 +203,6 @@ func (cfg Config) validate() error {
 // Run the server asynchronously until it receives a shutdown signal.
 // When the HTTP/HTTPS servers stop, errors are logged to the error channel.
 func (s Server) Run(ctx context.Context) <-chan error {
-	// TODO: implement runner.Runner, test
 	errC := make(chan error, 2)
 	go s.runHTTPServer(ctx, errC)
 	go s.runHTTPSServer(ctx, errC)

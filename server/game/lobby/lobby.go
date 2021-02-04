@@ -11,16 +11,14 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
-	"github.com/jacobpatterson1549/selene-bananas/server/runner"
 )
 
 type (
 	// Lobby is the place users can create, join, and participate in games
 	Lobby struct {
-		runner.Runner
-		socketManager SocketManager
-		gameManager   GameManager
-		// socketMessages is the channel for sending messages to the socket manager.  Used to add and remove sockets
+		socketRunner Runner
+		gameRunner   Runner
+		// socketMessages is the channel for sending messages to the socket runner.  Used to add and remove sockets
 		socketMessages chan message.Message
 		// games is a cache of game infos.  This is useful so all can be easily sent out if the info for one game changes.
 		games map[game.ID]game.Info
@@ -45,63 +43,48 @@ type (
 		messageHandler
 	}
 
-	// SocketManager handles connections from multiple players.
-	SocketManager interface {
-		Run(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error)
-	}
-
-	// GameManager handles passing messages to multiple games.
-	GameManager interface {
-		Run(ctx context.Context, in <-chan message.Message) (<-chan message.Message, error)
+	// Runner handles running and managing games or sockets.
+	Runner interface {
+		Run(ctx context.Context, in <-chan message.Message) <-chan message.Message
 	}
 )
 
 // NewLobby creates a new game lobby.
-func (cfg Config) NewLobby(sm SocketManager, gm GameManager) (*Lobby, error) {
-	if err := cfg.validate(sm, gm); err != nil {
+func (cfg Config) NewLobby(socketRunner, gameRunner Runner) (*Lobby, error) {
+	if err := cfg.validate(socketRunner, gameRunner); err != nil {
 		return nil, fmt.Errorf("creating lobby: validation: %w", err)
 	}
 	l := Lobby{
-		socketManager: sm,
-		gameManager:   gm,
-		games:         make(map[game.ID]game.Info),
-		Config:        cfg,
+		socketRunner: socketRunner,
+		gameRunner:   gameRunner,
+		games:        make(map[game.ID]game.Info),
+		Config:       cfg,
 	}
 	return &l, nil
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(sm SocketManager, gm GameManager) error {
+func (cfg Config) validate(socketRunner, gameRunner Runner) error {
 	switch {
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")
-	case sm == nil:
-		return fmt.Errorf("socket manager required")
-	case gm == nil:
-		return fmt.Errorf("game manager required")
+	case gameRunner == nil:
+		return fmt.Errorf("socket runner required")
+	case gameRunner == nil:
+		return fmt.Errorf("game runner required")
 	}
 	return nil
 }
 
 // Run runs the lobby until the context is closed.
-func (l *Lobby) Run(ctx context.Context) error {
-	if err := l.Runner.Run(); err != nil {
-		return fmt.Errorf("running lobby: %v", err)
-	}
+func (l *Lobby) Run(ctx context.Context) {
 	l.socketMessages = make(chan message.Message)
 	gameMessages := make(chan message.Message)
-	socketMessagesOut, err := l.socketManager.Run(ctx, l.socketMessages)
-	if err != nil {
-		return fmt.Errorf("running socket manager: %w", err)
-	}
-	gameMessagesOut, err := l.gameManager.Run(ctx, gameMessages)
-	if err != nil {
-		return fmt.Errorf("game socket manager: %w", err)
-	}
+	socketMessagesOut := l.socketRunner.Run(ctx, l.socketMessages)
+	gameMessagesOut := l.gameRunner.Run(ctx, gameMessages)
 	go func() {
 		defer close(l.socketMessages)
 		defer close(gameMessages)
-		defer l.Runner.Finish()
 		for { // BLOCKING
 			select {
 			case <-ctx.Done():
@@ -113,14 +96,10 @@ func (l *Lobby) Run(ctx context.Context) error {
 			}
 		}
 	}()
-	return nil
 }
 
 // AddUser adds a user to the lobby, it opens a new websocket (player) for the username.
 func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request) error {
-	if !l.Runner.IsRunning() {
-		return fmt.Errorf("lobby not running")
-	}
 	result := make(chan message.Message)
 	pn := player.Name(username)
 	m := message.Message{
@@ -145,16 +124,12 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 }
 
 // RemoveUser removes the user from the lobby and a game, if any.
-func (l *Lobby) RemoveUser(username string) error {
-	if !l.Runner.IsRunning() {
-		return fmt.Errorf("lobby not running")
-	}
+func (l *Lobby) RemoveUser(username string) {
 	m := message.Message{
 		Type:       message.PlayerDelete,
 		PlayerName: player.Name(username),
 	}
 	l.socketMessages <- m
-	return nil
 }
 
 // handleGameMessage writes a game message to the socketMessages channel, possibly modifying it.

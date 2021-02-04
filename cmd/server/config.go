@@ -55,21 +55,21 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	if err = ud.Setup(ctx); err != nil {
 		return nil, fmt.Errorf("setting up user dao: %w", err)
 	}
-	socketManagerConfig := socketManagerConfig(m, log, timeFunc)
-	socketManager, err := socketManagerConfig.NewManager()
+	socketRunnerConfig := socketRunnerConfig(m, log, timeFunc)
+	socketRunner, err := socketRunnerConfig.NewRunner()
 	if err != nil {
-		return nil, fmt.Errorf("creating socket manager: %w", err)
+		return nil, fmt.Errorf("creating socket runner: %w", err)
 	}
-	gameManagerConfig, err := gameManagerConfig(m, log, ud, timeFunc)
+	gameRunnerConfig, err := gameRunnerConfig(m, log, ud, timeFunc)
 	if err != nil {
-		return nil, fmt.Errorf("creating game manager config: %w", err)
+		return nil, fmt.Errorf("creating game runner config: %w", err)
 	}
-	gameManager, err := gameManagerConfig.NewManager()
+	gameRunner, err := gameRunnerConfig.NewRunner()
 	if err != nil {
-		return nil, fmt.Errorf("creating game manager: %w", err)
+		return nil, fmt.Errorf("creating game runner: %w", err)
 	}
 	lobbyCfg := lobbyConfig(log)
-	lobby, err := lobbyCfg.NewLobby(socketManager, gameManager)
+	lobby, err := lobbyCfg.NewLobby(socketRunner, gameRunner)
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby: %w", err)
 	}
@@ -149,7 +149,7 @@ func userDaoConfig(d db.Database) user.DaoConfig {
 	return cfg
 }
 
-// lobbyConfig creates the configuration for managing players of games.
+// lobbyConfig creates the configuration for running and managing players of games.
 func lobbyConfig(log *log.Logger) lobby.Config {
 	cfg := lobby.Config{
 		Log: log,
@@ -157,13 +157,13 @@ func lobbyConfig(log *log.Logger) lobby.Config {
 	return cfg
 }
 
-// gameManagerConfig creates the configuration for managing games.
-func gameManagerConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*game.ManagerConfig, error) {
+// gameRunnerConfig creates the configuration for running and managing games.
+func gameRunnerConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*game.RunnerConfig, error) {
 	gameCfg, err := gameConfig(m, log, ud, timeFunc)
 	if err != nil {
 		return nil, fmt.Errorf("creating game config: %w", err)
 	}
-	cfg := game.ManagerConfig{
+	cfg := game.RunnerConfig{
 		Log:        log,
 		MaxGames:   4,
 		GameConfig: *gameCfg,
@@ -208,8 +208,8 @@ func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int6
 	return &cfg, nil
 }
 
-// socketManagerConfig creates the configuration for creating new sockets (each tab that is connected to the lobby).
-func socketManagerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) socket.ManagerConfig {
+// socketRunnerConfig creates the configuration for creating new sockets (each tab that is connected to the lobby).
+func socketRunnerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) socket.RunnerConfig {
 	socketCfg := socket.Config{
 		Debug:               m.debugGame,
 		Log:                 log,
@@ -218,7 +218,7 @@ func socketManagerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) so
 		PingPeriod:          54 * time.Second, // readWait * 0.9
 		ActivityCheckPeriod: 10 * time.Minute,
 	}
-	cfg := socket.ManagerConfig{
+	cfg := socket.RunnerConfig{
 		Log:              log,
 		MaxSockets:       32,
 		MaxPlayerSockets: 5,

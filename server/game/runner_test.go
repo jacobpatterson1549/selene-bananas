@@ -14,36 +14,36 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 
-func TestNewManager(t *testing.T) {
+func TestNewRunner(t *testing.T) {
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
-	newManagerTests := []struct {
-		ManagerConfig ManagerConfig
+	newRunnerTests := []struct {
+		RunnerConfig RunnerConfig
 		wantOk        bool
-		want          *Manager
+		want          *Runner
 	}{
 		{}, // no log
 		{ // low MaxGames
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log: testLog,
 			},
 		},
 		{
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log:      testLog,
 				MaxGames: 10,
 			},
 			wantOk: true,
-			want: &Manager{
+			want: &Runner{
 				games: map[game.ID]chan<- message.Message{},
-				ManagerConfig: ManagerConfig{
+				RunnerConfig: RunnerConfig{
 					Log:      testLog,
 					MaxGames: 10,
 				},
 			},
 		},
 	}
-	for i, test := range newManagerTests {
-		got, err := test.ManagerConfig.NewManager()
+	for i, test := range newRunnerTests {
+		got, err := test.RunnerConfig.NewRunner()
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -57,14 +57,10 @@ func TestNewManager(t *testing.T) {
 	}
 }
 
-func TestRunManager(t *testing.T) {
-	runManagerTests := []struct {
-		alreadyRunning bool
-		stopFunc       func(cancelFunc context.CancelFunc, in chan message.Message)
+func TestRunRunner(t *testing.T) {
+	runRunnerTests := []struct {
+		stopFunc func(cancelFunc context.CancelFunc, in chan message.Message)
 	}{
-		{
-			alreadyRunning: true,
-		},
 		{
 			stopFunc: func(cancelFunc context.CancelFunc, in chan message.Message) {
 				cancelFunc()
@@ -76,46 +72,17 @@ func TestRunManager(t *testing.T) {
 			},
 		},
 	}
-	for i, test := range runManagerTests {
-		var gm Manager
-		if test.alreadyRunning {
-			ctx := context.Background()
-			ctx, cancelFunc := context.WithCancel(ctx)
-			defer cancelFunc()
-			in := make(chan message.Message)
-			_, err := gm.Run(ctx, in)
-			if err != nil {
-				t.Errorf("Test %v: unwanted error running socket manager: %v", i, err)
-				continue
-			}
-		}
+	for i, test := range runRunnerTests {
+		var gm Runner
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		defer cancelFunc()
 		in := make(chan message.Message)
-		out, err := gm.Run(ctx, in)
-		switch {
-		case test.alreadyRunning:
-			if err == nil {
-				t.Errorf("Test %v: wanted error running socket manager that should already be running", i)
-			}
-		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
-		default:
-			if !gm.IsRunning() {
-				t.Errorf("Test %v wanted socket manager to be running", i)
-			}
-			test.stopFunc(cancelFunc, in)
-			_, ok := <-out
-			if ok {
-				t.Errorf("Test %v: wanted 'out' channel to be closed after 'in' channel was closed", i)
-			}
-			if gm.IsRunning() {
-				t.Errorf("Test %v: wanted socket manager to not be running after it finished", i)
-			}
-			if _, err := gm.Run(ctx, in); err == nil {
-				t.Errorf("Test %v: wanted error running socket manager after it is finished", i)
-			}
+		out := gm.Run(ctx, in)
+		test.stopFunc(cancelFunc, in)
+		_, ok := <-out
+		if ok {
+			t.Errorf("Test %v: wanted 'out' channel to be closed after 'in' channel was closed", i)
 		}
 	}
 }
@@ -123,11 +90,11 @@ func TestRunManager(t *testing.T) {
 func TestGameCreate(t *testing.T) {
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
 	gameCreateTests := []struct {
-		ManagerConfig ManagerConfig
+		RunnerConfig RunnerConfig
 		wantOk        bool
 	}{
 		{ // happy path
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log:      testLog,
 				MaxGames: 1,
 				GameConfig: Config{
@@ -144,13 +111,13 @@ func TestGameCreate(t *testing.T) {
 			wantOk: true,
 		},
 		{ // no room for game
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log:      testLog,
 				MaxGames: 0,
 			},
 		},
 		{ // bad gameConfig
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log:      testLog,
 				MaxGames: 1,
 				GameConfig: Config{
@@ -160,18 +127,14 @@ func TestGameCreate(t *testing.T) {
 		},
 	}
 	for i, test := range gameCreateTests {
-		gm := Manager{
+		gm := Runner{
 			games:         make(map[game.ID]chan<- message.Message, 1),
 			lastID:        3,
-			ManagerConfig: test.ManagerConfig,
+			RunnerConfig: test.RunnerConfig,
 		}
 		ctx := context.Background()
 		in := make(chan message.Message)
-		out, err := gm.Run(ctx, in)
-		if err != nil {
-			t.Errorf("Test %v: unwanted error running game manager: %v", i, err)
-			continue
-		}
+		out := gm.Run(ctx, in)
 		m := message.Message{
 			Type: message.Create,
 		}
@@ -229,20 +192,16 @@ func TestGameDelete(t *testing.T) {
 	for i, test := range gameDeleteTests {
 		in := make(chan message.Message)
 		gIn := make(chan message.Message)
-		gm := Manager{
+		gm := Runner{
 			games: map[game.ID]chan<- message.Message{
 				5: gIn,
 			},
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log: log.New(ioutil.Discard, "test", log.LstdFlags),
 			},
 		}
 		ctx := context.Background()
-		out, err := gm.Run(ctx, in)
-		if err != nil {
-			t.Errorf("Test %v: unwanted error running game manager: %v", i, err)
-			continue
-		}
+		out := gm.Run(ctx, in)
 		messageHandled := false
 		go func() { // mock game
 			_, ok := <-gIn
@@ -305,20 +264,16 @@ func TestHandleGameMessage(t *testing.T) {
 	for i, test := range handleGameMessageTests {
 		in := make(chan message.Message)
 		gIn := make(chan message.Message)
-		gm := Manager{
+		gm := Runner{
 			games: map[game.ID]chan<- message.Message{
 				3: gIn,
 			},
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log: log.New(ioutil.Discard, "test", log.LstdFlags),
 			},
 		}
 		ctx := context.Background()
-		out, err := gm.Run(ctx, in)
-		if err != nil {
-			t.Errorf("Test %v: unwanted error running game manager: %v", i, err)
-			continue
-		}
+		out := gm.Run(ctx, in)
 		messageHandled := false
 		go func() { // mock game
 			_, ok := <-gIn

@@ -23,9 +23,9 @@ type (
 	}
 
 	mockLobby struct {
-		runFunc        func(ctx context.Context) error
+		runFunc        func(ctx context.Context)
 		addUserFunc    func(username string, w http.ResponseWriter, r *http.Request) error
-		removeUserFunc func(username string) error
+		removeUserFunc func(username string)
 	}
 )
 
@@ -45,16 +45,16 @@ func (ud mockUserDao) Delete(ctx context.Context, u user.User) error {
 	return ud.deleteFunc(ctx, u)
 }
 
-func (l mockLobby) Run(ctx context.Context) error {
-	return l.runFunc(ctx)
+func (l mockLobby) Run(ctx context.Context) {
+	l.runFunc(ctx)
 }
 
 func (l mockLobby) AddUser(username string, w http.ResponseWriter, r *http.Request) error {
 	return l.addUserFunc(username, w, r)
 }
 
-func (l mockLobby) RemoveUser(username string) error {
-	return l.removeUserFunc(username)
+func (l mockLobby) RemoveUser(username string) {
+	l.removeUserFunc(username)
 }
 
 func TestHandleUserCreate(t *testing.T) {
@@ -322,12 +322,11 @@ func TestHandleUserUpdatePassword(t *testing.T) {
 				},
 			},
 			lobby: mockLobby{
-				removeUserFunc: func(username string) error {
+				removeUserFunc: func(username string) {
 					if test.username != username {
 						t.Errorf("wanted username %v, got %v", test.username, username)
 					}
 					userRemoved = true
-					return nil
 				},
 			},
 		}
@@ -406,12 +405,11 @@ func TestHandleUserDelete(t *testing.T) {
 				},
 			},
 			lobby: mockLobby{
-				removeUserFunc: func(username string) error {
+				removeUserFunc: func(username string) {
 					if test.username != username {
 						t.Errorf("wanted username %v, got %v", test.username, username)
 					}
 					userRemoved = true
-					return nil
 				},
 			},
 		}

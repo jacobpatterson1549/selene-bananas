@@ -28,7 +28,7 @@ func (u mockUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn, err
 	return u.upgradeFunc(w, r)
 }
 
-func newSocketManager(maxSockets int, maxPlayerSockets int, uf upgradeFunc) *Manager {
+func newSocketRunner(maxSockets int, maxPlayerSockets int, uf upgradeFunc) *Runner {
 	log := log.New(ioutil.Discard, "test", log.LstdFlags)
 	socketCfg := Config{
 		Log:                 log,
@@ -37,19 +37,19 @@ func newSocketManager(maxSockets int, maxPlayerSockets int, uf upgradeFunc) *Man
 		PingPeriod:          1 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
 		ActivityCheckPeriod: 3 * time.Hour,
 	}
-	managerCfg := ManagerConfig{
+	cfg := RunnerConfig{
 		Log:              log,
 		MaxSockets:       maxSockets,
 		MaxPlayerSockets: maxPlayerSockets,
 		SocketConfig:     socketCfg,
 	}
-	sm := Manager{
+	sm := Runner{
 		upgrader: mockUpgrader{
 			upgradeFunc: uf,
 		},
 		playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
 		playerGames:   make(map[player.Name]map[game.ID]net.Addr),
-		ManagerConfig: managerCfg,
+		RunnerConfig: cfg,
 	}
 	return &sm
 }
@@ -61,50 +61,50 @@ func mockConnection(playerName string) (player.Name, http.ResponseWriter, *http.
 	return pn, w, r
 }
 
-func TestNewManager(t *testing.T) {
+func TestNewRunner(t *testing.T) {
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
-	newManagerTests := []struct {
-		ManagerConfig ManagerConfig
+	newRunnerTests := []struct {
+		RunnerConfig RunnerConfig
 		wantOk        bool
-		want          *Manager
+		want          *Runner
 	}{
 		{},
 		{ // no log
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				MaxSockets:       1,
 				MaxPlayerSockets: 1,
 			},
 		},
 		{ // low maxSockets
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log:              testLog,
 				MaxPlayerSockets: 1,
 			},
 		},
 		{ // low maxPlayerSockets
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log:        testLog,
 				MaxSockets: 1,
 			},
 		},
 		{ // maxSockets < maxPlayerSockets
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log:              testLog,
 				MaxSockets:       1,
 				MaxPlayerSockets: 2,
 			},
 		},
 		{
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log:              testLog,
 				MaxSockets:       10,
 				MaxPlayerSockets: 3,
 			},
 			wantOk: true,
-			want: &Manager{
+			want: &Runner{
 				playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
 				playerGames:   map[player.Name]map[game.ID]net.Addr{},
-				ManagerConfig: ManagerConfig{
+				RunnerConfig: RunnerConfig{
 					Log:              testLog,
 					MaxSockets:       10,
 					MaxPlayerSockets: 3,
@@ -112,8 +112,8 @@ func TestNewManager(t *testing.T) {
 			},
 		},
 	}
-	for i, test := range newManagerTests {
-		got, err := test.ManagerConfig.NewManager()
+	for i, test := range newRunnerTests {
+		got, err := test.RunnerConfig.NewRunner()
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -132,14 +132,10 @@ func TestNewManager(t *testing.T) {
 	}
 }
 
-func TestRunManager(t *testing.T) {
-	runManagerTests := []struct {
-		alreadyRunning bool
-		stopFunc       func(cancelFunc context.CancelFunc, in chan message.Message)
+func TestRunRunner(t *testing.T) {
+	runRunnerTests := []struct {
+		stopFunc func(cancelFunc context.CancelFunc, in chan message.Message)
 	}{
-		{
-			alreadyRunning: true,
-		},
 		{
 			stopFunc: func(cancelFunc context.CancelFunc, in chan message.Message) {
 				cancelFunc()
@@ -151,52 +147,23 @@ func TestRunManager(t *testing.T) {
 			},
 		},
 	}
-	for i, test := range runManagerTests {
-		var sm Manager
-		if test.alreadyRunning {
-			ctx := context.Background()
-			ctx, cancelFunc := context.WithCancel(ctx)
-			defer cancelFunc()
-			in := make(chan message.Message)
-			_, err := sm.Run(ctx, in)
-			if err != nil {
-				t.Errorf("Test %v: unwanted error running socket manager: %v", i, err)
-				continue
-			}
-		}
+	for i, test := range runRunnerTests {
+		var sm Runner
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		defer cancelFunc()
 		in := make(chan message.Message)
-		out, err := sm.Run(ctx, in)
-		switch {
-		case test.alreadyRunning:
-			if err == nil {
-				t.Errorf("Test %v: wanted error running socket manager that should already be running", i)
-			}
-		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
-		default:
-			if !sm.IsRunning() {
-				t.Errorf("Test %v wanted socket manager to be running", i)
-			}
-			test.stopFunc(cancelFunc, in)
-			_, ok := <-out
-			if ok {
-				t.Errorf("Test %v: wanted 'out' channel to be closed after 'in' channel was closed", i)
-			}
-			if sm.IsRunning() {
-				t.Errorf("Test %v: wanted socket manager to not be running after it finished", i)
-			}
-			if _, err := sm.Run(ctx, in); err == nil {
-				t.Errorf("Test %v: wanted error running socket manager after it is finished", i)
-			}
+		out := sm.Run(ctx, in)
+		test.stopFunc(cancelFunc, in)
+		_, ok := <-out
+		if ok {
+			t.Errorf("Test %v: wanted 'out' channel to be closed after 'in' channel was closed", i)
 		}
 	}
 }
 
-func TestManagerAddSocketCheckResult(t *testing.T) {
-	managerAddSocketTests := []struct {
+func TestRunnerAddSocketCheckResult(t *testing.T) {
+	runnerAddSocketTests := []struct {
 		m      message.Message
 		wantOk bool
 	}{
@@ -208,13 +175,13 @@ func TestManagerAddSocketCheckResult(t *testing.T) {
 			wantOk: true,
 		},
 	}
-	for i, test := range managerAddSocketTests {
+	for i, test := range runnerAddSocketTests {
 		addr := mockAddr("selen.pc")
 		readBlocker := make(chan struct{})
 		defer close(readBlocker)
-		sm := Manager{
+		sm := Runner{
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				MaxSockets:       1,
 				MaxPlayerSockets: 1,
 				SocketConfig: Config{
@@ -262,14 +229,14 @@ func TestManagerAddSocketCheckResult(t *testing.T) {
 			case test.m.PlayerName != got.PlayerName:
 				t.Errorf("Test %v: wanted player name in message to be %v, got %v", i, test.m.PlayerName, got.PlayerName)
 			case len(sm.playerSockets) != 1:
-				t.Errorf("Test %v: wanted new socket to be added to manager", i)
+				t.Errorf("Test %v: wanted new socket to be added to runner", i)
 			}
 		}
 	}
 }
 
-func TestManagerHandleAddSocket(t *testing.T) {
-	managerAddSocketTests := []struct {
+func TestRunnerHandleAddSocket(t *testing.T) {
+	runnerAddSocketTests := []struct {
 		running          bool
 		maxSockets       int
 		maxPlayerSockets int
@@ -320,7 +287,7 @@ func TestManagerHandleAddSocket(t *testing.T) {
 			wantOk: true,
 		},
 	}
-	for i, test := range managerAddSocketTests {
+	for i, test := range runnerAddSocketTests {
 		readBlocker1 := make(chan struct{})
 		readBlocker2 := make(chan struct{})
 		socketRun := false
@@ -344,15 +311,11 @@ func TestManagerHandleAddSocket(t *testing.T) {
 				},
 			}, nil
 		}
-		sm := newSocketManager(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
+		sm := newSocketRunner(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
 		if test.running {
 			ctx := context.Background()
 			in := make(chan message.Message)
-			_, err := sm.Run(ctx, in)
-			if err != nil {
-				t.Errorf("Test %v: unwanted error running socket manager: %v", i, err)
-				continue
-			}
+			sm.Run(ctx, in)
 		}
 		sm.SocketConfig = test.Config
 		pn, w, r := mockConnection("selene")
@@ -385,10 +348,10 @@ func TestManagerHandleAddSocket(t *testing.T) {
 	}
 }
 
-func TestManagerAddSecondSocket(t *testing.T) {
+func TestRunnerAddSecondSocket(t *testing.T) {
 	name1 := "fred"
 	socket1Addr := "fred.pc"
-	managerAddSecondSocketTests := []struct {
+	runnerAddSecondSocketTests := []struct {
 		maxSockets            int
 		maxPlayerSockets      int
 		name2                 string
@@ -438,7 +401,7 @@ func TestManagerAddSecondSocket(t *testing.T) {
 			wantNumPlayer2Sockets: 1,
 		},
 	}
-	for i, test := range managerAddSecondSocketTests {
+	for i, test := range runnerAddSecondSocketTests {
 		blockingChannel := make(chan struct{})
 		defer close(blockingChannel)
 		j := 0
@@ -468,14 +431,10 @@ func TestManagerAddSecondSocket(t *testing.T) {
 				return nil, errors.New("too many calls to upgrade")
 			}
 		}
-		sm := newSocketManager(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
+		sm := newSocketRunner(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
 		ctx := context.Background()
 		in := make(chan message.Message)
-		_, err := sm.Run(ctx, in)
-		if err != nil {
-			t.Errorf("Test %v: unwanted error running socket manager: %v", i, err)
-			continue
-		}
+		sm.Run(ctx, in)
 		pn1, w1, r1 := mockConnection(name1)
 		_, err1 := sm.handleAddSocket(ctx, pn1, w1, r1)
 		if err1 != nil {
@@ -498,7 +457,7 @@ func TestManagerAddSecondSocket(t *testing.T) {
 		}
 	}
 }
-func TestManagerHandleLobbyMessage(t *testing.T) {
+func TestRunnerHandleLobbyMessage(t *testing.T) {
 	addr1 := mockAddr("addr1")
 	addr2 := mockAddr("addr2")
 	handleLobbyMessageTests := []struct {
@@ -768,10 +727,10 @@ func TestManagerHandleLobbyMessage(t *testing.T) {
 	for i, test := range handleLobbyMessageTests {
 		var bb bytes.Buffer
 		log := log.New(&bb, "test", log.LstdFlags)
-		sm := Manager{
+		sm := Runner{
 			playerSockets: test.playerSockets,
 			playerGames:   test.playerGames,
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log: log,
 			},
 		}
@@ -799,7 +758,7 @@ func TestManagerHandleLobbyMessage(t *testing.T) {
 	}
 }
 
-func TestManagerHandleSocketMessage(t *testing.T) {
+func TestRunnerHandleSocketMessage(t *testing.T) {
 	addr1 := mockAddr("addr1")
 	addr2 := mockAddr("addr2")
 	socketIns := []chan<- message.Message{
@@ -931,7 +890,7 @@ func TestManagerHandleSocketMessage(t *testing.T) {
 				PlayerName: "fred",
 				Addr:       addr1,
 				Game: &game.Info{
-					Config: &game.Config{}, // this should be populated, but the gameManager checks this
+					Config: &game.Config{}, // this should be populated, but the gameRunner checks this
 				},
 			},
 			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
@@ -1119,10 +1078,10 @@ func TestManagerHandleSocketMessage(t *testing.T) {
 	for i, test := range handleSocketMessageTests {
 		var bb bytes.Buffer
 		log := log.New(&bb, "test", log.LstdFlags)
-		sm := Manager{
+		sm := Runner{
 			playerSockets: test.playerSockets,
 			playerGames:   test.playerGames,
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log: log,
 			},
 		}
@@ -1144,11 +1103,11 @@ func TestManagerHandleSocketMessage(t *testing.T) {
 			switch len(gameOut) {
 			case 0:
 				if !test.skipOutSend {
-					t.Errorf("Test %v: wanted message to be sent to game manager", i)
+					t.Errorf("Test %v: wanted message to be sent to game runner", i)
 				}
 			case 1:
 				if test.skipOutSend {
-					t.Errorf("Test %v: wanted no message to be sent to game manager", i)
+					t.Errorf("Test %v: wanted no message to be sent to game runner", i)
 					continue
 				}
 				got := <-gameOut
@@ -1169,9 +1128,9 @@ func TestManagerHandleSocketMessage(t *testing.T) {
 	}
 }
 
-// TestManagerHandleGameMessageDeletePlayer needs extra code to verify the sockets are closed.
+// TestRunnerHandleGameMessageDeletePlayer needs extra code to verify the sockets are closed.
 // This test alse tests the flow of game messages from the Run function.
-func TestManagerHandleGameMessageDeletePlayer(t *testing.T) {
+func TestRunnerHandleGameMessageDeletePlayer(t *testing.T) {
 	c1 := make(chan message.Message)
 	c2 := make(chan message.Message, 1)
 	c3 := make(chan message.Message)
@@ -1179,7 +1138,7 @@ func TestManagerHandleGameMessageDeletePlayer(t *testing.T) {
 	addr2 := mockAddr("addr2")
 	addr3 := mockAddr("addr3")
 	// player delete is sent from the lobby when the player is actually deleted
-	sm := Manager{
+	sm := Runner{
 		playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
 			"fred": {
 				addr1: c1,
@@ -1236,8 +1195,8 @@ func TestManagerHandleGameMessageDeletePlayer(t *testing.T) {
 
 }
 
-// TestSendMessageForGameBadManagerState adds coverage for some scenarios where playerGames do do not have matching playerSocket entries
-func TestSendMessageForGameBadManagerState(t *testing.T) {
+// TestSendMessageForGameBadRunnerState adds coverage for some scenarios where playerGames do do not have matching playerSocket entries
+func TestSendMessageForGameBadRunnerState(t *testing.T) {
 	tests := []struct {
 		playerSockets map[player.Name]map[net.Addr]chan<- message.Message
 		playerGames   map[player.Name]map[game.ID]net.Addr
@@ -1264,10 +1223,10 @@ func TestSendMessageForGameBadManagerState(t *testing.T) {
 	for i, test := range tests {
 		var bb bytes.Buffer
 		log := log.New(&bb, "test", log.LstdFlags)
-		sm := Manager{
+		sm := Runner{
 			playerSockets: test.playerSockets,
 			playerGames:   test.playerGames,
-			ManagerConfig: ManagerConfig{
+			RunnerConfig: RunnerConfig{
 				Log: log,
 			},
 		}
@@ -1280,7 +1239,7 @@ func TestSendMessageForGameBadManagerState(t *testing.T) {
 		}
 		sm.sendMessageForGame(ctx, m)
 		if bb.Len() == 0 {
-			t.Errorf("Test %v: wanted error logged for bad manager state", i)
+			t.Errorf("Test %v: wanted error logged for bad runner state", i)
 		}
 	}
 }
