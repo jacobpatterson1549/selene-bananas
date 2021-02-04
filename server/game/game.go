@@ -26,6 +26,7 @@ type (
 		status      game.Status
 		players     map[player.Name]*playerController.Player
 		unusedTiles []tile.Tile
+		UserDao
 		Config
 	}
 
@@ -39,7 +40,6 @@ type (
 		// Used for the created at timestamp.
 		TimeFunc func() int64
 		// UserDao is used to increment the points for players when the game is finished.
-		UserDao UserDao
 		// MaxPlayers is the maximum number of players that can be part of the game.
 		MaxPlayers int
 		// PlayerCfg is used to create new players.
@@ -85,8 +85,8 @@ const (
 )
 
 // NewGame creates a new game and runs it.
-func (cfg Config) NewGame(id game.ID) (*Game, error) {
-	if err := cfg.validate(id); err != nil {
+func (cfg Config) NewGame(id game.ID, ud UserDao) (*Game, error) {
+	if err := cfg.validate(id, ud); err != nil {
 		return nil, fmt.Errorf("creating game: validation: %w", err)
 	}
 	if len(cfg.TileLetters) == 0 {
@@ -106,7 +106,7 @@ func (cfg Config) NewGame(id game.ID) (*Game, error) {
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(id game.ID) error {
+func (cfg Config) validate(id game.ID, ud UserDao) error {
 	switch {
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")
@@ -114,7 +114,7 @@ func (cfg Config) validate(id game.ID) error {
 		return fmt.Errorf("positive id required")
 	case cfg.TimeFunc == nil:
 		return fmt.Errorf("time func required required")
-	case cfg.UserDao == nil:
+	case ud == nil:
 		return fmt.Errorf("user dao required")
 	case cfg.MaxPlayers <= 0:
 		return fmt.Errorf("positive max player count required")

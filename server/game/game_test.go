@@ -164,9 +164,7 @@ func TestUpdateUserPoints(t *testing.T) {
 			"selene": selenePlayer,
 			"bob":    {},
 		},
-		Config: Config{
-			UserDao: ud,
-		},
+		UserDao: ud,
 	}
 	got := g.updateUserPoints(ctx, "selene")
 	if want != got {

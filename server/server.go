@@ -25,20 +25,14 @@ type (
 	// Server runs the site
 	Server struct {
 		data          interface{}
-		log           *log.Logger
 		tokenizer     auth.Tokenizer
 		userDao       UserDao
 		lobby         Lobby
 		httpsServer   *http.Server
 		httpServer    *http.Server
-		stopDur       time.Duration
 		cacheMaxAge   string
-		version       string
-		challenge     certificate.Challenge
-		tlsCertFile   string
-		tlsKeyFile    string
-		noTLSRedirect bool
 		templateFiles []string
+		Config
 	}
 
 	// Config contains fields which describe the server
@@ -50,12 +44,6 @@ type (
 		// Log is used to log errors and other information
 		Log *log.Logger
 		// Tokenizer is used to generate and parse session tokens
-		Tokenizer auth.Tokenizer
-		// UserDao is used to track different users
-		UserDao UserDao
-		// Lobby is used to let lusers play Games.
-		Lobby Lobby
-		// StopDur is the maximum duration the server should take to shutdown gracefully
 		StopDur time.Duration
 		// CachenSec is the number of seconds some files are cached
 		CacheSec int
@@ -118,8 +106,8 @@ const (
 )
 
 // NewServer creates a Server from the Config
-func (cfg Config) NewServer() (*Server, error) {
-	if err := cfg.validate(); err != nil {
+func (cfg Config) NewServer(t auth.Tokenizer, ud UserDao, l Lobby) (*Server, error) {
+	if err := cfg.validate(t, ud, l); err != nil {
 		return nil, fmt.Errorf("creating server: validation: %w", err)
 	}
 	var gameConfig game.Config
@@ -163,20 +151,14 @@ func (cfg Config) NewServer() (*Server, error) {
 	}
 	s := Server{
 		data:          data,
-		log:           cfg.Log,
-		tokenizer:     cfg.Tokenizer,
-		userDao:       cfg.UserDao,
-		lobby:         cfg.Lobby,
+		tokenizer:     t,
+		userDao:       ud,
+		lobby:         l,
 		httpsServer:   httpsServer,
 		httpServer:    httpServer,
-		stopDur:       cfg.StopDur,
 		cacheMaxAge:   cacheMaxAge,
-		version:       cfg.Version,
-		challenge:     cfg.Challenge,
-		tlsCertFile:   cfg.TLSCertFile,
-		tlsKeyFile:    cfg.TLSKeyFile,
-		noTLSRedirect: cfg.NoTLSRedirect,
 		templateFiles: templateFiles,
+		Config:        cfg,
 	}
 	httpsServeMux.HandleFunc("/", s.handleHTTPS)
 	httpServeMux.HandleFunc("/", s.handleHTTP)
@@ -184,14 +166,16 @@ func (cfg Config) NewServer() (*Server, error) {
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate() error {
+func (cfg Config) validate(t auth.Tokenizer, ud UserDao, l Lobby) error {
 	switch {
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")
-	case cfg.Tokenizer == nil:
+	case t == nil:
 		return fmt.Errorf("tokenizer required")
-	case cfg.UserDao == nil:
+	case ud == nil:
 		return fmt.Errorf("user dao required")
+	case l == nil:
+		return fmt.Errorf("lobby required")
 	case cfg.StopDur <= 0:
 		return fmt.Errorf("shop timeout duration required")
 	case cfg.CacheSec < 0:
@@ -248,18 +232,18 @@ func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	s.lobby.Run(ctx)
 	s.httpsServer.RegisterOnShutdown(cancelFunc)
-	s.log.Printf("starting https server at at https://127.0.0.1%v", s.httpsServer.Addr)
+	s.Log.Printf("starting https server at at https://127.0.0.1%v", s.httpsServer.Addr)
 	go func() {
 		switch {
 		case s.validHTTPAddr():
-			if _, err := tls.LoadX509KeyPair(s.tlsCertFile, s.tlsKeyFile); err != nil {
-				s.log.Printf("Problem loading tls certificate: %v", err)
+			if _, err := tls.LoadX509KeyPair(s.TLSCertFile, s.TLSKeyFile); err != nil {
+				s.Log.Printf("Problem loading tls certificate: %v", err)
 				return
 			}
-			errC <- s.httpsServer.ListenAndServeTLS(s.tlsCertFile, s.tlsKeyFile)
+			errC <- s.httpsServer.ListenAndServeTLS(s.TLSCertFile, s.TLSKeyFile)
 		default:
-			if len(s.tlsCertFile) != 0 || len(s.tlsKeyFile) != 0 {
-				s.log.Printf("Ignoring TLS_CERT_FILE/TLS_KEY_FILE variables since PORT was specified, using automated certificate management.")
+			if len(s.TLSCertFile) != 0 || len(s.TLSKeyFile) != 0 {
+				s.Log.Printf("Ignoring TLS_CERT_FILE/TLS_KEY_FILE variables since PORT was specified, using automated certificate management.")
 			}
 			errC <- s.httpsServer.ListenAndServe()
 		}
@@ -269,7 +253,7 @@ func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
 // Stop asks the server to shutdown and waits for the shutdown to complete.
 // An error is returned if the server if the context times out.
 func (s Server) Stop(ctx context.Context) error {
-	ctx, cancelFunc := context.WithTimeout(ctx, s.stopDur)
+	ctx, cancelFunc := context.WithTimeout(ctx, s.StopDur)
 	defer cancelFunc()
 	httpsShutdownErr := s.httpsServer.Shutdown(ctx)
 	httpShutdownErr := s.httpServer.Shutdown(ctx)
@@ -279,16 +263,16 @@ func (s Server) Stop(ctx context.Context) error {
 	case httpShutdownErr != nil:
 		return httpShutdownErr
 	}
-	s.log.Println("server stopped successfully")
+	s.Log.Println("server stopped successfully")
 	return nil
 }
 
 // handleHTTPS handles http endpoints.
 func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
-	case s.challenge.IsFor(r.URL.Path):
-		if err := s.challenge.Handle(w, r.URL.Path); err != nil {
-			s.log.Printf("serving acme challenge: %v", err)
+	case s.Challenge.IsFor(r.URL.Path):
+		if err := s.Challenge.Handle(w, r.URL.Path); err != nil {
+			s.Log.Printf("serving acme challenge: %v", err)
 			s.httpError(w, http.StatusInternalServerError)
 		}
 	default:
@@ -299,9 +283,9 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 // handleHTTPS handles https endpoints.
 func (s Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 	switch {
-	case r.TLS == nil && !s.noTLSRedirect:
+	case r.TLS == nil && !s.NoTLSRedirect:
 		s.handleHTTP(w, r)
-	case r.TLS == nil && s.noTLSRedirect && !s.hasSecHeader(r):
+	case r.TLS == nil && s.NoTLSRedirect && !s.hasSecHeader(r):
 		s.redirectToHTTPS(w, r)
 	case r.Method == "GET":
 		s.handleHTTPSGet(w, r)
@@ -324,7 +308,7 @@ func (s Server) redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if s.httpsServer.Addr != ":443" && !s.noTLSRedirect {
+	if s.httpsServer.Addr != ":443" && !s.NoTLSRedirect {
 		host = host + s.httpsServer.Addr
 	}
 	httpsURI := "https://" + host + r.URL.Path
@@ -358,7 +342,7 @@ func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
 		// [unauthenticated]
 	default:
 		if err := s.checkTokenUsername(r); err != nil {
-			s.log.Print(err)
+			s.Log.Print(err)
 			s.httpError(w, http.StatusForbidden)
 			return
 		}
@@ -437,10 +421,10 @@ func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.Handl
 	case "/favicon.svg", "/favicon.png":
 		w.Header().Set(HeaderCacheControl, s.cacheMaxAge) // this logic is duplicated below for all other files
 	default:
-		if r.URL.Query().Get("v") != s.version {
+		if r.URL.Query().Get("v") != s.Version {
 			url := r.URL
 			q := url.Query()
-			q.Set("v", s.version)
+			q.Set("v", s.Version)
 			url.RawQuery = q.Encode()
 			w.Header().Set(HeaderLocation, url.String())
 			w.WriteHeader(http.StatusMovedPermanently)
@@ -474,7 +458,7 @@ func (Server) httpError(w http.ResponseWriter, statusCode int) {
 
 // handleError logs and writes the error as an internal server error (500).
 func (s Server) handleError(w http.ResponseWriter, err error) {
-	s.log.Printf("server error: %v", err)
+	s.Log.Printf("server error: %v", err)
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 

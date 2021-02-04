@@ -29,8 +29,8 @@ import (
 	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
 )
 
-// serverConfig creates the server configuration.
-func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Config, error) {
+// newServer creates the server.
+func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Server, error) {
 	timeFunc := func() int64 {
 		return time.Now().UTC().Unix()
 	}
@@ -48,11 +48,11 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		return nil, fmt.Errorf("creating SQL database: %w", err)
 	}
 	userDaoCfg := userDaoConfig(sqlDB)
-	ud, err := userDaoCfg.NewDao()
+	userDao, err := userDaoCfg.NewDao()
 	if err != nil {
 		return nil, fmt.Errorf("creating user dao: %w", err)
 	}
-	if err = ud.Setup(ctx); err != nil {
+	if err = userDao.Setup(ctx); err != nil {
 		return nil, fmt.Errorf("setting up user dao: %w", err)
 	}
 	socketRunnerConfig := socketRunnerConfig(m, log, timeFunc)
@@ -60,11 +60,11 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 	if err != nil {
 		return nil, fmt.Errorf("creating socket runner: %w", err)
 	}
-	gameRunnerConfig, err := gameRunnerConfig(m, log, ud, timeFunc)
+	gameRunnerConfig, err := gameRunnerConfig(m, log, timeFunc)
 	if err != nil {
 		return nil, fmt.Errorf("creating game runner config: %w", err)
 	}
-	gameRunner, err := gameRunnerConfig.NewRunner()
+	gameRunner, err := gameRunnerConfig.NewRunner(userDao)
 	if err != nil {
 		return nil, fmt.Errorf("creating game runner: %w", err)
 	}
@@ -86,9 +86,6 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		HTTPPort:      m.httpPort,
 		HTTPSPort:     m.httpsPort,
 		Log:           log,
-		Tokenizer:     tokenizer,
-		UserDao:       ud,
-		Lobby:         lobby,
 		StopDur:       time.Second,
 		CacheSec:      m.cacheSec,
 		Version:       v,
@@ -98,7 +95,7 @@ func serverConfig(ctx context.Context, m mainFlags, log *log.Logger) (*server.Co
 		ColorConfig:   cc,
 		NoTLSRedirect: m.noTLSRedirect,
 	}
-	return &cfg, nil
+	return cfg.NewServer(tokenizer, userDao, lobby)
 }
 
 // colorConfig creates the color config for the css.
@@ -158,8 +155,8 @@ func lobbyConfig(log *log.Logger) lobby.Config {
 }
 
 // gameRunnerConfig creates the configuration for running and managing games.
-func gameRunnerConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*game.RunnerConfig, error) {
-	gameCfg, err := gameConfig(m, log, ud, timeFunc)
+func gameRunnerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) (*game.RunnerConfig, error) {
+	gameCfg, err := gameConfig(m, log, timeFunc)
 	if err != nil {
 		return nil, fmt.Errorf("creating game config: %w", err)
 	}
@@ -172,7 +169,7 @@ func gameRunnerConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func(
 }
 
 // gameConfig creates the base configuration for all games.
-func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int64) (*gameController.Config, error) {
+func gameConfig(m mainFlags, log *log.Logger, timeFunc func() int64) (*gameController.Config, error) {
 	wordsFile, err := os.Open(m.wordsFile)
 	if err != nil {
 		return nil, fmt.Errorf("trying to open words file: %w", err)
@@ -195,7 +192,6 @@ func gameConfig(m mainFlags, log *log.Logger, ud *user.Dao, timeFunc func() int6
 		Debug:                  m.debugGame,
 		Log:                    log,
 		TimeFunc:               timeFunc,
-		UserDao:                ud,
 		MaxPlayers:             8,
 		PlayerCfg:              playerCfg,
 		NumNewTiles:            21,

@@ -19,6 +19,8 @@ type (
 		games map[game.ID]chan<- message.Message
 		// lastID is the ID of themost recently created game.  The next new game should get a larger ID.
 		lastID game.ID
+		// the UserDao increments user points when a game is finished.
+		UserDao
 		// RunnerConfig contains configruation properties of the Runner.
 		RunnerConfig
 	}
@@ -35,13 +37,14 @@ type (
 )
 
 // NewRunner creates a new game runner from the config.
-func (cfg RunnerConfig) NewRunner() (*Runner, error) {
-	if err := cfg.validate(); err != nil {
+func (cfg RunnerConfig) NewRunner(ud UserDao) (*Runner, error) {
+	if err := cfg.validate(ud); err != nil {
 		return nil, fmt.Errorf("creating game runner: validation: %w", err)
 	}
 	m := Runner{
 		games:        make(map[game.ID]chan<- message.Message, cfg.MaxGames),
 		RunnerConfig: cfg,
+		UserDao:      ud,
 	}
 	return &m, nil
 }
@@ -68,10 +71,12 @@ func (r *Runner) Run(ctx context.Context, in <-chan message.Message) <-chan mess
 }
 
 // validate ensures the configuration has no errors.
-func (cfg RunnerConfig) validate() error {
+func (cfg RunnerConfig) validate(ud UserDao) error {
 	switch {
 	case cfg.Log == nil:
 		return fmt.Errorf("log required")
+	case ud == nil:
+		return fmt.Errorf("user dao required")
 	case cfg.MaxGames < 1:
 		return fmt.Errorf("must be able to create at least one game")
 	}
@@ -99,7 +104,7 @@ func (r *Runner) createGame(ctx context.Context, m message.Message, out chan<- m
 
 	}
 	id := r.lastID + 1
-	g, err := r.GameConfig.NewGame(id)
+	g, err := r.GameConfig.NewGame(id, r.UserDao)
 	if err != nil {
 		r.sendError(err, m.PlayerName, out)
 		return

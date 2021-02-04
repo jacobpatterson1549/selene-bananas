@@ -64,7 +64,9 @@ func TestHandleFileVersion(t *testing.T) {
 	h := func(w http.ResponseWriter, r *http.Request) {}
 	for i, test := range handleFileVersionTests {
 		s := Server{
-			version: test.version,
+			Config: Config{
+				Version: test.version,
+			},
 		}
 		r := httptest.NewRequest("", test.url, nil)
 		w := httptest.NewRecorder()
@@ -229,7 +231,9 @@ func TestHandleError(t *testing.T) {
 	w := httptest.NewRecorder()
 	err := fmt.Errorf("mock error")
 	s := Server{
-		log: log.New(&buf, "", log.LstdFlags),
+		Config: Config{
+			Log: log.New(&buf, "", log.LstdFlags),
+		},
 	}
 	want := 500
 	s.handleError(w, err)
@@ -259,7 +263,9 @@ func TestHandleHTTPPing(t *testing.T) {
 	}
 	for i, test := range handleHTTPPingTests {
 		s := Server{
-			log: log.New(ioutil.Discard, "test", log.LstdFlags),
+			Config: Config{
+				Log: log.New(ioutil.Discard, "test", log.LstdFlags),
+			},
 			tokenizer: mockTokenizer{
 				ReadUsernameFunc: func(tokenString string) (string, error) {
 					return "selene", nil

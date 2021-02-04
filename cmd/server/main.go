@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -19,24 +18,11 @@ func main() {
 	logFlags := log.Ldate | log.LUTC | log.Llongfile | log.Lmsgprefix
 	log := log.New(os.Stdout, "", logFlags)
 	ctx := context.Background()
-	server, err := createServer(ctx, m, log)
+	server, err := newServer(ctx, m, log)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("creating server: %v", err)
 	}
 	runServer(ctx, *server, log)
-}
-
-// create server greates the server from a configuration.
-func createServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Server, error) {
-	cfg, err := serverConfig(ctx, m, log)
-	if err != nil {
-		return nil, fmt.Errorf("configuring server: %v", err)
-	}
-	server, err := cfg.NewServer()
-	if err != nil {
-		return nil, fmt.Errorf("creating server: %v", err)
-	}
-	return server, nil
 }
 
 // runServer runs the server until it is interrupted or terminated.

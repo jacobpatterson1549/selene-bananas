@@ -53,7 +53,7 @@ func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	u2, err := s.userDao.Read(ctx, *u)
 	if err != nil {
-		s.log.Printf("login failure: %v", err)
+		s.Log.Printf("login failure: %v", err)
 		http.Error(w, "incorrect username/password", http.StatusUnauthorized)
 		return
 	}
@@ -74,7 +74,7 @@ func (s Server) handleUserLobby(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.FormValue("access_token")
 	username, err := s.tokenizer.ReadUsername(tokenString)
 	if err != nil {
-		s.log.Printf("reading username from token: %v", err)
+		s.Log.Printf("reading username from token: %v", err)
 		s.httpError(w, http.StatusUnauthorized)
 		return
 	}
