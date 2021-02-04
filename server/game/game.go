@@ -376,7 +376,7 @@ func (g *Game) checkPlayerBoard(pn player.Name, checkWords bool) ([]string, erro
 	}
 	if len(errText) != 0 {
 		errText = "invalid board: " + errText
-		if g.Config.Penalize {
+		if g.Config.Penalize && p.WinPoints > 2 {
 			p.WinPoints--
 			errText = errText + ", possible win points decremented"
 		}
@@ -599,18 +599,13 @@ func (g *Game) handleGameChat(ctx context.Context, m message.Message, send messa
 }
 
 // updateUserPoints updates the points for users in the game after a player has won.
-// The winning player gets their winpoints or at least 2 points.  Other players in the game get a consolation point.
+// The winning player gets their winpoints, whould should be at least 2.  Other players in the game get a consolation point.
 func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName player.Name) error {
 	userPoints := make(map[string]int, len(g.players))
 	for pn, p := range g.players {
 		points := 1
 		if pn == winningPlayerName {
-			switch {
-			case p.WinPoints > 1:
-				points = p.WinPoints
-			default:
-				points = 2
-			}
+			points = p.WinPoints
 		}
 		userPoints[string(pn)] = points
 	}

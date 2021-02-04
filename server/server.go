@@ -235,11 +235,12 @@ func (Server) addMimeType(fileName string, w http.ResponseWriter) {
 // runHTTPSServer runs the http server asynchronously, adding the return error to the channel when done.
 // The server is only run if the HTTP address is valid.
 func (s Server) runHTTPServer(ctx context.Context, errC chan<- error) {
-	if s.validHTTPAddr() {
-		go func() {
-			errC <- s.httpServer.ListenAndServe()
-		}()
+	if !s.validHTTPAddr() {
+		return
 	}
+	go func() {
+		errC <- s.httpServer.ListenAndServe()
+	}()
 }
 
 // runHTTPSServer runs the https server in regards to the conviguration, adding the return error to the channel when done.
