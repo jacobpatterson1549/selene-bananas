@@ -607,7 +607,7 @@ func TestWriteClose(t *testing.T) {
 				t.Errorf("Test %v: wanted no reason logged when already closed", i)
 			}
 		default:
-			got := string(bb.Bytes())
+			got := bb.String()
 			if !strings.Contains(got, test.reason) {
 				t.Errorf("Test %v: wanted logged reason to contain '%v', got '%v'", i, test.reason, got)
 			}
