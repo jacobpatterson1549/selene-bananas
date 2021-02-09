@@ -23,14 +23,14 @@ import (
 type (
 	// Server runs the site
 	Server struct {
-		data          interface{}
-		tokenizer     Tokenizer
-		userDao       UserDao
-		lobby         Lobby
-		httpsServer   *http.Server
-		httpServer    *http.Server
-		cacheMaxAge   string
-		templateFiles []string
+		data        interface{}
+		tokenizer   Tokenizer
+		userDao     UserDao
+		lobby       Lobby
+		httpsServer *http.Server
+		httpServer  *http.Server
+		cacheMaxAge string
+		template    *template.Template
 		Config
 	}
 
@@ -154,16 +154,20 @@ func (cfg Config) NewServer(t Tokenizer, ud UserDao, l Lobby) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("loading template file names: %v", err)
 	}
+	template, err := template.ParseFiles(templateFiles...)
+	if err != nil {
+		return nil, fmt.Errorf("parsing template: %v", err)
+	}
 	s := Server{
-		data:          data,
-		tokenizer:     t,
-		userDao:       ud,
-		lobby:         l,
-		httpsServer:   httpsServer,
-		httpServer:    httpServer,
-		cacheMaxAge:   cacheMaxAge,
-		templateFiles: templateFiles,
-		Config:        cfg,
+		data:        data,
+		tokenizer:   t,
+		userDao:     ud,
+		lobby:       l,
+		httpsServer: httpsServer,
+		httpServer:  httpServer,
+		cacheMaxAge: cacheMaxAge,
+		template:    template,
+		Config:      cfg,
 	}
 	httpsServeMux.HandleFunc("/", s.handleHTTPS)
 	httpServeMux.HandleFunc("/", s.handleHTTP)
@@ -387,23 +391,15 @@ func templateFiles() ([]string, error) {
 	return filenames, nil
 }
 
-// serveTemplate servers the file from the data-driven template.
+// serveTemplate servers the file from the data-driven template.  The name is assumed to have a leading slash that is ignored.
 func (s Server) serveTemplate(name string) http.HandlerFunc {
-	var t *template.Template
-	switch name {
-	case "/":
-		t = template.New("main.html")
-	default:
-		t = template.New(name[1:])
+	name = name[1:]
+	if len(name) == 0 {
+		name = "index.html"
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		if _, err := t.ParseFiles(s.templateFiles...); err != nil {
-			err = fmt.Errorf("parsing template: %v", err)
-			s.handleError(w, err)
-			return
-		}
 		s.addMimeType(name, w)
-		if err := t.Execute(w, s.data); err != nil {
+		if err := s.template.ExecuteTemplate(w, name, s.data); err != nil {
 			err = fmt.Errorf("rendering template: %v", err)
 			s.handleError(w, err)
 			return
