@@ -423,8 +423,6 @@ func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.Handl
 	switch r.URL.Path {
 	case "/":
 		w.Header().Set(HeaderCacheControl, "no-store")
-	case "/favicon.svg", "/favicon.png":
-		w.Header().Set(HeaderCacheControl, s.cacheMaxAge) // this logic is duplicated below for all other files
 	default:
 		if r.URL.Query().Get("v") != s.Version {
 			url := r.URL
@@ -435,6 +433,8 @@ func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.Handl
 			w.WriteHeader(http.StatusMovedPermanently)
 			return
 		}
+		fallthrough
+	case "/favicon.svg", "/favicon.png":
 		w.Header().Set(HeaderCacheControl, s.cacheMaxAge)
 	}
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {

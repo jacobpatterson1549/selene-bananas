@@ -45,6 +45,12 @@ func TestHandleFileVersion(t *testing.T) {
 			wantHeader: make(http.Header),
 		},
 		{
+			version:    "abc",
+			url:        "http://example.com/favicon.svg",
+			wantCode:   200,
+			wantHeader: make(http.Header),
+		},
+		{
 			version:  "abc",
 			url:      "http://example.com/main.wasm",
 			wantCode: 301,
