@@ -280,7 +280,6 @@ func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, send mess
 		return fmt.Errorf("creating board message: %w", err)
 	}
 	m2.Info = "joining game"
-	m2.Addr = m.Addr
 	send(*m2)
 	gamePlayers := g.playerNames() // also called in g.ResizeBoard
 	for n := range g.players {
@@ -658,6 +657,7 @@ func (g *Game) resizeBoard(m message.Message) (*message.Message, error) {
 			ID:        g.id,
 			Config:    &g.Config.Config,
 		},
+		Addr: m.Addr,
 	}
 	if g.status == game.Finished {
 		m2.Game.FinalBoards = g.playerFinalBoards()

@@ -134,6 +134,9 @@ func (g Game) ID() game.ID {
 
 // Leave changes the view for game by hiding it.
 func (g *Game) Leave() {
+	g.Socket.Send(message.Message{
+		Type: message.Leave,
+	})
 	g.id = 0
 	g.setFinalBoards(nil)
 	g.hide(true)
