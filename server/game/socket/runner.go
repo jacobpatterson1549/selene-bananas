@@ -223,7 +223,7 @@ func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out
 		games, ok := r.playerGames[m.PlayerName]
 		switch {
 		case !ok:
-			r.Log.Printf("player %v at %v not playering any game,", m.PlayerName, m.Addr)
+			r.Log.Printf("player %v at %v not playing any game,", m.PlayerName, m.Addr)
 			return
 		default:
 			addr, ok := games[m.Game.ID]
@@ -238,8 +238,6 @@ func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out
 		}
 	}
 	switch m.Type {
-	case message.Join:
-		r.joinGame(ctx, m, out)
 	case message.PlayerDelete:
 		r.removeSocket(ctx, m, out)
 	case message.Leave:

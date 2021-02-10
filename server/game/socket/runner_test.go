@@ -745,6 +745,82 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 		},
+		{ // join game that is already joined, NOOP
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					9: addr1,
+				},
+			},
+			m: message.Message{
+				Type:       message.Join,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					ID: 9,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					9: addr1,
+				},
+			},
+		},
+		{ // join game from other socket, other socket should leave game
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: make(chan<- message.Message, 1),
+					addr2: make(chan<- message.Message, 1),
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					9: addr2,
+				},
+			},
+			m: message.Message{
+				Type:       message.Join,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					ID: 9,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					9: addr1,
+				},
+			},
+		},
+		{ // join game, switching games
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: make(chan<- message.Message, 1),
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					7: addr1,
+				},
+			},
+			m: message.Message{
+				Type:       message.Join,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					ID: 8,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"fred": {
+					8: addr1,
+				},
+			},
+		},
 	}
 	for i, test := range handleLobbyMessageTests {
 		var bb bytes.Buffer
@@ -783,9 +859,6 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 func TestRunnerHandleSocketMessage(t *testing.T) {
 	addr1 := mockAddr("addr1")
 	addr2 := mockAddr("addr2")
-	socketIns := []chan<- message.Message{
-		make(chan<- message.Message, 1),
-	}
 	handleSocketMessageTests := []struct {
 		playerSockets     map[player.Name]map[net.Addr]chan<- message.Message
 		playerGames       map[player.Name]map[game.ID]net.Addr
@@ -918,129 +991,6 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
 				"fred": {
 					addr1: nil,
-				},
-			},
-			wantOk: true,
-		},
-		{ // join game
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
-				"fred": {
-					addr1: nil,
-				},
-			},
-			playerGames: make(map[player.Name]map[game.ID]net.Addr),
-			m: message.Message{
-				Type:       message.Join,
-				PlayerName: "fred",
-				Addr:       addr1,
-				Game: &game.Info{
-					ID: 9,
-				},
-			},
-			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
-				"fred": {
-					addr1: nil,
-				},
-			},
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
-				"fred": {
-					9: addr1,
-				},
-			},
-			wantOk: true,
-		},
-		{ // join game that is already joined, NOOP
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
-				"fred": {
-					addr1: nil,
-				},
-			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
-				"fred": {
-					9: addr1,
-				},
-			},
-			m: message.Message{
-				Type:       message.Join,
-				PlayerName: "fred",
-				Addr:       addr1,
-				Game: &game.Info{
-					ID: 9,
-				},
-			},
-			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
-				"fred": {
-					addr1: nil,
-				},
-			},
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
-				"fred": {
-					9: addr1,
-				},
-			},
-			wantOk:      true,
-			skipOutSend: true,
-		},
-		{ // join game from other socket, other socket should leave game
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
-				"fred": {
-					addr1: nil,
-					addr2: socketIns[0],
-				},
-			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
-				"fred": {
-					9: addr2,
-				},
-			},
-			m: message.Message{
-				Type:       message.Join,
-				PlayerName: "fred",
-				Addr:       addr1,
-				Game: &game.Info{
-					ID: 9,
-				},
-			},
-			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
-				"fred": {
-					addr1: nil,
-					addr2: socketIns[0],
-				},
-			},
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
-				"fred": {
-					9: addr1,
-				},
-			},
-			wantOk: true,
-		},
-		{ // join game, switching games
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
-				"fred": {
-					addr1: nil,
-				},
-			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
-				"fred": {
-					7: addr1,
-				},
-			},
-			m: message.Message{
-				Type:       message.Join,
-				PlayerName: "fred",
-				Addr:       addr1,
-				Game: &game.Info{
-					ID: 8,
-				},
-			},
-			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
-				"fred": {
-					addr1: nil,
-				},
-			},
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
-				"fred": {
-					8: addr1,
 				},
 			},
 			wantOk: true,
