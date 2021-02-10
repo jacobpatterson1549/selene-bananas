@@ -149,12 +149,12 @@ func TestAddUser(t *testing.T) {
 		go func() { // mock socket runner
 			defer wg.Done()
 			gotM, ok := <-l.socketMessages
-			if !ok || gotM.Type != message.AddSocket || gotM.AddSocketRequest == nil {
+			if !ok || gotM.Type != message.SocketAdd || gotM.AddSocketRequest == nil {
 				t.Errorf("Test %v: AddSocketRequest not set in message: %v", i, gotM)
 				return
 			}
 			wantM := message.Message{
-				Type:       message.AddSocket,
+				Type:       message.SocketAdd,
 				PlayerName: player.Name("selene"),
 				AddSocketRequest: &message.AddSocketRequest{
 					ResponseWriter: w,
@@ -175,7 +175,7 @@ func TestAddUser(t *testing.T) {
 				return
 			}
 			gotM = <-l.socketMessages
-			if gotM.Type != message.Infos {
+			if gotM.Type != message.GameInfos {
 				t.Errorf("Test %v: wanted infos message to be sent for user, got %v", i, gotM)
 			}
 		}()
@@ -280,7 +280,7 @@ func TestHandleGameMessage(t *testing.T) {
 		},
 		{ // no Game on message
 			gameM: message.Message{
-				Type: message.Infos,
+				Type: message.GameInfos,
 			},
 			wantM: message.Message{
 				Type: message.SocketError,
@@ -288,11 +288,11 @@ func TestHandleGameMessage(t *testing.T) {
 		},
 		{ // single game info added
 			gameM: message.Message{
-				Type: message.Infos,
+				Type: message.GameInfos,
 				Game: &game.Info{ID: 1, Status: game.NotStarted, Players: []string{"selene"}},
 			},
 			wantM: message.Message{
-				Type: message.Infos,
+				Type: message.GameInfos,
 				Games: []game.Info{
 					{ID: 1, Status: game.NotStarted, Players: []string{"selene"}},
 				},
@@ -304,11 +304,11 @@ func TestHandleGameMessage(t *testing.T) {
 		},
 		{ // multiple game infos, test sorted
 			gameM: message.Message{
-				Type: message.Infos,
+				Type: message.GameInfos,
 				Game: &game.Info{ID: 2, Status: game.Finished},
 			},
 			wantM: message.Message{
-				Type: message.Infos,
+				Type: message.GameInfos,
 				Games: []game.Info{
 					{ID: 1, Status: game.NotStarted},
 					{ID: 2, Status: game.Finished},
@@ -328,11 +328,11 @@ func TestHandleGameMessage(t *testing.T) {
 		},
 		{ // game deleted
 			gameM: message.Message{
-				Type: message.Infos,
+				Type: message.GameInfos,
 				Game: &game.Info{ID: 1, Status: game.Deleted},
 			},
 			wantM: message.Message{
-				Type:  message.Infos,
+				Type:  message.GameInfos,
 				Games: []game.Info{},
 			},
 			games: map[game.ID]game.Info{

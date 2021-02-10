@@ -114,7 +114,7 @@ func TestGameCreate(t *testing.T) {
 	}{
 		{ // happy path
 			m: message.Message{
-				Type:       message.Create,
+				Type:       message.CreateGame,
 				PlayerName: "selene",
 				Game: &game.Info{
 					Board: &board.Board{
@@ -140,7 +140,7 @@ func TestGameCreate(t *testing.T) {
 		},
 		{ // no room for game
 			m: message.Message{
-				Type:       message.Create,
+				Type:       message.CreateGame,
 				PlayerName: "selene",
 			},
 			RunnerConfig: RunnerConfig{
@@ -150,7 +150,7 @@ func TestGameCreate(t *testing.T) {
 		},
 		{ // bad message: no game
 			m: message.Message{
-				Type:       message.Create,
+				Type:       message.CreateGame,
 				PlayerName: "selene",
 			},
 			RunnerConfig: RunnerConfig{
@@ -159,7 +159,7 @@ func TestGameCreate(t *testing.T) {
 			},
 		}, { // bad message: no board
 			m: message.Message{
-				Type:       message.Create,
+				Type:       message.CreateGame,
 				PlayerName: "selene",
 				Game:       &game.Info{},
 			},
@@ -170,7 +170,7 @@ func TestGameCreate(t *testing.T) {
 		},
 		{ // bad gameConfig
 			m: message.Message{
-				Type:       message.Create,
+				Type:       message.CreateGame,
 				PlayerName: "selene",
 				Game: &game.Info{
 					Board: &board.Board{
@@ -212,7 +212,7 @@ func TestGameCreate(t *testing.T) {
 			t.Errorf("Test %v: wanted 1 game to be created, got %v", i, gotNumGames)
 		case r.games[4] == nil:
 			t.Errorf("Test %v: wanted game of id 4 to be created", i)
-		case gotM.Type != message.Join, gotM.Game.ID != 4, gotM.PlayerName != "selene":
+		case gotM.Type != message.JoinGame, gotM.Game.ID != 4, gotM.PlayerName != "selene":
 			t.Errorf("Test %v: wanted join message for game 4 for player, got %v", i, gotM)
 		}
 	}
@@ -225,12 +225,12 @@ func TestGameDelete(t *testing.T) {
 	}{
 		{
 			m: message.Message{
-				Type: message.Delete,
+				Type: message.DeleteGame,
 			},
 		},
 		{
 			m: message.Message{
-				Type: message.Delete,
+				Type: message.DeleteGame,
 				Game: &game.Info{
 					ID: 4,
 				},
@@ -238,7 +238,7 @@ func TestGameDelete(t *testing.T) {
 		},
 		{
 			m: message.Message{
-				Type: message.Delete,
+				Type: message.DeleteGame,
 				Game: &game.Info{
 					ID: 5,
 				},
@@ -297,12 +297,12 @@ func TestHandleGameMessage(t *testing.T) {
 	}{
 		{
 			m: message.Message{
-				Type: message.Chat,
+				Type: message.GameChat,
 			},
 		},
 		{
 			m: message.Message{
-				Type: message.Chat,
+				Type: message.GameChat,
 				Game: &game.Info{
 					ID: game.ID(2),
 				},
@@ -310,7 +310,7 @@ func TestHandleGameMessage(t *testing.T) {
 		},
 		{
 			m: message.Message{
-				Type: message.Chat,
+				Type: message.GameChat,
 				Game: &game.Info{
 					ID: game.ID(3),
 				},

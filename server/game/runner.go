@@ -86,9 +86,9 @@ func (cfg RunnerConfig) validate(ud UserDao) error {
 // handleMessage takes appropriate actions for different message types.
 func (r *Runner) handleMessage(ctx context.Context, m message.Message, out chan<- message.Message) {
 	switch m.Type {
-	case message.Create:
+	case message.CreateGame:
 		r.createGame(ctx, m, out)
-	case message.Delete:
+	case message.DeleteGame:
 		r.deleteGame(ctx, m, out)
 	default:
 		r.handleGameMessage(ctx, m, out)
@@ -117,7 +117,7 @@ func (r *Runner) createGame(ctx context.Context, m message.Message, out chan<- m
 	in := make(chan message.Message)
 	g.Run(ctx, in, out) // all games publish to the same "out" channel
 	r.games[id] = in
-	m.Type = message.Join
+	m.Type = message.JoinGame
 	in <- m
 }
 

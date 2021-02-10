@@ -184,13 +184,13 @@ func (s *Socket) onMessage(event js.Value) {
 		return
 	}
 	switch m.Type {
-	case message.Leave:
+	case message.LeaveGame:
 		s.handleGameLeave(m)
-	case message.Infos:
+	case message.GameInfos:
 		s.lobby.SetGameInfos(m.Games, s.user.Username())
 	case message.PlayerDelete:
 		s.handlePlayerDelete(m)
-	case message.Join, message.StatusChange, message.TilesChange:
+	case message.JoinGame, message.ChangeGameStatus, message.ChangeGameTiles:
 		s.handleInfo(m)
 	case message.SocketError:
 		s.log.Error(m.Info)
@@ -198,7 +198,7 @@ func (s *Socket) onMessage(event js.Value) {
 		s.log.Warning(m.Info)
 	case message.SocketHTTPPing:
 		s.httpPing()
-	case message.Chat:
+	case message.GameChat:
 		s.log.Chat(m.Info)
 	default:
 		s.log.Error("unknown message type received")
@@ -215,7 +215,7 @@ func (s *Socket) Send(m message.Message) {
 		var g game.Info
 		m.Game = &g
 	}
-	if m.Type != message.Create { // all messages except CREATE are for a specific game
+	if m.Type != message.CreateGame { // all messages except CREATE are for a specific game
 		m.Game.ID = s.game.ID()
 	}
 	messageJSON, err := json.Marshal(m)

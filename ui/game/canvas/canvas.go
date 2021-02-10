@@ -468,7 +468,7 @@ func (c *Canvas) swap() {
 		Board: b,
 	}
 	c.Socket.Send(message.Message{
-		Type: message.Swap,
+		Type: message.SwapGameTile,
 		Game: &g,
 	})
 }
@@ -603,7 +603,7 @@ func (c *Canvas) moveSelectedTiles() {
 	}
 	if c.gameStatus == game.InProgress {
 		c.Socket.Send(message.Message{
-			Type: message.TilesMoved,
+			Type: message.MoveGameTile,
 			Game: &g,
 		})
 	}

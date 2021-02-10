@@ -209,7 +209,7 @@ func TestRunnerAddSocketCheckResult(t *testing.T) {
 		}
 		ctx := context.Background()
 		result := make(chan message.Message, 1)
-		test.m.Type = message.AddSocket
+		test.m.Type = message.SocketAdd
 		test.m.AddSocketRequest = &message.AddSocketRequest{
 			Result: result,
 		}
@@ -222,7 +222,7 @@ func TestRunnerAddSocketCheckResult(t *testing.T) {
 			}
 		default:
 			switch {
-			case got.Type != message.Infos:
+			case got.Type != message.GameInfos:
 				t.Errorf("Test %v: wanted message to be for game infos, got %v", i, got)
 			case addr != got.Addr:
 				t.Errorf("Test %v: wanted message addr to be %v, got %v", i, addr, got.Addr)
@@ -471,7 +471,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 		{}, // no game on message
 		{ // no game id on normal message
 			m: message.Message{
-				Type: message.TilesChange,
+				Type: message.ChangeGameTiles,
 			},
 		},
 		{ // normal message
@@ -492,7 +492,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.TilesChange, // new tile info omitted, but message should only be sent to fred
+				Type:       message.ChangeGameTiles, // new tile info omitted, but message should only be sent to fred
 				PlayerName: "fred",
 				Game: &game.Info{
 					ID: 2,
@@ -525,7 +525,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:  message.Infos,
+				Type:  message.GameInfos,
 				Games: []game.Info{},
 			},
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
@@ -554,7 +554,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.Infos,
+				Type:       message.GameInfos,
 				PlayerName: "fred",
 				Addr:       addr1,
 			},
@@ -567,7 +567,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 		{ // game infos, with addr: only send to player for the socket, but no player socket exists
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
 			m: message.Message{
-				Type:       message.Infos,
+				Type:       message.GameInfos,
 				PlayerName: "fred",
 				Addr:       addr1,
 			},
@@ -578,7 +578,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				"fred": {},
 			},
 			m: message.Message{
-				Type:       message.Infos,
+				Type:       message.GameInfos,
 				PlayerName: "fred",
 				Addr:       addr1,
 			},
@@ -650,7 +650,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.Leave,
+				Type:       message.LeaveGame,
 				PlayerName: "barney",
 				Info:       "the game was deleted, so player should leave it",
 				Game: &game.Info{
@@ -663,7 +663,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
 			playerGames:   map[player.Name]map[game.ID]net.Addr{},
 			m: message.Message{
-				Type:       message.TilesChange,
+				Type:       message.ChangeGameTiles,
 				PlayerName: "fred",
 				Game: &game.Info{
 					ID: 2,
@@ -679,7 +679,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 			},
 			playerGames: map[player.Name]map[game.ID]net.Addr{},
 			m: message.Message{
-				Type:       message.TilesChange,
+				Type:       message.ChangeGameTiles,
 				PlayerName: "fred",
 				Game: &game.Info{
 					ID: 2,
@@ -699,7 +699,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.TilesChange,
+				Type:       message.ChangeGameTiles,
 				PlayerName: "fred",
 				Game: &game.Info{
 					ID: 2,
@@ -713,13 +713,13 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 		},
 		{ // AddSocket no AddSocketRequest
 			m: message.Message{
-				Type: message.AddSocket,
+				Type: message.SocketAdd,
 			},
 			wantErr: true,
 		},
 		{ // AddSocket no AddSocketRquest.Result
 			m: message.Message{
-				Type:             message.AddSocket,
+				Type:             message.SocketAdd,
 				AddSocketRequest: &message.AddSocketRequest{},
 			},
 			wantErr: true,
@@ -732,7 +732,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 			},
 			playerGames: map[player.Name]map[game.ID]net.Addr{},
 			m: message.Message{
-				Type:       message.Join,
+				Type:       message.JoinGame,
 				PlayerName: "barney",
 				Game: &game.Info{
 					ID: 3,
@@ -757,7 +757,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.Join,
+				Type:       message.JoinGame,
 				PlayerName: "fred",
 				Addr:       addr1,
 				Game: &game.Info{
@@ -783,7 +783,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.Join,
+				Type:       message.JoinGame,
 				PlayerName: "fred",
 				Addr:       addr1,
 				Game: &game.Info{
@@ -808,7 +808,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.Join,
+				Type:       message.JoinGame,
 				PlayerName: "fred",
 				Addr:       addr1,
 				Game: &game.Info{
@@ -908,7 +908,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.Snag,
+				Type:       message.SnagGameTile,
 				PlayerName: "fred",
 				Addr:       addr2,
 				Game: &game.Info{
@@ -923,7 +923,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.Snag,
+				Type:       message.SnagGameTile,
 				PlayerName: "fred",
 				Addr:       addr1,
 				Game: &game.Info{
@@ -944,7 +944,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.Snag,
+				Type:       message.SnagGameTile,
 				PlayerName: "fred",
 				Addr:       addr1,
 				Game: &game.Info{
@@ -966,7 +966,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.Snag,
+				Type:       message.SnagGameTile,
 				PlayerName: "fred",
 				Addr:       addr1,
 				Game: &game.Info{
@@ -981,7 +981,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.Create,
+				Type:       message.CreateGame,
 				PlayerName: "fred",
 				Addr:       addr1,
 				Game: &game.Info{
@@ -1007,7 +1007,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.Leave,
+				Type:       message.LeaveGame,
 				PlayerName: "fred",
 				Addr:       addr1,
 				Game: &game.Info{

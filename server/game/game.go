@@ -155,14 +155,14 @@ func (g *Game) Run(ctx context.Context, in <-chan message.Message, out chan<- me
 	active := false
 	messageSender := g.sendMessage(out)
 	messageHandlers := map[message.Type]messageHandler{
-		message.Join:         g.handleGameJoin,
-		message.Delete:       g.handleGameDelete,
-		message.StatusChange: g.handleGameStatusChange,
-		message.Snag:         g.handleGameSnag,
-		message.Swap:         g.handleGameSwap,
-		message.TilesMoved:   g.handleGameTilesMoved,
-		message.Chat:         g.handleGameChat,
-		message.BoardSize:    g.handleBoardRefresh,
+		message.JoinGame:         g.handleGameJoin,
+		message.DeleteGame:       g.handleGameDelete,
+		message.ChangeGameStatus: g.handleGameStatusChange,
+		message.SnagGameTile:         g.handleGameSnag,
+		message.SwapGameTile:         g.handleGameSwap,
+		message.MoveGameTile:   g.handleGameTilesMoved,
+		message.GameChat:         g.handleGameChat,
+		message.RefreshGameBoard:    g.handleBoardRefresh,
 	}
 	go func() {
 		for { // BLOCKING
@@ -174,7 +174,7 @@ func (g *Game) Run(ctx context.Context, in <-chan message.Message, out chan<- me
 					return
 				}
 				g.handleMessage(ctx, m, messageSender, &active, messageHandlers)
-				if m.Type == message.Delete {
+				if m.Type == message.DeleteGame {
 					return
 				}
 			case <-idleTicker.C:
@@ -210,7 +210,7 @@ func (g *Game) handleMessage(ctx context.Context, m message.Message, send messag
 	var err error
 	if mh, ok := messageHandlers[m.Type]; !ok {
 		err = fmt.Errorf("game does not know how to handle MessageType %v", m.Type)
-	} else if _, ok := g.players[m.PlayerName]; !ok && m.Type != message.Join {
+	} else if _, ok := g.players[m.PlayerName]; !ok && m.Type != message.JoinGame {
 		err = fmt.Errorf("game does not have player named '%v'", m.PlayerName)
 	} else {
 		err = mh(ctx, m, send)
@@ -253,7 +253,7 @@ func (g *Game) handleGameJoin(ctx context.Context, m message.Message, send messa
 	if err != nil {
 		// kick the player here, returning an error will not remove them from the game
 		m := message.Message{
-			Type:       message.Leave,
+			Type:       message.LeaveGame,
 			PlayerName: m.PlayerName,
 		}
 		send(m)
@@ -285,7 +285,7 @@ func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, send mess
 	for n := range g.players {
 		if n != m.PlayerName {
 			m := message.Message{
-				Type:       message.TilesChange,
+				Type:       message.ChangeGameTiles,
 				PlayerName: n,
 				Info:       fmt.Sprintf("%v joined the game", m.PlayerName),
 				Game: &game.Info{
@@ -304,7 +304,7 @@ func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, send mess
 func (g *Game) handleGameDelete(ctx context.Context, m message.Message, send messageSender) error {
 	for n := range g.players {
 		m := message.Message{
-			Type:       message.Leave,
+			Type:       message.LeaveGame,
 			PlayerName: n,
 			Info:       "game deleted",
 		}
@@ -342,7 +342,7 @@ func (g *Game) handleGameStart(ctx context.Context, m message.Message, send mess
 	info := fmt.Sprintf("%v started the game", m.PlayerName)
 	for n := range g.players {
 		m := message.Message{
-			Type:       message.StatusChange,
+			Type:       message.ChangeGameStatus,
 			PlayerName: n,
 			Info:       info,
 			Game: &game.Info{
@@ -444,7 +444,7 @@ func (g *Game) handleGameFinish(ctx context.Context, m message.Message, send mes
 	finalBoards := g.playerFinalBoards()
 	for n := range g.players {
 		m := message.Message{
-			Type:       message.StatusChange,
+			Type:       message.ChangeGameStatus,
 			PlayerName: n,
 			Info:       info,
 			Game: &game.Info{
@@ -480,7 +480,7 @@ func (g *Game) handleGameSnag(ctx context.Context, m message.Message, send messa
 	g.ShufflePlayersFunc(snagPlayerNames[1:])
 	for _, n2 := range snagPlayerNames {
 		m2 := message.Message{
-			Type:       message.TilesChange,
+			Type:       message.ChangeGameTiles,
 			PlayerName: n2,
 		}
 		var tiles []tile.Tile
@@ -544,7 +544,7 @@ func (g *Game) handleGameSwap(ctx context.Context, m message.Message, send messa
 	}
 	for n := range g.players {
 		m2 := message.Message{
-			Type:       message.TilesChange,
+			Type:       message.ChangeGameTiles,
 			PlayerName: n,
 			Game: &game.Info{
 				TilesLeft: len(g.unusedTiles),
@@ -589,7 +589,7 @@ func (g *Game) handleGameChat(ctx context.Context, m message.Message, send messa
 	info := fmt.Sprintf("%v : %v", m.PlayerName, m.Info)
 	for n := range g.players {
 		m2 := message.Message{
-			Type:       message.Chat,
+			Type:       message.GameChat,
 			PlayerName: n,
 			Info:       info,
 		}
@@ -631,7 +631,7 @@ func (g Game) handleInfoChanged(send messageSender) {
 		CreatedAt: g.createdAt,
 	}
 	m := message.Message{
-		Type: message.Infos,
+		Type: message.GameInfos,
 		Game: &i,
 	}
 	send(m)
@@ -647,7 +647,7 @@ func (g *Game) resizeBoard(m message.Message) (*message.Message, error) {
 	}
 	m2 := message.Message{
 		Info:       rr.Info,
-		Type:       message.Join,
+		Type:       message.JoinGame,
 		PlayerName: m.PlayerName,
 		Game: &game.Info{
 			Board:     board.New(rr.Tiles, rr.TilePositions),

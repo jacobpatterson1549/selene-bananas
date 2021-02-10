@@ -103,7 +103,7 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 	result := make(chan message.Message)
 	pn := player.Name(username)
 	m := message.Message{
-		Type:       message.AddSocket,
+		Type:       message.SocketAdd,
 		PlayerName: pn,
 		AddSocketRequest: &message.AddSocketRequest{
 			ResponseWriter: w,
@@ -117,7 +117,7 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 	if m2.Type == message.SocketError {
 		return fmt.Errorf(m2.Info)
 	}
-	m2.Type = message.Infos
+	m2.Type = message.GameInfos
 	m2.Games = l.gameInfos()
 	l.socketMessages <- m2
 	return nil
@@ -135,7 +135,7 @@ func (l *Lobby) RemoveUser(username string) {
 // handleGameMessage writes a game message to the socketMessages channel, possibly modifying it.
 func (l *Lobby) handleGameMessage(m message.Message) {
 	switch m.Type {
-	case message.Infos:
+	case message.GameInfos:
 		l.handleGameInfoChanged(m)
 	default:
 		l.socketMessages <- m
@@ -162,7 +162,7 @@ func (l *Lobby) handleGameInfoChanged(m message.Message) {
 	}
 	infos := l.gameInfos()
 	m2 := message.Message{
-		Type:  message.Infos,
+		Type:  message.GameInfos,
 		Games: infos,
 	}
 	l.socketMessages <- m2

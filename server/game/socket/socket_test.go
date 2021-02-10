@@ -426,11 +426,11 @@ func TestSocketWriteMessages(t *testing.T) {
 		},
 		{ // normal message
 			m: message.Message{
-				Type: message.Chat,
+				Type: message.GameChat,
 				Info: "server says hi",
 			},
 			wantM: message.Message{
-				Type: message.Chat,
+				Type: message.GameChat,
 				Info: "server says hi",
 			},
 			wantOk: true,

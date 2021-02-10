@@ -141,7 +141,7 @@ func TestMessageJSON(t *testing.T) {
 	b := board.New(tiles, tilePositions)
 	b.Config = boardConfig
 	m := message.Message{
-		Type: message.Create,
+		Type: message.CreateGame,
 		Info: "message test",
 		Game: &game.Info{
 			ID:      6,

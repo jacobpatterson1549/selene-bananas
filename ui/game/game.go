@@ -92,7 +92,7 @@ func (g *Game) createWithConfig(event js.Value) {
 	}
 	allowDuplicates := dom.Checked(".allowDuplicates")
 	m := message.Message{
-		Type: message.Create,
+		Type: message.CreateGame,
 		Game: &game.Info{
 			Config: &game.Config{
 				CheckOnSnag:     checkOnSnag,
@@ -117,7 +117,7 @@ func (g *Game) join(event js.Value) {
 	}
 	g.id = game.ID(id)
 	m := message.Message{
-		Type: message.Join,
+		Type: message.JoinGame,
 	}
 	g.setTabActive(m)
 }
@@ -135,7 +135,7 @@ func (g Game) ID() game.ID {
 // sendLeave tells the server to stop sending messages to it and changes tabs.
 func (g *Game) sendLeave() {
 	g.Socket.Send(message.Message{
-		Type: message.Leave,
+		Type: message.LeaveGame,
 	})
 	g.Leave()
 }
@@ -152,7 +152,7 @@ func (g *Game) Leave() {
 func (g *Game) delete() {
 	if dom.Confirm("Are you sure? Deleting the game will kick everyone out.") {
 		g.Socket.Send(message.Message{
-			Type: message.Delete,
+			Type: message.DeleteGame,
 		})
 	}
 }
@@ -160,7 +160,7 @@ func (g *Game) delete() {
 // Start triggers the game to start for everyone.
 func (g *Game) Start() {
 	g.Socket.Send(message.Message{
-		Type: message.StatusChange,
+		Type: message.ChangeGameStatus,
 		Game: &game.Info{
 			Status: game.InProgress,
 		},
@@ -170,7 +170,7 @@ func (g *Game) Start() {
 // finish triggers the game to finish for everyone by checking the players tiles.
 func (g *Game) finish() {
 	g.Socket.Send(message.Message{
-		Type: message.StatusChange,
+		Type: message.ChangeGameStatus,
 		Game: &game.Info{
 			Status: game.Finished,
 		},
@@ -180,7 +180,7 @@ func (g *Game) finish() {
 // snagTile asks the game to give everone a new tile.
 func (g *Game) snagTile() {
 	g.Socket.Send(message.Message{
-		Type: message.Snag,
+		Type: message.SnagGameTile,
 	})
 }
 
@@ -199,7 +199,7 @@ func (g *Game) sendChat(event js.Value) {
 	info := f.Params.Get("chat")
 	f.Reset()
 	m := message.Message{
-		Type: message.Chat,
+		Type: message.GameChat,
 		Info: info,
 	}
 	g.Socket.Send(m)
@@ -229,7 +229,7 @@ func (g *Game) addUnusedTiles(m message.Message) {
 			return
 		}
 	}
-	if m.Type != message.Join {
+	if m.Type != message.JoinGame {
 		message := "adding unused tile"
 		if len(tileStrings) == 1 {
 			message += "s"
@@ -253,7 +253,7 @@ func (g *Game) UpdateInfo(m message.Message) {
 		g.addUnusedTiles(m)
 	}
 	g.canvas.Redraw()
-	if m.Type == message.Join {
+	if m.Type == message.JoinGame {
 		g.setRules(m.Game.Config.Rules())
 		g.id = m.Game.ID
 	}
@@ -339,7 +339,7 @@ func (g *Game) resizeTiles() {
 	}
 	g.canvas.SetTileLength(tileLength)
 	m := message.Message{
-		Type: message.BoardSize,
+		Type: message.RefreshGameBoard,
 	}
 	g.setBoardSize(m)
 }

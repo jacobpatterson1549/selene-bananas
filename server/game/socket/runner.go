@@ -113,7 +113,7 @@ func (r *Runner) addSocket(ctx context.Context, m message.Message) {
 		m2.Type = message.SocketError
 		m2.Info = err.Error()
 	default:
-		m2.Type = message.Infos
+		m2.Type = message.GameInfos
 		m2.Addr = s.Addr
 	}
 	m.AddSocketRequest.Result <- m2
@@ -179,13 +179,13 @@ func (r *Runner) hasSocket(a net.Addr) bool {
 // handleLobbyMessage writes the message to the appropriate sockets in the runner.
 func (r *Runner) handleLobbyMessage(ctx context.Context, m message.Message) {
 	switch m.Type {
-	case message.Infos:
+	case message.GameInfos:
 		r.sendGameInfos(ctx, m)
 	case message.SocketError:
 		r.sendSocketError(ctx, m)
 	case message.PlayerDelete:
 		r.deletePlayer(ctx, m)
-	case message.AddSocket:
+	case message.SocketAdd:
 		r.addSocket(ctx, m)
 	default:
 		r.sendMessageForGame(ctx, m)
@@ -217,7 +217,7 @@ func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out
 		return
 	}
 	switch m.Type {
-	case message.Create, message.Join:
+	case message.CreateGame, message.JoinGame:
 		// NOOP
 	default:
 		games, ok := r.playerGames[m.PlayerName]
@@ -240,7 +240,7 @@ func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out
 	switch m.Type {
 	case message.PlayerDelete:
 		r.removeSocket(ctx, m, out)
-	case message.Leave:
+	case message.LeaveGame:
 		r.leaveGame(ctx, m)
 	default:
 		out <- m
@@ -299,9 +299,9 @@ func (r *Runner) sendMessageForGame(ctx context.Context, m message.Message) {
 	}
 	var addr net.Addr
 	switch m.Type {
-	case message.Join:
+	case message.JoinGame:
 		addr = m.Addr
-	case message.Leave:
+	case message.LeaveGame:
 		defer r.leaveGame(ctx, m)
 		fallthrough
 	default:
@@ -320,7 +320,7 @@ func (r *Runner) sendMessageForGame(ctx context.Context, m message.Message) {
 		return
 	}
 	switch m.Type {
-	case message.Join:
+	case message.JoinGame:
 		r.joinGame(ctx, m, socketIn)
 	default:
 		socketIn <- m
@@ -344,7 +344,7 @@ func (r *Runner) joinGame(ctx context.Context, m message.Message, out chan<- mes
 				return // do not rejoin the game if already joined
 			}
 			m2 := message.Message{
-				Type: message.Leave,
+				Type: message.LeaveGame,
 				Info: "leaving game because it is being played on a different socket",
 			}
 			socketIns := r.playerSockets[m.PlayerName][addr2]
