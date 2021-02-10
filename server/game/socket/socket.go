@@ -16,7 +16,7 @@ import (
 type (
 	// Socket reads and writes messages to the browsers
 	Socket struct {
-		Conn
+		Conn       Conn
 		readActive bool
 		// The reason the read failed.  If a read fails, it is sent as the close message when the socket closes.
 		readCloseReason string
@@ -34,14 +34,14 @@ type (
 		// Log is used to log errors and other information
 		Log *log.Logger
 		// ReadWait is the amout of time that can pass between receiving client messages before timing out.
-		ReadWait time.Duration
+		ReadWait time.Duration //
 		// WriteWait is the amout of time that the socket can take to write a message.
 		WriteWait time.Duration
 		// PingPeriod is how often ping messages should be sent.  Should be less than ReadWait.
 		PingPeriod time.Duration
 		// ActivityPeroid is the amount of time to check for read activity.
 		// Also sends a HTTP ping on a different socket, as Heroku servers shut down if 30 minutes passess between HTTP requests.
-		ActivityCheckPeriod time.Duration
+		ActivityCheckPeriod time.Duration // TODO: add Conn.SetReadDeadline func, delete readActive:bool, rename this to HTTPPingPeriod, change elsewhere
 	}
 
 	// Conn is the connection than backs the socket
@@ -131,7 +131,7 @@ func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- 
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel.
 func (s *Socket) readMessages(ctx context.Context, out chan<- message.Message, wg *sync.WaitGroup) {
 	defer func() {
-		s.Close() // will casue writeMessages() to fail
+		s.Conn.Close() // will casue writeMessages() to fail
 		wg.Done()
 	}()
 	for { // BLOCKING
@@ -160,7 +160,7 @@ func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, 
 	var closeReason string
 	defer func() {
 		s.writeClose(closeReason)
-		s.Close() // will casue readMessages() to fail
+		s.Conn.Close() // will casue readMessages() to fail
 		wg.Done()
 	}()
 	var err error
@@ -216,7 +216,7 @@ func (s *Socket) writeMessage(m message.Message) error {
 	if err := s.Conn.WriteJSON(m); err != nil {
 		return fmt.Errorf("writing socket message: %v", err)
 	}
-	if m.Type == message.PlayerDelete {
+	if m.Type == message.PlayerRemove {
 		return fmt.Errorf("player deleted")
 	}
 	return nil
@@ -242,13 +242,13 @@ func (s *Socket) writeClose(reason string) {
 	s.Log.Print(reason)
 }
 
-// stop cancels timers, closes the connection, and sends a message to remove it
+// stop cancels timers, closes the connection, and notifies the out channel that it is closed.
 func (s *Socket) stop(out chan<- message.Message, pingTicker, activityCheckTicker *time.Ticker) {
 	pingTicker.Stop()
 	activityCheckTicker.Stop()
-	s.Close()
+	s.Conn.Close()
 	m := message.Message{
-		Type:       message.PlayerDelete,
+		Type:       message.SocketClose,
 		PlayerName: s.PlayerName,
 		Addr:       s.Addr,
 	}

@@ -203,7 +203,7 @@ func TestRemoveUser(t *testing.T) {
 		{
 			playerName: "selene",
 			wantM: message.Message{
-				Type:       message.PlayerDelete,
+				Type:       message.PlayerRemove,
 				PlayerName: player.Name("selene"),
 			},
 		},

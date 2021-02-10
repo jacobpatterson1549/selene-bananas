@@ -188,8 +188,8 @@ func (s *Socket) onMessage(event js.Value) {
 		s.handleGameLeave(m)
 	case message.GameInfos:
 		s.lobby.SetGameInfos(m.Games, s.user.Username())
-	case message.PlayerDelete:
-		s.handlePlayerDelete(m)
+	case message.PlayerRemove:
+		s.handlePlayerRemove(m)
 	case message.JoinGame, message.ChangeGameStatus, message.ChangeGameTiles:
 		s.handleInfo(m)
 	case message.SocketError:
@@ -249,8 +249,8 @@ func (s *Socket) handleGameLeave(m message.Message) {
 	}
 }
 
-// handlePlayerDelete closes the socket and logs any info text from the message.
-func (s *Socket) handlePlayerDelete(m message.Message) {
+// handlePlayerRemove closes the socket and logs any info text from the message.
+func (s *Socket) handlePlayerRemove(m message.Message) {
 	s.Close()
 	if len(m.Info) > 0 {
 		s.log.Info(m.Info)

@@ -74,7 +74,7 @@ const (
 	// SocketAdd is used to add a socket for a player.
 	SocketAdd
 	// SocketClose is sent when the socket is closed
-	SocketClose // TODO: use this message Type instead of PlayerDelete when appropriate
-	// PlayerDelete is a MessageType that gets sent to inform the game that a player's account has been deleted.
-	PlayerDelete
+	SocketClose
+	// PlayerRemove is a MessageType that gets sent from the lobby to inform that all sockets should be removed.
+	PlayerRemove
 )

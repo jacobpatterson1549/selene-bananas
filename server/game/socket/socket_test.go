@@ -221,7 +221,7 @@ func TestRunSocket(t *testing.T) {
 			stopFunc: func(cancelFunc context.CancelFunc, in chan<- message.Message) {
 				// the "out" stream is shared, the socket is cancelled by telling it that the player has been deleted through the in stream.
 				m := message.Message{
-					Type: message.PlayerDelete,
+					Type: message.PlayerRemove,
 				}
 				in <- m
 			},
@@ -286,8 +286,8 @@ func TestRunSocket(t *testing.T) {
 			wg.Wait()
 			got := <-out
 			switch {
-			case got.Type != message.PlayerDelete, got.PlayerName != s.PlayerName, got.Addr != addr:
-				t.Errorf("Test %v: wanted playerDelete with socket address and player name", i)
+			case got.Type != message.SocketClose, got.PlayerName != s.PlayerName, got.Addr != addr:
+				t.Errorf("Test %v: wanted SocketClose with socket address and player name", i)
 			}
 		}
 	}
@@ -443,10 +443,10 @@ func TestSocketWriteMessages(t *testing.T) {
 		},
 		{ // socket/player removed
 			m: message.Message{
-				Type: message.PlayerDelete,
+				Type: message.PlayerRemove,
 			},
 			wantM: message.Message{
-				Type: message.PlayerDelete,
+				Type: message.PlayerRemove,
 			},
 		},
 		{ // write error

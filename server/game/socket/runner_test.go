@@ -1023,7 +1023,29 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 			wantOk:          true,
 			skipOutSend:     true, // don't tell the game the socket is not listening
 		},
-		{ // player delete
+		{ // leave game when player not in any game
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{},
+			m: message.Message{
+				Type:       message.LeaveGame,
+				PlayerName: "fred",
+				Addr:       addr2,
+				Game: &game.Info{
+					ID: 9,
+				},
+			},
+			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
+		},
+		{ // socket close
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
 				"fred": {
 					addr1: nil,
@@ -1035,12 +1057,28 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 				},
 			},
 			m: message.Message{
-				Type:       message.PlayerDelete,
+				Type:       message.SocketClose,
 				PlayerName: "fred",
 				Addr:       addr1,
 				Game: &game.Info{
 					ID: 9,
 				},
+			},
+			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
+			wantPlayerGames:   map[player.Name]map[game.ID]net.Addr{},
+			wantOk:            true,
+		},
+		{ // socket close when not in any game
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: nil,
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{},
+			m: message.Message{
+				Type:       message.SocketClose,
+				PlayerName: "fred",
+				Addr:       addr1,
 			},
 			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
 			wantPlayerGames:   map[player.Name]map[game.ID]net.Addr{},
@@ -1100,9 +1138,9 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 	}
 }
 
-// TestRunnerHandleGameMessageDeletePlayer needs extra code to verify the sockets are closed.
+// TestRunnerHandleLobbyMessagePlayerRemove needs extra code to verify the sockets are closed.
 // This test alse tests the flow of game messages from the Run function.
-func TestRunnerHandleGameMessageDeletePlayer(t *testing.T) {
+func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 	c1 := make(chan message.Message)
 	c2 := make(chan message.Message, 1)
 	c3 := make(chan message.Message)
@@ -1130,7 +1168,7 @@ func TestRunnerHandleGameMessageDeletePlayer(t *testing.T) {
 		},
 	}
 	m := message.Message{
-		Type:       message.PlayerDelete,
+		Type:       message.PlayerRemove,
 		PlayerName: "fred",
 	}
 	wantPlayerSockets := map[player.Name]map[net.Addr]chan<- message.Message{

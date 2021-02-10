@@ -183,8 +183,8 @@ func (r *Runner) handleLobbyMessage(ctx context.Context, m message.Message) {
 		r.sendGameInfos(ctx, m)
 	case message.SocketError:
 		r.sendSocketError(ctx, m)
-	case message.PlayerDelete:
-		r.deletePlayer(ctx, m)
+	case message.PlayerRemove:
+		r.removePlayer(ctx, m)
 	case message.SocketAdd:
 		r.addSocket(ctx, m)
 	default:
@@ -212,12 +212,12 @@ func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out
 		r.Log.Printf("Received message from '%v' from unknown address: %v.  Cannot send message back.", m.PlayerName, m.Addr)
 		return
 	}
-	if m.Game == nil {
+	if m.Game == nil && m.Type != message.SocketClose {
 		r.Log.Printf("Received message without game: %v", m)
 		return
 	}
 	switch m.Type {
-	case message.CreateGame, message.JoinGame:
+	case message.CreateGame, message.JoinGame, message.SocketClose:
 		// NOOP
 	default:
 		games, ok := r.playerGames[m.PlayerName]
@@ -238,7 +238,7 @@ func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out
 		}
 	}
 	switch m.Type {
-	case message.PlayerDelete:
+	case message.SocketClose:
 		r.removeSocket(ctx, m, out)
 	case message.LeaveGame:
 		r.leaveGame(ctx, m)
@@ -368,7 +368,9 @@ func (r *Runner) removeSocket(ctx context.Context, m message.Message, out chan<-
 	if len(r.playerSockets[m.PlayerName]) == 0 {
 		delete(r.playerSockets, m.PlayerName)
 	}
-	r.leaveGame(ctx, m)
+	if m.Game != nil {
+		r.leaveGame(ctx, m)
+	}
 	out <- m
 }
 
@@ -380,8 +382,8 @@ func (r *Runner) leaveGame(ctx context.Context, m message.Message) {
 	}
 }
 
-// deletePlayer removes the player's sockets and games.
-func (r *Runner) deletePlayer(ctx context.Context, m message.Message) {
+// removePlayer removes the player's sockets and games.
+func (r *Runner) removePlayer(ctx context.Context, m message.Message) {
 	delete(r.playerGames, m.PlayerName)
 	addrs := r.playerSockets[m.PlayerName]
 	delete(r.playerSockets, m.PlayerName)

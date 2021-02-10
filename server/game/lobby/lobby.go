@@ -123,10 +123,10 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 	return nil
 }
 
-// RemoveUser removes the user from the lobby and a game, if any.
+// RemoveUser removes all sockets for the user from the lobby.
 func (l *Lobby) RemoveUser(username string) {
 	m := message.Message{
-		Type:       message.PlayerDelete,
+		Type:       message.PlayerRemove,
 		PlayerName: player.Name(username),
 	}
 	l.socketMessages <- m
