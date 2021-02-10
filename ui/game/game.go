@@ -59,7 +59,7 @@ func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		"create":            dom.NewJsFunc(g.startCreate),
 		"createWithConfig":  dom.NewJsEventFunc(g.createWithConfig),
 		"join":              dom.NewJsEventFunc(g.join),
-		"leave":             dom.NewJsFunc(g.Leave),
+		"leave":             dom.NewJsFunc(g.sendLeave),
 		"delete":            dom.NewJsFunc(g.delete),
 		"start":             dom.NewJsFunc(g.Start),
 		"finish":            dom.NewJsFunc(g.finish),
@@ -132,11 +132,16 @@ func (g Game) ID() game.ID {
 	return g.id
 }
 
-// Leave changes the view for game by hiding it.
-func (g *Game) Leave() {
+// sendLeave tells the server to stop sending messages to it and changes tabs.
+func (g *Game) sendLeave() {
 	g.Socket.Send(message.Message{
 		Type: message.Leave,
 	})
+	g.Leave()
+}
+
+// Leave changes the view for game by hiding it.
+func (g *Game) Leave() {
 	g.id = 0
 	g.setFinalBoards(nil)
 	g.hide(true)
