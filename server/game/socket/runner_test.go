@@ -49,7 +49,7 @@ func newSocketRunner(maxSockets int, maxPlayerSockets int, uf upgradeFunc) *Runn
 		},
 		playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
 		playerGames:   make(map[player.Name]map[game.ID]net.Addr),
-		RunnerConfig: cfg,
+		RunnerConfig:  cfg,
 	}
 	return &sm
 }
@@ -65,8 +65,8 @@ func TestNewRunner(t *testing.T) {
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
 	newRunnerTests := []struct {
 		RunnerConfig RunnerConfig
-		wantOk        bool
-		want          *Runner
+		wantOk       bool
+		want         *Runner
 	}{
 		{},
 		{ // no log
@@ -457,6 +457,7 @@ func TestRunnerAddSecondSocket(t *testing.T) {
 		}
 	}
 }
+
 func TestRunnerHandleLobbyMessage(t *testing.T) {
 	addr1 := mockAddr("addr1")
 	addr2 := mockAddr("addr2")
@@ -722,6 +723,27 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				AddSocketRequest: &message.AddSocketRequest{},
 			},
 			wantErr: true,
+		},
+		{ // player join game.  The lobby sends this when a player creates a game.
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"barney": {
+					addr1: make(chan<- message.Message, 1),
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{},
+			m: message.Message{
+				Type:       message.Join,
+				PlayerName: "barney",
+				Game: &game.Info{
+					ID: 3,
+				},
+				Addr: addr1,
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+				"barney": {
+					3: addr1,
+				},
+			},
 		},
 	}
 	for i, test := range handleLobbyMessageTests {

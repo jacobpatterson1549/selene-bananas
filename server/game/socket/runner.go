@@ -292,30 +292,41 @@ func (r *Runner) sendSocketError(ctx context.Context, m message.Message) {
 func (r *Runner) sendMessageForGame(ctx context.Context, m message.Message) {
 	if m.Game == nil {
 		r.Log.Printf("no 'game' to send game message for in %v", m)
-	}
-	switch m.Type {
-	case message.Leave:
-		defer r.leaveGame(ctx, m)
-	}
-	games, ok := r.playerGames[m.PlayerName]
-	if !ok {
-		return
-	}
-	addr, ok := games[m.Game.ID]
-	if !ok {
 		return
 	}
 	socketAddrs, ok := r.playerSockets[m.PlayerName]
 	if !ok {
-		r.Log.Printf("could not send game socket error to %v, socket addrs not found - message: (%v)", m.PlayerName, m)
+		r.Log.Printf("could not send game message to %v, socket addrs not found - message: (%v)", m.PlayerName, m)
 		return
+	}
+	var addr net.Addr
+	switch m.Type {
+	case message.Join:
+		addr = m.Addr
+	case message.Leave:
+		defer r.leaveGame(ctx, m)
+		fallthrough
+	default:
+		games, ok := r.playerGames[m.PlayerName]
+		if !ok {
+			return // don't worry if player not connected
+		}
+		addr, ok = games[m.Game.ID]
+		if !ok {
+			return // don't worry if player not observing game
+		}
 	}
 	socketIn, ok := socketAddrs[addr]
 	if !ok {
-		r.Log.Printf("could not send game socket error to %v at %v - message: (%v)", m.PlayerName, addr, m)
+		r.Log.Printf("could not send game message to %v at %v - message: (%v)", m.PlayerName, addr, m)
 		return
 	}
-	socketIn <- m
+	switch m.Type {
+	case message.Join:
+		r.joinGame(ctx, m, socketIn)
+	default:
+		socketIn <- m
+	}
 }
 
 // joinGame adds the socket to the game.

@@ -280,6 +280,7 @@ func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, send mess
 		return fmt.Errorf("creating board message: %w", err)
 	}
 	m2.Info = "joining game"
+	m2.Addr = m.Addr
 	send(*m2)
 	gamePlayers := g.playerNames() // also called in g.ResizeBoard
 	for n := range g.players {
