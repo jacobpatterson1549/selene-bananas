@@ -1,5 +1,5 @@
 <div class="lobby">
-    <form method="get" action="/ping" onsubmit="user.request(event)" class="ping" hidden>
+    <form method="post" action="/ping" onsubmit="user.request(event)" class="ping" hidden>
         {{ template "username.html" . }}
         <input type="submit" disabled>
     </form>

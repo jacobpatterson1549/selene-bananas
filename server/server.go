@@ -335,8 +335,6 @@ func (s Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 		s.handleFile(w, r, s.serveFile("resources"+r.URL.Path))
 	case "/lobby":
 		s.handleUserLobby(w, r)
-	case "/ping":
-		s.handleHTTPPing(w, r)
 	case "/monitor":
 		s.handleMonitor(w, r)
 	default:
@@ -365,6 +363,8 @@ func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
 		s.handleUserUpdatePassword(w, r)
 	case "/user_delete":
 		s.handleUserDelete(w, r)
+	case "/ping":
+		// NOOP
 	default:
 		s.httpError(w, http.StatusNotFound)
 	}
@@ -443,13 +443,6 @@ func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.Handl
 		w.Header().Set(HeaderContentEncoding, "gzip")
 	}
 	fn(w, r)
-}
-
-// handleHTTPPing ensures the ping is for a valid user.
-func (s Server) handleHTTPPing(w http.ResponseWriter, r *http.Request) {
-	if err := s.checkTokenUsername(r); err != nil {
-		s.httpError(w, http.StatusUnauthorized)
-	}
 }
 
 // httpError writes the error status code.
