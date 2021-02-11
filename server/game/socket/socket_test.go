@@ -19,8 +19,10 @@ import (
 )
 
 type mockConn struct {
-	ReadJSONFunc               func(m *message.Message) error
-	WriteJSONFunc              func(m message.Message) error
+	ReadMessageFunc            func(m *message.Message) error
+	WriteMessageFunc           func(m message.Message) error
+	SetReadDeadlineFunc        func(t time.Time) error
+	SetWriteDeadlineFunc       func(t time.Time) error
 	CloseFunc                  func() error
 	WritePingFunc              func() error
 	WriteCloseFunc             func(reason string) error
@@ -28,12 +30,20 @@ type mockConn struct {
 	RemoteAddrFunc             func() net.Addr
 }
 
-func (c *mockConn) ReadJSON(m *message.Message) error {
-	return c.ReadJSONFunc(m)
+func (c *mockConn) ReadMessage(m *message.Message) error {
+	return c.ReadMessageFunc(m)
 }
 
-func (c *mockConn) WriteJSON(m message.Message) error {
-	return c.WriteJSONFunc(m)
+func (c *mockConn) WriteMessage(m message.Message) error {
+	return c.WriteMessageFunc(m)
+}
+
+func (c *mockConn) SetReadDeadline(t time.Time) error {
+	return c.SetReadDeadlineFunc(t)
+}
+
+func (c *mockConn) SetWriteDeadline(t time.Time) error {
+	return c.SetWriteDeadlineFunc(t)
 }
 
 func (c *mockConn) Close() error {
@@ -84,6 +94,7 @@ func (a mockAddr) String() string {
 
 func TestNewSocket(t *testing.T) {
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
+	timeFunc := func() int64 { return 0 }
 	pn := player.Name("selene")
 	addr := mockAddr("selene.pc")
 	conn0 := &mockConn{}
@@ -108,12 +119,21 @@ func TestNewSocket(t *testing.T) {
 			Conn:       conn0,
 			remoteAddr: addr,
 		},
-		{ // bad ReadWait
+		{ // no timeFunc
 			playerName: pn,
 			Conn:       conn0,
 			remoteAddr: addr,
 			Config: Config{
 				Log: testLog,
+			},
+		},
+		{ // bad ReadWait
+			playerName: pn,
+			Conn:       conn0,
+			remoteAddr: addr,
+			Config: Config{
+				Log:      testLog,
+				TimeFunc: timeFunc,
 			},
 		},
 		{ // bad WriteWait
@@ -122,6 +142,7 @@ func TestNewSocket(t *testing.T) {
 			remoteAddr: addr,
 			Config: Config{
 				Log:      testLog,
+				TimeFunc: timeFunc,
 				ReadWait: 2 * time.Hour,
 			},
 		},
@@ -131,6 +152,7 @@ func TestNewSocket(t *testing.T) {
 			remoteAddr: addr,
 			Config: Config{
 				Log:       testLog,
+				TimeFunc:  timeFunc,
 				ReadWait:  2 * time.Hour,
 				WriteWait: 2 * time.Hour,
 			},
@@ -141,21 +163,23 @@ func TestNewSocket(t *testing.T) {
 			remoteAddr: addr,
 			Config: Config{
 				Log:        testLog,
+				TimeFunc:   timeFunc,
 				ReadWait:   2 * time.Hour,
 				WriteWait:  2 * time.Hour,
 				PingPeriod: 1 * time.Hour,
 			},
 		},
-		{ // PingPeriod not less than ReadWait
+		{ // PingPeriod not less than WriteWait
 			playerName: pn,
 			Conn:       conn0,
 			remoteAddr: addr,
 			Config: Config{
-				Log:                 testLog,
-				ReadWait:            1 * time.Hour,
-				WriteWait:           2 * time.Hour,
-				PingPeriod:          1 * time.Hour,
-				ActivityCheckPeriod: 15 * time.Hour,
+				Log:            testLog,
+				TimeFunc:       timeFunc,
+				ReadWait:       1 * time.Hour,
+				WriteWait:      2 * time.Hour,
+				PingPeriod:     1 * time.Hour,
+				HTTPPingPeriod: 15 * time.Hour,
 			},
 		},
 		{ // ok
@@ -163,22 +187,23 @@ func TestNewSocket(t *testing.T) {
 			Conn:       conn0,
 			remoteAddr: addr,
 			Config: Config{
-				Log:                 testLog,
-				ReadWait:            2 * time.Hour,
-				WriteWait:           2 * time.Hour,
-				PingPeriod:          1 * time.Hour,
-				ActivityCheckPeriod: 15 * time.Hour,
+				Log:            testLog,
+				TimeFunc:       timeFunc,
+				ReadWait:       2 * time.Hour,
+				WriteWait:      2 * time.Hour,
+				PingPeriod:     4 * time.Hour,
+				HTTPPingPeriod: 15 * time.Hour,
 			},
 			want: &Socket{
 				PlayerName: pn,
 				Addr:       addr,
 				Conn:       conn0,
 				Config: Config{
-					Log:                 testLog,
-					ReadWait:            2 * time.Hour,
-					WriteWait:           2 * time.Hour,
-					PingPeriod:          1 * time.Hour,
-					ActivityCheckPeriod: 15 * time.Hour,
+					Log:            testLog,
+					ReadWait:       2 * time.Hour,
+					WriteWait:      2 * time.Hour,
+					PingPeriod:     4 * time.Hour,
+					HTTPPingPeriod: 15 * time.Hour,
 				},
 			},
 			wantOk: true,
@@ -200,6 +225,7 @@ func TestNewSocket(t *testing.T) {
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		default:
+			got.TimeFunc = nil // funcs cannot be compared
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("Test %v: sockets not equal:\nwanted: %v\ngot:    %v", i, test.want, got)
 			}
@@ -234,9 +260,12 @@ func TestRunSocket(t *testing.T) {
 		var wg sync.WaitGroup
 		wg.Add(3)
 		conn := mockConn{
-			ReadJSONFunc: func(m *message.Message) error {
+			ReadMessageFunc: func(m *message.Message) error {
 				<-readBlocker
 				return errors.New("unexpected close")
+			},
+			SetReadDeadlineFunc: func(t time.Time) error {
+				return nil
 			},
 			IsUnexpectedCloseErrorFunc: func(err error) bool {
 				return true
@@ -250,7 +279,7 @@ func TestRunSocket(t *testing.T) {
 				}
 				return nil
 			},
-			WriteJSONFunc: func(m message.Message) error {
+			WriteMessageFunc: func(m message.Message) error {
 				return nil
 			},
 			WriteCloseFunc: func(reason string) error {
@@ -258,18 +287,18 @@ func TestRunSocket(t *testing.T) {
 			},
 		}
 		cfg := Config{
-			Log:                 log.New(ioutil.Discard, "test", log.LstdFlags),
-			ReadWait:            2 * time.Hour,
-			WriteWait:           2 * time.Hour,
-			PingPeriod:          1 * time.Hour,
-			ActivityCheckPeriod: 3 * time.Hour,
+			Log:            log.New(ioutil.Discard, "test", log.LstdFlags),
+			TimeFunc:       func() int64 { return 0 },
+			ReadWait:       2 * time.Hour,
+			WriteWait:      2 * time.Hour,
+			PingPeriod:     1 * time.Hour,
+			HTTPPingPeriod: 3 * time.Hour,
 		}
 		addr := mockAddr("some.addr")
 		s := Socket{
-			Conn:       &conn,
-			Config:     cfg,
-			readActive: true,
-			Addr:       addr,
+			Conn:   &conn,
+			Config: cfg,
+			Addr:   addr,
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
@@ -277,18 +306,13 @@ func TestRunSocket(t *testing.T) {
 		in := make(chan message.Message)
 		out := make(chan message.Message)
 		s.Run(ctx, in, out)
+		close(readBlocker)
+		test.stopFunc(cancelFunc, in)
+		wg.Wait()
+		got := <-out
 		switch {
-		case s.readActive:
-			t.Errorf("Test %v: socket should be set to not active when starting a run", i)
-		default:
-			close(readBlocker)
-			test.stopFunc(cancelFunc, in)
-			wg.Wait()
-			got := <-out
-			switch {
-			case got.Type != message.SocketClose, got.PlayerName != s.PlayerName, got.Addr != addr:
-				t.Errorf("Test %v: wanted SocketClose with socket address and player name", i)
-			}
+		case got.Type != message.SocketClose, got.PlayerName != s.PlayerName, got.Addr != addr:
+			t.Errorf("Test %v: wanted SocketClose with socket address and player name", i)
 		}
 	}
 }
@@ -330,7 +354,7 @@ func TestSocketReadMessages(t *testing.T) {
 		testIn := make(chan message.Message)
 		defer close(testIn)
 		conn := mockConn{
-			ReadJSONFunc: func(m *message.Message) error {
+			ReadMessageFunc: func(m *message.Message) error {
 				src := <-testIn
 				if test.readMessageErr != nil {
 					return test.readMessageErr
@@ -339,6 +363,9 @@ func TestSocketReadMessages(t *testing.T) {
 					src.Game = &game.Info{}
 				}
 				mockConnReadMessage(m, src)
+				return nil
+			},
+			SetReadDeadlineFunc: func(t time.Time) error {
 				return nil
 			},
 			IsUnexpectedCloseErrorFunc: func(err error) bool {
@@ -356,8 +383,9 @@ func TestSocketReadMessages(t *testing.T) {
 		s := Socket{
 			Conn: &conn,
 			Config: Config{
-				Log:   log,
-				Debug: test.debug,
+				Log:      log,
+				TimeFunc: func() int64 { return 0 },
+				Debug:    test.debug,
 			},
 			PlayerName: pn,
 			Addr:       addr,
@@ -376,11 +404,6 @@ func TestSocketReadMessages(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			wg.Wait()
-			if s.readActive {
-				t.Errorf("Test %v: wanted socket to be not active because it failed after reading a message", i)
-			}
-		case !s.readActive:
-			t.Errorf("Test %v: wanted socket to still be active", i)
 		case test.debug:
 			if bb.Len() == 0 {
 				t.Errorf("Test %v: wanted message to be logged", i)
@@ -413,8 +436,7 @@ func TestSocketWriteMessages(t *testing.T) {
 		writeErr     error
 		pingTick     bool
 		pingErr      error
-		activityTick bool
-		readActive   bool
+		httpPingTick bool
 		wantOk       bool
 		debug        bool
 	}{
@@ -461,20 +483,15 @@ func TestSocketWriteMessages(t *testing.T) {
 			pingTick: true,
 			pingErr:  errors.New("error writing ping"),
 		},
-		{ // activity check: ok
-			activityTick: true,
+		{ // httpPing: ok
+			httpPingTick: true,
 			wantM: message.Message{
 				Type: message.SocketHTTPPing,
 			},
-			readActive: true,
 			wantOk:     true,
 		},
-		{ // activity check, but no recent read activity
-			activityTick: true,
-		},
 		{ // activity check, but ping write fails
-			activityTick: true,
-			readActive:   true,
+			httpPingTick: true,
 			writeErr:     errors.New("error writing activity check ping"),
 		},
 	}
@@ -484,23 +501,27 @@ func TestSocketWriteMessages(t *testing.T) {
 		pingTicker := &time.Ticker{
 			C: pingC,
 		}
-		activityCheckC := make(chan time.Time, 1)
-		activityCheckTicker := &time.Ticker{
-			C: activityCheckC,
+		httpPingC := make(chan time.Time, 1)
+		httpPingTicker := &time.Ticker{
+			C: httpPingC,
 		}
+		closed := false
 		conn := mockConn{
 			CloseFunc: func() error {
+				closed = true
 				return nil
 			},
-			WriteJSONFunc: func(m message.Message) error {
+			WriteMessageFunc: func(m message.Message) error {
 				writtenMessages <- m
 				return test.writeErr
+			},
+			SetWriteDeadlineFunc: func(t time.Time) error {
+				return nil
 			},
 			WriteCloseFunc: func(reason string) error {
 				return nil
 			},
 			WritePingFunc: func() error {
-				close(pingC)
 				return test.pingErr
 			},
 		}
@@ -509,8 +530,9 @@ func TestSocketWriteMessages(t *testing.T) {
 		s := Socket{
 			Conn: &conn,
 			Config: Config{
-				Log:   log,
-				Debug: test.debug,
+				Log:      log,
+				TimeFunc: func() int64 { return 0 },
+				Debug:    test.debug,
 			},
 		}
 		ctx := context.Background()
@@ -527,32 +549,23 @@ func TestSocketWriteMessages(t *testing.T) {
 			close(out)
 		case test.pingTick:
 			pingC <- time.Now()
-		case test.activityTick:
-			if test.readActive {
-				s.readActive = true
-			}
-			activityCheckC <- time.Now()
+		case test.httpPingTick:
+			httpPingC <- time.Now()
 		default:
 			out <- test.m
 		}
-		go s.writeMessages(ctx, out, &wg, pingTicker, activityCheckTicker)
+		go s.writeMessages(ctx, out, &wg, pingTicker, httpPingTicker)
 		switch {
 		case !test.wantOk:
 			wg.Wait()
-			if s.readActive {
-				t.Errorf("Test %v: wanted socket to be not active because it failed after reading a message", i)
+			if !closed {
+				t.Errorf("Test %v: wanted socket to be not active because it failed after writing a message", i)
 			}
-		case test.pingTick:
-			if _, ok := <-pingC; !ok {
-				t.Errorf("Test %v: wanted websocket ping to close mock ping channel", i)
-			}
-		default:
+		case !test.pingTick:
 			gotM := <-writtenMessages
 			switch {
 			case !reflect.DeepEqual(test.wantM, gotM):
 				t.Errorf("Test %v: messages not equal:\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
-			case test.activityTick && s.readActive:
-				t.Errorf("Test %v: wanted socket to not be active after activity check tick", i)
 			case test.debug:
 				if bb.Len() == 0 {
 					t.Errorf("Test %v: wanted message to be logged", i)
