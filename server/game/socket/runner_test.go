@@ -31,11 +31,12 @@ func (u mockUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn, err
 func newSocketRunner(maxSockets int, maxPlayerSockets int, uf upgradeFunc) *Runner {
 	log := log.New(ioutil.Discard, "test", log.LstdFlags)
 	socketCfg := Config{
-		Log:                 log,
-		ReadWait:            2 * time.Hour,
-		WriteWait:           1 * time.Hour,
-		PingPeriod:          1 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
-		ActivityCheckPeriod: 3 * time.Hour,
+		Log:            log,
+		TimeFunc:       func() int64 { return 0 },
+		ReadWait:       2 * time.Hour,
+		WriteWait:      1 * time.Hour,
+		PingPeriod:     2 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
+		HTTPPingPeriod: 3 * time.Hour,
 	}
 	cfg := RunnerConfig{
 		Log:              log,
@@ -185,11 +186,12 @@ func TestRunnerAddSocketCheckResult(t *testing.T) {
 				MaxSockets:       1,
 				MaxPlayerSockets: 1,
 				SocketConfig: Config{
-					Log:                 log.New(ioutil.Discard, "scLog", log.LstdFlags),
-					ReadWait:            2 * time.Hour,
-					WriteWait:           1 * time.Hour,
-					PingPeriod:          1 * time.Hour,
-					ActivityCheckPeriod: 3 * time.Hour,
+					Log:            log.New(ioutil.Discard, "scLog", log.LstdFlags),
+					TimeFunc:       func() int64 { return 0 },
+					ReadWait:       2 * time.Hour,
+					WriteWait:      1 * time.Hour,
+					PingPeriod:     2 * time.Hour,
+					HTTPPingPeriod: 3 * time.Hour,
 				},
 			},
 			upgrader: mockUpgrader{
@@ -198,7 +200,10 @@ func TestRunnerAddSocketCheckResult(t *testing.T) {
 						RemoteAddrFunc: func() net.Addr {
 							return addr
 						},
-						ReadJSONFunc: func(m *message.Message) error {
+						SetReadDeadlineFunc: func(t time.Time) error {
+							return nil
+						},
+						ReadMessageFunc: func(m *message.Message) error {
 							<-readBlocker
 							mockConnReadMinimalMessage(m)
 							return nil
@@ -278,11 +283,12 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			maxSockets:       1,
 			maxPlayerSockets: 1,
 			Config: Config{
-				Log:                 log.New(ioutil.Discard, "scLog", log.LstdFlags),
-				ReadWait:            2 * time.Hour,
-				WriteWait:           1 * time.Hour,
-				PingPeriod:          1 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
-				ActivityCheckPeriod: 3 * time.Hour,
+				Log:            log.New(ioutil.Discard, "scLog", log.LstdFlags),
+				TimeFunc:       func() int64 { return 0 },
+				ReadWait:       2 * time.Hour,
+				WriteWait:      1 * time.Hour,
+				PingPeriod:     2 * time.Hour,
+				HTTPPingPeriod: 3 * time.Hour,
 			},
 			wantOk: true,
 		},
@@ -300,13 +306,16 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 				RemoteAddrFunc: func() net.Addr {
 					return addr
 				},
-				ReadJSONFunc: func(m *message.Message) error {
+				ReadMessageFunc: func(m *message.Message) error {
 					<-readBlocker1
 					if !socketRun {
 						socketRun = true
 						close(readBlocker2)
 					}
 					mockConnReadMinimalMessage(m)
+					return nil
+				},
+				SetReadDeadlineFunc: func(t time.Time) error {
 					return nil
 				},
 			}, nil
@@ -418,14 +427,20 @@ func TestRunnerAddSecondSocket(t *testing.T) {
 					RemoteAddrFunc: func() net.Addr {
 						return mockAddr(socket1Addr)
 					},
-					ReadJSONFunc: readJSONFunc,
+					ReadMessageFunc: readJSONFunc,
+					SetReadDeadlineFunc: func(t time.Time) error {
+						return nil
+					},
 				}, nil
 			case 2:
 				return &mockConn{
 					RemoteAddrFunc: func() net.Addr {
 						return mockAddr(test.socket2Addr)
 					},
-					ReadJSONFunc: readJSONFunc,
+					ReadMessageFunc: readJSONFunc,
+					SetReadDeadlineFunc: func(t time.Time) error {
+						return nil
+					},
 				}, nil
 			default:
 				return nil, errors.New("too many calls to upgrade")

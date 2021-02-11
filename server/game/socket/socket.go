@@ -16,8 +16,7 @@ import (
 type (
 	// Socket reads and writes messages to the browsers
 	Socket struct {
-		Conn       Conn
-		readActive bool
+		Conn Conn
 		// The reason the read failed.  If a read fails, it is sent as the close message when the socket closes.
 		readCloseReason string
 		// The reason the writing by by the connection is stopping.  Is sent as the connection close reason if there is no read close reason.
@@ -34,22 +33,28 @@ type (
 		// Log is used to log errors and other information
 		Log *log.Logger
 		// ReadWait is the amout of time that can pass between receiving client messages before timing out.
-		ReadWait time.Duration //
+		ReadWait time.Duration
 		// WriteWait is the amout of time that the socket can take to write a message.
 		WriteWait time.Duration
-		// PingPeriod is how often ping messages should be sent.  Should be less than ReadWait.
+		// PingPeriod is how often ping messages should be sent.  Should be less than WriteWait.
 		PingPeriod time.Duration
-		// ActivityPeroid is the amount of time to check for read activity.
-		// Also sends a HTTP ping on a different socket, as Heroku servers shut down if 30 minutes passess between HTTP requests.
-		ActivityCheckPeriod time.Duration // TODO: add Conn.SetReadDeadline func, delete readActive:bool, rename this to HTTPPingPeriod, change elsewhere
+		// HTTPPingPeriod is how frequently to ask the client to send an HTTP request, as Heroku servers shut down if 30 minutes passess between HTTP requests.
+		HTTPPingPeriod time.Duration
+		// TimeFunc is a function which should supply the current time since the unix epoch.
+		// Used to update the read deadline.
+		TimeFunc func() int64
 	}
 
 	// Conn is the connection than backs the socket
 	Conn interface {
-		// ReadJSON reads the next json message from the connection.
-		ReadJSON(m *message.Message) error
-		// WriteJSON writes the message as json to the connection.
-		WriteJSON(m message.Message) error
+		// ReadJSON reads the next message from the connection.
+		ReadMessage(m *message.Message) error
+		// WriteJSON writes the message to the connection.
+		WriteMessage(m message.Message) error
+		// SetReadDeadline sets how long a read can take before it returns an error.
+		SetReadDeadline(t time.Time) error
+		// SetWriteDeadline sets how long a read can take before it returns an error.
+		SetWriteDeadline(t time.Time) error
 		// Close closes the connection.
 		Close() error
 		// WritePing writes a ping message on the connection.
@@ -94,16 +99,18 @@ func (cfg Config) validate(pn player.Name, conn Conn) (net.Addr, error) {
 		return nil, fmt.Errorf("remote address of connection required")
 	case cfg.Log == nil:
 		return nil, fmt.Errorf("log required")
+	case cfg.TimeFunc == nil:
+		return nil, fmt.Errorf("time func required")
 	case cfg.ReadWait <= 0:
 		return nil, fmt.Errorf("positive read wait period required")
 	case cfg.WriteWait <= 0:
 		return nil, fmt.Errorf("positive write wait period required")
 	case cfg.PingPeriod <= 0:
 		return nil, fmt.Errorf("positive ping period required")
-	case cfg.ActivityCheckPeriod <= 0:
-		return nil, fmt.Errorf("positive activity check period required")
-	case cfg.PingPeriod >= cfg.ReadWait:
-		return nil, fmt.Errorf("ping period should be less than read wait")
+	case cfg.HTTPPingPeriod <= 0:
+		return nil, fmt.Errorf("positive http ping period required")
+	case cfg.PingPeriod <= cfg.WriteWait:
+		return nil, fmt.Errorf("ping period should be greater than write wait")
 	}
 	return a, nil
 }
@@ -114,17 +121,16 @@ func (cfg Config) validate(pn player.Name, conn Conn) (net.Addr, error) {
 // The Socket runs until the connection fails for an unexpected reason or the context is cancelled.
 func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- message.Message) {
 	pingTicker := time.NewTicker(s.PingPeriod)
-	activityCheckTicker := time.NewTicker(s.ActivityCheckPeriod)
+	httpPingTicker := time.NewTicker(s.HTTPPingPeriod)
 	var wg sync.WaitGroup
 	go func() {
 		wg.Wait()
-		s.stop(out, pingTicker, activityCheckTicker)
+		s.stop(out, pingTicker, httpPingTicker)
 	}()
-	s.readActive = false
 	wg.Add(1)
 	go s.readMessages(ctx, out, &wg)
 	wg.Add(1)
-	go s.writeMessages(ctx, in, &wg, pingTicker, activityCheckTicker)
+	go s.writeMessages(ctx, in, &wg, pingTicker, httpPingTicker)
 }
 
 // readMessages receives messages from the connected socket and writes the to the messages channel.
@@ -135,7 +141,12 @@ func (s *Socket) readMessages(ctx context.Context, out chan<- message.Message, w
 		wg.Done()
 	}()
 	for { // BLOCKING
-		m, err := s.readMessage()
+		if err := s.refreshDeadline(s.Conn.SetReadDeadline, s.ReadWait); err != nil {
+			reason := fmt.Sprintf("setting read deadline: %v", err)
+			s.writeClose(reason)
+			return
+		}
+		m, err := s.readMessage() // BLOCKING
 		select {
 		case <-ctx.Done():
 			return
@@ -149,14 +160,13 @@ func (s *Socket) readMessages(ctx context.Context, out chan<- message.Message, w
 			}
 		}
 		out <- *m
-		s.readActive = true
 	}
 }
 
 // writeMessages sends messages from the outbound messages channel to the connected socket.
 // Messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel.
 // The tickers are used to periodically write messages or check for read activity.
-func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, wg *sync.WaitGroup, pingTicker, activityCheckTicker *time.Ticker) {
+func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, wg *sync.WaitGroup, pingTicker, httpPingTicker *time.Ticker) {
 	var closeReason string
 	defer func() {
 		s.writeClose(closeReason)
@@ -176,9 +186,13 @@ func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, 
 			}
 			err = s.writeMessage(m)
 		case <-pingTicker.C:
-			err = s.Conn.WritePing()
-		case <-activityCheckTicker.C:
-			err = s.handleActivityCheck()
+			if err = s.refreshDeadline(s.Conn.SetWriteDeadline, s.WriteWait); err != nil {
+				err = fmt.Errorf("setting write deadline: %v", err)
+			} else {
+				err = s.Conn.WritePing()
+			}
+		case <-httpPingTicker.C:
+			err = s.handleHTTPPing()
 		}
 		if err != nil {
 			closeReason = fmt.Sprintf("writing socket messages stopped for player %v: %v", s, err)
@@ -190,7 +204,7 @@ func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, 
 // readMessage reads the next message from the connection.
 func (s *Socket) readMessage() (*message.Message, error) {
 	var m message.Message
-	if err := s.Conn.ReadJSON(&m); err != nil { // BLOCKING
+	if err := s.Conn.ReadMessage(&m); err != nil { // BLOCKING
 		if s.Conn.IsUnexpectedCloseError(err) {
 			return nil, fmt.Errorf("unexpected socket closure: %v", err)
 		}
@@ -213,7 +227,7 @@ func (s *Socket) writeMessage(m message.Message) error {
 	if s.Debug {
 		s.Log.Printf("socket writing message with type %v", m.Type)
 	}
-	if err := s.Conn.WriteJSON(m); err != nil {
+	if err := s.Conn.WriteMessage(m); err != nil {
 		return fmt.Errorf("writing socket message: %v", err)
 	}
 	if m.Type == message.PlayerRemove {
@@ -222,12 +236,8 @@ func (s *Socket) writeMessage(m message.Message) error {
 	return nil
 }
 
-// handleActivityCheck ensures the socket has read a message recently.  If so, it writes an HTTPPing message.
-func (s *Socket) handleActivityCheck() error {
-	if !s.readActive {
-		return fmt.Errorf("closing socket due to inactivity")
-	}
-	s.readActive = false
+// handleHTTPPing writes an HTTPPing message.
+func (s *Socket) handleHTTPPing() error {
 	m := message.Message{
 		Type: message.SocketHTTPPing,
 	}
@@ -240,6 +250,18 @@ func (s *Socket) writeClose(reason string) {
 		return
 	}
 	s.Log.Print(reason)
+}
+
+func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
+	now := s.TimeFunc()
+	nowTime := time.Unix(now, 0)
+	deadline := nowTime.Add(period)
+	if err := refreshDeadlineFunc(deadline); err != nil {
+		err = fmt.Errorf("error refreshing ping/pong deadline: %w", err)
+		s.Log.Print(err)
+		return err
+	}
+	return nil
 }
 
 // stop cancels timers, closes the connection, and notifies the out channel that it is closed.

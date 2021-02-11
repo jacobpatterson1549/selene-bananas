@@ -3,6 +3,7 @@ package socket
 import (
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
@@ -35,14 +36,19 @@ func (u *gorillaUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn,
 	return &gorillaConn{c}, nil
 }
 
-// ReadJSON reads the next json message from the GorillaConnection.
-func (c *gorillaConn) ReadJSON(m *message.Message) error {
+// ReadMessage reads the next message from the GorillaConnection.
+func (c *gorillaConn) ReadMessage(m *message.Message) error {
 	return c.Conn.ReadJSON(m)
 }
 
-// WriteJSON writes the message as json to the GorillaConnection.
-func (c *gorillaConn) WriteJSON(m message.Message) error {
+// WriteJMessage writes the message as json to the GorillaConnection.
+func (c *gorillaConn) WriteMessage(m message.Message) error {
 	return c.Conn.WriteJSON(m)
+}
+
+// SetReadDeadline sets how long a read can take before it returns an error.
+func (c *gorillaConn) SetReadDeadline(t time.Time) error {
+	return c.Conn.SetReadDeadline(t)
 }
 
 // Close closes the underlying GorillaConnection.

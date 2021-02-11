@@ -53,7 +53,7 @@ type (
 		TileLetters string
 		// WordChecker is used to validate players' words when they try to finish the game.
 		WordChecker word.Checker
-		// IdlePeroid is the amount of time that can pass between non-BoardRefresh messages before the game is idle and will delete itself.
+		// IdlePeriod is the amount of time that can pass between non-BoardRefresh messages before the game is idle and will delete itself.
 		IdlePeriod time.Duration
 		// ShuffleUnusedTilesFunc is used to shuffle unused tiles when initializing the game and after tiles are swapped.
 		ShuffleUnusedTilesFunc func(tiles []tile.Tile)
@@ -158,11 +158,11 @@ func (g *Game) Run(ctx context.Context, in <-chan message.Message, out chan<- me
 		message.JoinGame:         g.handleGameJoin,
 		message.DeleteGame:       g.handleGameDelete,
 		message.ChangeGameStatus: g.handleGameStatusChange,
-		message.SnagGameTile:         g.handleGameSnag,
-		message.SwapGameTile:         g.handleGameSwap,
-		message.MoveGameTile:   g.handleGameTilesMoved,
+		message.SnagGameTile:     g.handleGameSnag,
+		message.SwapGameTile:     g.handleGameSwap,
+		message.MoveGameTile:     g.handleGameTilesMoved,
 		message.GameChat:         g.handleGameChat,
-		message.RefreshGameBoard:    g.handleBoardRefresh,
+		message.RefreshGameBoard: g.handleBoardRefresh,
 	}
 	go func() {
 		for { // BLOCKING
