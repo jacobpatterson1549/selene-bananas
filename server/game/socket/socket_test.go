@@ -285,6 +285,9 @@ func TestRunSocket(t *testing.T) {
 			WriteCloseFunc: func(reason string) error {
 				return nil
 			},
+			SetWriteDeadlineFunc: func(t time.Time) error {
+				return nil
+			},
 		}
 		cfg := Config{
 			Log:            log.New(ioutil.Discard, "test", log.LstdFlags),
@@ -321,6 +324,7 @@ func TestSocketReadMessages(t *testing.T) {
 	pn := player.Name("selene")
 	addr := mockAddr("selene.pc.addr")
 	readMessagesTests := []struct {
+		setReadDeadlineErr     error
 		readMessageErr         error
 		isUnexpectedCloseError bool
 		gameMissing            bool
@@ -328,6 +332,9 @@ func TestSocketReadMessages(t *testing.T) {
 		wantOk                 bool
 		debug                  bool
 	}{
+		{
+			setReadDeadlineErr: errors.New("could not set read deadline"),
+		},
 		{
 			readMessageErr: errors.New("normal close"),
 		},
@@ -366,7 +373,7 @@ func TestSocketReadMessages(t *testing.T) {
 				return nil
 			},
 			SetReadDeadlineFunc: func(t time.Time) error {
-				return nil
+				return test.setReadDeadlineErr
 			},
 			IsUnexpectedCloseErrorFunc: func(err error) bool {
 				return test.isUnexpectedCloseError
@@ -400,6 +407,10 @@ func TestSocketReadMessages(t *testing.T) {
 		if test.alreadyCancelled {
 			cancelFunc()
 		}
+		if test.setReadDeadlineErr != nil {
+			wg.Wait()
+			continue
+		}
 		testIn <- message.Message{}
 		switch {
 		case !test.wantOk:
@@ -429,16 +440,17 @@ func TestSocketReadMessages(t *testing.T) {
 
 func TestSocketWriteMessages(t *testing.T) {
 	writeMessagesTests := []struct {
-		cancel       bool
-		outClosed    bool
-		m            message.Message
-		wantM        message.Message
-		writeErr     error
-		pingTick     bool
-		pingErr      error
-		httpPingTick bool
-		wantOk       bool
-		debug        bool
+		cancel              bool
+		outClosed           bool
+		m                   message.Message
+		wantM               message.Message
+		setWriteDeadlineErr error
+		writeErr            error
+		pingTick            bool
+		pingErr             error
+		httpPingTick        bool
+		wantOk              bool
+		debug               bool
 	}{
 		{ // context canceled
 			cancel: true,
@@ -471,6 +483,10 @@ func TestSocketWriteMessages(t *testing.T) {
 				Type: message.PlayerRemove,
 			},
 		},
+		{ // normal message: setWriteDeadline  error
+			m:                   message.Message{},
+			setWriteDeadlineErr: errors.New("setWriteDeadline error"),
+		},
 		{ // write error
 			m:        message.Message{},
 			writeErr: errors.New("problem writing message"),
@@ -483,12 +499,16 @@ func TestSocketWriteMessages(t *testing.T) {
 			pingTick: true,
 			pingErr:  errors.New("error writing ping"),
 		},
+		{ // websocket ping: setWriteDeadline error
+			pingTick:            true,
+			setWriteDeadlineErr: errors.New("setWriteDeadline error"),
+		},
 		{ // httpPing: ok
 			httpPingTick: true,
 			wantM: message.Message{
 				Type: message.SocketHTTPPing,
 			},
-			wantOk:     true,
+			wantOk: true,
 		},
 		{ // activity check, but ping write fails
 			httpPingTick: true,
@@ -516,7 +536,7 @@ func TestSocketWriteMessages(t *testing.T) {
 				return test.writeErr
 			},
 			SetWriteDeadlineFunc: func(t time.Time) error {
-				return nil
+				return test.setWriteDeadlineErr
 			},
 			WriteCloseFunc: func(reason string) error {
 				return nil

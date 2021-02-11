@@ -184,13 +184,9 @@ func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, 
 				closeReason = "server not reading messages"
 				return
 			}
-			err = s.writeMessage(m)
+			err = s.writeWrapper(func() error { return s.writeMessage(m) })
 		case <-pingTicker.C:
-			if err = s.refreshDeadline(s.Conn.SetWriteDeadline, s.WriteWait); err != nil {
-				err = fmt.Errorf("setting write deadline: %v", err)
-			} else {
-				err = s.Conn.WritePing()
-			}
+			err = s.writeWrapper(s.Conn.WritePing)
 		case <-httpPingTicker.C:
 			err = s.handleHTTPPing()
 		}
@@ -220,6 +216,14 @@ func (s *Socket) readMessage() (*message.Message, error) {
 	m.PlayerName = s.PlayerName
 	m.Addr = s.Addr
 	return &m, nil
+}
+
+// func writeWrapper sets the write deadline before calling the write function.
+func (s *Socket) writeWrapper(writeFunc func() error) error {
+	if err := s.refreshDeadline(s.Conn.SetWriteDeadline, s.WriteWait); err != nil {
+		return fmt.Errorf("setting write deadline: %v", err)
+	}
+	return writeFunc()
 }
 
 // writeMessage writes a message to the connection.
