@@ -239,7 +239,7 @@ func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out
 	}
 	switch m.Type {
 	case message.SocketClose:
-		r.removeSocket(ctx, m, out)
+		r.removeSocket(ctx, m)
 	case message.LeaveGame:
 		r.leaveGame(ctx, m)
 	default:
@@ -363,7 +363,7 @@ func (r *Runner) joinGame(ctx context.Context, m message.Message, out chan<- mes
 }
 
 // removeSocket removes the socket from the runner.
-func (r *Runner) removeSocket(ctx context.Context, m message.Message, out chan<- message.Message) {
+func (r *Runner) removeSocket(ctx context.Context, m message.Message) {
 	delete(r.playerSockets[m.PlayerName], m.Addr)
 	if len(r.playerSockets[m.PlayerName]) == 0 {
 		delete(r.playerSockets, m.PlayerName)
@@ -371,7 +371,6 @@ func (r *Runner) removeSocket(ctx context.Context, m message.Message, out chan<-
 	if m.Game != nil {
 		r.leaveGame(ctx, m)
 	}
-	out <- m
 }
 
 // leaveGame removes the socket from any game it is in.

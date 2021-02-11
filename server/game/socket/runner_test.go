@@ -1082,6 +1082,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
 			wantPlayerGames:   map[player.Name]map[game.ID]net.Addr{},
 			wantOk:            true,
+			skipOutSend:       true,
 		},
 		{ // socket close when not in any game
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
@@ -1098,6 +1099,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
 			wantPlayerGames:   map[player.Name]map[game.ID]net.Addr{},
 			wantOk:            true,
+			skipOutSend:       true,
 		},
 	}
 	for i, test := range handleSocketMessageTests {

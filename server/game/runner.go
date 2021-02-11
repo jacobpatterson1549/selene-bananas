@@ -2,7 +2,6 @@ package game
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 
@@ -145,11 +144,11 @@ func (r *Runner) handleGameMessage(ctx context.Context, m message.Message, out c
 // getGame retrieves the game from the runner for the message, if the runner has a game for the message's game ID.
 func (r *Runner) getGame(m message.Message) (chan<- message.Message, error) {
 	if m.Game == nil {
-		return nil, errors.New("no game for runner to handle in message")
+		return nil, fmt.Errorf("no game for runner to handle in message: %v", m)
 	}
 	gIn, ok := r.games[m.Game.ID]
 	if !ok {
-		return nil, errors.New("no game ID for runner to handle in message")
+		return nil, fmt.Errorf("no game ID for runner to handle in message: %v", m)
 	}
 	return gIn, nil
 }
