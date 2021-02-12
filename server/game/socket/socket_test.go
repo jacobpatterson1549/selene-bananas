@@ -23,6 +23,7 @@ type mockConn struct {
 	WriteMessageFunc           func(m message.Message) error
 	SetReadDeadlineFunc        func(t time.Time) error
 	SetWriteDeadlineFunc       func(t time.Time) error
+	SetPongHandlerFunc         func(h func(appDauta string) error)
 	CloseFunc                  func() error
 	WritePingFunc              func() error
 	WriteCloseFunc             func(reason string) error
@@ -44,6 +45,10 @@ func (c *mockConn) SetReadDeadline(t time.Time) error {
 
 func (c *mockConn) SetWriteDeadline(t time.Time) error {
 	return c.SetWriteDeadlineFunc(t)
+}
+
+func (c *mockConn) SetPongHandler(h func(appData string) error) {
+	//NOOP
 }
 
 func (c *mockConn) Close() error {

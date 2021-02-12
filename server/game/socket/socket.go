@@ -55,6 +55,8 @@ type (
 		SetReadDeadline(t time.Time) error
 		// SetWriteDeadline sets how long a read can take before it returns an error.
 		SetWriteDeadline(t time.Time) error
+		// SetPongHandler is triggered when the server recieves a pong response from a previous ping
+		SetPongHandler(h func(appData string) error)
 		// Close closes the connection.
 		Close() error
 		// WritePing writes a ping message on the connection.
@@ -141,11 +143,18 @@ func (s *Socket) readMessages(ctx context.Context, out chan<- message.Message, w
 		wg.Done()
 	}()
 	for { // BLOCKING
-		if err := s.refreshDeadline(s.Conn.SetReadDeadline, s.ReadWait); err != nil {
-			reason := fmt.Sprintf("setting read deadline: %v", err)
-			s.writeClose(reason)
+		pongHandler := func(appData string) error {
+			if err := s.refreshDeadline(s.Conn.SetReadDeadline, s.ReadWait); err != nil {
+				err = fmt.Errorf("setting read deadline: %w", err)
+				s.writeClose(err.Error())
+				return err
+			}
+			return nil
+		}
+		if err := pongHandler(""); err != nil {
 			return
 		}
+		s.Conn.SetPongHandler(pongHandler)
 		m, err := s.readMessage() // BLOCKING
 		select {
 		case <-ctx.Done():
