@@ -192,29 +192,24 @@ func (r *Runner) handleLobbyMessage(ctx context.Context, m message.Message) {
 	}
 }
 
-// handleSocketMessage writes the socket message to to the out channel, possibly taking action.
-func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out chan<- message.Message) {
+// validateSocketMessage returns an error if the message from a socket is invalid
+func (r *Runner) validateSocketMessage(m message.Message) error {
 	if len(m.PlayerName) == 0 {
-		r.Log.Printf("Received message without player name (%v).  Cannot send message back.", m.PlayerName)
-		return
+		return fmt.Errorf("no player name, cannot send message back")
 	}
 	if m.Addr == nil {
-		r.Log.Printf("Received message without player address (%v) for %v.  Cannot send message back.", m.Addr, m.PlayerName)
-		return
+		return fmt.Errorf("no player address, cannot send message back")
 	}
 	socketAddrs, ok := r.playerSockets[m.PlayerName]
 	if !ok {
-		r.Log.Printf("Received message from socket from unknown player (%v).  Cannot send message back.", m.PlayerName)
-		return
+		return fmt.Errorf("unknown player (%v), cannot send message back", m.PlayerName)
 	}
 	_, ok = socketAddrs[m.Addr]
 	if !ok {
-		r.Log.Printf("Received message from '%v' from unknown address: %v.  Cannot send message back.", m.PlayerName, m.Addr)
-		return
+		return fmt.Errorf("unknown address: %v, cannot send message back", m.Addr)
 	}
 	if m.Game == nil && m.Type != message.SocketClose {
-		r.Log.Printf("Received message without game: %v", m)
-		return
+		return fmt.Errorf("Received message without game")
 	}
 	switch m.Type {
 	case message.CreateGame, message.JoinGame, message.SocketClose:
@@ -223,19 +218,25 @@ func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out
 		games, ok := r.playerGames[m.PlayerName]
 		switch {
 		case !ok:
-			r.Log.Printf("player %v at %v not playing any game,", m.PlayerName, m.Addr)
-			return
+			return fmt.Errorf("player %v at %v not playing any game,", m.PlayerName, m.Addr)
 		default:
 			addr, ok := games[m.Game.ID]
 			if !ok {
-				r.Log.Printf("Player %v at %v not in game %v", m.PlayerName, m.Addr, m.Game.ID)
-				return
+				return fmt.Errorf("Player %v at %v not in game %v", m.PlayerName, m.Addr, m.Game.ID)
 			}
 			if addr != m.Addr {
-				r.Log.Printf("Player %v at %v playing game %v on a different socket (%v)", m.PlayerName, m.Addr, m.Game.ID, addr)
-				return
+				return fmt.Errorf("Player %v at %v playing game %v on a different socket (%v)", m.PlayerName, m.Addr, m.Game.ID, addr)
 			}
 		}
+	}
+	return nil
+}
+
+// handleSocketMessage writes the socket message to to the out channel, possibly taking action.
+func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out chan<- message.Message) {
+	if err := r.validateSocketMessage(m); err != nil {
+		r.Log.Printf("Invalid message from socket: %v: %v", err, m)
+		return
 	}
 	switch m.Type {
 	case message.SocketClose:
