@@ -7,6 +7,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
@@ -184,5 +185,57 @@ func TestPlayerNames(t *testing.T) {
 	got := g.playerNames()
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("player names not equal/sorted:\nwanted: %v\ngot:    %v", want, got)
+	}
+}
+
+func TestCheckPlayerBoardPenalize(t *testing.T) {
+	checkPlayerBoardPenalizeTests := []struct {
+		penalize       bool
+		startWinPoints int
+		numChecks      int
+		wantWinPoints  int
+	}{
+		{
+			penalize:       false,
+			startWinPoints: 10,
+			numChecks:      99,
+			wantWinPoints:  10,
+		},
+		{
+			penalize:       true,
+			startWinPoints: 8,
+			numChecks:      5,
+			wantWinPoints:  3,
+		},
+		{
+			penalize:       true,
+			startWinPoints: 8,
+			numChecks:      7,
+			wantWinPoints:  2, // should stay above one
+		},
+	}
+	for i, test := range checkPlayerBoardPenalizeTests {
+		pn := player.Name("selene")
+		unusedTiles := []tile.Tile{{}} // 1 unused tile
+		g := Game{
+			players: map[player.Name]*playerController.Player{
+				pn: {
+					Board:     board.New(unusedTiles, nil),
+					WinPoints: test.startWinPoints,
+				},
+			},
+			Config: Config{
+				Config: game.Config{
+					Penalize: test.penalize,
+				},
+			},
+		}
+		for j := 0; j < test.numChecks; j++ {
+			g.checkPlayerBoard(pn, false)
+		}
+		got := g.players[pn].WinPoints
+		if test.wantWinPoints != got {
+			t.Errorf("Test %v: wanted player to have %v winPoints, got %v", i, test.wantWinPoints, got)
+		}
 	}
 }
