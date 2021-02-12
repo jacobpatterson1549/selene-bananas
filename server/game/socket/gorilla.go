@@ -1,9 +1,7 @@
 package socket
 
 import (
-	"net"
 	"net/http"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
@@ -46,16 +44,6 @@ func (c *gorillaConn) WriteMessage(m message.Message) error {
 	return c.Conn.WriteJSON(m)
 }
 
-// SetReadDeadline sets how long a read can take before it returns an error.
-func (c *gorillaConn) SetReadDeadline(t time.Time) error {
-	return c.Conn.SetReadDeadline(t)
-}
-
-// Close closes the underlying GorillaConnection.
-func (c *gorillaConn) Close() error {
-	return c.Conn.Close()
-}
-
 // WritePing writes a ping message on the GorillaConnection.
 func (c *gorillaConn) WritePing() error {
 	return c.Conn.WriteMessage(websocket.PingMessage, nil)
@@ -70,9 +58,4 @@ func (c *gorillaConn) WriteClose(reason string) (err error) {
 // IsUnexpectedCloseError determines if the error message is an unexpected close error.
 func (*gorillaConn) IsUnexpectedCloseError(err error) bool {
 	return websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived)
-}
-
-// RemoteAddr gets the remote network address of the GorillaConnection.
-func (c *gorillaConn) RemoteAddr() net.Addr {
-	return c.Conn.RemoteAddr()
 }
