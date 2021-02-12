@@ -377,7 +377,7 @@ func templateFiles() ([]string, error) {
 		"resources/html/**/*.html",
 		"resources/fa/*.svg",
 		"resources/favicon.svg",
-		"resources/main.css",
+		"resources/index.css",
 		"resources/*.js",
 		"resources/manifest.json",
 	}
