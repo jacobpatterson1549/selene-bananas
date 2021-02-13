@@ -18,8 +18,8 @@ type (
 	Lobby struct {
 		socketRunner Runner
 		gameRunner   Runner
-		// socketMessages is the channel for sending messages to the socket runner.  Used to add and remove sockets
-		socketMessages chan message.Message
+		// socketRunnerIn is the channel for sending messages to the socket runner.  Used to add and remove sockets
+		socketRunnerIn chan message.Message
 		// games is a cache of game infos.  This is useful so all can be easily sent out if the info for one game changes.
 		games map[game.ID]game.Info
 		Config
@@ -55,10 +55,11 @@ func (cfg Config) NewLobby(socketRunner, gameRunner Runner) (*Lobby, error) {
 		return nil, fmt.Errorf("creating lobby: validation: %w", err)
 	}
 	l := Lobby{
-		socketRunner: socketRunner,
-		gameRunner:   gameRunner,
-		games:        make(map[game.ID]game.Info),
-		Config:       cfg,
+		socketRunner:   socketRunner,
+		gameRunner:     gameRunner,
+		socketRunnerIn: make(chan message.Message),
+		games:          make(map[game.ID]game.Info),
+		Config:         cfg,
 	}
 	return &l, nil
 }
@@ -78,20 +79,19 @@ func (cfg Config) validate(socketRunner, gameRunner Runner) error {
 
 // Run runs the lobby until the context is closed.
 func (l *Lobby) Run(ctx context.Context) {
-	l.socketMessages = make(chan message.Message)
-	gameMessages := make(chan message.Message)
-	socketMessagesOut := l.socketRunner.Run(ctx, l.socketMessages)
-	gameMessagesOut := l.gameRunner.Run(ctx, gameMessages)
+	gameRunnerIn := make(chan message.Message)
+	socketRunnerOut := l.socketRunner.Run(ctx, l.socketRunnerIn)
+	gameRunnerOut := l.gameRunner.Run(ctx, gameRunnerIn)
 	go func() {
-		defer close(l.socketMessages)
-		defer close(gameMessages)
+		defer close(l.socketRunnerIn)
+		defer close(gameRunnerIn)
 		for { // BLOCKING
 			select {
 			case <-ctx.Done():
 				return
-			case m := <-socketMessagesOut:
-				gameMessages <- m
-			case m := <-gameMessagesOut:
+			case m := <-socketRunnerOut:
+				gameRunnerIn <- m
+			case m := <-gameRunnerOut:
 				l.handleGameMessage(m)
 			}
 		}
@@ -111,7 +111,7 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 			Result:         result,
 		},
 	}
-	l.socketMessages <- m
+	l.socketRunnerIn <- m
 	// The result contains the address of the new socket to get the game infos of the lobby for.
 	m2 := <-result
 	if m2.Type == message.SocketError {
@@ -119,7 +119,7 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 	}
 	m2.Type = message.GameInfos
 	m2.Games = l.gameInfos()
-	l.socketMessages <- m2
+	l.socketRunnerIn <- m2
 	return nil
 }
 
@@ -129,7 +129,7 @@ func (l *Lobby) RemoveUser(username string) {
 		Type:       message.PlayerRemove,
 		PlayerName: player.Name(username),
 	}
-	l.socketMessages <- m
+	l.socketRunnerIn <- m
 }
 
 // handleGameMessage writes a game message to the socketMessages channel, possibly modifying it.
@@ -138,7 +138,7 @@ func (l *Lobby) handleGameMessage(m message.Message) {
 	case message.GameInfos:
 		l.handleGameInfoChanged(m)
 	default:
-		l.socketMessages <- m
+		l.socketRunnerIn <- m
 	}
 }
 
@@ -150,7 +150,7 @@ func (l *Lobby) handleGameInfoChanged(m message.Message) {
 			Info:       "cannot update game info when no game is provided",
 			PlayerName: m.PlayerName,
 		}
-		l.socketMessages <- m2
+		l.socketRunnerIn <- m2
 		l.Log.Print(m2.Info)
 		return
 	}
@@ -165,7 +165,7 @@ func (l *Lobby) handleGameInfoChanged(m message.Message) {
 		Type:  message.GameInfos,
 		Games: infos,
 	}
-	l.socketMessages <- m2
+	l.socketRunnerIn <- m2
 }
 
 // game infos gets the sorted game infos for the Lobby.
