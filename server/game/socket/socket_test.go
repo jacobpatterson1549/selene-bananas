@@ -408,7 +408,7 @@ func TestSocketReadMessages(t *testing.T) {
 		out := make(chan message.Message, 1) // check the active flag before reading from this
 		var wg sync.WaitGroup
 		wg.Add(1)
-		go s.readMessages(ctx, out, &wg)
+		go s.readMessagesSync(ctx, out, &wg)
 		if test.alreadyCancelled {
 			cancelFunc()
 		}
@@ -579,7 +579,7 @@ func TestSocketWriteMessages(t *testing.T) {
 		default:
 			out <- test.m
 		}
-		go s.writeMessages(ctx, out, &wg, pingTicker, httpPingTicker)
+		go s.writeMessagesSync(ctx, out, &wg, pingTicker, httpPingTicker)
 		switch {
 		case !test.wantOk:
 			wg.Wait()

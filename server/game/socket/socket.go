@@ -125,19 +125,18 @@ func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- 
 	pingTicker := time.NewTicker(s.PingPeriod)
 	httpPingTicker := time.NewTicker(s.HTTPPingPeriod)
 	var wg sync.WaitGroup
+	wg.Add(2)
 	go func() {
 		wg.Wait()
 		s.stop(out, pingTicker, httpPingTicker)
 	}()
-	wg.Add(1)
-	go s.readMessages(ctx, out, &wg)
-	wg.Add(1)
-	go s.writeMessages(ctx, in, &wg, pingTicker, httpPingTicker)
+	go s.readMessagesSync(ctx, out, &wg)
+	go s.writeMessagesSync(ctx, in, &wg, pingTicker, httpPingTicker)
 }
 
-// readMessages receives messages from the connected socket and writes the to the messages channel.
+// readMessagesSync receives messages from the connected socket and writes the to the messages channel.
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *Socket) readMessages(ctx context.Context, out chan<- message.Message, wg *sync.WaitGroup) {
+func (s *Socket) readMessagesSync(ctx context.Context, out chan<- message.Message, wg *sync.WaitGroup) {
 	defer func() {
 		s.Conn.Close() // will casue writeMessages() to fail
 		wg.Done()
@@ -172,10 +171,10 @@ func (s *Socket) readMessages(ctx context.Context, out chan<- message.Message, w
 	}
 }
 
-// writeMessages sends messages from the outbound messages channel to the connected socket.
+// writeMessagesSync sends messages from the outbound messages channel to the connected socket.
 // Messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel.
-// The tickers are used to periodically write messages or check for read activity.
-func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, wg *sync.WaitGroup, pingTicker, httpPingTicker *time.Ticker) {
+// The tickers are used to periodically write message different ping messages.
+func (s *Socket) writeMessagesSync(ctx context.Context, in <-chan message.Message, wg *sync.WaitGroup, pingTicker, httpPingTicker *time.Ticker) {
 	var closeReason string
 	defer func() {
 		s.writeClose(closeReason)
@@ -188,7 +187,7 @@ func (s *Socket) writeMessages(ctx context.Context, out <-chan message.Message, 
 		case <-ctx.Done():
 			closeReason = "server shutting down"
 			return
-		case m, ok := <-out:
+		case m, ok := <-in:
 			if !ok {
 				closeReason = "server not reading messages"
 				return
