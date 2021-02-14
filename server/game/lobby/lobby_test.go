@@ -29,6 +29,7 @@ func TestNewLobby(t *testing.T) {
 		},
 	}
 	newLobbyTests := []struct {
+		log          *log.Logger
 		wantOk       bool
 		want         *Lobby
 		socketRunner Runner
@@ -38,53 +39,45 @@ func TestNewLobby(t *testing.T) {
 		{ // no log
 		},
 		{ // no socket runner
-			Config: Config{
-				Log: testLog,
-			},
+			log: testLog,
 		},
 		{ // no game runner
-			Config: Config{
-				Log: testLog,
-			},
+			log:          testLog,
 			socketRunner: &testSocketRunner,
 		},
 		{ // ok
-			Config: Config{
-				Log: testLog,
-			},
+			log:          testLog,
 			socketRunner: &testSocketRunner,
 			gameRunner:   &testGameManeger,
 			wantOk:       true,
 			want: &Lobby{
+				log:          testLog,
 				socketRunner: &testSocketRunner,
 				gameRunner:   &testGameManeger,
 				games:        map[game.ID]game.Info{},
-				Config: Config{
-					Log: testLog,
-				},
 			},
 		},
 		{ // ok with debug
+			log: testLog,
 			Config: Config{
 				Debug: true,
-				Log:   testLog,
 			},
 			socketRunner: &testSocketRunner,
 			gameRunner:   &testGameManeger,
 			wantOk:       true,
 			want: &Lobby{
+				log:          testLog,
 				socketRunner: &testSocketRunner,
 				gameRunner:   &testGameManeger,
 				games:        map[game.ID]game.Info{},
 				Config: Config{
 					Debug: true,
-					Log:   testLog,
 				},
 			},
 		},
 	}
 	for i, test := range newLobbyTests {
-		got, err := test.Config.NewLobby(test.socketRunner, test.gameRunner)
+		got, err := test.Config.NewLobby(test.log, test.socketRunner, test.gameRunner)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -349,6 +342,7 @@ func TestHandleGameMessage(t *testing.T) {
 		gmOut := make(chan message.Message)
 		var wg sync.WaitGroup
 		l := Lobby{
+			log: log.New(ioutil.Discard, "test", log.LstdFlags),
 			socketRunner: &mockRunner{
 				RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
 					go func() {
@@ -375,9 +369,6 @@ func TestHandleGameMessage(t *testing.T) {
 			},
 			socketRunnerIn: make(chan message.Message),
 			games:          test.games,
-			Config: Config{
-				Log: log.New(ioutil.Discard, "test", log.LstdFlags),
-			},
 		}
 		ctx := context.Background()
 		l.Run(ctx)

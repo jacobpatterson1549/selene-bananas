@@ -32,14 +32,6 @@ type (
 		}
 	}
 
-	// Config contains the parameters to create a Socket.
-	Config struct {
-		Log   *log.Log
-		User  User
-		Game  Game
-		Lobby Lobby
-	}
-
 	// User is the state of the current user.
 	User interface {
 		// JWT gets the user's Java Web Token.
@@ -67,12 +59,12 @@ type (
 )
 
 // New creates a new socket.
-func (cfg Config) New() *Socket {
+func New(log *log.Log, user User, game Game, lobby Lobby) *Socket {
 	s := Socket{
-		log:   cfg.Log,
-		user:  cfg.User,
-		game:  cfg.Game,
-		lobby: cfg.Lobby,
+		log:   log,
+		user:  user,
+		game:  game,
+		lobby: lobby,
 	}
 	return &s
 }

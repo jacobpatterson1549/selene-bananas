@@ -16,6 +16,7 @@ import (
 type (
 	// Socket reads and writes messages to the browsers
 	Socket struct {
+		log  *log.Logger
 		Conn Conn
 		// The reason the read failed.  If a read fails, it is sent as the close message when the socket closes.
 		readCloseReason string
@@ -30,8 +31,6 @@ type (
 	Config struct {
 		// Debug is a flag that causes the socket to log the types non-ping/pong messages that are read/written
 		Debug bool
-		// Log is used to log errors and other information
-		Log *log.Logger
 		// ReadWait is the amout of time that can pass between receiving client messages before timing out.
 		ReadWait time.Duration
 		// WriteWait is the amout of time that the socket can take to write a message.
@@ -73,12 +72,13 @@ type (
 var errSocketClosed = fmt.Errorf("socket closed")
 
 // NewSocket creates a socket
-func (cfg Config) NewSocket(pn player.Name, conn Conn) (*Socket, error) {
-	a, err := cfg.validate(pn, conn)
+func (cfg Config) NewSocket(log *log.Logger, pn player.Name, conn Conn) (*Socket, error) {
+	a, err := cfg.validate(log, pn, conn)
 	if err != nil {
 		return nil, fmt.Errorf("creating socket: validation: %w", err)
 	}
 	s := Socket{
+		log:        log,
 		Conn:       conn,
 		Config:     cfg,
 		PlayerName: pn,
@@ -88,7 +88,7 @@ func (cfg Config) NewSocket(pn player.Name, conn Conn) (*Socket, error) {
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(pn player.Name, conn Conn) (net.Addr, error) {
+func (cfg Config) validate(log *log.Logger, pn player.Name, conn Conn) (net.Addr, error) {
 	switch {
 	case len(pn) == 0:
 		return nil, fmt.Errorf("player name rquired")
@@ -99,7 +99,7 @@ func (cfg Config) validate(pn player.Name, conn Conn) (net.Addr, error) {
 	switch {
 	case a == nil:
 		return nil, fmt.Errorf("remote address of connection required")
-	case cfg.Log == nil:
+	case log == nil:
 		return nil, fmt.Errorf("log required")
 	case cfg.TimeFunc == nil:
 		return nil, fmt.Errorf("time func required")
@@ -167,7 +167,7 @@ func (s *Socket) readMessagesSync(ctx context.Context, out chan<- message.Messag
 				return
 			}
 		}
-		message.Send(*m, out, s.Debug, s.Log)
+		message.Send(*m, out, s.Debug, s.log)
 	}
 }
 
@@ -215,7 +215,7 @@ func (s *Socket) readMessage() (*message.Message, error) {
 		return nil, errSocketClosed
 	}
 	if s.Debug {
-		s.Log.Printf("socket reading message with type %v", m.Type)
+		s.log.Printf("socket reading message with type %v", m.Type)
 	}
 	if m.Game == nil {
 		return nil, fmt.Errorf("received message not relating to game")
@@ -237,7 +237,7 @@ func (s *Socket) writeWrapper(writeFunc func() error) error {
 // writeMessage writes a message to the connection.
 func (s *Socket) writeMessage(m message.Message) error {
 	if s.Debug {
-		s.Log.Printf("socket writing message with type %v", m.Type)
+		s.log.Printf("socket writing message with type %v", m.Type)
 	}
 	if err := s.Conn.WriteMessage(m); err != nil {
 		return fmt.Errorf("writing socket message: %v", err)
@@ -261,7 +261,7 @@ func (s *Socket) writeClose(reason string) {
 	if err := s.Conn.WriteClose(reason); err != nil {
 		return
 	}
-	s.Log.Print(reason)
+	s.log.Print(reason)
 }
 
 func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
@@ -270,7 +270,7 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 	deadline := nowTime.Add(period)
 	if err := refreshDeadlineFunc(deadline); err != nil {
 		err = fmt.Errorf("error refreshing ping/pong deadline: %w", err)
-		s.Log.Print(err)
+		s.log.Print(err)
 		return err
 	}
 	return nil
@@ -286,5 +286,5 @@ func (s *Socket) stop(out chan<- message.Message, pingTicker, activityCheckTicke
 		PlayerName: s.PlayerName,
 		Addr:       s.Addr,
 	}
-	message.Send(m, out, s.Debug, s.Log)
+	message.Send(m, out, s.Debug, s.log)
 }

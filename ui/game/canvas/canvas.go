@@ -38,7 +38,6 @@ type (
 
 	// Config contains the parameters to create a Canvas.
 	Config struct {
-		Log        *log.Log
 		TileLength int
 	}
 
@@ -111,7 +110,7 @@ const (
 )
 
 // New Creates a canvas from the config.
-func (cfg Config) New(board *board.Board, canvasParentDivQuery string) *Canvas {
+func (cfg Config) New(log *log.Log, board *board.Board, canvasParentDivQuery string) *Canvas {
 	canvasQuery := canvasParentDivQuery + ">canvas"
 	parentDiv := dom.QuerySelector(canvasParentDivQuery)
 	element := dom.QuerySelector(canvasQuery)
@@ -130,7 +129,7 @@ func (cfg Config) New(board *board.Board, canvasParentDivQuery string) *Canvas {
 		ctx: &contextElement,
 	}
 	c := Canvas{
-		log:   cfg.Log,
+		log:   log,
 		ctx:   &ctx,
 		board: board,
 		selection: selection{

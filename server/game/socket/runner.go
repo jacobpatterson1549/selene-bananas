@@ -16,6 +16,7 @@ type (
 	// Runner handles sending messages to different sockets.
 	// The runner allows for players to open multiple sockets, but multiple sockets cannot play in the same game before first leaving.
 	Runner struct {
+		log           *log.Logger
 		upgrader      Upgrader
 		playerSockets map[player.Name]map[net.Addr]chan<- message.Message
 		playerGames   map[player.Name]map[game.ID]net.Addr
@@ -27,8 +28,6 @@ type (
 	RunnerConfig struct {
 		// Debug is a flag that causes the game to log the types messages that are read.
 		Debug bool
-		// Log is used to log errors and other information
-		Log *log.Logger
 		// The maximum number of sockets.
 		MaxSockets int
 		// The maximum number of sockets each player can open.  Must be no more than maxSockets.
@@ -45,12 +44,13 @@ type (
 )
 
 // NewRunner creates a new socket runner from the config.
-func (cfg RunnerConfig) NewRunner() (*Runner, error) {
-	if err := cfg.validate(); err != nil {
+func (cfg RunnerConfig) NewRunner(log *log.Logger) (*Runner, error) {
+	if err := cfg.validate(log); err != nil {
 		return nil, fmt.Errorf("creating socket runner: validation: %w", err)
 	}
 	u := newGorillaUpgrader()
 	r := Runner{
+		log:           log,
 		upgrader:      u,
 		playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message, cfg.MaxSockets),
 		playerGames:   make(map[player.Name]map[game.ID]net.Addr),
@@ -60,9 +60,9 @@ func (cfg RunnerConfig) NewRunner() (*Runner, error) {
 }
 
 // validate ensures the configuration has no errors.
-func (cfg RunnerConfig) validate() error {
+func (cfg RunnerConfig) validate(log *log.Logger) error {
 	switch {
-	case cfg.Log == nil:
+	case log == nil:
 		return fmt.Errorf("log required")
 	case cfg.MaxPlayerSockets < 1:
 		return fmt.Errorf("each player must be able to open at least one socket")
@@ -100,10 +100,10 @@ func (r *Runner) Run(ctx context.Context, in <-chan message.Message) <-chan mess
 func (r *Runner) addSocket(ctx context.Context, m message.Message) {
 	switch {
 	case m.AddSocketRequest == nil:
-		r.Log.Printf("no AddSocketRequest on message: %v", m)
+		r.log.Printf("no AddSocketRequest on message: %v", m)
 		return
 	case m.AddSocketRequest.Result == nil:
-		r.Log.Printf("no AddSocketRequest Result channel on message: %v", m)
+		r.log.Printf("no AddSocketRequest Result channel on message: %v", m)
 		return
 	}
 	s, err := r.handleAddSocket(ctx, m.PlayerName, m.AddSocketRequest.ResponseWriter, m.AddSocketRequest.Request)
@@ -118,7 +118,7 @@ func (r *Runner) addSocket(ctx context.Context, m message.Message) {
 		m2.Type = message.GameInfos
 		m2.Addr = s.Addr
 	}
-	message.Send(m2, m.AddSocketRequest.Result, r.Debug, r.Log)
+	message.Send(m2, m.AddSocketRequest.Result, r.Debug, r.log)
 }
 
 // handleAddSocket runs and adds a socket for the player to the runner.
@@ -136,7 +136,7 @@ func (r *Runner) handleAddSocket(ctx context.Context, pn player.Name, w http.Res
 	if err != nil {
 		return nil, fmt.Errorf("upgrading to websocket connection: %w", err)
 	}
-	s, err := r.SocketConfig.NewSocket(pn, conn)
+	s, err := r.SocketConfig.NewSocket(r.log, pn, conn)
 	if err != nil {
 		return nil, fmt.Errorf("creating socket in runner: %v", err)
 	}
@@ -237,7 +237,7 @@ func (r *Runner) validateSocketMessage(m message.Message) error {
 // handleSocketMessage writes the socket message to to the out channel, possibly taking action.
 func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out chan<- message.Message) {
 	if err := r.validateSocketMessage(m); err != nil {
-		r.Log.Printf("Invalid message from socket: %v: %v", err, m)
+		r.log.Printf("Invalid message from socket: %v: %v", err, m)
 		return
 	}
 	switch m.Type {
@@ -246,7 +246,7 @@ func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out
 	case message.LeaveGame:
 		r.leaveGame(ctx, m)
 	default:
-		message.Send(m, out, r.Debug, r.Log)
+		message.Send(m, out, r.Debug, r.log)
 	}
 }
 
@@ -257,20 +257,20 @@ func (r *Runner) sendGameInfos(ctx context.Context, m message.Message) {
 	case m.Addr != nil:
 		addrs, ok := r.playerSockets[m.PlayerName]
 		if !ok {
-			r.Log.Printf("no player to send infos to for %v", m)
+			r.log.Printf("no player to send infos to for %v", m)
 			return
 		}
 		socketIn, ok := addrs[m.Addr]
 		if !ok {
-			r.Log.Printf("no socket for %v at %v", m.PlayerName, m.Addr)
+			r.log.Printf("no socket for %v at %v", m.PlayerName, m.Addr)
 			return
 		}
-		message.Send(m, socketIn, r.Debug, r.Log)
+		message.Send(m, socketIn, r.Debug, r.log)
 	default:
 		// send to all sockets (likely game info change)
 		for _, addrs := range r.playerSockets {
 			for _, socketIn := range addrs {
-				message.Send(m, socketIn, r.Debug, r.Log)
+				message.Send(m, socketIn, r.Debug, r.log)
 			}
 		}
 	}
@@ -284,7 +284,7 @@ func (r *Runner) sendSocketError(ctx context.Context, m message.Message) {
 	default:
 		socketAddrs := r.playerSockets[m.PlayerName]
 		for _, socketIn := range socketAddrs {
-			message.Send(m, socketIn, r.Debug, r.Log)
+			message.Send(m, socketIn, r.Debug, r.log)
 		}
 	}
 }
@@ -292,12 +292,12 @@ func (r *Runner) sendSocketError(ctx context.Context, m message.Message) {
 // sendMessageForGame sends the game message to the player at the address, if possible.
 func (r *Runner) sendMessageForGame(ctx context.Context, m message.Message) {
 	if m.Game == nil {
-		r.Log.Printf("no 'game' to send game message for in %v", m)
+		r.log.Printf("no 'game' to send game message for in %v", m)
 		return
 	}
 	socketAddrs, ok := r.playerSockets[m.PlayerName]
 	if !ok {
-		r.Log.Printf("could not send game message to %v, socket addrs not found - message: (%v)", m.PlayerName, m)
+		r.log.Printf("could not send game message to %v, socket addrs not found - message: (%v)", m.PlayerName, m)
 		return
 	}
 	var addr net.Addr
@@ -319,14 +319,14 @@ func (r *Runner) sendMessageForGame(ctx context.Context, m message.Message) {
 	}
 	socketIn, ok := socketAddrs[addr]
 	if !ok {
-		r.Log.Printf("could not send game message to %v at %v - message: (%v)", m.PlayerName, addr, m)
+		r.log.Printf("could not send game message to %v at %v - message: (%v)", m.PlayerName, addr, m)
 		return
 	}
 	switch m.Type {
 	case message.JoinGame:
 		r.joinGame(ctx, m, socketIn)
 	default:
-		message.Send(m, socketIn, r.Debug, r.Log)
+		message.Send(m, socketIn, r.Debug, r.log)
 	}
 }
 
@@ -351,7 +351,7 @@ func (r *Runner) joinGame(ctx context.Context, m message.Message, out chan<- mes
 				Info: "leaving game because it is being played on a different socket",
 			}
 			socketIn := r.playerSockets[m.PlayerName][addr2]
-			message.Send(m2, socketIn, r.Debug, r.Log)
+			message.Send(m2, socketIn, r.Debug, r.log)
 		}
 		// remove the addr from its previously joined game if it is different
 		for id, addr := range games {
@@ -362,7 +362,7 @@ func (r *Runner) joinGame(ctx context.Context, m message.Message, out chan<- mes
 		}
 	}
 	games[m.Game.ID] = m.Addr
-	message.Send(m, out, r.Debug, r.Log)
+	message.Send(m, out, r.Debug, r.log)
 }
 
 // removeSocket removes the socket from the runner.

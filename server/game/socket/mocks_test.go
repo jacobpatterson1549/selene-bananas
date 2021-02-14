@@ -89,9 +89,8 @@ func (u mockUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn, err
 }
 
 func newRunnerWithMocks(maxSockets int, maxPlayerSockets int, u mockUpgrader) *Runner {
-	log := log.New(ioutil.Discard, "test", log.LstdFlags)
+	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
 	socketCfg := Config{
-		Log:            log,
 		TimeFunc:       func() int64 { return 0 },
 		ReadWait:       2 * time.Hour,
 		WriteWait:      1 * time.Hour,
@@ -99,12 +98,12 @@ func newRunnerWithMocks(maxSockets int, maxPlayerSockets int, u mockUpgrader) *R
 		HTTPPingPeriod: 3 * time.Hour,
 	}
 	cfg := RunnerConfig{
-		Log:              log,
 		MaxSockets:       maxSockets,
 		MaxPlayerSockets: maxPlayerSockets,
 		SocketConfig:     socketCfg,
 	}
 	r := Runner{
+		log:           testLog,
 		upgrader:      u,
 		playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
 		playerGames:   make(map[player.Name]map[game.ID]net.Addr),

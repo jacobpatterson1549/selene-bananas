@@ -30,6 +30,7 @@ func TestNewSocket(t *testing.T) {
 		playerName player.Name
 		Conn
 		remoteAddr net.Addr
+		log        *log.Logger
 		Config
 	}{
 		{}, // no playerName
@@ -49,16 +50,14 @@ func TestNewSocket(t *testing.T) {
 			playerName: pn,
 			Conn:       conn0,
 			remoteAddr: addr,
-			Config: Config{
-				Log: testLog,
-			},
+			log:        testLog,
 		},
 		{ // bad ReadWait
 			playerName: pn,
 			Conn:       conn0,
 			remoteAddr: addr,
+			log:        testLog,
 			Config: Config{
-				Log:      testLog,
 				TimeFunc: timeFunc,
 			},
 		},
@@ -66,8 +65,8 @@ func TestNewSocket(t *testing.T) {
 			playerName: pn,
 			Conn:       conn0,
 			remoteAddr: addr,
+			log:        testLog,
 			Config: Config{
-				Log:      testLog,
 				TimeFunc: timeFunc,
 				ReadWait: 2 * time.Hour,
 			},
@@ -76,8 +75,8 @@ func TestNewSocket(t *testing.T) {
 			playerName: pn,
 			Conn:       conn0,
 			remoteAddr: addr,
+			log:        testLog,
 			Config: Config{
-				Log:       testLog,
 				TimeFunc:  timeFunc,
 				ReadWait:  2 * time.Hour,
 				WriteWait: 2 * time.Hour,
@@ -87,8 +86,8 @@ func TestNewSocket(t *testing.T) {
 			playerName: pn,
 			Conn:       conn0,
 			remoteAddr: addr,
+			log:        testLog,
 			Config: Config{
-				Log:        testLog,
 				TimeFunc:   timeFunc,
 				ReadWait:   2 * time.Hour,
 				WriteWait:  2 * time.Hour,
@@ -99,8 +98,8 @@ func TestNewSocket(t *testing.T) {
 			playerName: pn,
 			Conn:       conn0,
 			remoteAddr: addr,
+			log:        testLog,
 			Config: Config{
-				Log:            testLog,
 				TimeFunc:       timeFunc,
 				ReadWait:       1 * time.Hour,
 				WriteWait:      2 * time.Hour,
@@ -112,8 +111,8 @@ func TestNewSocket(t *testing.T) {
 			playerName: pn,
 			Conn:       conn0,
 			remoteAddr: addr,
+			log:        testLog,
 			Config: Config{
-				Log:            testLog,
 				TimeFunc:       timeFunc,
 				ReadWait:       2 * time.Hour,
 				WriteWait:      2 * time.Hour,
@@ -124,8 +123,8 @@ func TestNewSocket(t *testing.T) {
 				PlayerName: pn,
 				Addr:       addr,
 				Conn:       conn0,
+				log:        testLog,
 				Config: Config{
-					Log:            testLog,
 					ReadWait:       2 * time.Hour,
 					WriteWait:      2 * time.Hour,
 					PingPeriod:     4 * time.Hour,
@@ -138,9 +137,9 @@ func TestNewSocket(t *testing.T) {
 			playerName: pn,
 			Conn:       conn0,
 			remoteAddr: addr,
+			log:        testLog,
 			Config: Config{
 				Debug:          true,
-				Log:            testLog,
 				TimeFunc:       timeFunc,
 				ReadWait:       2 * time.Hour,
 				WriteWait:      2 * time.Hour,
@@ -151,9 +150,9 @@ func TestNewSocket(t *testing.T) {
 				PlayerName: pn,
 				Addr:       addr,
 				Conn:       conn0,
+				log:        testLog,
 				Config: Config{
 					Debug:          true,
-					Log:            testLog,
 					ReadWait:       2 * time.Hour,
 					WriteWait:      2 * time.Hour,
 					PingPeriod:     4 * time.Hour,
@@ -169,7 +168,7 @@ func TestNewSocket(t *testing.T) {
 				return test.remoteAddr
 			}
 		}
-		got, err := test.Config.NewSocket(test.playerName, test.Conn)
+		got, err := test.Config.NewSocket(test.log, test.playerName, test.Conn)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -243,7 +242,6 @@ func TestRunSocket(t *testing.T) {
 			},
 		}
 		cfg := Config{
-			Log:            log.New(ioutil.Discard, "test", log.LstdFlags),
 			TimeFunc:       func() int64 { return 0 },
 			ReadWait:       2 * time.Hour,
 			WriteWait:      2 * time.Hour,
@@ -252,6 +250,7 @@ func TestRunSocket(t *testing.T) {
 		}
 		addr := mockAddr("some.addr")
 		s := Socket{
+			log:    log.New(ioutil.Discard, "test", log.LstdFlags),
 			Conn:   &conn,
 			Config: cfg,
 			Addr:   addr,
@@ -337,11 +336,10 @@ func TestSocketReadMessages(t *testing.T) {
 			},
 		}
 		var bb bytes.Buffer
-		log := log.New(&bb, "test", log.LstdFlags)
 		s := Socket{
 			Conn: &conn,
+			log:  log.New(&bb, "test", log.LstdFlags),
 			Config: Config{
-				Log:      log,
 				TimeFunc: func() int64 { return 0 },
 			},
 			PlayerName: pn,
@@ -485,11 +483,10 @@ func TestSocketWriteMessages(t *testing.T) {
 			},
 		}
 		var bb bytes.Buffer
-		log := log.New(&bb, "test", log.LstdFlags)
 		s := Socket{
 			Conn: &conn,
+			log:  log.New(&bb, "test", log.LstdFlags),
 			Config: Config{
-				Log:      log,
 				TimeFunc: func() int64 { return 0 },
 			},
 		}
@@ -561,9 +558,7 @@ func TestWriteClose(t *testing.T) {
 		log := log.New(&bb, "test", 0)
 		s := Socket{
 			Conn: &conn,
-			Config: Config{
-				Log: log,
-			},
+			log:  log,
 		}
 		s.writeClose(test.reason)
 		switch {

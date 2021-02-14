@@ -21,6 +21,7 @@ import (
 type (
 	// Game contains the logic to play a tile-base word-forming game between users.
 	Game struct {
+		log         *log.Logger
 		id          game.ID
 		createdAt   int64
 		status      game.Status
@@ -34,8 +35,7 @@ type (
 	Config struct {
 		// Debug is a flag that causes the game to log the types messages that are read.
 		Debug bool
-		// Log is used to log errors and other information.
-		Log *log.Logger
+
 		// TimeFunc is a function which should supply the current time since the unix epoch.
 		// Used for the created at timestamp.
 		TimeFunc func() int64
@@ -85,8 +85,8 @@ const (
 )
 
 // NewGame creates a new game and runs it.
-func (cfg Config) NewGame(id game.ID, ud UserDao) (*Game, error) {
-	if err := cfg.validate(id, ud); err != nil {
+func (cfg Config) NewGame(log *log.Logger, id game.ID, ud UserDao) (*Game, error) {
+	if err := cfg.validate(log, id, ud); err != nil {
 		return nil, fmt.Errorf("creating game: validation: %w", err)
 	}
 	if len(cfg.TileLetters) == 0 {
@@ -106,9 +106,9 @@ func (cfg Config) NewGame(id game.ID, ud UserDao) (*Game, error) {
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(id game.ID, ud UserDao) error {
+func (cfg Config) validate(log *log.Logger, id game.ID, ud UserDao) error {
 	switch {
-	case cfg.Log == nil:
+	case log == nil:
 		return fmt.Errorf("log required")
 	case id <= 0:
 		return fmt.Errorf("positive id required")
@@ -180,7 +180,7 @@ func (g *Game) Run(ctx context.Context, in <-chan message.Message, out chan<- me
 			case <-idleTicker.C:
 				var m message.Message
 				if !active {
-					g.Log.Printf("deleted game %v due to inactivity", g.id)
+					g.log.Printf("deleted game %v due to inactivity", g.id)
 					g.handleGameDelete(ctx, m, messageSender)
 					return
 				}
@@ -198,14 +198,14 @@ func (g *Game) sendMessage(out chan<- message.Message) messageSender {
 			m.Game = &g
 		}
 		m.Game.ID = g.id
-		message.Send(m, out, g.Debug, g.Log)
+		message.Send(m, out, g.Debug, g.log)
 	}
 }
 
 // handleMessage handles the message with the appropriate message handler.
 func (g *Game) handleMessage(ctx context.Context, m message.Message, send messageSender, active *bool, messageHandlers map[message.Type]messageHandler) {
 	if g.Debug {
-		g.Log.Printf("game reading message with type %v", m.Type)
+		g.log.Printf("game reading message with type %v", m.Type)
 	}
 	var err error
 	if mh, ok := messageHandlers[m.Type]; !ok {
@@ -223,7 +223,7 @@ func (g *Game) handleMessage(ctx context.Context, m message.Message, send messag
 			mt = message.SocketWarning
 		default:
 			mt = message.SocketError
-			g.Log.Printf("game error: %v", err)
+			g.log.Printf("game error: %v", err)
 		}
 		m := message.Message{
 			Type:       mt,

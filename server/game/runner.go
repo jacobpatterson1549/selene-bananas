@@ -13,6 +13,8 @@ import (
 type (
 	// Runner runs games.
 	Runner struct {
+		// log is used to log errors and other information
+		log *log.Logger
 		// games maps game ids to the channel each games listens to for incoming messages
 		// OutChannels are stored here because the Runner writes to the game, which in turn reads from the Runner's channel as an InChannel
 		games map[game.ID]chan<- message.Message
@@ -28,8 +30,6 @@ type (
 	RunnerConfig struct {
 		// Debug is a flag that causes the game to log the types messages that are read.
 		Debug bool
-		// Log is used to log errors and other information
-		Log *log.Logger
 		// The maximum number of games.
 		MaxGames int
 		// The config for creating new games.
@@ -38,11 +38,12 @@ type (
 )
 
 // NewRunner creates a new game runner from the config.
-func (cfg RunnerConfig) NewRunner(ud UserDao) (*Runner, error) {
-	if err := cfg.validate(ud); err != nil {
+func (cfg RunnerConfig) NewRunner(log *log.Logger, ud UserDao) (*Runner, error) {
+	if err := cfg.validate(log, ud); err != nil {
 		return nil, fmt.Errorf("creating game runner: validation: %w", err)
 	}
 	m := Runner{
+		log:          log,
 		games:        make(map[game.ID]chan<- message.Message, cfg.MaxGames),
 		RunnerConfig: cfg,
 		UserDao:      ud,
@@ -72,9 +73,9 @@ func (r *Runner) Run(ctx context.Context, in <-chan message.Message) <-chan mess
 }
 
 // validate ensures the configuration has no errors.
-func (cfg RunnerConfig) validate(ud UserDao) error {
+func (cfg RunnerConfig) validate(log *log.Logger, ud UserDao) error {
 	switch {
-	case cfg.Log == nil:
+	case log == nil:
 		return fmt.Errorf("log required")
 	case ud == nil:
 		return fmt.Errorf("user dao required")
@@ -109,7 +110,7 @@ func (r *Runner) createGame(ctx context.Context, m message.Message, out chan<- m
 		return
 	}
 	id := r.lastID + 1
-	g, err := r.GameConfig.NewGame(id, r.UserDao)
+	g, err := r.GameConfig.NewGame(r.log, id, r.UserDao)
 	if err != nil {
 		r.sendError(err, m.PlayerName, out)
 		return
@@ -119,7 +120,7 @@ func (r *Runner) createGame(ctx context.Context, m message.Message, out chan<- m
 	g.Run(ctx, gIn, out) // all games publish to the same "out" channel
 	r.games[id] = gIn
 	m.Type = message.JoinGame
-	message.Send(m, gIn, r.Debug, r.Log)
+	message.Send(m, gIn, r.Debug, r.log)
 }
 
 // deleteGame removes a game from the runner, notifying the game that it is being deleted so it can notify users.
@@ -130,7 +131,7 @@ func (r *Runner) deleteGame(ctx context.Context, m message.Message, out chan<- m
 		return
 	}
 	delete(r.games, m.Game.ID)
-	message.Send(m, gIn, r.Debug, r.Log)
+	message.Send(m, gIn, r.Debug, r.log)
 }
 
 // handleGameMessage passes an error to the game the message is for.
@@ -140,7 +141,7 @@ func (r *Runner) handleGameMessage(ctx context.Context, m message.Message, out c
 		r.sendError(err, m.PlayerName, out)
 		return
 	}
-	message.Send(m, gIn, r.Debug, r.Log)
+	message.Send(m, gIn, r.Debug, r.log)
 }
 
 // getGame retrieves the game from the runner for the message, if the runner has a game for the message's game ID.
@@ -158,11 +159,11 @@ func (r *Runner) getGame(m message.Message) (chan<- message.Message, error) {
 // sendError adds a message for the player on the channel
 func (r *Runner) sendError(err error, pn player.Name, out chan<- message.Message) {
 	err = fmt.Errorf("player %v: %w", pn, err)
-	r.Log.Print(err)
+	r.log.Print(err)
 	m := message.Message{
 		Type:       message.SocketError,
 		Info:       err.Error(),
 		PlayerName: pn,
 	}
-	message.Send(m, out, r.Debug, r.Log)
+	message.Send(m, out, r.Debug, r.log)
 }

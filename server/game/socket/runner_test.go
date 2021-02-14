@@ -20,6 +20,7 @@ import (
 func TestNewRunner(t *testing.T) {
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
 	newRunnerTests := []struct {
+		log          *log.Logger
 		RunnerConfig RunnerConfig
 		wantOk       bool
 		want         *Runner
@@ -32,36 +33,36 @@ func TestNewRunner(t *testing.T) {
 			},
 		},
 		{ // low maxSockets
+			log: testLog,
 			RunnerConfig: RunnerConfig{
-				Log:              testLog,
 				MaxPlayerSockets: 1,
 			},
 		},
 		{ // low maxPlayerSockets
+			log: testLog,
 			RunnerConfig: RunnerConfig{
-				Log:        testLog,
 				MaxSockets: 1,
 			},
 		},
 		{ // maxSockets < maxPlayerSockets
+			log: testLog,
 			RunnerConfig: RunnerConfig{
-				Log:              testLog,
 				MaxSockets:       1,
 				MaxPlayerSockets: 2,
 			},
 		},
 		{
+			log: testLog,
 			RunnerConfig: RunnerConfig{
-				Log:              testLog,
 				MaxSockets:       10,
 				MaxPlayerSockets: 3,
 			},
 			wantOk: true,
 			want: &Runner{
+				log:           testLog,
 				playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
 				playerGames:   map[player.Name]map[game.ID]net.Addr{},
 				RunnerConfig: RunnerConfig{
-					Log:              testLog,
 					MaxSockets:       10,
 					MaxPlayerSockets: 3,
 				},
@@ -69,7 +70,7 @@ func TestNewRunner(t *testing.T) {
 		},
 	}
 	for i, test := range newRunnerTests {
-		got, err := test.RunnerConfig.NewRunner()
+		got, err := test.RunnerConfig.NewRunner(test.log)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -104,12 +105,12 @@ func TestRunRunner(t *testing.T) {
 		},
 	}
 	for i, test := range runRunnerTests {
-		var sm Runner
+		var r Runner
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		defer cancelFunc()
 		in := make(chan message.Message)
-		out := sm.Run(ctx, in)
+		out := r.Run(ctx, in)
 		test.stopFunc(cancelFunc, in)
 		_, ok := <-out
 		if ok {
@@ -135,13 +136,13 @@ func TestRunnerAddSocketCheckResult(t *testing.T) {
 		addr := mockAddr("selen.pc")
 		readBlocker := make(chan struct{})
 		defer close(readBlocker)
-		sm := Runner{
+		r := Runner{
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
+			log:           log.New(ioutil.Discard, "scLog", log.LstdFlags),
 			RunnerConfig: RunnerConfig{
 				MaxSockets:       1,
 				MaxPlayerSockets: 1,
 				SocketConfig: Config{
-					Log:            log.New(ioutil.Discard, "scLog", log.LstdFlags),
 					TimeFunc:       func() int64 { return 0 },
 					ReadWait:       2 * time.Hour,
 					WriteWait:      1 * time.Hour,
@@ -171,7 +172,7 @@ func TestRunnerAddSocketCheckResult(t *testing.T) {
 		test.m.AddSocketRequest = &message.AddSocketRequest{
 			Result: result,
 		}
-		sm.handleLobbyMessage(ctx, test.m)
+		r.handleLobbyMessage(ctx, test.m)
 		got := <-result
 		switch {
 		case !test.wantOk:
@@ -186,7 +187,7 @@ func TestRunnerAddSocketCheckResult(t *testing.T) {
 				t.Errorf("Test %v: wanted message addr to be %v, got %v", i, addr, got.Addr)
 			case test.m.PlayerName != got.PlayerName:
 				t.Errorf("Test %v: wanted player name in message to be %v, got %v", i, test.m.PlayerName, got.PlayerName)
-			case len(sm.playerSockets) != 1:
+			case len(r.playerSockets) != 1:
 				t.Errorf("Test %v: wanted new socket to be added to runner", i)
 			}
 		}
@@ -236,7 +237,6 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			maxSockets:       1,
 			maxPlayerSockets: 1,
 			Config: Config{
-				Log:            log.New(ioutil.Discard, "scLog", log.LstdFlags),
 				TimeFunc:       func() int64 { return 0 },
 				ReadWait:       2 * time.Hour,
 				WriteWait:      1 * time.Hour,
@@ -273,19 +273,19 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 				},
 			}, nil
 		}
-		sm := newRunnerWithMocks(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
+		r := newRunnerWithMocks(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
 		if test.running {
 			ctx := context.Background()
 			in := make(chan message.Message)
-			sm.Run(ctx, in)
+			r.Run(ctx, in)
 		}
-		sm.SocketConfig = test.Config
-		pn, w, r := mockAddUserRequest("selene")
+		r.SocketConfig = test.Config
+		pn, w, req := mockAddUserRequest("selene")
 		if test.noPlayerName {
 			pn = ""
 		}
 		ctx := context.Background()
-		s, err := sm.handleAddSocket(ctx, pn, w, r)
+		s, err := r.handleAddSocket(ctx, pn, w, req)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -295,12 +295,12 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			t.Errorf("Test %v: unwanted error adding socket: %v", i, err)
 		case addr != s.Addr:
 			t.Errorf("Test %v: wanted addr to be %v, got %v", i, addr, s.Addr)
-		case len(sm.playerSockets) != 1:
-			t.Errorf("Test %v: wanted 1 player to have a socket, got %v", i, len(sm.playerSockets))
-		case len(sm.playerSockets[pn]) != 1:
-			t.Errorf("Test %v: wanted 1 socket for %v, got %v", i, pn, len(sm.playerSockets[pn]))
+		case len(r.playerSockets) != 1:
+			t.Errorf("Test %v: wanted 1 player to have a socket, got %v", i, len(r.playerSockets))
+		case len(r.playerSockets[pn]) != 1:
+			t.Errorf("Test %v: wanted 1 socket for %v, got %v", i, pn, len(r.playerSockets[pn]))
 		default:
-			// test if the socket is running by sending it a message.  this relies on sm.handleSocketMessage
+			// test if the socket is running by sending it a message.  this relies on r.handleSocketMessage
 			close(readBlocker1)
 			<-readBlocker2
 			if !socketRun {
@@ -399,18 +399,18 @@ func TestRunnerAddSecondSocket(t *testing.T) {
 				return nil, errors.New("too many calls to upgrade")
 			}
 		}
-		sm := newRunnerWithMocks(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
+		r := newRunnerWithMocks(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
 		ctx := context.Background()
 		in := make(chan message.Message)
-		sm.Run(ctx, in)
+		r.Run(ctx, in)
 		pn1, w1, r1 := mockAddUserRequest(name1)
-		_, err1 := sm.handleAddSocket(ctx, pn1, w1, r1)
+		_, err1 := r.handleAddSocket(ctx, pn1, w1, r1)
 		if err1 != nil {
 			t.Errorf("Test %v: unwanted error adding first socket: %v", i, err1)
 			continue
 		}
 		pn2, w2, r2 := mockAddUserRequest(test.name2)
-		_, err2 := sm.handleAddSocket(ctx, pn2, w2, r2)
+		_, err2 := r.handleAddSocket(ctx, pn2, w2, r2)
 		switch {
 		case !test.wantOk:
 			if err2 == nil {
@@ -418,10 +418,10 @@ func TestRunnerAddSecondSocket(t *testing.T) {
 			}
 		case err2 != nil:
 			t.Errorf("Test %v: unwanted error adding second socket: %v", i, err2)
-		case len(sm.playerSockets) != test.wantNumPlayers:
-			t.Errorf("Test %v: wanted %v players to have a socket, got %v", i, test.wantNumPlayers, len(sm.playerSockets))
-		case len(sm.playerSockets[pn2]) != test.wantNumPlayer2Sockets:
-			t.Errorf("Test %v: wanted %v socket for %v, got %v", i, test.wantNumPlayer2Sockets, pn2, len(sm.playerSockets[pn2]))
+		case len(r.playerSockets) != test.wantNumPlayers:
+			t.Errorf("Test %v: wanted %v players to have a socket, got %v", i, test.wantNumPlayers, len(r.playerSockets))
+		case len(r.playerSockets[pn2]) != test.wantNumPlayer2Sockets:
+			t.Errorf("Test %v: wanted %v socket for %v, got %v", i, test.wantNumPlayer2Sockets, pn2, len(r.playerSockets[pn2]))
 		}
 	}
 }
@@ -793,27 +793,25 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 	for i, test := range handleLobbyMessageTests {
 		var bb bytes.Buffer
 		log := log.New(&bb, "test", log.LstdFlags)
-		sm := Runner{
+		r := Runner{
+			log:           log,
 			playerSockets: test.playerSockets,
 			playerGames:   test.playerGames,
-			RunnerConfig: RunnerConfig{
-				Log: log,
-			},
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		defer cancelFunc()
-		sm.handleLobbyMessage(ctx, test.m)
+		r.handleLobbyMessage(ctx, test.m)
 		switch {
 		case test.wantErr:
 			if bb.Len() == 0 {
 				t.Errorf("Test %v: wanted error logged for bad message", i)
 			}
-		case !reflect.DeepEqual(test.wantPlayerGames, sm.playerGames):
-			t.Errorf("Test %v: player games not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerGames, sm.playerGames)
+		case !reflect.DeepEqual(test.wantPlayerGames, r.playerGames):
+			t.Errorf("Test %v: player games not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerGames, r.playerGames)
 		default:
 			// ensure each non-nil socket has a message sent to it.  The test setup should only make buffered message channels if a message is expected to be sent on it.
-			for pn, addrs := range sm.playerSockets {
+			for pn, addrs := range r.playerSockets {
 				for addr, socketIn := range addrs {
 					if socketIn != nil && len(socketIn) != 1 {
 						t.Errorf("Test %v: wanted 1 message to be sent on socket for %v at %v", i, pn, addr)
@@ -1058,27 +1056,25 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 	for i, test := range handleSocketMessageTests {
 		var bb bytes.Buffer
 		log := log.New(&bb, "test", log.LstdFlags)
-		sm := Runner{
+		r := Runner{
+			log:           log,
 			playerSockets: test.playerSockets,
 			playerGames:   test.playerGames,
-			RunnerConfig: RunnerConfig{
-				Log: log,
-			},
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		defer cancelFunc()
 		gameOut := make(chan message.Message, 1)
-		sm.handleSocketMessage(ctx, test.m, gameOut)
+		r.handleSocketMessage(ctx, test.m, gameOut)
 		switch {
 		case !test.wantOk:
 			if bb.Len() == 0 {
 				t.Errorf("Test %v: wanted error logged for bad message", i)
 			}
-		case !reflect.DeepEqual(test.wantPlayerSockets, sm.playerSockets):
-			t.Errorf("Test %v: player sockets not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerSockets, sm.playerSockets)
-		case !reflect.DeepEqual(test.wantPlayerGames, sm.playerGames):
-			t.Errorf("Test %v: player games not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerGames, sm.playerGames)
+		case !reflect.DeepEqual(test.wantPlayerSockets, r.playerSockets):
+			t.Errorf("Test %v: player sockets not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerSockets, r.playerSockets)
+		case !reflect.DeepEqual(test.wantPlayerGames, r.playerGames):
+			t.Errorf("Test %v: player games not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerGames, r.playerGames)
 		default:
 			switch len(gameOut) {
 			case 0:
@@ -1118,7 +1114,7 @@ func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 	addr2 := mockAddr("addr2")
 	addr3 := mockAddr("addr3")
 	// player delete is sent from the lobby when the player is actually deleted
-	sm := Runner{
+	r := Runner{
 		playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
 			"fred": {
 				addr1: c1,
@@ -1154,14 +1150,14 @@ func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
 	gameOut := make(chan message.Message)
-	sm.Run(ctx, gameOut)
+	r.Run(ctx, gameOut)
 	gameOut <- m
 	cancelFunc()
 	switch {
-	case !reflect.DeepEqual(wantPlayerSockets, sm.playerSockets):
-		t.Errorf("player sockets not equal:\nwanted: %v\ngot:    %v", wantPlayerSockets, sm.playerSockets)
-	case !reflect.DeepEqual(wantPlayerGames, sm.playerGames):
-		t.Errorf("player games not equal:\nwanted: %v\ngot:    %v", wantPlayerGames, sm.playerGames)
+	case !reflect.DeepEqual(wantPlayerSockets, r.playerSockets):
+		t.Errorf("player sockets not equal:\nwanted: %v\ngot:    %v", wantPlayerSockets, r.playerSockets)
+	case !reflect.DeepEqual(wantPlayerGames, r.playerGames):
+		t.Errorf("player games not equal:\nwanted: %v\ngot:    %v", wantPlayerGames, r.playerGames)
 	default:
 		// ensure the sockets are closed or left open
 		<-c1
@@ -1203,12 +1199,10 @@ func TestSendMessageForGameBadRunnerState(t *testing.T) {
 	for i, test := range tests {
 		var bb bytes.Buffer
 		log := log.New(&bb, "test", log.LstdFlags)
-		sm := Runner{
+		r := Runner{
+			log:           log,
 			playerSockets: test.playerSockets,
 			playerGames:   test.playerGames,
-			RunnerConfig: RunnerConfig{
-				Log: log,
-			},
 		}
 		ctx := context.Background()
 		m := message.Message{
@@ -1217,7 +1211,7 @@ func TestSendMessageForGameBadRunnerState(t *testing.T) {
 			},
 			PlayerName: "fred",
 		}
-		sm.sendMessageForGame(ctx, m)
+		r.sendMessageForGame(ctx, m)
 		if bb.Len() == 0 {
 			t.Errorf("Test %v: wanted error logged for bad runner state", i)
 		}

@@ -20,66 +20,61 @@ func TestNewRunner(t *testing.T) {
 	ud := mockUserDao{}
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
 	newRunnerTests := []struct {
-		RunnerConfig RunnerConfig
+		log *log.Logger
+		RunnerConfig
 		UserDao
 		wantOk bool
 		want   *Runner
 	}{
 		{}, // no log
 		{ // no user dao
-			RunnerConfig: RunnerConfig{
-				Log: testLog,
-			},
+			log: testLog,
 		},
 		{ // low MaxGames
+			log:     testLog,
 			UserDao: ud,
-			RunnerConfig: RunnerConfig{
-				Log: testLog,
-			},
 		},
 		{ // low MaxGames
+			log:     testLog,
 			UserDao: ud,
-			RunnerConfig: RunnerConfig{
-				Log: testLog,
-			},
 		},
 		{ // ok
+			log:     testLog,
 			UserDao: ud,
 			RunnerConfig: RunnerConfig{
-				Log:      testLog,
 				MaxGames: 10,
 			},
 			wantOk: true,
 			want: &Runner{
+				log:     testLog,
 				games:   map[game.ID]chan<- message.Message{},
 				UserDao: ud,
 				RunnerConfig: RunnerConfig{
-					Log:      testLog,
 					MaxGames: 10,
 				},
 			},
 		},
 		{ // ok debug
+			log:     testLog,
 			UserDao: ud,
 			RunnerConfig: RunnerConfig{
 				Debug:    true,
-				Log:      testLog,
 				MaxGames: 10,
 			},
 			wantOk: true,
 			want: &Runner{
+				log:     testLog,
 				games:   map[game.ID]chan<- message.Message{},
 				UserDao: ud,
 				RunnerConfig: RunnerConfig{
 					Debug:    true,
-					Log:      testLog,
 					MaxGames: 10,
 				},
 			},
 		},
 	}
 	for i, test := range newRunnerTests {
-		got, err := test.RunnerConfig.NewRunner(test.UserDao)
+		got, err := test.RunnerConfig.NewRunner(test.log, test.UserDao)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -126,9 +121,9 @@ func TestRunRunner(t *testing.T) {
 func TestGameCreate(t *testing.T) {
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
 	gameCreateTests := []struct {
-		m            message.Message
-		RunnerConfig RunnerConfig
-		wantOk       bool
+		m      message.Message
+		wantOk bool
+		RunnerConfig
 	}{
 		{ // happy path
 			m: message.Message{
@@ -141,11 +136,9 @@ func TestGameCreate(t *testing.T) {
 				},
 			},
 			RunnerConfig: RunnerConfig{
-				Log:      testLog,
 				MaxGames: 1,
 				GameConfig: Config{
 					PlayerCfg:              playerController.Config{WinPoints: 10},
-					Log:                    testLog,
 					TimeFunc:               func() int64 { return 0 },
 					MaxPlayers:             1,
 					NumNewTiles:            1,
@@ -162,7 +155,6 @@ func TestGameCreate(t *testing.T) {
 				PlayerName: "selene",
 			},
 			RunnerConfig: RunnerConfig{
-				Log:      testLog,
 				MaxGames: 0,
 			},
 		},
@@ -172,7 +164,6 @@ func TestGameCreate(t *testing.T) {
 				PlayerName: "selene",
 			},
 			RunnerConfig: RunnerConfig{
-				Log:      testLog,
 				MaxGames: 1,
 			},
 		}, { // bad message: no board
@@ -182,7 +173,6 @@ func TestGameCreate(t *testing.T) {
 				Game:       &game.Info{},
 			},
 			RunnerConfig: RunnerConfig{
-				Log:      testLog,
 				MaxGames: 1,
 			},
 		},
@@ -197,7 +187,6 @@ func TestGameCreate(t *testing.T) {
 				},
 			},
 			RunnerConfig: RunnerConfig{
-				Log:      testLog,
 				MaxGames: 1,
 				GameConfig: Config{
 					MaxPlayers: -1,
@@ -207,6 +196,7 @@ func TestGameCreate(t *testing.T) {
 	}
 	for i, test := range gameCreateTests {
 		r := Runner{
+			log:          testLog,
 			games:        make(map[game.ID]chan<- message.Message),
 			lastID:       3,
 			UserDao:      mockUserDao{},
@@ -268,11 +258,9 @@ func TestGameDelete(t *testing.T) {
 		in := make(chan message.Message)
 		gIn := make(chan message.Message)
 		r := Runner{
+			log: log.New(ioutil.Discard, "test", log.LstdFlags),
 			games: map[game.ID]chan<- message.Message{
 				5: gIn,
-			},
-			RunnerConfig: RunnerConfig{
-				Log: log.New(ioutil.Discard, "test", log.LstdFlags),
 			},
 		}
 		ctx := context.Background()
@@ -340,11 +328,9 @@ func TestHandleGameMessage(t *testing.T) {
 		in := make(chan message.Message)
 		gIn := make(chan message.Message)
 		r := Runner{
+			log: log.New(ioutil.Discard, "test", log.LstdFlags),
 			games: map[game.ID]chan<- message.Message{
 				3: gIn,
-			},
-			RunnerConfig: RunnerConfig{
-				Log: log.New(ioutil.Discard, "test", log.LstdFlags),
 			},
 		}
 		ctx := context.Background()

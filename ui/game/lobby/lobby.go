@@ -23,12 +23,6 @@ type (
 		Socket Socket
 	}
 
-	// Config contains the parameters to create a Lobby.
-	Config struct {
-		Log  *log.Log
-		Game *gameController.Game
-	}
-
 	// Socket is a structure that connects the server to the lobby.
 	Socket interface {
 		Connect(event js.Value) error
@@ -37,10 +31,10 @@ type (
 )
 
 // New creates a lobby for games.
-func (cfg Config) New() *Lobby {
+func New(log *log.Log, game *gameController.Game) *Lobby {
 	l := Lobby{
-		log:  cfg.Log,
-		game: cfg.Game,
+		log:  log,
+		game: game,
 	}
 	return &l
 }

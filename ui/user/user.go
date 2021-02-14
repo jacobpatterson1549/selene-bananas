@@ -28,11 +28,6 @@ type (
 		Socket     Socket
 	}
 
-	// Config contains the parameters to create a User.
-	Config struct {
-		Log *log.Log
-	}
-
 	// userInfo contains a user's username and points.
 	userInfo struct {
 		Name   string `json:"sub"`    // the JWT subject
@@ -46,10 +41,10 @@ type (
 )
 
 // New creates a http/login helper struct.
-func (cfg Config) New(httpClient http.Client) *User {
+func New(log *log.Log, httpClient http.Client) *User {
 	escapeRE := regexp.MustCompile("([" + regexp.QuoteMeta(`\^$*+?.()|[]{}`) + "])")
 	u := User{
-		log:        cfg.Log,
+		log:        log,
 		httpClient: httpClient,
 		escapeRE:   *escapeRE,
 	}

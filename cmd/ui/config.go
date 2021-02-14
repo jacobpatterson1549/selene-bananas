@@ -41,67 +41,52 @@ func (m mainFlags) initDom(ctx context.Context, wg *sync.WaitGroup) {
 
 // log creates and initializes the log component.
 func (mainFlags) log(ctx context.Context, wg *sync.WaitGroup) *log.Log {
-	log := new(log.Log)
-	log.InitDom(ctx, wg)
-	return log
+	l := new(log.Log)
+	l.InitDom(ctx, wg)
+	return l
 }
 
 // user creates and initializes the user/form/http component.
 func (m mainFlags) user(ctx context.Context, wg *sync.WaitGroup, log *log.Log) *user.User {
-	cfg := user.Config{
-		Log: log,
-	}
 	httpClient := xhr.HTTPClient{
 		Timeout: m.httpTimeout,
 	}
-	user := cfg.New(httpClient)
-	user.InitDom(ctx, wg)
-	return user
+	u := user.New(log, httpClient)
+	u.InitDom(ctx, wg)
+	return u
 }
 
 // canvas creates and initializes the game drawing component with elements from the dom.
 func (m mainFlags) canvas(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *board.Board) *canvas.Canvas {
 	cfg := canvas.Config{
-		Log:        log,
 		TileLength: m.tileLength,
 	}
-	canvas := cfg.New(board, ".game>.canvas")
-	canvas.InitDom(ctx, wg)
-	return canvas
+	c := cfg.New(log, board, ".game>.canvas")
+	c.InitDom(ctx, wg)
+	return c
 }
 
 // game creates and initializes the game component.
 func (mainFlags) game(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *board.Board, canvas *canvas.Canvas) *game.Game {
 	cfg := game.Config{
-		Log:    log,
 		Board:  board,
 		Canvas: canvas,
 	}
-	game := cfg.NewGame()
+	game := cfg.NewGame(log)
 	game.InitDom(ctx, wg)
 	return game
 }
 
 // lobby creates and initializes the game lobby component.
 func (mainFlags) lobby(ctx context.Context, wg *sync.WaitGroup, log *log.Log, game *game.Game) *lobby.Lobby {
-	cfg := lobby.Config{
-		Log:  log,
-		Game: game,
-	}
-	lobby := cfg.New()
+	lobby := lobby.New(log, game)
 	lobby.InitDom(ctx, wg)
 	return lobby
 }
 
 // socket creates and initializes the player socket component for connection to the lobby.
 func (mainFlags) socket(ctx context.Context, wg *sync.WaitGroup, log *log.Log, user *user.User, game *game.Game, lobby *lobby.Lobby) *socket.Socket {
-	cfg := socket.Config{
-		Log:   log,
-		User:  user,
-		Game:  game,
-		Lobby: lobby,
-	}
-	socket := cfg.New()
+	socket := socket.New(log, user, game, lobby)
 	socket.InitDom(ctx, wg)
 	return socket
 }

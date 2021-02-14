@@ -23,6 +23,7 @@ import (
 type (
 	// Server runs the site
 	Server struct {
+		log         *log.Logger
 		data        interface{}
 		tokenizer   Tokenizer
 		userDao     UserDao
@@ -40,8 +41,6 @@ type (
 		HTTPPort int
 		// HTTPSPORT is the TCP port for server https requests.
 		HTTPSPort int
-		// Log is used to log errors and other information
-		Log *log.Logger
 		// Tokenizer is used to generate and parse session tokens
 		StopDur time.Duration
 		// CachenSec is the number of seconds some files are cached
@@ -111,8 +110,8 @@ const (
 )
 
 // NewServer creates a Server from the Config
-func (cfg Config) NewServer(t Tokenizer, ud UserDao, l Lobby) (*Server, error) {
-	if err := cfg.validate(t, ud, l); err != nil {
+func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby) (*Server, error) {
+	if err := cfg.validate(log, tokenizer, userDao, lobby); err != nil {
 		return nil, fmt.Errorf("creating server: validation: %w", err)
 	}
 	var gameConfig game.Config
@@ -159,10 +158,11 @@ func (cfg Config) NewServer(t Tokenizer, ud UserDao, l Lobby) (*Server, error) {
 		return nil, fmt.Errorf("parsing template: %v", err)
 	}
 	s := Server{
+		log:         log,
 		data:        data,
-		tokenizer:   t,
-		userDao:     ud,
-		lobby:       l,
+		tokenizer:   tokenizer,
+		userDao:     userDao,
+		lobby:       lobby,
 		httpsServer: httpsServer,
 		httpServer:  httpServer,
 		cacheMaxAge: cacheMaxAge,
@@ -175,15 +175,15 @@ func (cfg Config) NewServer(t Tokenizer, ud UserDao, l Lobby) (*Server, error) {
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(t Tokenizer, ud UserDao, l Lobby) error {
+func (cfg Config) validate(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby) error {
 	switch {
-	case cfg.Log == nil:
+	case log == nil:
 		return fmt.Errorf("log required")
-	case t == nil:
+	case tokenizer == nil:
 		return fmt.Errorf("tokenizer required")
-	case ud == nil:
+	case userDao == nil:
 		return fmt.Errorf("user dao required")
-	case l == nil:
+	case lobby == nil:
 		return fmt.Errorf("lobby required")
 	case cfg.StopDur <= 0:
 		return fmt.Errorf("shop timeout duration required")
@@ -241,18 +241,18 @@ func (s Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	s.lobby.Run(ctx)
 	s.httpsServer.RegisterOnShutdown(cancelFunc)
-	s.Log.Printf("starting https server at at https://127.0.0.1%v", s.httpsServer.Addr)
+	s.log.Printf("starting https server at at https://127.0.0.1%v", s.httpsServer.Addr)
 	go func() {
 		switch {
 		case s.validHTTPAddr():
 			if _, err := tls.LoadX509KeyPair(s.TLSCertFile, s.TLSKeyFile); err != nil {
-				s.Log.Printf("Problem loading tls certificate: %v", err)
+				s.log.Printf("Problem loading tls certificate: %v", err)
 				return
 			}
 			errC <- s.httpsServer.ListenAndServeTLS(s.TLSCertFile, s.TLSKeyFile)
 		default:
 			if len(s.TLSCertFile) != 0 || len(s.TLSKeyFile) != 0 {
-				s.Log.Printf("Ignoring TLS_CERT_FILE/TLS_KEY_FILE variables since PORT was specified, using automated certificate management.")
+				s.log.Printf("Ignoring TLS_CERT_FILE/TLS_KEY_FILE variables since PORT was specified, using automated certificate management.")
 			}
 			errC <- s.httpsServer.ListenAndServe()
 		}
@@ -272,7 +272,7 @@ func (s Server) Stop(ctx context.Context) error {
 	case httpShutdownErr != nil:
 		return httpShutdownErr
 	}
-	s.Log.Println("server stopped successfully")
+	s.log.Println("server stopped successfully")
 	return nil
 }
 
@@ -281,7 +281,7 @@ func (s Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case s.Challenge.IsFor(r.URL.Path):
 		if err := s.Challenge.Handle(w, r.URL.Path); err != nil {
-			s.Log.Printf("serving acme challenge: %v", err)
+			s.log.Printf("serving acme challenge: %v", err)
 			s.httpError(w, http.StatusInternalServerError)
 		}
 	default:
@@ -349,7 +349,7 @@ func (s Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
 		// [unauthenticated]
 	default:
 		if err := s.checkTokenUsername(r); err != nil {
-			s.Log.Print(err)
+			s.log.Print(err)
 			s.httpError(w, http.StatusForbidden)
 			return
 		}
@@ -452,7 +452,7 @@ func (Server) httpError(w http.ResponseWriter, statusCode int) {
 
 // handleError logs and writes the error as an internal server error (500).
 func (s Server) handleError(w http.ResponseWriter, err error) {
-	s.Log.Printf("server error: %v", err)
+	s.log.Printf("server error: %v", err)
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 

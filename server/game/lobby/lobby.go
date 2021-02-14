@@ -16,6 +16,7 @@ import (
 type (
 	// Lobby is the place users can create, join, and participate in games
 	Lobby struct {
+		log          *log.Logger
 		socketRunner Runner
 		gameRunner   Runner
 		// socketRunnerIn is the channel for sending messages to the socket runner.  Used to add and remove sockets
@@ -29,8 +30,6 @@ type (
 	Config struct {
 		// Debug is a flag that causes the game to log the types messages that are read.
 		Debug bool
-		// Log is used to log errors and other information
-		Log *log.Logger
 	}
 
 	// messageHandler is a channel that can write message.Messages and be cancelled.
@@ -52,11 +51,12 @@ type (
 )
 
 // NewLobby creates a new game lobby.
-func (cfg Config) NewLobby(socketRunner, gameRunner Runner) (*Lobby, error) {
-	if err := cfg.validate(socketRunner, gameRunner); err != nil {
+func (cfg Config) NewLobby(log *log.Logger, socketRunner, gameRunner Runner) (*Lobby, error) {
+	if err := cfg.validate(log, socketRunner, gameRunner); err != nil {
 		return nil, fmt.Errorf("creating lobby: validation: %w", err)
 	}
 	l := Lobby{
+		log:            log,
 		socketRunner:   socketRunner,
 		gameRunner:     gameRunner,
 		socketRunnerIn: make(chan message.Message),
@@ -67,9 +67,9 @@ func (cfg Config) NewLobby(socketRunner, gameRunner Runner) (*Lobby, error) {
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(socketRunner, gameRunner Runner) error {
+func (cfg Config) validate(log *log.Logger, socketRunner, gameRunner Runner) error {
 	switch {
-	case cfg.Log == nil:
+	case log == nil:
 		return fmt.Errorf("log required")
 	case socketRunner == nil:
 		return fmt.Errorf("socket runner required")
@@ -92,7 +92,7 @@ func (l *Lobby) Run(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case m := <-socketRunnerOut:
-				message.Send(m, gameRunnerIn, l.Debug, l.Log)
+				message.Send(m, gameRunnerIn, l.Debug, l.log)
 			case m := <-gameRunnerOut:
 				l.handleGameMessage(m)
 			}
@@ -113,7 +113,7 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 			Result:         result,
 		},
 	}
-	message.Send(m, l.socketRunnerIn, l.Debug, l.Log)
+	message.Send(m, l.socketRunnerIn, l.Debug, l.log)
 	// The result contains the address of the new socket to get the game infos of the lobby for.
 	m2 := <-result
 	if m2.Type == message.SocketError {
@@ -121,7 +121,7 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 	}
 	m2.Type = message.GameInfos
 	m2.Games = l.gameInfos()
-	message.Send(m2, l.socketRunnerIn, l.Debug, l.Log)
+	message.Send(m2, l.socketRunnerIn, l.Debug, l.log)
 	return nil
 }
 
@@ -131,7 +131,7 @@ func (l *Lobby) RemoveUser(username string) {
 		Type:       message.PlayerRemove,
 		PlayerName: player.Name(username),
 	}
-	message.Send(m, l.socketRunnerIn, l.Debug, l.Log)
+	message.Send(m, l.socketRunnerIn, l.Debug, l.log)
 }
 
 // handleGameMessage writes a game message to the socketMessages channel, possibly modifying it.
@@ -140,7 +140,7 @@ func (l *Lobby) handleGameMessage(m message.Message) {
 	case message.GameInfos:
 		l.handleGameInfoChanged(m)
 	default:
-		message.Send(m, l.socketRunnerIn, l.Debug, l.Log)
+		message.Send(m, l.socketRunnerIn, l.Debug, l.log)
 	}
 }
 
@@ -152,8 +152,8 @@ func (l *Lobby) handleGameInfoChanged(m message.Message) {
 			Info:       "cannot update game info when no game is provided",
 			PlayerName: m.PlayerName,
 		}
-		message.Send(m2, l.socketRunnerIn, l.Debug, l.Log)
-		l.Log.Print(m2.Info)
+		message.Send(m2, l.socketRunnerIn, l.Debug, l.log)
+		l.log.Print(m2.Info)
 		return
 	}
 	switch m.Game.Status {
@@ -167,7 +167,7 @@ func (l *Lobby) handleGameInfoChanged(m message.Message) {
 		Type:  message.GameInfos,
 		Games: infos,
 	}
-	message.Send(m2, l.socketRunnerIn, l.Debug, l.Log)
+	message.Send(m2, l.socketRunnerIn, l.Debug, l.log)
 }
 
 // game infos gets the sorted game infos for the Lobby.

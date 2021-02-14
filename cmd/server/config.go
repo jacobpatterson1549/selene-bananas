@@ -55,21 +55,21 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if err = userDao.Setup(ctx); err != nil {
 		return nil, fmt.Errorf("setting up user dao: %w", err)
 	}
-	socketRunnerConfig := socketRunnerConfig(m, log, timeFunc)
-	socketRunner, err := socketRunnerConfig.NewRunner()
+	socketRunnerCfg := socketRunnerConfig(m, timeFunc)
+	socketRunner, err := socketRunnerCfg.NewRunner(log)
 	if err != nil {
 		return nil, fmt.Errorf("creating socket runner: %w", err)
 	}
-	gameRunnerConfig, err := gameRunnerConfig(m, log, timeFunc)
+	gameRunnerCfg, err := gameRunnerConfig(m, timeFunc)
 	if err != nil {
 		return nil, fmt.Errorf("creating game runner config: %w", err)
 	}
-	gameRunner, err := gameRunnerConfig.NewRunner(userDao)
+	gameRunner, err := gameRunnerCfg.NewRunner(log, userDao)
 	if err != nil {
 		return nil, fmt.Errorf("creating game runner: %w", err)
 	}
-	lobbyCfg := lobbyConfig(m, log)
-	lobby, err := lobbyCfg.NewLobby(socketRunner, gameRunner)
+	lobbyCfg := lobbyConfig(m)
+	lobby, err := lobbyCfg.NewLobby(log, socketRunner, gameRunner)
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby: %w", err)
 	}
@@ -85,7 +85,6 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	cfg := server.Config{
 		HTTPPort:      m.httpPort,
 		HTTPSPort:     m.httpsPort,
-		Log:           log,
 		StopDur:       time.Second,
 		CacheSec:      m.cacheSec,
 		Version:       v,
@@ -95,7 +94,7 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 		ColorConfig:   cc,
 		NoTLSRedirect: m.noTLSRedirect,
 	}
-	return cfg.NewServer(tokenizer, userDao, lobby)
+	return cfg.NewServer(log, tokenizer, userDao, lobby)
 }
 
 // colorConfig creates the color config for the css.
@@ -147,23 +146,21 @@ func userDaoConfig(d db.Database) user.DaoConfig {
 }
 
 // lobbyConfig creates the configuration for running and managing players of games.
-func lobbyConfig(m mainFlags, log *log.Logger) lobby.Config {
+func lobbyConfig(m mainFlags) lobby.Config {
 	cfg := lobby.Config{
 		Debug: m.debugGame,
-		Log:   log,
 	}
 	return cfg
 }
 
 // gameRunnerConfig creates the configuration for running and managing games.
-func gameRunnerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) (*game.RunnerConfig, error) {
-	gameCfg, err := gameConfig(m, log, timeFunc)
+func gameRunnerConfig(m mainFlags, timeFunc func() int64) (*game.RunnerConfig, error) {
+	gameCfg, err := gameConfig(m, timeFunc)
 	if err != nil {
 		return nil, fmt.Errorf("creating game config: %w", err)
 	}
 	cfg := game.RunnerConfig{
 		Debug:      m.debugGame,
-		Log:        log,
 		MaxGames:   4,
 		GameConfig: *gameCfg,
 	}
@@ -171,7 +168,7 @@ func gameRunnerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) (*gam
 }
 
 // gameConfig creates the base configuration for all games.
-func gameConfig(m mainFlags, log *log.Logger, timeFunc func() int64) (*gameController.Config, error) {
+func gameConfig(m mainFlags, timeFunc func() int64) (*gameController.Config, error) {
 	wordsFile, err := os.Open(m.wordsFile)
 	if err != nil {
 		return nil, fmt.Errorf("trying to open words file: %w", err)
@@ -192,7 +189,6 @@ func gameConfig(m mainFlags, log *log.Logger, timeFunc func() int64) (*gameContr
 	}
 	cfg := gameController.Config{
 		Debug:                  m.debugGame,
-		Log:                    log,
 		TimeFunc:               timeFunc,
 		MaxPlayers:             8,
 		PlayerCfg:              playerCfg,
@@ -207,10 +203,9 @@ func gameConfig(m mainFlags, log *log.Logger, timeFunc func() int64) (*gameContr
 }
 
 // socketRunnerConfig creates the configuration for creating new sockets (each tab that is connected to the lobby).
-func socketRunnerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) socket.RunnerConfig {
+func socketRunnerConfig(m mainFlags, timeFunc func() int64) socket.RunnerConfig {
 	socketCfg := socket.Config{
 		Debug:          m.debugGame,
-		Log:            log,
 		TimeFunc:       timeFunc,
 		ReadWait:       60 * time.Second,
 		WriteWait:      10 * time.Second,
@@ -219,7 +214,6 @@ func socketRunnerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) soc
 	}
 	cfg := socket.RunnerConfig{
 		Debug:            m.debugGame,
-		Log:              log,
 		MaxSockets:       32,
 		MaxPlayerSockets: 5,
 		SocketConfig:     socketCfg,

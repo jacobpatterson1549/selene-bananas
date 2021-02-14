@@ -32,7 +32,6 @@ type (
 
 	// Config contains the parameters to create a Game.
 	Config struct {
-		Log    *log.Log
 		Board  *board.Board
 		Canvas *canvas.Canvas
 	}
@@ -44,9 +43,9 @@ type (
 )
 
 // NewGame creates a new game controller with references to the board and canvas.
-func (cfg Config) NewGame() *Game {
+func (cfg Config) NewGame(log *log.Log) *Game {
 	g := Game{
-		log:    cfg.Log,
+		log:    log,
 		board:  cfg.Board,
 		canvas: cfg.Canvas,
 	}
@@ -437,10 +436,9 @@ func (g *Game) viewFinalBoard() {
 	}
 	tileLength := g.canvas.TileLength()
 	cfg := canvas.Config{
-		Log:        g.log,
 		TileLength: tileLength,
 	}
-	canvas := cfg.New(&b, ".final-boards .canvas")
+	canvas := cfg.New(g.log, &b, ".final-boards .canvas")
 	width := cfg.DesiredWidth(b)
 	canvas.UpdateSize(width)
 	canvas.Redraw()
