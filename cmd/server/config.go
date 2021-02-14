@@ -47,13 +47,13 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if err != nil {
 		return nil, fmt.Errorf("creating SQL database: %w", err)
 	}
-	userDaoCfg := userDaoConfig(sqlDB)
-	userDao, err := userDaoCfg.NewDao()
+	sqlFiles, err := userSQLFiles()
+	if err != nil {
+		return nil, fmt.Errorf("loading SQL files to manage user data: %w", err)
+	}
+	userDao, err := user.NewDao(ctx, sqlDB, sqlFiles)
 	if err != nil {
 		return nil, fmt.Errorf("creating user dao: %w", err)
-	}
-	if err = userDao.Setup(ctx); err != nil {
-		return nil, fmt.Errorf("setting up user dao: %w", err)
 	}
 	socketRunnerCfg := socketRunnerConfig(m, timeFunc)
 	socketRunner, err := socketRunnerCfg.NewRunner(log)
@@ -140,13 +140,27 @@ func sqlDatabase(m mainFlags) (db.Database, error) {
 	return cfg.NewDatabase()
 }
 
-// userDaoConfig creates a user dao configuration.
-func userDaoConfig(d db.Database) user.DaoConfig {
-	cfg := user.DaoConfig{
-		DB:           d,
-		ReadFileFunc: ioutil.ReadFile,
+// userSQLFiles loads the SQL files needed to manage user data.
+func userSQLFiles() ([][]byte, error) {
+	// SQLFiles are the SQL files that are used for and by the dao.
+	userSQLFileNames := []string{
+		"users",
+		"user_create",
+		"user_read",
+		"user_update_password",
+		"user_update_points_increment",
+		"user_delete",
 	}
-	return cfg
+	userSQLFiles := make([][]byte, len(userSQLFileNames))
+	for i, n := range userSQLFileNames {
+		n = fmt.Sprintf("resources/sql/%s.sql", n)
+		b, err := ioutil.ReadFile(n)
+		if err != nil {
+			return nil, fmt.Errorf("reading setup file %v: %w", n, err)
+		}
+		userSQLFiles[i] = b
+	}
+	return userSQLFiles, nil
 }
 
 // lobbyConfig creates the configuration for running and managing players of games.
