@@ -20,8 +20,10 @@ type (
 		games map[game.ID]chan<- message.Message
 		// lastID is the ID of themost recently created game.  The next new game should get a larger ID.
 		lastID game.ID
-		// the UserDao increments user points when a game is finished.
-		UserDao
+		// WordChecker is used to validate players' words when they try to finish the game.
+		wordChecker WordChecker
+		// UserDao increments user points when a game is finished.
+		userDao UserDao
 		// RunnerConfig contains configruation properties of the Runner.
 		RunnerConfig
 	}
@@ -35,18 +37,30 @@ type (
 		// The config for creating new games.
 		GameConfig Config
 	}
+
+	// WordChecker checks if words are valid.
+	WordChecker interface {
+		Check(word string) bool
+	}
+
+	// UserDao makes changes to the stored state of users in the game
+	UserDao interface {
+		// UpdatePointsIncrement increments points for the specified usernames based on the userPointsIncrementFunc
+		UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error
+	}
 )
 
 // NewRunner creates a new game runner from the config.
-func (cfg RunnerConfig) NewRunner(log *log.Logger, ud UserDao) (*Runner, error) {
-	if err := cfg.validate(log, ud); err != nil {
+func (cfg RunnerConfig) NewRunner(log *log.Logger, wordChecker WordChecker, userDao UserDao) (*Runner, error) {
+	if err := cfg.validate(log, wordChecker, userDao); err != nil {
 		return nil, fmt.Errorf("creating game runner: validation: %w", err)
 	}
 	m := Runner{
 		log:          log,
 		games:        make(map[game.ID]chan<- message.Message, cfg.MaxGames),
 		RunnerConfig: cfg,
-		UserDao:      ud,
+		wordChecker:  wordChecker,
+		userDao:      userDao,
 	}
 	return &m, nil
 }
@@ -73,11 +87,13 @@ func (r *Runner) Run(ctx context.Context, in <-chan message.Message) <-chan mess
 }
 
 // validate ensures the configuration has no errors.
-func (cfg RunnerConfig) validate(log *log.Logger, ud UserDao) error {
+func (cfg RunnerConfig) validate(log *log.Logger, wordChecker WordChecker, userDao UserDao) error {
 	switch {
 	case log == nil:
 		return fmt.Errorf("log required")
-	case ud == nil:
+	case wordChecker == nil:
+		return fmt.Errorf("word checker required")
+	case userDao == nil:
 		return fmt.Errorf("user dao required")
 	case cfg.MaxGames < 1:
 		return fmt.Errorf("must be able to create at least one game")
@@ -110,7 +126,7 @@ func (r *Runner) createGame(ctx context.Context, m message.Message, out chan<- m
 		return
 	}
 	id := r.lastID + 1
-	g, err := r.GameConfig.NewGame(r.log, id, r.UserDao)
+	g, err := r.GameConfig.NewGame(r.log, id, r.wordChecker, r.userDao)
 	if err != nil {
 		r.sendError(err, m.PlayerName, out)
 		return

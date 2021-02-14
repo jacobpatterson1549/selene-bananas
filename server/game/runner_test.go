@@ -17,55 +17,67 @@ import (
 )
 
 func TestNewRunner(t *testing.T) {
+	wc := mockWordChecker{}
 	ud := mockUserDao{}
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
 	newRunnerTests := []struct {
 		log *log.Logger
 		RunnerConfig
+		WordChecker
 		UserDao
 		wantOk bool
 		want   *Runner
 	}{
 		{}, // no log
-		{ // no user dao
+		{ // no word checker
 			log: testLog,
 		},
-		{ // low MaxGames
-			log:     testLog,
-			UserDao: ud,
+		{ // no user dao
+			log:         testLog,
+			WordChecker: wc,
 		},
 		{ // low MaxGames
-			log:     testLog,
-			UserDao: ud,
+			log:         testLog,
+			WordChecker: wc,
+			UserDao:     ud,
+		},
+		{ // low MaxGames
+			log:         testLog,
+			WordChecker: wc,
+			UserDao:     ud,
 		},
 		{ // ok
-			log:     testLog,
-			UserDao: ud,
+			log:         testLog,
+			WordChecker: wc,
+			UserDao:     ud,
 			RunnerConfig: RunnerConfig{
 				MaxGames: 10,
 			},
 			wantOk: true,
 			want: &Runner{
-				log:     testLog,
-				games:   map[game.ID]chan<- message.Message{},
-				UserDao: ud,
+				log:         testLog,
+				games:       map[game.ID]chan<- message.Message{},
+				wordChecker: wc,
+				userDao:     ud,
 				RunnerConfig: RunnerConfig{
 					MaxGames: 10,
 				},
 			},
 		},
 		{ // ok debug
-			log:     testLog,
-			UserDao: ud,
+			log:         testLog,
+			WordChecker: wc,
+			UserDao:     ud,
 			RunnerConfig: RunnerConfig{
 				Debug:    true,
 				MaxGames: 10,
 			},
 			wantOk: true,
 			want: &Runner{
-				log:     testLog,
-				games:   map[game.ID]chan<- message.Message{},
-				UserDao: ud,
+				log:         testLog,
+				games:       map[game.ID]chan<- message.Message{},
+				wordChecker: wc,
+				userDao:     ud,
 				RunnerConfig: RunnerConfig{
 					Debug:    true,
 					MaxGames: 10,
@@ -74,7 +86,7 @@ func TestNewRunner(t *testing.T) {
 		},
 	}
 	for i, test := range newRunnerTests {
-		got, err := test.RunnerConfig.NewRunner(test.log, test.UserDao)
+		got, err := test.RunnerConfig.NewRunner(test.log, test.WordChecker, test.UserDao)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -199,7 +211,8 @@ func TestGameCreate(t *testing.T) {
 			log:          testLog,
 			games:        make(map[game.ID]chan<- message.Message),
 			lastID:       3,
-			UserDao:      mockUserDao{},
+			wordChecker:  mockWordChecker{},
+			userDao:      mockUserDao{},
 			RunnerConfig: test.RunnerConfig,
 		}
 		ctx := context.Background()

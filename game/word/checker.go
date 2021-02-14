@@ -8,33 +8,26 @@ import (
 	"unicode"
 )
 
-type (
-	// Checker can be used to check if words are valid.
-	Checker interface {
-		Check(word string) bool
-	}
-
-	// lowercaseMap implements the Checker interface.
-	lowercaseMap map[string]struct{}
-)
+// Checker determines if words are valid
+type Checker map[string]struct{}
 
 // NewChecker consumes the lower case words in the reader to use for checking and creates a new Checker.
-func NewChecker(r io.Reader) Checker {
-	lm := make(lowercaseMap)
+func NewChecker(r io.Reader) *Checker {
+	c := make(Checker)
 	scanner := bufio.NewScanner(r)
 	scanner.Split(scanLowerWords)
 	for scanner.Scan() {
 		rawWord := scanner.Text()
-		lm[rawWord] = struct{}{}
+		c[rawWord] = struct{}{}
 	}
-	return lm
+	return &c
 }
 
 // Check determines whether or not the word is valid.
 // Words are converted to lowercase before checking.
-func (lm lowercaseMap) Check(word string) bool {
+func (c Checker) Check(word string) bool {
 	lowerWord := strings.ToLower(word)
-	_, ok := lm[lowerWord]
+	_, ok := c[lowerWord]
 	return ok
 }
 

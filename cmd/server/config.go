@@ -60,11 +60,15 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if err != nil {
 		return nil, fmt.Errorf("creating socket runner: %w", err)
 	}
+	wordChecker, err := wordChecker(m)
+	if err != nil {
+		return nil, fmt.Errorf("creating word checker: %w", err)
+	}
 	gameRunnerCfg, err := gameRunnerConfig(m, timeFunc)
 	if err != nil {
 		return nil, fmt.Errorf("creating game runner config: %w", err)
 	}
-	gameRunner, err := gameRunnerCfg.NewRunner(log, userDao)
+	gameRunner, err := gameRunnerCfg.NewRunner(log, wordChecker, userDao)
 	if err != nil {
 		return nil, fmt.Errorf("creating game runner: %w", err)
 	}
@@ -167,16 +171,21 @@ func gameRunnerConfig(m mainFlags, timeFunc func() int64) (*game.RunnerConfig, e
 	return &cfg, nil
 }
 
-// gameConfig creates the base configuration for all games.
-func gameConfig(m mainFlags, timeFunc func() int64) (*gameController.Config, error) {
+// wordChecker creates the word checker.
+func wordChecker(m mainFlags) (*word.Checker, error) {
 	wordsFile, err := os.Open(m.wordsFile)
 	if err != nil {
 		return nil, fmt.Errorf("trying to open words file: %w", err)
 	}
+	wc := word.NewChecker(wordsFile)
+	return wc, nil
+}
+
+// gameConfig creates the base configuration for all games.
+func gameConfig(m mainFlags, timeFunc func() int64) (*gameController.Config, error) {
 	playerCfg := playerController.Config{
 		WinPoints: 10,
 	}
-	wordChecker := word.NewChecker(wordsFile)
 	shuffleUnusedTilesFunc := func(tiles []tile.Tile) {
 		rand.Shuffle(len(tiles), func(i, j int) {
 			tiles[i], tiles[j] = tiles[j], tiles[i]
@@ -194,7 +203,6 @@ func gameConfig(m mainFlags, timeFunc func() int64) (*gameController.Config, err
 		PlayerCfg:              playerCfg,
 		NumNewTiles:            21,
 		TileLetters:            "",
-		WordChecker:            wordChecker,
 		IdlePeriod:             60 * time.Minute,
 		ShuffleUnusedTilesFunc: shuffleUnusedTilesFunc,
 		ShufflePlayersFunc:     shufflePlayersFunc,

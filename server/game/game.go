@@ -14,7 +14,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
-	"github.com/jacobpatterson1549/selene-bananas/game/word"
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
 )
 
@@ -27,7 +26,8 @@ type (
 		status      game.Status
 		players     map[player.Name]*playerController.Player
 		unusedTiles []tile.Tile
-		UserDao
+		wordChecker WordChecker
+		userDao     UserDao
 		Config
 	}
 
@@ -35,7 +35,6 @@ type (
 	Config struct {
 		// Debug is a flag that causes the game to log the types messages that are read.
 		Debug bool
-
 		// TimeFunc is a function which should supply the current time since the unix epoch.
 		// Used for the created at timestamp.
 		TimeFunc func() int64
@@ -51,8 +50,6 @@ type (
 		// If a letter should occur on multiple tiles, it sh be present multiple times.
 		// For example, the TileLetters "AABCCC" will be used to initialize a game with two As, 1 B, and 3 Cs.
 		TileLetters string
-		// WordChecker is used to validate players' words when they try to finish the game.
-		WordChecker word.Checker
 		// IdlePeriod is the amount of time that can pass between non-BoardRefresh messages before the game is idle and will delete itself.
 		IdlePeriod time.Duration
 		// ShuffleUnusedTilesFunc is used to shuffle unused tiles when initializing the game and after tiles are swapped.
@@ -67,12 +64,6 @@ type (
 	// messageHandler is a function which handles message.Messages, returning responses to the output channel.
 	messageHandler func(ctx context.Context, m message.Message, send messageSender) error
 
-	// UserDao makes changes to the stored state of users in the game
-	UserDao interface {
-		// UpdatePointsIncrement increments points for the specified usernames based on the userPointsIncrementFunc
-		UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error
-	}
-
 	// messageSender is a function that sends a message somewhere.
 	messageSender func(m message.Message)
 )
@@ -85,19 +76,21 @@ const (
 )
 
 // NewGame creates a new game and runs it.
-func (cfg Config) NewGame(log *log.Logger, id game.ID, ud UserDao) (*Game, error) {
-	if err := cfg.validate(log, id, ud); err != nil {
+func (cfg Config) NewGame(log *log.Logger, id game.ID, wordChecker WordChecker, userDao UserDao) (*Game, error) {
+	if err := cfg.validate(log, id, wordChecker, userDao); err != nil {
 		return nil, fmt.Errorf("creating game: validation: %w", err)
 	}
 	if len(cfg.TileLetters) == 0 {
 		cfg.TileLetters = defaultTileLetters
 	}
 	g := Game{
-		id:        id,
-		createdAt: cfg.TimeFunc(),
-		status:    game.NotStarted,
-		players:   make(map[player.Name]*playerController.Player),
-		Config:    cfg,
+		id:          id,
+		createdAt:   cfg.TimeFunc(),
+		status:      game.NotStarted,
+		players:     make(map[player.Name]*playerController.Player),
+		wordChecker: wordChecker,
+		userDao:     userDao,
+		Config:      cfg,
 	}
 	if err := g.initializeUnusedTiles(); err != nil {
 		return nil, err
@@ -106,7 +99,7 @@ func (cfg Config) NewGame(log *log.Logger, id game.ID, ud UserDao) (*Game, error
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(log *log.Logger, id game.ID, ud UserDao) error {
+func (cfg Config) validate(log *log.Logger, id game.ID, wordChecker WordChecker, userDao UserDao) error {
 	switch {
 	case log == nil:
 		return fmt.Errorf("log required")
@@ -114,7 +107,9 @@ func (cfg Config) validate(log *log.Logger, id game.ID, ud UserDao) error {
 		return fmt.Errorf("positive id required")
 	case cfg.TimeFunc == nil:
 		return fmt.Errorf("time func required required")
-	case ud == nil:
+	case wordChecker == nil:
+		return fmt.Errorf("word checker required")
+	case userDao == nil:
 		return fmt.Errorf("user dao required")
 	case cfg.MaxPlayers <= 0:
 		return fmt.Errorf("positive max player count required")
@@ -402,7 +397,7 @@ func (g Game) checkWords(pn player.Name) ([]string, error) {
 			errText = fmt.Sprintf("short word detected, all must be at least %v characters", g.Config.MinLength)
 			break
 		}
-		if !g.WordChecker.Check(w) {
+		if !g.wordChecker.Check(w) {
 			invalidWords = append(invalidWords, w)
 		}
 	}
@@ -609,7 +604,7 @@ func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName player.Na
 		}
 		userPoints[string(pn)] = points
 	}
-	return g.UserDao.UpdatePointsIncrement(ctx, userPoints)
+	return g.userDao.UpdatePointsIncrement(ctx, userPoints)
 }
 
 // playerNames returns an array of the player name strings.

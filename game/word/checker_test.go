@@ -29,14 +29,13 @@ func TestNewChecker(t *testing.T) {
 		},
 	}
 	for i, test := range wordsTests {
-		want := make(map[string]struct{}, len(test.wantWords))
+		want := Checker(make(map[string]struct{}, len(test.wantWords)))
 		for _, w := range test.wantWords {
 			want[w] = struct{}{}
 		}
 		r := strings.NewReader(test.wordsToRead)
 		c := NewChecker(r)
-		lm := c.(lowercaseMap)
-		got := map[string]struct{}(lm)
+		got := *c
 		if !reflect.DeepEqual(want, got) {
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, want, got)
 		}
@@ -49,9 +48,9 @@ func BenchmarkNewCheckerAmericanEnglishLarge(b *testing.B) {
 	if err != nil {
 		b.Fatalf("could not open wordsFile: %v", err)
 	}
-	lm := NewChecker(f).(lowercaseMap)
+	c := NewChecker(f)
 	want := 114064
-	got := len(lm)
+	got := len(*c)
 	if want != got {
 		note := "NOTE: this might be flaky, but it ensures that a large number of words can be loaded."
 		b.Errorf("wanted %v words, got %v\n%v", want, got, note)
