@@ -59,7 +59,7 @@ func (c *mockConn) SetWriteDeadline(t time.Time) error {
 }
 
 func (c *mockConn) SetPongHandler(h func(appData string) error) {
-	//NOOP
+	c.SetPongHandlerFunc(h)
 }
 
 func (c *mockConn) Close() error {

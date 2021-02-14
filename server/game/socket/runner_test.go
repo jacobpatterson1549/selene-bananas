@@ -163,6 +163,9 @@ func TestRunnerAddSocketCheckResult(t *testing.T) {
 						mockConnReadMinimalMessage(m)
 						return nil
 					},
+					SetPongHandlerFunc: func(h func(appDauta string) error) {
+						// NOOP
+					},
 				}, nil
 			}),
 		}
@@ -270,6 +273,9 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 				},
 				SetReadDeadlineFunc: func(t time.Time) error {
 					return nil
+				},
+				SetPongHandlerFunc: func(h func(appDauta string) error) {
+					// NOOP
 				},
 			}, nil
 		}
@@ -384,6 +390,9 @@ func TestRunnerAddSecondSocket(t *testing.T) {
 					SetReadDeadlineFunc: func(t time.Time) error {
 						return nil
 					},
+					SetPongHandlerFunc: func(h func(appDauta string) error) {
+						// NOOP
+					},
 				}, nil
 			case 2:
 				return &mockConn{
@@ -393,6 +402,9 @@ func TestRunnerAddSecondSocket(t *testing.T) {
 					ReadMessageFunc: readJSONFunc,
 					SetReadDeadlineFunc: func(t time.Time) error {
 						return nil
+					},
+					SetPongHandlerFunc: func(h func(appDauta string) error) {
+						// NOOP
 					},
 				}, nil
 			default:

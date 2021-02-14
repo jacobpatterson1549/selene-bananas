@@ -240,6 +240,9 @@ func TestRunSocket(t *testing.T) {
 			SetWriteDeadlineFunc: func(t time.Time) error {
 				return nil
 			},
+			SetPongHandlerFunc: func(h func(appDauta string) error) {
+				// NOOP
+			},
 		}
 		cfg := Config{
 			TimeFunc:       func() int64 { return 0 },
@@ -310,6 +313,7 @@ func TestSocketReadMessages(t *testing.T) {
 	for i, test := range readMessagesTests {
 		testIn := make(chan message.Message)
 		defer close(testIn)
+		setPongHandlerFuncCalled := false
 		conn := mockConn{
 			ReadMessageFunc: func(m *message.Message) error {
 				src := <-testIn
@@ -333,6 +337,9 @@ func TestSocketReadMessages(t *testing.T) {
 			},
 			WriteCloseFunc: func(reason string) error {
 				return nil
+			},
+			SetPongHandlerFunc: func(h func(appDauta string) error) {
+				setPongHandlerFuncCalled = true
 			},
 		}
 		var bb bytes.Buffer
@@ -369,6 +376,9 @@ func TestSocketReadMessages(t *testing.T) {
 			got, ok := <-out
 			if !ok {
 				t.Errorf("Test %v: wanted message to be read", i)
+			}
+			if !setPongHandlerFuncCalled {
+				t.Errorf("Test %v: wanted pong handler to be set", i)
 			}
 			want := message.Message{
 				Game:       &game.Info{},
