@@ -26,6 +26,8 @@ type (
 
 	// RunnerConfig is used to create a game Runner.
 	RunnerConfig struct {
+		// Debug is a flag that causes the game to log the types messages that are read.
+		Debug bool
 		// Log is used to log errors and other information
 		Log *log.Logger
 		// The maximum number of games.
@@ -113,11 +115,11 @@ func (r *Runner) createGame(ctx context.Context, m message.Message, out chan<- m
 		return
 	}
 	r.lastID = id
-	in := make(chan message.Message)
-	g.Run(ctx, in, out) // all games publish to the same "out" channel
-	r.games[id] = in
+	gIn := make(chan message.Message)
+	g.Run(ctx, gIn, out) // all games publish to the same "out" channel
+	r.games[id] = gIn
 	m.Type = message.JoinGame
-	in <- m
+	message.Send(m, gIn, r.Debug, r.Log)
 }
 
 // deleteGame removes a game from the runner, notifying the game that it is being deleted so it can notify users.
@@ -128,7 +130,7 @@ func (r *Runner) deleteGame(ctx context.Context, m message.Message, out chan<- m
 		return
 	}
 	delete(r.games, m.Game.ID)
-	gIn <- m
+	message.Send(m, gIn, r.Debug, r.Log)
 }
 
 // handleGameMessage passes an error to the game the message is for.
@@ -138,7 +140,7 @@ func (r *Runner) handleGameMessage(ctx context.Context, m message.Message, out c
 		r.sendError(err, m.PlayerName, out)
 		return
 	}
-	gIn <- m
+	message.Send(m, gIn, r.Debug, r.Log)
 }
 
 // getGame retrieves the game from the runner for the message, if the runner has a game for the message's game ID.
@@ -162,5 +164,5 @@ func (r *Runner) sendError(err error, pn player.Name, out chan<- message.Message
 		Info:       err.Error(),
 		PlayerName: pn,
 	}
-	out <- m
+	message.Send(m, out, r.Debug, r.Log)
 }

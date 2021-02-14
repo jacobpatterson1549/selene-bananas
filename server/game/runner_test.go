@@ -43,7 +43,7 @@ func TestNewRunner(t *testing.T) {
 				Log: testLog,
 			},
 		},
-		{
+		{ // ok
 			UserDao: ud,
 			RunnerConfig: RunnerConfig{
 				Log:      testLog,
@@ -54,6 +54,24 @@ func TestNewRunner(t *testing.T) {
 				games:   map[game.ID]chan<- message.Message{},
 				UserDao: ud,
 				RunnerConfig: RunnerConfig{
+					Log:      testLog,
+					MaxGames: 10,
+				},
+			},
+		},
+		{ // ok debug
+			UserDao: ud,
+			RunnerConfig: RunnerConfig{
+				Debug:    true,
+				Log:      testLog,
+				MaxGames: 10,
+			},
+			wantOk: true,
+			want: &Runner{
+				games:   map[game.ID]chan<- message.Message{},
+				UserDao: ud,
+				RunnerConfig: RunnerConfig{
+					Debug:    true,
 					Log:      testLog,
 					MaxGames: 10,
 				},

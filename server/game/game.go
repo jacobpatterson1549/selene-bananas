@@ -198,7 +198,7 @@ func (g *Game) sendMessage(out chan<- message.Message) messageSender {
 			m.Game = &g
 		}
 		m.Game.ID = g.id
-		out <- m
+		message.Send(m, out, g.Debug, g.Log)
 	}
 }
 

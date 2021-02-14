@@ -27,6 +27,8 @@ type (
 
 	// Config contiains the properties to create a lobby
 	Config struct {
+		// Debug is a flag that causes the game to log the types messages that are read.
+		Debug bool
 		// Log is used to log errors and other information
 		Log *log.Logger
 	}
@@ -90,7 +92,7 @@ func (l *Lobby) Run(ctx context.Context) {
 			case <-ctx.Done():
 				return
 			case m := <-socketRunnerOut:
-				gameRunnerIn <- m
+				message.Send(m, gameRunnerIn, l.Debug, l.Log)
 			case m := <-gameRunnerOut:
 				l.handleGameMessage(m)
 			}
@@ -111,7 +113,7 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 			Result:         result,
 		},
 	}
-	l.socketRunnerIn <- m
+	message.Send(m, l.socketRunnerIn, l.Debug, l.Log)
 	// The result contains the address of the new socket to get the game infos of the lobby for.
 	m2 := <-result
 	if m2.Type == message.SocketError {
@@ -119,7 +121,7 @@ func (l *Lobby) AddUser(username string, w http.ResponseWriter, r *http.Request)
 	}
 	m2.Type = message.GameInfos
 	m2.Games = l.gameInfos()
-	l.socketRunnerIn <- m2
+	message.Send(m2, l.socketRunnerIn, l.Debug, l.Log)
 	return nil
 }
 
@@ -129,7 +131,7 @@ func (l *Lobby) RemoveUser(username string) {
 		Type:       message.PlayerRemove,
 		PlayerName: player.Name(username),
 	}
-	l.socketRunnerIn <- m
+	message.Send(m, l.socketRunnerIn, l.Debug, l.Log)
 }
 
 // handleGameMessage writes a game message to the socketMessages channel, possibly modifying it.
@@ -138,7 +140,7 @@ func (l *Lobby) handleGameMessage(m message.Message) {
 	case message.GameInfos:
 		l.handleGameInfoChanged(m)
 	default:
-		l.socketRunnerIn <- m
+		message.Send(m, l.socketRunnerIn, l.Debug, l.Log)
 	}
 }
 
@@ -150,7 +152,7 @@ func (l *Lobby) handleGameInfoChanged(m message.Message) {
 			Info:       "cannot update game info when no game is provided",
 			PlayerName: m.PlayerName,
 		}
-		l.socketRunnerIn <- m2
+		message.Send(m2, l.socketRunnerIn, l.Debug, l.Log)
 		l.Log.Print(m2.Info)
 		return
 	}
@@ -165,7 +167,7 @@ func (l *Lobby) handleGameInfoChanged(m message.Message) {
 		Type:  message.GameInfos,
 		Games: infos,
 	}
-	l.socketRunnerIn <- m2
+	message.Send(m2, l.socketRunnerIn, l.Debug, l.Log)
 }
 
 // game infos gets the sorted game infos for the Lobby.

@@ -68,7 +68,7 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if err != nil {
 		return nil, fmt.Errorf("creating game runner: %w", err)
 	}
-	lobbyCfg := lobbyConfig(log)
+	lobbyCfg := lobbyConfig(m, log)
 	lobby, err := lobbyCfg.NewLobby(socketRunner, gameRunner)
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby: %w", err)
@@ -147,9 +147,10 @@ func userDaoConfig(d db.Database) user.DaoConfig {
 }
 
 // lobbyConfig creates the configuration for running and managing players of games.
-func lobbyConfig(log *log.Logger) lobby.Config {
+func lobbyConfig(m mainFlags, log *log.Logger) lobby.Config {
 	cfg := lobby.Config{
-		Log: log,
+		Debug: m.debugGame,
+		Log:   log,
 	}
 	return cfg
 }
@@ -161,6 +162,7 @@ func gameRunnerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) (*gam
 		return nil, fmt.Errorf("creating game config: %w", err)
 	}
 	cfg := game.RunnerConfig{
+		Debug:      m.debugGame,
 		Log:        log,
 		MaxGames:   4,
 		GameConfig: *gameCfg,
@@ -216,6 +218,7 @@ func socketRunnerConfig(m mainFlags, log *log.Logger, timeFunc func() int64) soc
 		HTTPPingPeriod: 10 * time.Minute,
 	}
 	cfg := socket.RunnerConfig{
+		Debug:            m.debugGame,
 		Log:              log,
 		MaxSockets:       32,
 		MaxPlayerSockets: 5,

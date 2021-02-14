@@ -56,7 +56,7 @@ func TestNewLobby(t *testing.T) {
 			},
 			socketRunner: &testSocketRunner,
 		},
-		{
+		{ // ok
 			Config: Config{
 				Log: testLog,
 			},
@@ -69,6 +69,24 @@ func TestNewLobby(t *testing.T) {
 				games:        map[game.ID]game.Info{},
 				Config: Config{
 					Log: testLog,
+				},
+			},
+		},
+		{ // ok with debug
+			Config: Config{
+				Debug: true,
+				Log:   testLog,
+			},
+			socketRunner: &testSocketRunner,
+			gameRunner:   &testGameManeger,
+			wantOk:       true,
+			want: &Lobby{
+				socketRunner: &testSocketRunner,
+				gameRunner:   &testGameManeger,
+				games:        map[game.ID]game.Info{},
+				Config: Config{
+					Debug: true,
+					Log:   testLog,
 				},
 			},
 		},

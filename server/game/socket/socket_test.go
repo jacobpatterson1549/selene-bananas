@@ -213,6 +213,34 @@ func TestNewSocket(t *testing.T) {
 			},
 			wantOk: true,
 		},
+		{ // ok with debug
+			playerName: pn,
+			Conn:       conn0,
+			remoteAddr: addr,
+			Config: Config{
+				Debug:          true,
+				Log:            testLog,
+				TimeFunc:       timeFunc,
+				ReadWait:       2 * time.Hour,
+				WriteWait:      2 * time.Hour,
+				PingPeriod:     4 * time.Hour,
+				HTTPPingPeriod: 15 * time.Hour,
+			},
+			want: &Socket{
+				PlayerName: pn,
+				Addr:       addr,
+				Conn:       conn0,
+				Config: Config{
+					Debug:          true,
+					Log:            testLog,
+					ReadWait:       2 * time.Hour,
+					WriteWait:      2 * time.Hour,
+					PingPeriod:     4 * time.Hour,
+					HTTPPingPeriod: 15 * time.Hour,
+				},
+			},
+			wantOk: true,
+		},
 	}
 	for i, test := range newSocketTests {
 		switch test.Conn.(type) {
@@ -335,7 +363,6 @@ func TestSocketReadMessages(t *testing.T) {
 		gameMissing            bool
 		alreadyCancelled       bool
 		wantOk                 bool
-		debug                  bool
 	}{
 		{
 			setReadDeadlineErr: errors.New("could not set read deadline"),
@@ -359,7 +386,6 @@ func TestSocketReadMessages(t *testing.T) {
 		},
 		{
 			wantOk: true,
-			debug:  true,
 		},
 	}
 	for i, test := range readMessagesTests {
@@ -397,7 +423,6 @@ func TestSocketReadMessages(t *testing.T) {
 			Config: Config{
 				Log:      log,
 				TimeFunc: func() int64 { return 0 },
-				Debug:    test.debug,
 			},
 			PlayerName: pn,
 			Addr:       addr,
@@ -420,10 +445,6 @@ func TestSocketReadMessages(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			wg.Wait()
-		case test.debug:
-			if bb.Len() == 0 {
-				t.Errorf("Test %v: wanted message to be logged", i)
-			}
 		case bb.Len() != 0:
 			t.Errorf("Test %v: wanted no message to be logged", i)
 		default:
@@ -455,7 +476,6 @@ func TestSocketWriteMessages(t *testing.T) {
 		pingErr             error
 		httpPingTick        bool
 		wantOk              bool
-		debug               bool
 	}{
 		{ // context canceled
 			cancel: true,
@@ -473,12 +493,6 @@ func TestSocketWriteMessages(t *testing.T) {
 				Info: "server says hi",
 			},
 			wantOk: true,
-		},
-		{ // normal message, with debug
-			m:      message.Message{},
-			wantM:  message.Message{},
-			wantOk: true,
-			debug:  true,
 		},
 		{ // socket/player removed
 			m: message.Message{
@@ -557,7 +571,6 @@ func TestSocketWriteMessages(t *testing.T) {
 			Config: Config{
 				Log:      log,
 				TimeFunc: func() int64 { return 0 },
-				Debug:    test.debug,
 			},
 		}
 		ctx := context.Background()
@@ -591,10 +604,6 @@ func TestSocketWriteMessages(t *testing.T) {
 			switch {
 			case !reflect.DeepEqual(test.wantM, gotM):
 				t.Errorf("Test %v: messages not equal:\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
-			case test.debug:
-				if bb.Len() == 0 {
-					t.Errorf("Test %v: wanted message to be logged", i)
-				}
 			case bb.Len() != 0:
 				t.Errorf("Test %v: wanted no message to be logged", i)
 			}

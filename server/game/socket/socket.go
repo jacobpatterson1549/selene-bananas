@@ -141,19 +141,19 @@ func (s *Socket) readMessagesSync(ctx context.Context, out chan<- message.Messag
 		s.Conn.Close() // will casue writeMessages() to fail
 		wg.Done()
 	}()
+	pongHandler := func(appData string) error {
+		if err := s.refreshDeadline(s.Conn.SetReadDeadline, s.ReadWait); err != nil {
+			err = fmt.Errorf("setting read deadline: %w", err)
+			s.writeClose(err.Error())
+			return err
+		}
+		return nil
+	}
+	if err := pongHandler(""); err != nil {
+		return
+	}
+	s.Conn.SetPongHandler(pongHandler)
 	for { // BLOCKING
-		pongHandler := func(appData string) error {
-			if err := s.refreshDeadline(s.Conn.SetReadDeadline, s.ReadWait); err != nil {
-				err = fmt.Errorf("setting read deadline: %w", err)
-				s.writeClose(err.Error())
-				return err
-			}
-			return nil
-		}
-		if err := pongHandler(""); err != nil {
-			return
-		}
-		s.Conn.SetPongHandler(pongHandler)
 		m, err := s.readMessage() // BLOCKING
 		select {
 		case <-ctx.Done():
@@ -167,7 +167,7 @@ func (s *Socket) readMessagesSync(ctx context.Context, out chan<- message.Messag
 				return
 			}
 		}
-		out <- *m
+		message.Send(*m, out, s.Debug, s.Log)
 	}
 }
 
@@ -286,5 +286,5 @@ func (s *Socket) stop(out chan<- message.Message, pingTicker, activityCheckTicke
 		PlayerName: s.PlayerName,
 		Addr:       s.Addr,
 	}
-	out <- m
+	message.Send(m, out, s.Debug, s.Log)
 }

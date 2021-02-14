@@ -25,6 +25,8 @@ type (
 
 	// RunnerConfig is used to create a socket Runner.
 	RunnerConfig struct {
+		// Debug is a flag that causes the game to log the types messages that are read.
+		Debug bool
 		// Log is used to log errors and other information
 		Log *log.Logger
 		// The maximum number of sockets.
@@ -116,7 +118,7 @@ func (r *Runner) addSocket(ctx context.Context, m message.Message) {
 		m2.Type = message.GameInfos
 		m2.Addr = s.Addr
 	}
-	m.AddSocketRequest.Result <- m2
+	message.Send(m2, m.AddSocketRequest.Result, r.Debug, r.Log)
 }
 
 // handleAddSocket runs and adds a socket for the player to the runner.
@@ -244,7 +246,7 @@ func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out
 	case message.LeaveGame:
 		r.leaveGame(ctx, m)
 	default:
-		out <- m
+		message.Send(m, out, r.Debug, r.Log)
 	}
 }
 
@@ -263,12 +265,12 @@ func (r *Runner) sendGameInfos(ctx context.Context, m message.Message) {
 			r.Log.Printf("no socket for %v at %v", m.PlayerName, m.Addr)
 			return
 		}
-		socketIn <- m
+		message.Send(m, socketIn, r.Debug, r.Log)
 	default:
 		// send to all sockets (likely game info change)
 		for _, addrs := range r.playerSockets {
 			for _, socketIn := range addrs {
-				socketIn <- m
+				message.Send(m, socketIn, r.Debug, r.Log)
 			}
 		}
 	}
@@ -282,7 +284,7 @@ func (r *Runner) sendSocketError(ctx context.Context, m message.Message) {
 	default:
 		socketAddrs := r.playerSockets[m.PlayerName]
 		for _, socketIn := range socketAddrs {
-			socketIn <- m
+			message.Send(m, socketIn, r.Debug, r.Log)
 		}
 	}
 }
@@ -324,7 +326,7 @@ func (r *Runner) sendMessageForGame(ctx context.Context, m message.Message) {
 	case message.JoinGame:
 		r.joinGame(ctx, m, socketIn)
 	default:
-		socketIn <- m
+		message.Send(m, socketIn, r.Debug, r.Log)
 	}
 }
 
@@ -348,8 +350,8 @@ func (r *Runner) joinGame(ctx context.Context, m message.Message, out chan<- mes
 				Type: message.LeaveGame,
 				Info: "leaving game because it is being played on a different socket",
 			}
-			socketIns := r.playerSockets[m.PlayerName][addr2]
-			socketIns <- m2
+			socketIn := r.playerSockets[m.PlayerName][addr2]
+			message.Send(m2, socketIn, r.Debug, r.Log)
 		}
 		// remove the addr from its previously joined game if it is different
 		for id, addr := range games {
@@ -360,7 +362,7 @@ func (r *Runner) joinGame(ctx context.Context, m message.Message, out chan<- mes
 		}
 	}
 	games[m.Game.ID] = m.Addr
-	out <- m
+	message.Send(m, out, r.Debug, r.Log)
 }
 
 // removeSocket removes the socket from the runner.
