@@ -12,19 +12,6 @@ import (
 	"testing"
 )
 
-type mockTokenizer struct {
-	CreateFunc       func(username string, points int) (string, error)
-	ReadUsernameFunc func(tokenString string) (string, error)
-}
-
-func (t mockTokenizer) Create(username string, points int) (string, error) {
-	return t.CreateFunc(username, points)
-}
-
-func (t mockTokenizer) ReadUsername(tokenString string) (string, error) {
-	return t.ReadUsernameFunc(tokenString)
-}
-
 func TestHandleFileVersion(t *testing.T) {
 	handleFileVersionTests := []struct {
 		version    string

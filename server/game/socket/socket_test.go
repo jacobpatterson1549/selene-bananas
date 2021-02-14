@@ -18,85 +18,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 )
 
-type mockConn struct {
-	ReadMessageFunc            func(m *message.Message) error
-	WriteMessageFunc           func(m message.Message) error
-	SetReadDeadlineFunc        func(t time.Time) error
-	SetWriteDeadlineFunc       func(t time.Time) error
-	SetPongHandlerFunc         func(h func(appDauta string) error)
-	CloseFunc                  func() error
-	WritePingFunc              func() error
-	WriteCloseFunc             func(reason string) error
-	IsUnexpectedCloseErrorFunc func(err error) bool
-	RemoteAddrFunc             func() net.Addr
-}
-
-func (c *mockConn) ReadMessage(m *message.Message) error {
-	return c.ReadMessageFunc(m)
-}
-
-func (c *mockConn) WriteMessage(m message.Message) error {
-	return c.WriteMessageFunc(m)
-}
-
-func (c *mockConn) SetReadDeadline(t time.Time) error {
-	return c.SetReadDeadlineFunc(t)
-}
-
-func (c *mockConn) SetWriteDeadline(t time.Time) error {
-	return c.SetWriteDeadlineFunc(t)
-}
-
-func (c *mockConn) SetPongHandler(h func(appData string) error) {
-	//NOOP
-}
-
-func (c *mockConn) Close() error {
-	return c.CloseFunc()
-}
-
-func (c *mockConn) WritePing() error {
-	return c.WritePingFunc()
-}
-
-func (c *mockConn) WriteClose(reason string) error {
-	return c.WriteCloseFunc(reason)
-}
-
-func (c *mockConn) IsUnexpectedCloseError(err error) bool {
-	return c.IsUnexpectedCloseErrorFunc(err)
-}
-
-func (c *mockConn) RemoteAddr() net.Addr {
-	return c.RemoteAddrFunc()
-}
-
-// mockConnReadMessage reads the src message into the destination value using reflection.
-func mockConnReadMessage(dest *message.Message, src message.Message) {
-	srcV := reflect.ValueOf(src)
-	destV := reflect.ValueOf(dest)
-	destVE := destV.Elem()
-	destVE.Set(srcV)
-}
-
-// ReadMinimalMessage reads a message into the json that will not cause an error.
-func mockConnReadMinimalMessage(dest *message.Message) {
-	src := message.Message{
-		Game: &game.Info{},
-	}
-	mockConnReadMessage(dest, src)
-}
-
-type mockAddr string
-
-func (a mockAddr) Network() string {
-	return string(a) + "_NETWORK"
-}
-
-func (a mockAddr) String() string {
-	return string(a)
-}
-
 func TestNewSocket(t *testing.T) {
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
 	timeFunc := func() int64 { return 0 }
@@ -243,8 +164,7 @@ func TestNewSocket(t *testing.T) {
 		},
 	}
 	for i, test := range newSocketTests {
-		switch test.Conn.(type) {
-		case *mockConn:
+		if test.Conn != nil {
 			test.Conn.(*mockConn).RemoteAddrFunc = func() net.Addr {
 				return test.remoteAddr
 			}

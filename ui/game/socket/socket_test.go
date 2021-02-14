@@ -16,40 +16,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom/url"
 )
 
-type (
-	mockUser  string
-	mockGame  game.ID
-	mockLobby struct{}
-)
-
-func (u mockUser) JWT() string {
-	return string(u)
-}
-
-func (u mockUser) Username() string {
-	return ""
-}
-
-func (u *mockUser) Logout() {
-	// NOOP
-}
-
-func (g mockGame) ID() game.ID {
-	return game.ID(g)
-}
-
-func (g mockGame) Leave() {
-	// NOOP
-}
-
-func (g mockGame) UpdateInfo(m message.Message) {
-	// NOOP
-}
-
-func (l mockLobby) SetGameInfos(gameInfos []game.Info, username string) {
-	// NOOP
-}
-
 func TestReleaseWebSocketJsFuncs(t *testing.T) {
 	var s Socket
 	// it should be ok to release the functions multiple times, even if they are undefined/null

@@ -14,14 +14,6 @@ import (
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
 )
 
-type mockUserDao struct {
-	UpdatePointsIncrementFunc func(ctx context.Context, userPoints map[string]int) error
-}
-
-func (ud mockUserDao) UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error {
-	return ud.UpdatePointsIncrementFunc(ctx, userPoints)
-}
-
 func TestInitializeUnusedTilesShuffled(t *testing.T) {
 	createTilesShuffledTests := []struct {
 		want      tile.Letter

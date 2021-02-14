@@ -10,28 +10,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/db/sql"
 )
 
-type (
-	mockDatabase struct {
-		queryFunc func(ctx context.Context, q db.Query) db.Scanner
-		execFunc  func(ctx context.Context, queries ...db.Query) error
-	}
 
-	mockScanner struct {
-		scanFunc func(dest ...interface{}) error
-	}
-)
-
-func (d mockDatabase) Query(ctx context.Context, q db.Query) db.Scanner {
-	return d.queryFunc(ctx, q)
-}
-
-func (d mockDatabase) Exec(ctx context.Context, queries ...db.Query) error {
-	return d.execFunc(ctx, queries...)
-}
-
-func (s mockScanner) Scan(dest ...interface{}) error {
-	return s.scanFunc(dest...)
-}
 
 func TestNewDao(t *testing.T) {
 	var mockDB mockDatabase

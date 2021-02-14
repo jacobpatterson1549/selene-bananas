@@ -14,14 +14,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 )
 
-type mockRunner struct {
-	RunFunc func(ctx context.Context, in <-chan message.Message) <-chan message.Message
-}
-
-func (m *mockRunner) Run(ctx context.Context, in <-chan message.Message) <-chan message.Message {
-	return m.RunFunc(ctx, in)
-}
-
 func TestNewLobby(t *testing.T) {
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
 	testSocketRunner := mockRunner{

@@ -17,51 +17,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 )
 
-type (
-	upgradeFunc  func(w http.ResponseWriter, r *http.Request) (Conn, error)
-	mockUpgrader struct {
-		upgradeFunc
-	}
-)
-
-func (u mockUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn, error) {
-	return u.upgradeFunc(w, r)
-}
-
-func newSocketRunner(maxSockets int, maxPlayerSockets int, uf upgradeFunc) *Runner {
-	log := log.New(ioutil.Discard, "test", log.LstdFlags)
-	socketCfg := Config{
-		Log:            log,
-		TimeFunc:       func() int64 { return 0 },
-		ReadWait:       2 * time.Hour,
-		WriteWait:      1 * time.Hour,
-		PingPeriod:     2 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
-		HTTPPingPeriod: 3 * time.Hour,
-	}
-	cfg := RunnerConfig{
-		Log:              log,
-		MaxSockets:       maxSockets,
-		MaxPlayerSockets: maxPlayerSockets,
-		SocketConfig:     socketCfg,
-	}
-	sm := Runner{
-		upgrader: mockUpgrader{
-			upgradeFunc: uf,
-		},
-		playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
-		playerGames:   make(map[player.Name]map[game.ID]net.Addr),
-		RunnerConfig:  cfg,
-	}
-	return &sm
-}
-
-func mockConnection(playerName string) (player.Name, http.ResponseWriter, *http.Request) {
-	pn := player.Name(playerName)
-	var w http.ResponseWriter
-	var r *http.Request
-	return pn, w, r
-}
-
 func TestNewRunner(t *testing.T) {
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
 	newRunnerTests := []struct {
@@ -194,23 +149,21 @@ func TestRunnerAddSocketCheckResult(t *testing.T) {
 					HTTPPingPeriod: 3 * time.Hour,
 				},
 			},
-			upgrader: mockUpgrader{
-				upgradeFunc: func(w http.ResponseWriter, r *http.Request) (Conn, error) {
-					return &mockConn{
-						RemoteAddrFunc: func() net.Addr {
-							return addr
-						},
-						SetReadDeadlineFunc: func(t time.Time) error {
-							return nil
-						},
-						ReadMessageFunc: func(m *message.Message) error {
-							<-readBlocker
-							mockConnReadMinimalMessage(m)
-							return nil
-						},
-					}, nil
-				},
-			},
+			upgrader: mockUpgrader(func(w http.ResponseWriter, r *http.Request) (Conn, error) {
+				return &mockConn{
+					RemoteAddrFunc: func() net.Addr {
+						return addr
+					},
+					SetReadDeadlineFunc: func(t time.Time) error {
+						return nil
+					},
+					ReadMessageFunc: func(m *message.Message) error {
+						<-readBlocker
+						mockConnReadMinimalMessage(m)
+						return nil
+					},
+				}, nil
+			}),
 		}
 		ctx := context.Background()
 		result := make(chan message.Message, 1)
@@ -320,14 +273,14 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 				},
 			}, nil
 		}
-		sm := newSocketRunner(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
+		sm := newRunnerWithMocks(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
 		if test.running {
 			ctx := context.Background()
 			in := make(chan message.Message)
 			sm.Run(ctx, in)
 		}
 		sm.SocketConfig = test.Config
-		pn, w, r := mockConnection("selene")
+		pn, w, r := mockAddUserRequest("selene")
 		if test.noPlayerName {
 			pn = ""
 		}
@@ -446,17 +399,17 @@ func TestRunnerAddSecondSocket(t *testing.T) {
 				return nil, errors.New("too many calls to upgrade")
 			}
 		}
-		sm := newSocketRunner(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
+		sm := newRunnerWithMocks(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
 		ctx := context.Background()
 		in := make(chan message.Message)
 		sm.Run(ctx, in)
-		pn1, w1, r1 := mockConnection(name1)
+		pn1, w1, r1 := mockAddUserRequest(name1)
 		_, err1 := sm.handleAddSocket(ctx, pn1, w1, r1)
 		if err1 != nil {
 			t.Errorf("Test %v: unwanted error adding first socket: %v", i, err1)
 			continue
 		}
-		pn2, w2, r2 := mockConnection(test.name2)
+		pn2, w2, r2 := mockAddUserRequest(test.name2)
 		_, err2 := sm.handleAddSocket(ctx, pn2, w2, r2)
 		switch {
 		case !test.wantOk:

@@ -166,7 +166,7 @@ func TestCreateReadWithTime(t *testing.T) {
 
 func TestNewTokenizer(t *testing.T) {
 	badCfg := TokenizerConfig{
-		KeyReader: errorReader{fmt.Errorf("problem reading key")},
+		KeyReader: mockErrorReader{fmt.Errorf("problem reading key")},
 	}
 	if _, err := badCfg.NewTokenizer(); err == nil {
 		t.Errorf("wanted error creating tokenizer with bad key reader")
@@ -196,12 +196,4 @@ func TestNewTokenizer(t *testing.T) {
 		want.validSec != got.validSec:
 		t.Errorf("not equal:\nwanted %v\ngot    %v", want, got)
 	}
-}
-
-type errorReader struct {
-	readErr error
-}
-
-func (r errorReader) Read(p []byte) (n int, err error) {
-	return 0, r.readErr
 }

@@ -14,49 +14,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 )
 
-type (
-	mockUserDao struct {
-		createFunc         func(ctx context.Context, u user.User) error
-		readFunc           func(ctx context.Context, u user.User) (*user.User, error)
-		updatePasswordFunc func(ctx context.Context, u user.User, newP string) error
-		deleteFunc         func(ctx context.Context, u user.User) error
-	}
-
-	mockLobby struct {
-		runFunc        func(ctx context.Context)
-		addUserFunc    func(username string, w http.ResponseWriter, r *http.Request) error
-		removeUserFunc func(username string)
-	}
-)
-
-func (ud mockUserDao) Create(ctx context.Context, u user.User) error {
-	return ud.createFunc(ctx, u)
-}
-
-func (ud mockUserDao) Read(ctx context.Context, u user.User) (*user.User, error) {
-	return ud.readFunc(ctx, u)
-}
-
-func (ud mockUserDao) UpdatePassword(ctx context.Context, u user.User, newP string) error {
-	return ud.updatePasswordFunc(ctx, u, newP)
-}
-
-func (ud mockUserDao) Delete(ctx context.Context, u user.User) error {
-	return ud.deleteFunc(ctx, u)
-}
-
-func (l mockLobby) Run(ctx context.Context) {
-	l.runFunc(ctx)
-}
-
-func (l mockLobby) AddUser(username string, w http.ResponseWriter, r *http.Request) error {
-	return l.addUserFunc(username, w, r)
-}
-
-func (l mockLobby) RemoveUser(username string) {
-	l.removeUserFunc(username)
-}
-
 func TestHandleUserCreate(t *testing.T) {
 	handleUserCreateTests := []struct {
 		username        string

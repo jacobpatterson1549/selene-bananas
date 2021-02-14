@@ -3,7 +3,6 @@ package certificate
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"testing"
 )
 
@@ -69,7 +68,7 @@ func TestChallengeHandle(t *testing.T) {
 	}
 	for i, test := range handleTests {
 		var b bytes.Buffer
-		w := errorWriter{
+		w := mockErrorWriter{
 			writeErr: test.writeErr,
 			Writer:   &b,
 		}
@@ -86,16 +85,4 @@ func TestChallengeHandle(t *testing.T) {
 			t.Errorf("different body:\nwanted: %v\ngot:    %v", want, got)
 		}
 	}
-}
-
-type errorWriter struct {
-	writeErr error
-	io.Writer
-}
-
-func (w errorWriter) Write(p []byte) (n int, err error) {
-	if w.writeErr != nil {
-		return 0, w.writeErr
-	}
-	return w.Writer.Write(p)
 }
