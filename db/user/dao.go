@@ -8,55 +8,36 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/db/sql"
 )
 
-type (
-	// Dao contains CRUD operations for user-related information.
-	Dao struct {
-		db           db.Database
-		readFileFunc func(filename string) ([]byte, error)
-	}
+// Dao contains CRUD operations for user-related information.
+type Dao struct {
+	db db.Database
+}
 
-	// DaoConfig contains commonly shared Dao properties.
-	DaoConfig struct {
-		// Debug is a flag that causes the socket to log the types non-ping/pong messages that are read/written.
-		DB db.Database
-		// ReadFileFunc is used to fetch setup queries.
-		ReadFileFunc func(filename string) ([]byte, error)
-	}
-)
-
-// NewDao creates a Dao on the specified database.
-func (cfg DaoConfig) NewDao() (*Dao, error) {
-	if err := cfg.validate(); err != nil {
+// NewDao creates a Dao on the specified database, running the setup queries
+func NewDao(ctx context.Context, database db.Database, setupSQL [][]byte) (*Dao, error) {
+	if err := validate(database, setupSQL); err != nil {
 		return nil, fmt.Errorf("creating user dao: validation: %w", err)
 	}
 	d := Dao{
-		db:           cfg.DB,
-		readFileFunc: cfg.ReadFileFunc,
+		db: database,
+	}
+	queries := make([]db.Query, len(setupSQL))
+	for i, b := range setupSQL {
+		queries[i] = sql.RawQuery(string(b))
+	}
+	if err := database.Exec(ctx, queries...); err != nil {
+		return nil, fmt.Errorf("running setup queries %w", err)
 	}
 	return &d, nil
 }
 
-func (cfg DaoConfig) validate() error {
+// validate checks fields to set up the dao.
+func validate(database db.Database, setupSQL [][]byte) error {
 	switch {
-	case cfg.DB == nil:
+	case database == nil:
 		return fmt.Errorf("database required")
-	case cfg.ReadFileFunc == nil:
-		return fmt.Errorf("read file func required")
-	}
-	if _, ok := cfg.DB.(sql.Database); !ok {
-		return fmt.Errorf("only sql database is supported")
-	}
-	return nil
-}
-
-// Setup initializes the tables and adds the functions.
-func (d Dao) Setup(ctx context.Context) error {
-	queries, err := d.SetupQueries()
-	if err != nil {
-		return fmt.Errorf("creating setup query: %w", err)
-	}
-	if err = d.db.Exec(ctx, queries...); err != nil {
-		return fmt.Errorf("running setup query: %w", err)
+	case setupSQL == nil:
+		return fmt.Errorf("setup sql files required")
 	}
 	return nil
 }
@@ -140,27 +121,4 @@ func (d Dao) Delete(ctx context.Context, u User) error {
 		return fmt.Errorf("deleting user: %w", err)
 	}
 	return nil
-}
-
-// SetupQueries gets the queries to setup backing tables and functions.
-func (d Dao) SetupQueries() ([]db.Query, error) {
-	filenames := []string{
-		"s",
-		"_create",
-		"_read",
-		"_update_password",
-		"_update_points_increment",
-		"_delete",
-	}
-	queries := make([]db.Query, len(filenames))
-	for i, n := range filenames {
-		f := fmt.Sprintf("resources/sql/user%s.sql", n)
-		b, err := d.readFileFunc(f)
-		if err != nil {
-			return nil, fmt.Errorf("reading setup file %v: %w", f, err)
-		}
-		q := sql.RawQuery(b)
-		queries[i] = q
-	}
-	return queries, nil
 }

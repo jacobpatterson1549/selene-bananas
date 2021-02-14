@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
-	"github.com/jacobpatterson1549/selene-bananas/db/sql"
 )
 
 type (
@@ -34,82 +33,37 @@ func (s mockScanner) Scan(dest ...interface{}) error {
 }
 
 func TestNewDao(t *testing.T) {
-	var mockDB mockDatabase
-	var sqlDB sql.Database
-	mockReadFileFunc := func(filename string) ([]byte, error) {
-		return nil, nil
-	}
+	setupSQL := [][]byte{[]byte("test")}
 	newDaoTests := []struct {
-		db           db.Database
-		readFileFunc func(filename string) ([]byte, error)
-		wantOk       bool
+		db       db.Database
+		setupSQL [][]byte
+		wantOk   bool
 	}{
-		{
-			readFileFunc: mockReadFileFunc,
+		{},
+		{ // no setupSQL
+			db: mockDatabase{},
+		},
+		{ // setup error
+			db: mockDatabase{
+				execFunc: func(ctx context.Context, queries ...db.Query) error {
+					return fmt.Errorf("error running setup query")
+				},
+			},
+			setupSQL: setupSQL,
 		},
 		{
-			db: mockDB,
-		},
-		{
-			db:           mockDB,
-			readFileFunc: mockReadFileFunc,
-		},
-		{
-			db:           sqlDB,
-			readFileFunc: mockReadFileFunc,
-			wantOk:       true,
+			db: mockDatabase{
+				execFunc: func(ctx context.Context, queries ...db.Query) error {
+					return nil
+				},
+			},
+			setupSQL: setupSQL,
+			wantOk:   true,
 		},
 	}
 	for i, test := range newDaoTests {
-		cfg := DaoConfig{
-			DB:           test.db,
-			ReadFileFunc: test.readFileFunc,
-		}
-		d, err := cfg.NewDao()
-		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
-		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
-		case !reflect.DeepEqual(d.db, test.db):
-			t.Errorf("Test %v: db not set", i)
-		case d.readFileFunc == nil:
-			t.Errorf("Test %v: readFileFunc not set", i)
-		}
-	}
-}
-
-func TestDaoSetup(t *testing.T) {
-	setupTests := []struct {
-		readFileErr error
-		execFuncErr error
-		wantOk      bool
-	}{
-		{
-			readFileErr: fmt.Errorf("mock read file error"),
-		},
-		{
-			execFuncErr: fmt.Errorf("exec transaction error"),
-		},
-		{
-			wantOk: true,
-		},
-	}
-	for i, test := range setupTests {
-		d := Dao{
-			db: mockDatabase{
-				execFunc: func(ctx context.Context, queries ...db.Query) error {
-					return test.execFuncErr
-				},
-			},
-			readFileFunc: func(filename string) ([]byte, error) {
-				return []byte("SETUP;"), test.readFileErr
-			},
-		}
 		ctx := context.Background()
-		err := d.Setup(ctx)
+		d, err := NewDao(ctx, test.db, test.setupSQL)
 		switch {
 		case err != nil:
 			if test.wantOk {
@@ -117,6 +71,8 @@ func TestDaoSetup(t *testing.T) {
 			}
 		case !test.wantOk:
 			t.Errorf("Test %v: wanted error", i)
+		case d.db == nil:
+			t.Errorf("Test %v: db not set", i)
 		}
 	}
 }
