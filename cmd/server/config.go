@@ -21,7 +21,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/server"
 	"github.com/jacobpatterson1549/selene-bananas/server/auth"
 	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
-	"github.com/jacobpatterson1549/selene-bananas/server/game"
 	gameController "github.com/jacobpatterson1549/selene-bananas/server/game"
 	"github.com/jacobpatterson1549/selene-bananas/server/game/lobby"
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
@@ -64,10 +63,7 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if err != nil {
 		return nil, fmt.Errorf("creating word checker: %w", err)
 	}
-	gameRunnerCfg, err := gameRunnerConfig(m, timeFunc)
-	if err != nil {
-		return nil, fmt.Errorf("creating game runner config: %w", err)
-	}
+	gameRunnerCfg := gameRunnerConfig(m, timeFunc)
 	gameRunner, err := gameRunnerCfg.NewRunner(log, wordChecker, userDao)
 	if err != nil {
 		return nil, fmt.Errorf("creating game runner: %w", err)
@@ -172,17 +168,14 @@ func lobbyConfig(m mainFlags) lobby.Config {
 }
 
 // gameRunnerConfig creates the configuration for running and managing games.
-func gameRunnerConfig(m mainFlags, timeFunc func() int64) (*game.RunnerConfig, error) {
-	gameCfg, err := gameConfig(m, timeFunc)
-	if err != nil {
-		return nil, fmt.Errorf("creating game config: %w", err)
-	}
-	cfg := game.RunnerConfig{
+func gameRunnerConfig(m mainFlags, timeFunc func() int64) gameController.RunnerConfig {
+	gameCfg := gameConfig(m, timeFunc)
+	cfg := gameController.RunnerConfig{
 		Debug:      m.debugGame,
 		MaxGames:   4,
-		GameConfig: *gameCfg,
+		GameConfig: gameCfg,
 	}
-	return &cfg, nil
+	return cfg
 }
 
 // wordChecker creates the word checker.
@@ -196,7 +189,7 @@ func wordChecker(m mainFlags) (*word.Checker, error) {
 }
 
 // gameConfig creates the base configuration for all games.
-func gameConfig(m mainFlags, timeFunc func() int64) (*gameController.Config, error) {
+func gameConfig(m mainFlags, timeFunc func() int64) gameController.Config {
 	playerCfg := playerController.Config{
 		WinPoints: 10,
 	}
@@ -221,7 +214,7 @@ func gameConfig(m mainFlags, timeFunc func() int64) (*gameController.Config, err
 		ShuffleUnusedTilesFunc: shuffleUnusedTilesFunc,
 		ShufflePlayersFunc:     shufflePlayersFunc,
 	}
-	return &cfg, nil
+	return cfg
 }
 
 // socketRunnerConfig creates the configuration for creating new sockets (each tab that is connected to the lobby).
