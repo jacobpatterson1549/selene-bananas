@@ -1026,7 +1026,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 		{ // socket close
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					addr1: make(chan<- message.Message),
 				},
 			},
 			playerGames: map[player.Name]map[game.ID]net.Addr{
@@ -1050,7 +1050,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 		{ // socket close when not in any game
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					addr1: make(chan<- message.Message),
 				},
 			},
 			playerGames: map[player.Name]map[game.ID]net.Addr{},
@@ -1227,5 +1227,36 @@ func TestSendMessageForGameBadRunnerState(t *testing.T) {
 		if bb.Len() == 0 {
 			t.Errorf("Test %v: wanted error logged for bad runner state", i)
 		}
+	}
+}
+
+func TestRemoveSocket(t *testing.T) {
+	socketIn := make(chan message.Message)
+	pn := player.Name("fred")
+	addr := mockAddr("fred.pc")
+	r := Runner{
+		playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			pn: {
+				addr: socketIn,
+			},
+		},
+		playerGames: map[player.Name]map[game.ID]net.Addr{
+			pn: {
+				1: addr,
+			},
+		},
+	}
+	ctx := context.Background()
+	m := message.Message{
+		PlayerName: pn,
+		Addr:       addr,
+	}
+	r.removeSocket(ctx, m)
+	<-socketIn // removing a socket should close it's in channel
+	switch {
+	case len(r.playerSockets) != 0:
+		t.Errorf("wanted player socket to be removed")
+	case len(r.playerGames) != 0:
+		t.Errorf("wanted player game to be removed")
 	}
 }

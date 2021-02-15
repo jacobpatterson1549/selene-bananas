@@ -369,29 +369,47 @@ func (r *Runner) joinGame(ctx context.Context, m message.Message, out chan<- mes
 
 // removeSocket removes the socket from the runner.
 func (r *Runner) removeSocket(ctx context.Context, m message.Message) {
+	if socketIn, ok := r.playerSockets[m.PlayerName][m.Addr]; ok {
+		close(socketIn)
+	}
 	delete(r.playerSockets[m.PlayerName], m.Addr)
 	if len(r.playerSockets[m.PlayerName]) == 0 {
 		delete(r.playerSockets, m.PlayerName)
 	}
-	if m.Game != nil {
-		r.leaveGame(ctx, m)
-	}
+	r.leaveGame(ctx, m)
 }
 
 // leaveGame removes the socket from any game it is in.
 func (r *Runner) leaveGame(ctx context.Context, m message.Message) {
-	delete(r.playerGames[m.PlayerName], m.Game.ID)
-	if len(r.playerGames[m.PlayerName]) == 0 {
+	playerGames, ok := r.playerGames[m.PlayerName]
+	if !ok {
+		return
+	}
+	switch {
+	case m.Game != nil:
+		delete(playerGames, m.Game.ID)
+	case m.Addr != nil:
+		for gID, addr := range playerGames {
+			if addr == m.Addr {
+				delete(playerGames, gID)
+				break
+			}
+		}
+	}
+	if len(playerGames) == 0 {
 		delete(r.playerGames, m.PlayerName)
 	}
 }
 
 // removePlayer removes the player's sockets and games.
 func (r *Runner) removePlayer(ctx context.Context, m message.Message) {
-	delete(r.playerGames, m.PlayerName)
-	addrs := r.playerSockets[m.PlayerName]
-	delete(r.playerSockets, m.PlayerName)
-	for _, socketIn := range addrs {
-		close(socketIn)
+	if addrs, ok := r.playerSockets[m.PlayerName]; ok {
+		for addr := range addrs {
+			m2 := message.Message{
+				PlayerName: m.PlayerName,
+				Addr:       addr,
+			}
+			r.removeSocket(ctx, m2)
+		}
 	}
 }
