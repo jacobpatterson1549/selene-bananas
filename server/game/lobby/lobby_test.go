@@ -95,35 +95,58 @@ func TestNewLobby(t *testing.T) {
 }
 
 func TestRun(t *testing.T) {
-	socketRunnerRun := false
-	gameRunnerRun := false
-	l := Lobby{
-		socketRunner: &mockRunner{
-			RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
-				socketRunnerRun = true
-				return nil
+	runTests := []struct {
+		stopFunc func(cancelFunc context.CancelFunc, socketRunnerOut, gameRunnerOut chan message.Message)
+	}{
+		{
+			stopFunc: func(cancelFunc context.CancelFunc, socketRunnerOut, gameRunnerOut chan message.Message) {
+				cancelFunc()
 			},
 		},
-		gameRunner: &mockRunner{
-			RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
-				gameRunnerRun = true
-				return nil
+		{
+			stopFunc: func(cancelFunc context.CancelFunc, socketRunnerOut, gameRunnerOut chan message.Message) {
+				close(socketRunnerOut)
 			},
 		},
-		socketRunnerIn: make(chan message.Message),
+		{
+			stopFunc: func(cancelFunc context.CancelFunc, socketRunnerOut, gameRunnerOut chan message.Message) {
+				close(gameRunnerOut)
+			},
+		},
 	}
-	ctx := context.Background()
-	ctx, cancelFunc := context.WithCancel(ctx)
-	defer cancelFunc()
-	l.Run(ctx)
-	switch {
-	case !socketRunnerRun:
-		t.Errorf("wanted socket runner to be run")
-	case !gameRunnerRun:
-		t.Errorf("wanted game runner to be run")
-	default:
-		cancelFunc()
-		<-l.socketRunnerIn // wait for it to be closed
+	for i, test := range runTests {
+		socketRunnerOut := make(chan message.Message)
+		gameRunnerOut := make(chan message.Message)
+		socketRunnerRun := false
+		gameRunnerRun := false
+		l := Lobby{
+			socketRunner: &mockRunner{
+				RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+					socketRunnerRun = true
+					return socketRunnerOut
+				},
+			},
+			gameRunner: &mockRunner{
+				RunFunc: func(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+					gameRunnerRun = true
+					return gameRunnerOut
+				},
+			},
+			socketRunnerIn: make(chan message.Message),
+		}
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		defer cancelFunc()
+		l.Run(ctx)
+		switch {
+		case !socketRunnerRun:
+			t.Errorf("Test %v wanted socket runner to be run", i)
+		case !gameRunnerRun:
+			t.Errorf("Test %v: wanted game runner to be run", i)
+		default:
+			test.stopFunc(cancelFunc, socketRunnerOut, gameRunnerOut)
+			<-l.socketRunnerIn // wait for it to be closed
+		}
 	}
 }
 

@@ -91,9 +91,15 @@ func (l *Lobby) Run(ctx context.Context) {
 			select {
 			case <-ctx.Done():
 				return
-			case m := <-socketRunnerOut:
+			case m, ok := <-socketRunnerOut:
+				if !ok {
+					return
+				}
 				message.Send(m, gameRunnerIn, l.Debug, l.log)
-			case m := <-gameRunnerOut:
+			case m, ok := <-gameRunnerOut:
+				if !ok {
+					return
+				}
 				l.handleGameMessage(m)
 			}
 		}
