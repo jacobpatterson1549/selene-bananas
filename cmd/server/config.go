@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	crypto_rand "crypto/rand"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
@@ -77,25 +77,25 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby: %w", err)
 	}
-	v, err := version(m)
+	version, err := version(m)
 	if err != nil {
 		return nil, fmt.Errorf("creating build version: %w", err)
 	}
-	c := certificate.Challenge{
+	challenge := certificate.Challenge{
 		Token: m.challengeToken,
 		Key:   m.challengeKey,
 	}
-	cc := colorConfig()
+	colorConfig := colorConfig()
 	cfg := server.Config{
 		HTTPPort:      m.httpPort,
 		HTTPSPort:     m.httpsPort,
 		StopDur:       time.Second,
 		CacheSec:      m.cacheSec,
-		Version:       v,
-		Challenge:     c,
+		Version:       version,
+		Challenge:     challenge,
 		TLSCertFile:   m.tlsCertFile,
 		TLSKeyFile:    m.tlsKeyFile,
-		ColorConfig:   cc,
+		ColorConfig:   colorConfig,
 		NoTLSRedirect: m.noTLSRedirect,
 	}
 	return cfg.NewServer(log, tokenizer, userDao, lobby)
@@ -245,14 +245,11 @@ func socketRunnerConfig(m mainFlags, timeFunc func() int64) socket.RunnerConfig 
 
 // version reads the first word of the versionFile to use as the version.
 func version(m mainFlags) (string, error) {
-	versionFile, err := os.Open(m.versionFile)
+	b, err := ioutil.ReadFile(m.versionFile)
 	if err != nil {
-		return "", fmt.Errorf("trying to open version file: %v", err)
+		return "", err
 	}
-	scanner := bufio.NewScanner(versionFile)
-	scanner.Split(bufio.ScanWords)
-	if !scanner.Scan() {
-		return "", fmt.Errorf("no words in version file")
-	}
-	return scanner.Text(), nil
+	version := string(b)
+	version = strings.TrimSpace(version) // version often ends in newline
+	return version, nil
 }
