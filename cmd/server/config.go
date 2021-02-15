@@ -4,7 +4,6 @@ import (
 	"context"
 	crypto_rand "crypto/rand"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -33,9 +32,12 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	timeFunc := func() int64 {
 		return time.Now().UTC().Unix()
 	}
-	keyReader := crypto_rand.Reader
-	tokenizerCfg := tokenizerConfig(keyReader, timeFunc)
-	tokenizer, err := tokenizerCfg.NewTokenizer()
+	key := make([]byte, 64)
+	if _, err := crypto_rand.Reader.Read(key); err != nil {
+		return nil, fmt.Errorf("generating Tokenizer key: %w", err)
+	}
+	tokenizerCfg := tokenizerConfig(timeFunc)
+	tokenizer, err := tokenizerCfg.NewTokenizer(key)
 	if err != nil {
 		return nil, fmt.Errorf("creating authentication tokenizer: %w", err)
 	}
@@ -116,12 +118,11 @@ func colorConfig() server.ColorConfig {
 }
 
 // tokenizerConfig creates the configuration for authentication token reader/writer.
-func tokenizerConfig(keyReader io.Reader, timeFunc func() int64) auth.TokenizerConfig {
-	var tokenValidDurationSec int64 = int64((24 * time.Hour).Seconds()) // 1 day
+func tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
+	oneDay := 24 * time.Hour.Seconds()
 	cfg := auth.TokenizerConfig{
-		KeyReader: keyReader,
-		TimeFunc:  timeFunc,
-		ValidSec:  tokenValidDurationSec,
+		TimeFunc: timeFunc,
+		ValidSec: int64(oneDay),
 	}
 	return cfg
 }

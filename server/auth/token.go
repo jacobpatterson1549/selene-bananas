@@ -3,7 +3,6 @@ package auth
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/dgrijalva/jwt-go"
 )
@@ -11,8 +10,6 @@ import (
 type (
 	// TokenizerConfig contains fields which describe a Tokenizer.
 	TokenizerConfig struct {
-		// KeyReader is used to generate token keys
-		KeyReader io.Reader
 		// TimeFunc is a function which should supply the current time since the unix epoch.
 		// This is used for setting token lifespan.
 		TimeFunc func() int64
@@ -22,10 +19,9 @@ type (
 
 	// JwtTokenizer creates java web tokens.
 	JwtTokenizer struct {
-		method   jwt.SigningMethod
-		key      interface{}
-		timeFunc func() int64
-		validSec int64
+		method jwt.SigningMethod
+		key    interface{}
+		TokenizerConfig
 	}
 
 	// jwtUserClaims appends user points to the standard jwt claims.
@@ -36,24 +32,35 @@ type (
 )
 
 // NewTokenizer creates a Tokenizer that users the random number generator to generate tokens.
-func (cfg TokenizerConfig) NewTokenizer() (*JwtTokenizer, error) {
-	key := make([]byte, 64)
-	if _, err := cfg.KeyReader.Read(key); err != nil {
-		return nil, fmt.Errorf("generating Tokenizer key: %w", err)
+func (cfg TokenizerConfig) NewTokenizer(key interface{}) (*JwtTokenizer, error) {
+	if err := cfg.validate(key); err != nil {
+		return nil, fmt.Errorf("creating tokenizer: validation: %w", err)
 	}
 	t := JwtTokenizer{
-		method:   jwt.SigningMethodHS256,
-		key:      key,
-		timeFunc: cfg.TimeFunc,
-		validSec: cfg.ValidSec,
+		method:          jwt.SigningMethodHS256,
+		key:             key,
+		TokenizerConfig: cfg,
 	}
 	return &t, nil
 }
 
+// validate ensures the configuration has no errors.
+func (cfg TokenizerConfig) validate(key interface{}) error {
+	switch {
+	case key == nil:
+		return fmt.Errorf("log required")
+	case cfg.TimeFunc == nil:
+		return fmt.Errorf("time func required")
+	case cfg.ValidSec <= 0:
+		return fmt.Errorf("non-negative valid seconds required")
+	}
+	return nil
+}
+
 // Create converts a user to a token string.
-func (j JwtTokenizer) Create(username string, points int) (string, error) {
-	now := j.timeFunc()
-	expiresAt := now + j.validSec
+func (j *JwtTokenizer) Create(username string, points int) (string, error) {
+	now := j.TimeFunc()
+	expiresAt := now + j.ValidSec
 	stdClaims := jwt.StandardClaims{
 		Subject:   username,
 		NotBefore: now,
@@ -68,7 +75,7 @@ func (j JwtTokenizer) Create(username string, points int) (string, error) {
 }
 
 // ReadUsername extracts the username from the token string.
-func (j JwtTokenizer) ReadUsername(tokenString string) (string, error) {
+func (j *JwtTokenizer) ReadUsername(tokenString string) (string, error) {
 	var claims jwtUserClaims
 	if _, err := jwt.ParseWithClaims(tokenString, &claims, j.keyFunc); err != nil {
 		return "", err
@@ -77,7 +84,7 @@ func (j JwtTokenizer) ReadUsername(tokenString string) (string, error) {
 }
 
 // keyFunc ensures the key type (method) of the token is correct before returning the key.
-func (j JwtTokenizer) keyFunc(t *jwt.Token) (interface{}, error) {
+func (j *JwtTokenizer) keyFunc(t *jwt.Token) (interface{}, error) {
 	if t.Method != j.method {
 		return nil, fmt.Errorf("incorrect authorization signing method")
 	}

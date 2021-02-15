@@ -106,7 +106,7 @@ func (cfg Config) validate(log *log.Logger, id game.ID, wordChecker WordChecker,
 	case id <= 0:
 		return fmt.Errorf("positive id required")
 	case cfg.TimeFunc == nil:
-		return fmt.Errorf("time func required required")
+		return fmt.Errorf("time func required")
 	case wordChecker == nil:
 		return fmt.Errorf("word checker required")
 	case userDao == nil:
