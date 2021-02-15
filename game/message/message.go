@@ -86,7 +86,7 @@ const (
 func Send(m Message, out chan<- Message, debug bool, log *log.Logger) {
 	if debug {
 		id := rand.Int()
-		log.Printf("[id:%v] sending message: %v", id, m)
+		log.Printf("[id: %v] sending message: %v", id, m)
 		defer log.Printf("[id: %v] message sent", id)
 	}
 	out <- m
