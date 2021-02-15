@@ -211,7 +211,7 @@ func (r *Runner) validateSocketMessage(m message.Message) error {
 		return fmt.Errorf("unknown address: %v, cannot send message back", m.Addr)
 	}
 	if m.Game == nil && m.Type != message.SocketClose {
-		return fmt.Errorf("Received message without game")
+		return fmt.Errorf("received message without game")
 	}
 	switch m.Type {
 	case message.CreateGame, message.JoinGame, message.SocketClose:
@@ -224,10 +224,10 @@ func (r *Runner) validateSocketMessage(m message.Message) error {
 		default:
 			addr, ok := games[m.Game.ID]
 			if !ok {
-				return fmt.Errorf("Player %v at %v not in game %v", m.PlayerName, m.Addr, m.Game.ID)
+				return fmt.Errorf("player %v at %v not in game %v", m.PlayerName, m.Addr, m.Game.ID)
 			}
 			if addr != m.Addr {
-				return fmt.Errorf("Player %v at %v playing game %v on a different socket (%v)", m.PlayerName, m.Addr, m.Game.ID, addr)
+				return fmt.Errorf("player %v at %v playing game %v on a different socket (%v)", m.PlayerName, m.Addr, m.Game.ID, addr)
 			}
 		}
 	}
@@ -237,7 +237,7 @@ func (r *Runner) validateSocketMessage(m message.Message) error {
 // handleSocketMessage writes the socket message to to the out channel, possibly taking action.
 func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out chan<- message.Message) {
 	if err := r.validateSocketMessage(m); err != nil {
-		r.log.Printf("Invalid message from socket: %v: %v", err, m)
+		r.log.Printf("invalid message from socket: %v: %v", err, m)
 		return
 	}
 	switch m.Type {
