@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"strconv"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
@@ -90,4 +91,48 @@ func Send(m Message, out chan<- Message, debug bool, log *log.Logger) {
 		defer log.Printf("[id: %v] message sent", id)
 	}
 	out <- m
+}
+
+// String prints the Type as a debug-useful string.
+func (t Type) String() string {
+	var s string
+	switch t {
+	case CreateGame:
+		s = "CreateGame"
+	case JoinGame:
+		s = "JoinGame"
+	case LeaveGame:
+		s = "LeaveGame"
+	case DeleteGame:
+		s = "DeleteGame"
+	case GameChat:
+		s = "GameChat"
+	case RefreshGameBoard:
+		s = "RefreshGameBoard"
+	case ChangeGameStatus:
+		s = "ChangeGameStatus"
+	case ChangeGameTiles:
+		s = "ChangeGameTiles"
+	case SnagGameTile:
+		s = "SnagGameTile"
+	case SwapGameTile:
+		s = "SwapGameTile"
+	case MoveGameTile:
+		s = "MoveGameTile"
+	case GameInfos:
+		s = "GameInfos"
+	case SocketWarning:
+		s = "SocketWarning"
+	case SocketError:
+		s = "SocketError"
+	case SocketHTTPPing:
+		s = "SocketHTTPPing"
+	case SocketAdd:
+		s = "SocketAdd"
+	case SocketClose:
+		s = "SocketClose"
+	case PlayerRemove:
+		s = "PlayerRemove"
+	}
+	return s + "(" + strconv.Itoa(int(t)) + ")"
 }
