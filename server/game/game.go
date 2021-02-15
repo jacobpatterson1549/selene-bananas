@@ -218,7 +218,6 @@ func (g *Game) handleMessage(ctx context.Context, m message.Message, send messag
 			mt = message.SocketWarning
 		default:
 			mt = message.SocketError
-			g.log.Printf("game error: %v", err)
 		}
 		m := message.Message{
 			Type:       mt,

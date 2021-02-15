@@ -278,6 +278,7 @@ func (r *Runner) sendGameInfos(ctx context.Context, m message.Message) {
 
 // sendSocketError sends the game socket message to a specific socket if possible or all sockets for the player
 func (r *Runner) sendSocketError(ctx context.Context, m message.Message) {
+	r.log.Printf("socket error: %v", m)
 	switch {
 	case m.Game != nil:
 		r.sendMessageForGame(ctx, m)
