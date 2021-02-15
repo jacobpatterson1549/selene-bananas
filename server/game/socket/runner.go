@@ -309,12 +309,13 @@ func (r *Runner) sendMessageForGame(ctx context.Context, m message.Message) {
 		defer r.leaveGame(ctx, m)
 		fallthrough
 	default:
-		games, ok := r.playerGames[m.PlayerName]
-		if !ok {
+		games, gOk := r.playerGames[m.PlayerName]
+		if !gOk {
 			return // don't worry if player not connected
 		}
-		addr, ok = games[m.Game.ID]
-		if !ok {
+		var aOk bool
+		addr, aOk = games[m.Game.ID]
+		if !aOk {
 			return // don't worry if player not observing game
 		}
 	}

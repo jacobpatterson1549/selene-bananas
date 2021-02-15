@@ -148,7 +148,7 @@ func (g *Game) initializeUnusedTiles() error {
 func (g *Game) Run(ctx context.Context, in <-chan message.Message, out chan<- message.Message) {
 	idleTicker := time.NewTicker(g.IdlePeriod)
 	active := false
-	messageSender := g.sendMessage(out)
+	send := g.sendMessage(out)
 	messageHandlers := map[message.Type]messageHandler{
 		message.JoinGame:         g.handleGameJoin,
 		message.DeleteGame:       g.handleGameDelete,
@@ -168,7 +168,7 @@ func (g *Game) Run(ctx context.Context, in <-chan message.Message, out chan<- me
 				if !ok {
 					return
 				}
-				g.handleMessage(ctx, m, messageSender, &active, messageHandlers)
+				g.handleMessage(ctx, m, send, &active, messageHandlers)
 				if m.Type == message.DeleteGame {
 					return
 				}
@@ -176,7 +176,7 @@ func (g *Game) Run(ctx context.Context, in <-chan message.Message, out chan<- me
 				var m message.Message
 				if !active {
 					g.log.Printf("deleted game %v due to inactivity", g.id)
-					g.handleGameDelete(ctx, m, messageSender)
+					g.handleGameDelete(ctx, m, send)
 					return
 				}
 				active = false
@@ -219,12 +219,12 @@ func (g *Game) handleMessage(ctx context.Context, m message.Message, send messag
 		default:
 			mt = message.SocketError
 		}
-		m := message.Message{
+		m2 := message.Message{
 			Type:       mt,
 			PlayerName: m.PlayerName,
 			Info:       err.Error(),
 		}
-		send(m)
+		send(m2)
 	}
 }
 
@@ -246,11 +246,11 @@ func (g *Game) handleGameJoin(ctx context.Context, m message.Message, send messa
 	}
 	if err != nil {
 		// kick the player here, returning an error will not remove them from the game
-		m := message.Message{
+		m2 := message.Message{
 			Type:       message.LeaveGame,
 			PlayerName: m.PlayerName,
 		}
-		send(m)
+		send(m2)
 		return err
 	}
 	return nil
@@ -278,7 +278,7 @@ func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, send mess
 	gamePlayers := g.playerNames() // also called in g.ResizeBoard
 	for n := range g.players {
 		if n != m.PlayerName {
-			m := message.Message{
+			m2 := message.Message{
 				Type:       message.ChangeGameTiles,
 				PlayerName: n,
 				Info:       fmt.Sprintf("%v joined the game", m.PlayerName),
@@ -287,7 +287,7 @@ func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, send mess
 					Players:   gamePlayers,
 				},
 			}
-			send(m)
+			send(m2)
 		}
 	}
 	g.handleInfoChanged(send)
