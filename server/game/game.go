@@ -84,6 +84,7 @@ func (cfg Config) NewGame(log *log.Logger, id game.ID, wordChecker WordChecker, 
 		cfg.TileLetters = defaultTileLetters
 	}
 	g := Game{
+		log:         log,
 		id:          id,
 		createdAt:   cfg.TimeFunc(),
 		status:      game.NotStarted,
