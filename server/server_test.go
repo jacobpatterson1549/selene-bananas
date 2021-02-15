@@ -20,6 +20,11 @@ func TestHandleFileVersion(t *testing.T) {
 		wantHeader http.Header
 	}{
 		{
+			url:        "http://example.com/",
+			wantCode:   200,
+			wantHeader: make(http.Header),
+		},
+		{
 			url:        "http://example.com/main.wasm?v=",
 			wantCode:   200,
 			wantHeader: make(http.Header),
@@ -76,27 +81,56 @@ func TestHandleFileVersion(t *testing.T) {
 }
 
 func TestHandleFile(t *testing.T) {
-	s := Server{
-		cacheMaxAge: "max-age=???",
+	cacheMaxAge := "max-age=???"
+	handleFileTests := []struct {
+		path          string
+		wantHeader    http.Header
+		requestHeader http.Header
+	}{
+		{
+			path: "/",
+			wantHeader: http.Header{
+				"Cache-Control": []string{"no-store"},
+			},
+		},
+		{
+			path: "/",
+			requestHeader: http.Header{
+				"Accept-Encoding": {"gzip"},
+			},
+			wantHeader: http.Header{
+				"Cache-Control":    []string{"no-store"},
+				"Content-Encoding": []string{"gzip"},
+			},
+		},
+		{
+			path: "/file",
+			wantHeader: http.Header{
+				"Cache-Control": []string{cacheMaxAge},
+			},
+		},
 	}
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest("", "/file", nil)
-	r.Header = http.Header{
-		"Accept-Encoding": {"gzip"},
-	}
-	handlerCalled := false
-	h := func(w http.ResponseWriter, r *http.Request) {
-		handlerCalled = true
-		fmt.Fprint(w, "test gzipped message")
-	}
-	s.handleFile(w, r, h)
-	switch {
-	case w.Header().Get("Cache-Control") != s.cacheMaxAge:
-		t.Error("missing cache response header")
-	case w.Header().Get("Content-Encoding") != "gzip":
-		t.Error("missing gzip response header")
-	case !handlerCalled:
-		t.Error("wanted handler to be called")
+	for i, test := range handleFileTests {
+		s := Server{
+			cacheMaxAge: cacheMaxAge,
+		}
+		w := &mockResponseWriter{
+			HTTPHeader: http.Header{},
+		}
+		r := httptest.NewRequest("", test.path, nil)
+		r.Header = test.requestHeader
+		handlerCalled := false
+		h := func(w http.ResponseWriter, r *http.Request) {
+			handlerCalled = true
+		}
+		s.handleFile(w, r, h)
+		gotHeader := w.Header()
+		switch {
+		case !handlerCalled:
+			t.Errorf("Test %v: wanted handler to be called", i)
+		case !reflect.DeepEqual(test.wantHeader, gotHeader):
+			t.Errorf("Test %v headers not equal\nwanted: %v\ngot:    %v", i, test.wantHeader, gotHeader)
+		}
 	}
 }
 

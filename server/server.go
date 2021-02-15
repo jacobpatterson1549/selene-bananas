@@ -105,6 +105,8 @@ const (
 	HeaderCacheControl = "Cache-Control"
 	// HeaderLocation is used to tell browsers to request a different document.
 	HeaderLocation = "Location"
+	// HeaderAcceptEncoding is specified by the browser to tell the server what types of document encoding it can handle.
+	HeaderAcceptEncoding = "Accept-Encoding"
 	// HeaderContentEncoding is used to tell browsers how the document is encoded.
 	HeaderContentEncoding = "Content-Encoding"
 )
@@ -417,8 +419,6 @@ func (Server) serveFile(name string) http.HandlerFunc {
 // handleFile wraps the handling of the file, add cache-control header and gzip compression, if possible.
 func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.HandlerFunc) {
 	switch r.URL.Path {
-	case "/":
-		w.Header().Set(HeaderCacheControl, "no-store")
 	default:
 		if r.URL.Query().Get("v") != s.Version {
 			url := r.URL
@@ -432,8 +432,10 @@ func (s Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.Handl
 		fallthrough
 	case "/favicon.svg", "/favicon.png":
 		w.Header().Set(HeaderCacheControl, s.cacheMaxAge)
+	case "/":
+		w.Header().Set(HeaderCacheControl, "no-store")
 	}
-	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+	if strings.Contains(r.Header.Get(HeaderAcceptEncoding), "gzip") {
 		w2 := gzip.NewWriter(w)
 		defer w2.Close()
 		w = wrappedResponseWriter{
