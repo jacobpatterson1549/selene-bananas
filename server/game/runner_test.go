@@ -131,6 +131,9 @@ func TestRunRunner(t *testing.T) {
 }
 
 func TestGameCreate(t *testing.T) {
+	basicGameConfig := &game.Config{
+		CheckOnSnag: true,
+	}
 	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
 	gameCreateTests := []struct {
 		m      message.Message
@@ -145,6 +148,7 @@ func TestGameCreate(t *testing.T) {
 					Board: &board.Board{
 						Config: board.Config{NumRows: 18, NumCols: 22},
 					},
+					Config: basicGameConfig,
 				},
 			},
 			RunnerConfig: RunnerConfig{
@@ -188,6 +192,20 @@ func TestGameCreate(t *testing.T) {
 				MaxGames: 1,
 			},
 		},
+		{ // no config in game of message
+			m: message.Message{
+				Type:       message.CreateGame,
+				PlayerName: "selene",
+				Game: &game.Info{
+					Board: &board.Board{
+						Config: board.Config{NumRows: 18, NumCols: 22},
+					},
+				},
+			},
+			RunnerConfig: RunnerConfig{
+				MaxGames: 1,
+			},
+		},
 		{ // bad gameConfig
 			m: message.Message{
 				Type:       message.CreateGame,
@@ -196,6 +214,7 @@ func TestGameCreate(t *testing.T) {
 					Board: &board.Board{
 						Config: board.Config{NumRows: 18, NumCols: 22},
 					},
+					Config: basicGameConfig,
 				},
 			},
 			RunnerConfig: RunnerConfig{
@@ -235,6 +254,10 @@ func TestGameCreate(t *testing.T) {
 			t.Errorf("Test %v: wanted game of id 4 to be created", i)
 		case gotM.Type != message.JoinGame, gotM.Game.ID != 4, gotM.PlayerName != "selene":
 			t.Errorf("Test %v: wanted join message for game 4 for player, got %v", i, gotM)
+		case r.RunnerConfig.GameConfig.Config != game.Config{}:
+			t.Errorf("Test %v: creating a game unwantedly stored the game's config in the runner", i)
+		case !reflect.DeepEqual(basicGameConfig, gotM.Game.Config):
+			t.Errorf("Test %v: game config not set to basic config:\nwanted: %#v\ngot:    %#v", i, basicGameConfig, gotM.Game.Config)
 		}
 	}
 }

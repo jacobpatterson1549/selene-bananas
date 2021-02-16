@@ -115,18 +115,14 @@ func (r *Runner) handleMessage(ctx context.Context, m message.Message, out chan<
 
 // createGame allocates a new game, adding it to the open games.
 func (r *Runner) createGame(ctx context.Context, m message.Message, out chan<- message.Message) {
-	switch {
-	case len(r.games) >= r.MaxGames:
-		err := fmt.Errorf("the maximum number of games have already been created (%v)", r.MaxGames)
-		r.sendError(err, m.PlayerName, out)
-		return
-	case m.Game == nil, m.Game.Board == nil:
-		err := fmt.Errorf("board config required when creating game")
+	if err := r.validateCreateGame(m); err != nil {
 		r.sendError(err, m.PlayerName, out)
 		return
 	}
 	id := r.lastID + 1
-	g, err := r.GameConfig.NewGame(r.log, id, r.wordChecker, r.userDao)
+	gameCfg := r.GameConfig
+	gameCfg.Config = *m.Game.Config
+	g, err := gameCfg.NewGame(r.log, id, r.wordChecker, r.userDao)
 	if err != nil {
 		r.sendError(err, m.PlayerName, out)
 		return
@@ -137,6 +133,19 @@ func (r *Runner) createGame(ctx context.Context, m message.Message, out chan<- m
 	r.games[id] = gIn
 	m.Type = message.JoinGame
 	message.Send(m, gIn, r.Debug, r.log)
+}
+
+// validateCreateGame returns an err if the runner cannot create a new game or the message to create one is invalid.
+func (r *Runner) validateCreateGame(m message.Message) error {
+	switch {
+	case len(r.games) >= r.MaxGames:
+		return fmt.Errorf("the maximum number of games have already been created (%v)", r.MaxGames)
+	case m.Game == nil, m.Game.Board == nil:
+		return fmt.Errorf("board config required when creating game")
+	case m.Game.Config == nil:
+		return fmt.Errorf("missing config for game properties")
+	}
+	return nil
 }
 
 // deleteGame removes a game from the runner, notifying the game that it is being deleted so it can notify users.
