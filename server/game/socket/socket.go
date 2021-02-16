@@ -2,11 +2,9 @@
 package socket
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
@@ -16,15 +14,11 @@ import (
 type (
 	// Socket reads and writes messages to the browsers
 	Socket struct {
-		log  *log.Logger
-		Conn Conn
-		// The reason the read failed.  If a read fails, it is sent as the close message when the socket closes.
-		readCloseReason string
-		// The reason the writing by by the connection is stopping.  Is sent as the connection close reason if there is no read close reason.
-		writeCloseReason string
-		Config
+		log        *log.Logger
+		Conn       Conn
 		PlayerName player.Name
 		net.Addr
+		Config
 	}
 
 	// Config contains commonly shared Socket properties
@@ -119,28 +113,20 @@ func (cfg Config) validate(log *log.Logger, pn player.Name, conn Conn) (net.Addr
 
 // Run writes messages from the connection to the shared "out" channel.
 // Run writes messages recieved from the "in" channel to the connection,
-// Run writes Socket messages that are recieved to the outbound channel and reads incoming messages onto the inbound channel on separate goroutines.
-// The Socket runs until the connection fails for an unexpected reason or the context is cancelled.
-func (s *Socket) Run(ctx context.Context, in <-chan message.Message, out chan<- message.Message) {
+// The run stays active even if it errors out.  The only way to stop it is by closing the 'in' channel.
+// If the connection has an error, the socket will send a socketClose message on the out channel, but will still consume and ignore messages from the in channel until it is closed this prevents a channel blockage.
+func (s *Socket) Run(in <-chan message.Message, out chan<- message.Message) {
 	pingTicker := time.NewTicker(s.PingPeriod)
 	httpPingTicker := time.NewTicker(s.HTTPPingPeriod)
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		wg.Wait()
-		s.stop(out, pingTicker, httpPingTicker)
-	}()
-	go s.readMessagesSync(ctx, out, &wg)
-	go s.writeMessagesSync(ctx, in, &wg, pingTicker, httpPingTicker)
+	go s.readMessagesSync(out)
+	go s.writeMessagesSync(in, pingTicker, httpPingTicker)
 }
 
 // readMessagesSync receives messages from the connected socket and writes the to the messages channel.
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *Socket) readMessagesSync(ctx context.Context, out chan<- message.Message, wg *sync.WaitGroup) {
-	defer func() {
-		s.Conn.Close() // will casue writeMessages() to fail
-		wg.Done()
-	}()
+func (s *Socket) readMessagesSync(out chan<- message.Message) {
+	defer s.closeConn()    // will casue writeMessages() to fail, but not stop until the in channel is closed.
+	defer s.sendClose(out) // ask the runner to close the in channel
 	pongHandler := func(appData string) error {
 		if err := s.refreshDeadline(s.Conn.SetReadDeadline, s.ReadWait); err != nil {
 			err = fmt.Errorf("setting read deadline: %w", err)
@@ -155,52 +141,61 @@ func (s *Socket) readMessagesSync(ctx context.Context, out chan<- message.Messag
 	s.Conn.SetPongHandler(pongHandler)
 	for { // BLOCKING
 		m, err := s.readMessage() // BLOCKING
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			if err != nil {
-				if err != errSocketClosed {
-					reason := fmt.Sprintf("reading socket messages stopped for player %v: %v", s, err)
-					s.writeClose(reason)
-				}
-				return
+		if err != nil {
+			var reason string
+			if err != errSocketClosed {
+				reason = fmt.Sprintf("reading socket messages stopped for player %v: %v", s, err)
 			}
+			s.writeClose(reason)
+			return
 		}
 		message.Send(*m, out, s.Debug, s.log)
 	}
 }
 
 // writeMessagesSync sends messages from the outbound messages channel to the connected socket.
-// Messages are not sent if the writing is cancelled from the done channel or an error is encountered and sent to the error channel.
+// Messages are not sent if the context is cancelled or an error is encountered and sent to the error channel.
+// NOTE: this function does not terminate until the input channel closes.
 // The tickers are used to periodically write message different ping messages.
-func (s *Socket) writeMessagesSync(ctx context.Context, in <-chan message.Message, wg *sync.WaitGroup, pingTicker, httpPingTicker *time.Ticker) {
-	var closeReason string
-	defer func() {
-		s.writeClose(closeReason)
-		s.Conn.Close() // will casue readMessages() to fail
-		wg.Done()
-	}()
+func (s *Socket) writeMessagesSync(in <-chan message.Message, pingTicker, httpPingTicker *time.Ticker) {
+	defer s.closeConn() // will casue readMessages() to fail
 	var err error
+	skipWrite, stopWrite := false, false
+	write := func(writeFunc func() error) error {
+		if skipWrite {
+			return fmt.Errorf("skipping write for socket (%v) because an error has already occured", s) // TODO: test this
+		}
+		if err := s.refreshDeadline(s.Conn.SetWriteDeadline, s.WriteWait); err != nil {
+			return fmt.Errorf("setting write deadline: %v", err)
+		}
+		return writeFunc()
+	}
 	for { // BLOCKING
 		select {
-		case <-ctx.Done():
-			closeReason = "server shutting down"
-			return
 		case m, ok := <-in:
-			if !ok {
-				closeReason = "server not reading messages"
-				return
+			switch {
+			case !ok:
+				err = fmt.Errorf("server shutting down")
+				stopWrite = true
+			default:
+				err = write(func() error { return s.writeMessage(m) })
 			}
-			err = s.writeWrapper(func() error { return s.writeMessage(m) })
 		case <-pingTicker.C:
-			err = s.writeWrapper(s.Conn.WritePing)
+			err = write(s.Conn.WritePing)
 		case <-httpPingTicker.C:
-			err = s.handleHTTPPing()
+			m := message.Message{
+				Type: message.SocketHTTPPing,
+			}
+			err = write(func() error { return s.writeMessage(m) })
 		}
 		if err != nil {
-			closeReason = fmt.Sprintf("writing socket messages stopped for player %v: %v", s, err)
-			return
+			closeReason := err.Error()
+			s.writeClose(closeReason)
+			s.closeConn() // will casue readMessages() to fail
+			if stopWrite {
+				return
+			}
+			skipWrite = true
 		}
 	}
 }
@@ -226,14 +221,6 @@ func (s *Socket) readMessage() (*message.Message, error) {
 	return &m, nil
 }
 
-// func writeWrapper sets the write deadline before calling the write function.
-func (s *Socket) writeWrapper(writeFunc func() error) error {
-	if err := s.refreshDeadline(s.Conn.SetWriteDeadline, s.WriteWait); err != nil {
-		return fmt.Errorf("setting write deadline: %v", err)
-	}
-	return writeFunc()
-}
-
 // writeMessage writes a message to the connection.
 func (s *Socket) writeMessage(m message.Message) error {
 	if s.Debug {
@@ -248,20 +235,14 @@ func (s *Socket) writeMessage(m message.Message) error {
 	return nil
 }
 
-// handleHTTPPing writes an HTTPPing message.
-func (s *Socket) handleHTTPPing() error {
-	m := message.Message{
-		Type: message.SocketHTTPPing,
-	}
-	return s.writeMessage(m)
-}
-
-// writeClose writes a closeMessage with the reason and closes the connection, logging the reason if successful
+// writeClose writes a closeMessage with the reason, logging the reason if successful.  Thread safe.
 func (s *Socket) writeClose(reason string) {
 	if err := s.Conn.WriteClose(reason); err != nil {
 		return
 	}
-	s.log.Print(reason)
+	if len(reason) != 0 {
+		s.log.Print(reason)
+	}
 }
 
 func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {
@@ -276,15 +257,17 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 	return nil
 }
 
-// stop cancels timers, closes the connection, and notifies the out channel that it is closed.
-func (s *Socket) stop(out chan<- message.Message, pingTicker, activityCheckTicker *time.Ticker) {
-	pingTicker.Stop()
-	activityCheckTicker.Stop()
-	s.Conn.Close()
+// sendClose notifies the out channel that it is closed, hopefully causing it to close the in channel.
+func (s *Socket) sendClose(out chan<- message.Message) {
 	m := message.Message{
 		Type:       message.SocketClose,
 		PlayerName: s.PlayerName,
 		Addr:       s.Addr,
 	}
 	message.Send(m, out, s.Debug, s.log)
+}
+
+// closeConn closes the connection of the socket.  Thread safe.
+func (s *Socket) closeConn() {
+	s.Conn.Close()
 }

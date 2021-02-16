@@ -105,16 +105,27 @@ func TestRunRunner(t *testing.T) {
 		},
 	}
 	for i, test := range runRunnerTests {
-		var r Runner
+		socketIn := make(chan message.Message)
+		r := Runner{
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"selene": {
+					mockAddr("selene.pc"): socketIn,
+				},
+			},
+		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		defer cancelFunc()
 		in := make(chan message.Message)
-		out := r.Run(ctx, in)
+		runnerOut := r.Run(ctx, in)
 		test.stopFunc(cancelFunc, in)
-		_, ok := <-out
-		if ok {
-			t.Errorf("Test %v: wanted 'out' channel to be closed after 'in' channel was closed", i)
+		_, runnerOutOpen := <-runnerOut
+		if runnerOutOpen {
+			t.Errorf("Test %v: wanted runner 'out' channel to be closed after 'in' channel was closed", i)
+		}
+		_, socketInOpen := <-socketIn
+		if socketInOpen {
+			t.Errorf("Test %v: wanted player socket to be closed", i)
 		}
 	}
 }
@@ -1116,8 +1127,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 	}
 }
 
-// TestRunnerHandleLobbyMessagePlayerRemove needs extra code to verify the sockets are closed.
-// This test alse tests the flow of game messages from the Run function.
+// TestRunnerHandleLobbyMessagePlayerRemove verifies the sockets are closed.
 func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 	c1 := make(chan message.Message)
 	c2 := make(chan message.Message, 1)
@@ -1160,11 +1170,7 @@ func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
-	ctx, cancelFunc := context.WithCancel(ctx)
-	gameOut := make(chan message.Message)
-	r.Run(ctx, gameOut)
-	gameOut <- m
-	cancelFunc()
+	r.removePlayer(ctx, m)
 	switch {
 	case !reflect.DeepEqual(wantPlayerSockets, r.playerSockets):
 		t.Errorf("player sockets not equal:\nwanted: %v\ngot:    %v", wantPlayerSockets, r.playerSockets)

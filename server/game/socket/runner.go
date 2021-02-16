@@ -78,7 +78,15 @@ func (r *Runner) Run(ctx context.Context, in <-chan message.Message) <-chan mess
 	r.socketOut = make(chan message.Message)
 	out := make(chan message.Message)
 	go func() {
-		defer close(out)
+		defer func() {
+			for pn := range r.playerSockets {
+				m := message.Message{
+					PlayerName: pn,
+				}
+				r.removePlayer(ctx, m) // close the socket
+			}
+			close(out)
+		}()
 		for { // BLOCKING
 			select {
 			case <-ctx.Done():
@@ -141,7 +149,7 @@ func (r *Runner) handleAddSocket(ctx context.Context, pn player.Name, w http.Res
 		return nil, fmt.Errorf("creating socket in runner: %v", err)
 	}
 	socketIn := make(chan message.Message)
-	s.Run(ctx, socketIn, r.socketOut)
+	s.Run(socketIn, r.socketOut)
 	if r.hasSocket(s.Addr) {
 		return nil, fmt.Errorf("socket already exists with address of %v", s.Addr)
 	}
@@ -352,8 +360,8 @@ func (r *Runner) joinGame(ctx context.Context, m message.Message, out chan<- mes
 				Type: message.LeaveGame,
 				Info: "leaving game because it is being played on a different socket",
 			}
-			socketIn := r.playerSockets[m.PlayerName][addr2]
-			message.Send(m2, socketIn, r.Debug, r.log)
+			socketIn2 := r.playerSockets[m.PlayerName][addr2]
+			message.Send(m2, socketIn2, r.Debug, r.log)
 		}
 		// remove the addr from its previously joined game if it is different
 		for id, addr := range games {
