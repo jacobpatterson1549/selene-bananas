@@ -222,7 +222,7 @@ func (r *Runner) validateSocketMessage(m message.Message) error {
 		return fmt.Errorf("received message without game")
 	}
 	switch m.Type {
-	case message.CreateGame, message.JoinGame, message.SocketClose:
+	case message.CreateGame, message.JoinGame, message.SocketClose, message.LeaveGame:
 		// NOOP
 	default:
 		games, ok := r.playerGames[m.PlayerName]
@@ -315,6 +315,10 @@ func (r *Runner) sendMessageForGame(ctx context.Context, m message.Message) {
 		addr = m.Addr
 	case message.LeaveGame:
 		defer r.leaveGame(ctx, m)
+		if m.Addr != nil {
+			addr = m.Addr
+			break
+		}
 		fallthrough
 	default:
 		games, gOk := r.playerGames[m.PlayerName]

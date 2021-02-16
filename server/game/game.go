@@ -223,6 +223,7 @@ func (g *Game) handleMessage(ctx context.Context, m message.Message, send messag
 		m2 := message.Message{
 			Type:       mt,
 			PlayerName: m.PlayerName,
+			Game:       m.Game,
 			Info:       err.Error(),
 		}
 		send(m2)
@@ -250,6 +251,8 @@ func (g *Game) handleGameJoin(ctx context.Context, m message.Message, send messa
 		m2 := message.Message{
 			Type:       message.LeaveGame,
 			PlayerName: m.PlayerName,
+			Info:       err.Error(),
+			Addr:       m.Addr,
 		}
 		send(m2)
 		return err

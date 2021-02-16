@@ -812,6 +812,23 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 		},
+		{ // leave game, when not allowed in game.  This causes the ui to kick the player even though he was never added in the server
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+				"fred": {
+					addr1: make(chan<- message.Message, 1),
+				},
+			},
+			playerGames: map[player.Name]map[game.ID]net.Addr{},
+			m: message.Message{
+				Type:       message.LeaveGame,
+				PlayerName: "fred",
+				Addr:       addr1,
+				Game: &game.Info{
+					ID: 1,
+				},
+			},
+			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
+		},
 	}
 	for i, test := range handleLobbyMessageTests {
 		var bb bytes.Buffer
