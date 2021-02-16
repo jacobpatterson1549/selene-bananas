@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"sync"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
@@ -46,7 +47,7 @@ type (
 
 	// Runner handles running and managing games or sockets.
 	Runner interface {
-		Run(ctx context.Context, in <-chan message.Message) <-chan message.Message
+		Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message
 	}
 )
 
@@ -80,11 +81,14 @@ func (cfg Config) validate(log *log.Logger, socketRunner, gameRunner Runner) err
 }
 
 // Run runs the lobby until the context is closed.
-func (l *Lobby) Run(ctx context.Context) {
+func (l *Lobby) Run(ctx context.Context, wg *sync.WaitGroup) {
 	gameRunnerIn := make(chan message.Message)
-	socketRunnerOut := l.socketRunner.Run(ctx, l.socketRunnerIn)
-	gameRunnerOut := l.gameRunner.Run(ctx, gameRunnerIn)
+	socketRunnerOut := l.socketRunner.Run(ctx, wg, l.socketRunnerIn)
+	gameRunnerOut := l.gameRunner.Run(ctx, wg, gameRunnerIn)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		defer l.log.Println("lobby stopped")
 		defer close(l.socketRunnerIn)
 		defer close(gameRunnerIn)
 		for { // BLOCKING

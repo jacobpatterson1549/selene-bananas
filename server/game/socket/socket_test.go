@@ -186,48 +186,83 @@ func TestNewSocket(t *testing.T) {
 }
 
 func TestRunSocket(t *testing.T) {
-	readBlocker := make(chan struct{})
-	var closeWG sync.WaitGroup
-	closeWG.Add(3)
-	conn := mockConn{
-		SetReadDeadlineFunc: func(t time.Time) error {
-			return fmt.Errorf("could not set read deadline")
-		},
-		CloseFunc: func() error {
-			closeWG.Done()
-			return nil
-		},
-		WriteCloseFunc: func(reason string) error {
-			return nil
-		},
-		SetWriteDeadlineFunc: func(t time.Time) error {
-			return fmt.Errorf("could not set write deadline")
+	runSocketTests := []struct {
+		callCancelFunc bool
+	}{
+		{},
+		{
+			callCancelFunc: true,
 		},
 	}
-	cfg := Config{
-		TimeFunc:       func() int64 { return 0 },
-		ReadWait:       2 * time.Hour,
-		WriteWait:      2 * time.Hour,
-		PingPeriod:     1 * time.Hour,
-		HTTPPingPeriod: 3 * time.Hour,
-	}
-	addr := mockAddr("some.addr")
-	s := Socket{
-		log:    log.New(ioutil.Discard, "test", log.LstdFlags),
-		Conn:   &conn,
-		Config: cfg,
-		Addr:   addr,
-	}
-	in := make(chan message.Message)
-	out := make(chan message.Message, 1)
-	s.Run(in, out)
-	close(readBlocker)
-	close(in) // will cause the socket to stop
-	closeWG.Wait()
-	got := <-out
-	switch {
-	case got.Type != message.SocketClose, got.PlayerName != s.PlayerName, got.Addr != addr:
-		t.Errorf("wanted SocketClose with socket address and player name")
+	for i, test := range runSocketTests {
+		readBlocker := make(chan struct{})
+		conn := mockConn{
+			SetReadDeadlineFunc: func(t time.Time) error {
+				return nil
+			},
+			SetPongHandlerFunc: func(h func(appDauta string) error) {
+				// NOOP
+			},
+			ReadMessageFunc: func(m *message.Message) error {
+				<-readBlocker
+				return fmt.Errorf("socket close")
+			},
+			IsNormalCloseFunc: func(err error) bool {
+				return true
+			},
+			CloseFunc: func() error {
+				return nil
+			},
+			WriteCloseFunc: func(reason string) error {
+				return nil
+			},
+			SetWriteDeadlineFunc: func(t time.Time) error {
+				return fmt.Errorf("could not set write deadline")
+			},
+		}
+		cfg := Config{
+			TimeFunc:       func() int64 { return 0 },
+			ReadWait:       2 * time.Hour,
+			WriteWait:      2 * time.Hour,
+			PingPeriod:     1 * time.Hour,
+			HTTPPingPeriod: 3 * time.Hour,
+		}
+		addr := mockAddr("some.addr")
+		s := Socket{
+			log:    log.New(ioutil.Discard, "test", log.LstdFlags),
+			Conn:   &conn,
+			Config: cfg,
+			Addr:   addr,
+		}
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		var wg sync.WaitGroup
+		in := make(chan message.Message)
+		out := make(chan message.Message, 1)
+		s.Run(ctx, &wg, in, out)
+		close(readBlocker)
+		if (test.callCancelFunc) {
+			cancelFunc()
+		}
+		switch {
+		case test.callCancelFunc:
+			wg.Wait()
+			if len(out) != 0 {
+				t.Errorf("Test %v: wanted no messages sent back on out channel", i)
+			}
+		default:
+			wantM := message.Message{
+				Type:       message.SocketClose,
+				PlayerName: s.PlayerName,
+				Addr:       addr,
+			}
+			gotM := <-out
+			if !reflect.DeepEqual(wantM, gotM) {
+				t.Errorf("Test %v: messages not equal:\nwanted: %v\ngot:    %v", i, wantM, gotM)
+			}
+		}
+		cancelFunc()
+		wg.Wait()
 	}
 }
 
@@ -235,6 +270,7 @@ func TestReadMessagesSync(t *testing.T) {
 	pn := player.Name("selene")
 	addr := mockAddr("selene.pc.addr")
 	readMessagesTests := []struct {
+		callCancelFunc     bool
 		setReadDeadlineErr error
 		readMessageErr     error
 		isNormalCloseErr   bool
@@ -242,6 +278,9 @@ func TestReadMessagesSync(t *testing.T) {
 		debug              bool
 		wantOk             bool
 	}{
+		{
+			callCancelFunc: true,
+		},
 		{
 			setReadDeadlineErr: errors.New("could not set read deadline"),
 		},
@@ -265,11 +304,6 @@ func TestReadMessagesSync(t *testing.T) {
 	}
 	for i, test := range readMessagesTests {
 		setPongHandlerFuncCalled := false
-		var closeWG sync.WaitGroup
-		closeWG.Add(1)
-		ctx := context.Background()
-		ctx, cancelFunc := context.WithCancel(ctx)
-		defer cancelFunc()
 		normalMessageInfo := "normal message"
 		j := 0
 		conn := mockConn{
@@ -298,7 +332,6 @@ func TestReadMessagesSync(t *testing.T) {
 				return test.isNormalCloseErr
 			},
 			CloseFunc: func() error {
-				closeWG.Done()
 				return nil
 			},
 			WriteCloseFunc: func(reason string) error {
@@ -319,13 +352,21 @@ func TestReadMessagesSync(t *testing.T) {
 			PlayerName: pn,
 			Addr:       addr,
 		}
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
 		wantNumMessagesRead := 1 // the last message should Type.SocketClose
-		if test.wantOk {
+		switch {
+		case test.callCancelFunc:
+			wantNumMessagesRead--
+			cancelFunc()
+		case test.wantOk:
 			wantNumMessagesRead++
 		}
 		out := make(chan message.Message, wantNumMessagesRead)
-		go s.readMessagesSync(out)
-		closeWG.Wait()
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go s.readMessagesSync(ctx, &wg, out)
+		wg.Wait()
 		gotMessages := make([]message.Message, wantNumMessagesRead)
 		for j := 0; j < wantNumMessagesRead; j++ {
 			gotMessages[j] = <-out
@@ -335,6 +376,8 @@ func TestReadMessagesSync(t *testing.T) {
 			t.Errorf("Test %v: extra messages exist on out channel", i)
 		case wantNumMessagesRead != len(gotMessages):
 			t.Errorf("Test %v: wanted %v messages sent on out channel, got %v", i, wantNumMessagesRead, len(out))
+		case test.callCancelFunc:
+			// NOOP
 		case gotMessages[len(gotMessages)-1].Type != message.SocketClose,
 			gotMessages[len(gotMessages)-1].PlayerName != pn,
 			gotMessages[len(gotMessages)-1].Addr != addr:
@@ -350,11 +393,13 @@ func TestReadMessagesSync(t *testing.T) {
 		case gotMessages[0].Info != normalMessageInfo:
 			t.Errorf("Test %v: wanted first message to be normal message, got %v", i, gotMessages[0])
 		}
+		cancelFunc()
 	}
 }
 
 func TestWriteMessagesSync(t *testing.T) {
 	writeMessagesTests := []struct {
+		callCancelFunc      bool
 		inClosed            bool
 		m                   message.Message
 		wantM               message.Message
@@ -365,6 +410,9 @@ func TestWriteMessagesSync(t *testing.T) {
 		httpPingTick        bool
 		wantOk              bool
 	}{
+		{
+			callCancelFunc: true,
+		},
 		{ // inbound channel closed
 			inClosed: true,
 		},
@@ -421,15 +469,9 @@ func TestWriteMessagesSync(t *testing.T) {
 		httpPingTicker := &time.Ticker{
 			C: httpPingC,
 		}
-		var closeWG sync.WaitGroup
-		closeWG.Add(1)
-		var closeOnce sync.Once // one call is deferred, one should be called through all non-panicing paths
 		in := make(chan message.Message, 1)
 		conn := mockConn{
 			CloseFunc: func() error {
-				closeOnce.Do(func() {
-					closeWG.Done()
-				})
 				return nil
 			},
 			WriteMessageFunc: func(m message.Message) error {
@@ -461,6 +503,8 @@ func TestWriteMessagesSync(t *testing.T) {
 				TimeFunc: func() int64 { return 0 },
 			},
 		}
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
 		switch {
 		case test.inClosed:
 			close(in)
@@ -471,19 +515,26 @@ func TestWriteMessagesSync(t *testing.T) {
 		case test.wantOk, test.writeErr != nil, test.setWriteDeadlineErr != nil:
 			in <- test.m
 		}
-		go s.writeMessagesSync(in, pingTicker, httpPingTicker)
-		closeWG.Wait()
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go s.writeMessagesSync(ctx, &wg, in, pingTicker, httpPingTicker)
 		switch {
+		case test.callCancelFunc:
+			// NOOP
 		case !test.wantOk:
 			if len(writtenMessages) != 0 {
 				t.Errorf("Test %v: wanted no messages written to connection", i)
 			}
+			if !test.inClosed && test.setWriteDeadlineErr != nil {
+				close(in)
+			}
 		case !test.pingTick:
 			gotM := <-writtenMessages
-			switch {
-			case !reflect.DeepEqual(test.wantM, gotM):
+			if !reflect.DeepEqual(test.wantM, gotM) {
 				t.Errorf("Test %v: messages not equal:\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
 			}
 		}
+		cancelFunc()
+		wg.Wait()
 	}
 }

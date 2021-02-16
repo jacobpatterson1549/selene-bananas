@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 )
@@ -19,14 +20,14 @@ type (
 
 	// Lobby is the place users can create, join, and participate in games.
 	Lobby interface {
-		Run(ctx context.Context)
+		Run(ctx context.Context, wg *sync.WaitGroup)
 		AddUser(username string, w http.ResponseWriter, r *http.Request) error
 		RemoveUser(username string)
 	}
 )
 
 // handleUserCreate creates a user, adding it to the database.
-func (s Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password_confirm")
 	u, err := user.New(username, password)
@@ -42,7 +43,7 @@ func (s Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleUserLogin signs a user in, writing the token to the response.
-func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	u, err := user.New(username, password)
@@ -70,7 +71,7 @@ func (s Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleUserLobby adds the user to the lobby.
-func (s Server) handleUserLobby(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleUserLobby(w http.ResponseWriter, r *http.Request) {
 	tokenString := r.FormValue("access_token")
 	username, err := s.tokenizer.ReadUsername(tokenString)
 	if err != nil {
@@ -86,7 +87,7 @@ func (s Server) handleUserLobby(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleUserUpdatePassword updates the user's password.
-func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	newPassword := r.FormValue("password_confirm")
@@ -104,7 +105,7 @@ func (s Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request)
 }
 
 // handleUserDelete deletes the user from the database.
-func (s Server) handleUserDelete(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleUserDelete(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	password := r.FormValue("password")
 	u, err := user.New(username, password)

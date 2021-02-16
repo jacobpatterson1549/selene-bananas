@@ -22,11 +22,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("creating server: %v", err)
 	}
-	runServer(ctx, *server, log)
+	runServer(ctx, server, log)
 }
 
 // runServer runs the server until it is interrupted or terminated.
-func runServer(ctx context.Context, server server.Server, log *log.Logger) {
+func runServer(ctx context.Context, server *server.Server, log *log.Logger) {
 	done := make(chan os.Signal, 2)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 	errC := server.Run(ctx)
@@ -39,9 +39,10 @@ func runServer(ctx context.Context, server server.Server, log *log.Logger) {
 			log.Printf("server stopped unexpectedly: %v", err)
 		}
 	case signal := <-done:
-		log.Printf("handled %v", signal)
+		log.Printf("handled signal: %v", signal)
 	}
 	if err := server.Stop(ctx); err != nil {
-		log.Printf("stopping server: %v", err)
+		log.Fatalf("stopping server: %v", err)
 	}
+	log.Println("server stopped successfully")
 }

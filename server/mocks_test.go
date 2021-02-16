@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"net/http"
+	"sync"
 
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 )
@@ -45,13 +46,13 @@ func (ud mockUserDao) Delete(ctx context.Context, u user.User) error {
 }
 
 type mockLobby struct {
-	runFunc        func(ctx context.Context)
+	runFunc        func(ctx context.Context, wg *sync.WaitGroup)
 	addUserFunc    func(username string, w http.ResponseWriter, r *http.Request) error
 	removeUserFunc func(username string)
 }
 
-func (l mockLobby) Run(ctx context.Context) {
-	l.runFunc(ctx)
+func (l mockLobby) Run(ctx context.Context, wg *sync.WaitGroup) {
+	l.runFunc(ctx, wg)
 }
 
 func (l mockLobby) AddUser(username string, w http.ResponseWriter, r *http.Request) error {

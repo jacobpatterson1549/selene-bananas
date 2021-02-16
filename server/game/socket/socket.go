@@ -2,9 +2,11 @@
 package socket
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
@@ -115,18 +117,20 @@ func (cfg Config) validate(log *log.Logger, pn player.Name, conn Conn) (net.Addr
 // Run writes messages recieved from the "in" channel to the connection,
 // The run stays active even if it errors out.  The only way to stop it is by closing the 'in' channel.
 // If the connection has an error, the socket will send a socketClose message on the out channel, but will still consume and ignore messages from the in channel until it is closed this prevents a channel blockage.
-func (s *Socket) Run(in <-chan message.Message, out chan<- message.Message) {
+func (s *Socket) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, out chan<- message.Message) {
 	pingTicker := time.NewTicker(s.PingPeriod)
 	httpPingTicker := time.NewTicker(s.HTTPPingPeriod)
-	go s.readMessagesSync(out)
-	go s.writeMessagesSync(in, pingTicker, httpPingTicker)
+	wg.Add(2)
+	go s.readMessagesSync(ctx, wg, out)
+	go s.writeMessagesSync(ctx, wg, in, pingTicker, httpPingTicker)
 }
 
 // readMessagesSync receives messages from the connected socket and writes the to the messages channel.
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel.
-func (s *Socket) readMessagesSync(out chan<- message.Message) {
-	defer s.closeConn()    // will casue writeMessages() to fail, but not stop until the in channel is closed.
-	defer s.sendClose(out) // ask the runner to close the in channel
+func (s *Socket) readMessagesSync(ctx context.Context, wg *sync.WaitGroup, out chan<- message.Message) {
+	defer wg.Done()
+	defer s.closeConn() // will casue writeMessages() to fail, but not stop until the in channel is closed.
+	defer s.sendClose(ctx, out)
 	pongHandler := func(appData string) error {
 		if err := s.refreshDeadline(s.Conn.SetReadDeadline, s.ReadWait); err != nil {
 			err = fmt.Errorf("setting read deadline: %w", err)
@@ -141,6 +145,11 @@ func (s *Socket) readMessagesSync(out chan<- message.Message) {
 	s.Conn.SetPongHandler(pongHandler)
 	for { // BLOCKING
 		m, err := s.readMessage() // BLOCKING
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 		if err != nil {
 			var reason string
 			if err != errSocketClosed {
@@ -157,7 +166,8 @@ func (s *Socket) readMessagesSync(out chan<- message.Message) {
 // Messages are not sent if the context is cancelled or an error is encountered and sent to the error channel.
 // NOTE: this function does not terminate until the input channel closes.
 // The tickers are used to periodically write message different ping messages.
-func (s *Socket) writeMessagesSync(in <-chan message.Message, pingTicker, httpPingTicker *time.Ticker) {
+func (s *Socket) writeMessagesSync(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, pingTicker, httpPingTicker *time.Ticker) {
+	defer wg.Done()
 	defer s.closeConn() // will casue readMessages() to fail
 	var err error
 	skipWrite, stopWrite := false, false
@@ -172,6 +182,9 @@ func (s *Socket) writeMessagesSync(in <-chan message.Message, pingTicker, httpPi
 	}
 	for { // BLOCKING
 		select {
+		case <-ctx.Done():
+			s.writeClose("server shutting down")
+			return
 		case m, ok := <-in:
 			switch {
 			case !ok:
@@ -258,7 +271,12 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 }
 
 // sendClose notifies the out channel that it is closed, hopefully causing it to close the in channel.
-func (s *Socket) sendClose(out chan<- message.Message) {
+func (s *Socket) sendClose(ctx context.Context, out chan<- message.Message) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
 	m := message.Message{
 		Type:       message.SocketClose,
 		PlayerName: s.PlayerName,

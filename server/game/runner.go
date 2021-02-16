@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
@@ -67,9 +68,12 @@ func (cfg RunnerConfig) NewRunner(log *log.Logger, wordChecker WordChecker, user
 
 // Run consumes messages from the "in" channel, processing them on a new goroutine until the "in" channel closes.
 // The results of messages are sent on the "out" channel to be read by the subscriber.
-func (r *Runner) Run(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 	out := make(chan message.Message)
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		defer r.log.Println("game runner stopped")
 		defer close(out)
 		for { // BLOCKING
 			select {
@@ -79,7 +83,7 @@ func (r *Runner) Run(ctx context.Context, in <-chan message.Message) <-chan mess
 				if !ok {
 					return
 				}
-				r.handleMessage(ctx, m, out)
+				r.handleMessage(ctx, wg, m, out)
 			}
 		}
 	}()
@@ -102,10 +106,10 @@ func (cfg RunnerConfig) validate(log *log.Logger, wordChecker WordChecker, userD
 }
 
 // handleMessage takes appropriate actions for different message types.
-func (r *Runner) handleMessage(ctx context.Context, m message.Message, out chan<- message.Message) {
+func (r *Runner) handleMessage(ctx context.Context, wg *sync.WaitGroup, m message.Message, out chan<- message.Message) {
 	switch m.Type {
 	case message.CreateGame:
-		r.createGame(ctx, m, out)
+		r.createGame(ctx, wg, m, out)
 	case message.DeleteGame:
 		r.deleteGame(ctx, m, out)
 	default:
@@ -114,7 +118,7 @@ func (r *Runner) handleMessage(ctx context.Context, m message.Message, out chan<
 }
 
 // createGame allocates a new game, adding it to the open games.
-func (r *Runner) createGame(ctx context.Context, m message.Message, out chan<- message.Message) {
+func (r *Runner) createGame(ctx context.Context, wg *sync.WaitGroup, m message.Message, out chan<- message.Message) {
 	if err := r.validateCreateGame(m); err != nil {
 		r.sendError(err, m.PlayerName, out)
 		return
@@ -129,7 +133,7 @@ func (r *Runner) createGame(ctx context.Context, m message.Message, out chan<- m
 	}
 	r.lastID = id
 	gIn := make(chan message.Message)
-	g.Run(ctx, gIn, out) // all games publish to the same "out" channel
+	g.Run(ctx, wg, gIn, out) // all games publish to the same "out" channel
 	r.games[id] = gIn
 	m.Type = message.JoinGame
 	message.Send(m, gIn, r.Debug, r.log)

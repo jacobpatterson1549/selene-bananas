@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -107,6 +108,7 @@ func TestRunRunner(t *testing.T) {
 	for i, test := range runRunnerTests {
 		socketIn := make(chan message.Message)
 		r := Runner{
+			log: log.New(ioutil.Discard, "test", log.LstdFlags),
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
 				"selene": {
 					mockAddr("selene.pc"): socketIn,
@@ -116,9 +118,11 @@ func TestRunRunner(t *testing.T) {
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		defer cancelFunc()
+		var wg sync.WaitGroup
 		in := make(chan message.Message)
-		runnerOut := r.Run(ctx, in)
+		runnerOut := r.Run(ctx, &wg, in)
 		test.stopFunc(cancelFunc, in)
+		wg.Wait()
 		_, runnerOutOpen := <-runnerOut
 		if runnerOutOpen {
 			t.Errorf("Test %v: wanted runner 'out' channel to be closed after 'in' channel was closed", i)
@@ -186,7 +190,8 @@ func TestRunnerAddSocketCheckResult(t *testing.T) {
 		test.m.AddSocketRequest = &message.AddSocketRequest{
 			Result: result,
 		}
-		r.handleLobbyMessage(ctx, test.m)
+		var wg sync.WaitGroup
+		r.handleLobbyMessage(ctx, &wg, test.m)
 		got := <-result
 		switch {
 		case !test.wantOk:
@@ -210,7 +215,6 @@ func TestRunnerAddSocketCheckResult(t *testing.T) {
 
 func TestRunnerHandleAddSocket(t *testing.T) {
 	runnerAddSocketTests := []struct {
-		running          bool
 		maxSockets       int
 		maxPlayerSockets int
 		noPlayerName     bool
@@ -218,36 +222,27 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 		upgradeErr       error
 		Config
 	}{
-		{}, // not running
-		{ // no room
-			running:    true,
-			maxSockets: 0,
-		},
+		{}, // no room
 		{ // player quota reached
-			running:          true,
 			maxSockets:       1,
 			maxPlayerSockets: 0,
 		},
 		{ // no playerName
-			running:          true,
 			maxSockets:       1,
 			maxPlayerSockets: 1,
 			noPlayerName:     true,
 		},
 		{ // bad upgrade
-			running:          true,
 			maxSockets:       1,
 			maxPlayerSockets: 1,
 			upgradeErr:       errors.New("upgrade error"),
 		},
 		{ // bad socket config
-			running:          true,
 			maxSockets:       1,
 			maxPlayerSockets: 1,
 			Config:           Config{},
 		},
 		{ // ok
-			running:          true,
 			maxSockets:       1,
 			maxPlayerSockets: 1,
 			Config: Config{
@@ -261,9 +256,8 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 		},
 	}
 	for i, test := range runnerAddSocketTests {
-		readBlocker1 := make(chan struct{})
-		readBlocker2 := make(chan struct{})
-		socketRun := false
+		readBlocker := make(chan struct{})
+		socketRun := true
 		addr := mockAddr("an.addr")
 		upgradeFunc := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
 			if test.upgradeErr != nil {
@@ -274,13 +268,8 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 					return addr
 				},
 				ReadMessageFunc: func(m *message.Message) error {
-					<-readBlocker1
-					if !socketRun {
-						socketRun = true
-						close(readBlocker2)
-					}
-					mockConnReadMinimalMessage(m)
-					return nil
+					<-readBlocker
+					return errors.New("stop run")
 				},
 				SetReadDeadlineFunc: func(t time.Time) error {
 					return nil
@@ -288,13 +277,34 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 				SetPongHandlerFunc: func(h func(appDauta string) error) {
 					// NOOP
 				},
+				IsNormalCloseFunc: func(err error) bool {
+					return test.wantOk
+				},
+				WriteCloseFunc: func(reason string) error {
+					return nil
+				},
+				CloseFunc: func() error {
+					socketRun = true
+					return nil
+				},
 			}, nil
 		}
-		r := newRunnerWithMocks(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
-		if test.running {
-			ctx := context.Background()
-			in := make(chan message.Message)
-			r.Run(ctx, in)
+		r := Runner{
+			log:           log.New(ioutil.Discard, "test", log.LstdFlags),
+			upgrader:      mockUpgrader(upgradeFunc),
+			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
+			playerGames:   make(map[player.Name]map[game.ID]net.Addr),
+			RunnerConfig: RunnerConfig{
+				MaxSockets:       test.maxSockets,
+				MaxPlayerSockets: test.maxPlayerSockets,
+				SocketConfig: Config{
+					TimeFunc:       func() int64 { return 0 },
+					ReadWait:       2 * time.Hour,
+					WriteWait:      1 * time.Hour,
+					PingPeriod:     2 * time.Hour,
+					HTTPPingPeriod: 3 * time.Hour,
+				},
+			},
 		}
 		r.SocketConfig = test.Config
 		pn, w, req := mockAddUserRequest("selene")
@@ -302,7 +312,11 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			pn = ""
 		}
 		ctx := context.Background()
-		s, err := r.handleAddSocket(ctx, pn, w, req)
+		ctx, cancelFunc := context.WithCancel(ctx)
+		var wg sync.WaitGroup
+		runnerIn := make(chan message.Message, 1)
+		r.Run(ctx, &wg, runnerIn)
+		s, err := r.handleAddSocket(ctx, &wg, pn, w, req)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -318,12 +332,13 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			t.Errorf("Test %v: wanted 1 socket for %v, got %v", i, pn, len(r.playerSockets[pn]))
 		default:
 			// test if the socket is running by sending it a message.  this relies on r.handleSocketMessage
-			close(readBlocker1)
-			<-readBlocker2
+			close(readBlocker)
 			if !socketRun {
 				t.Errorf("Test %v: wanted socket to be run", i)
 			}
 		}
+		cancelFunc()
+		wg.Wait()
 	}
 }
 
@@ -381,59 +396,77 @@ func TestRunnerAddSecondSocket(t *testing.T) {
 		},
 	}
 	for i, test := range runnerAddSecondSocketTests {
-		blockingChannel := make(chan struct{})
-		defer close(blockingChannel)
+		readBlocker := make(chan struct{})
 		j := 0
-		readJSONFunc := func(m *message.Message) error {
-			<-blockingChannel
-			mockConnReadMinimalMessage(m)
-			return nil
-		}
 		upgradeFunc := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
 			j++
+			var addr net.Addr
 			switch j {
 			case 1:
-				return &mockConn{
-					RemoteAddrFunc: func() net.Addr {
-						return mockAddr(socket1Addr)
-					},
-					ReadMessageFunc: readJSONFunc,
-					SetReadDeadlineFunc: func(t time.Time) error {
-						return nil
-					},
-					SetPongHandlerFunc: func(h func(appDauta string) error) {
-						// NOOP
-					},
-				}, nil
+				addr = mockAddr(socket1Addr)
 			case 2:
-				return &mockConn{
-					RemoteAddrFunc: func() net.Addr {
-						return mockAddr(test.socket2Addr)
-					},
-					ReadMessageFunc: readJSONFunc,
-					SetReadDeadlineFunc: func(t time.Time) error {
-						return nil
-					},
-					SetPongHandlerFunc: func(h func(appDauta string) error) {
-						// NOOP
-					},
-				}, nil
+				addr = mockAddr(test.socket2Addr)
 			default:
 				return nil, errors.New("too many calls to upgrade")
 			}
+			return &mockConn{
+				RemoteAddrFunc: func() net.Addr {
+					return addr
+				},
+				ReadMessageFunc: func(m *message.Message) error {
+					<-readBlocker
+					return errors.New("stop run for test")
+				},
+				SetReadDeadlineFunc: func(t time.Time) error {
+					return nil
+				},
+				SetPongHandlerFunc: func(h func(appDauta string) error) {
+					// NOOP
+				},
+				IsNormalCloseFunc: func(err error) bool {
+					return true
+				},
+				WriteCloseFunc: func(reason string) error {
+					return nil
+				},
+				CloseFunc: func() error {
+					return nil
+				},
+			}, nil
 		}
-		r := newRunnerWithMocks(test.maxSockets, test.maxPlayerSockets, upgradeFunc)
+		r := Runner{
+			log:           log.New(ioutil.Discard, "test", log.LstdFlags),
+			upgrader:      mockUpgrader(upgradeFunc),
+			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
+			playerGames:   make(map[player.Name]map[game.ID]net.Addr),
+			RunnerConfig: RunnerConfig{
+				MaxSockets:       test.maxSockets,
+				MaxPlayerSockets: test.maxPlayerSockets,
+				SocketConfig: Config{
+					TimeFunc:       func() int64 { return 0 },
+					ReadWait:       2 * time.Hour,
+					WriteWait:      1 * time.Hour,
+					PingPeriod:     2 * time.Hour,
+					HTTPPingPeriod: 3 * time.Hour,
+				},
+			},
+		}
 		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
 		in := make(chan message.Message)
-		r.Run(ctx, in)
+		var wg sync.WaitGroup
+		r.Run(ctx, &wg, in)
 		pn1, w1, r1 := mockAddUserRequest(name1)
-		_, err1 := r.handleAddSocket(ctx, pn1, w1, r1)
+		_, err1 := r.handleAddSocket(ctx, &wg, pn1, w1, r1)
 		if err1 != nil {
 			t.Errorf("Test %v: unwanted error adding first socket: %v", i, err1)
+			close(readBlocker)
+			cancelFunc()
+			wg.Wait()
 			continue
 		}
 		pn2, w2, r2 := mockAddUserRequest(test.name2)
-		_, err2 := r.handleAddSocket(ctx, pn2, w2, r2)
+		_, err2 := r.handleAddSocket(ctx, &wg, pn2, w2, r2)
 		switch {
 		case !test.wantOk:
 			if err2 == nil {
@@ -446,6 +479,9 @@ func TestRunnerAddSecondSocket(t *testing.T) {
 		case len(r.playerSockets[pn2]) != test.wantNumPlayer2Sockets:
 			t.Errorf("Test %v: wanted %v socket for %v, got %v", i, test.wantNumPlayer2Sockets, pn2, len(r.playerSockets[pn2]))
 		}
+		close(readBlocker)
+		cancelFunc()
+		wg.Wait()
 	}
 }
 
@@ -839,9 +875,8 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 			playerGames:   test.playerGames,
 		}
 		ctx := context.Background()
-		ctx, cancelFunc := context.WithCancel(ctx)
-		defer cancelFunc()
-		r.handleLobbyMessage(ctx, test.m)
+		var wg sync.WaitGroup
+		r.handleLobbyMessage(ctx, &wg, test.m)
 		switch {
 		case test.wantErr:
 			if bb.Len() == 0 {

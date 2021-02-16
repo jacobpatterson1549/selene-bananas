@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
@@ -146,7 +147,7 @@ func (g *Game) initializeUnusedTiles() error {
 }
 
 // Run runs the game asynchronously until the context is closed.
-func (g *Game) Run(ctx context.Context, in <-chan message.Message, out chan<- message.Message) {
+func (g *Game) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, out chan<- message.Message) {
 	idleTicker := time.NewTicker(g.IdlePeriod)
 	active := false
 	send := g.sendMessage(out)
@@ -160,7 +161,9 @@ func (g *Game) Run(ctx context.Context, in <-chan message.Message, out chan<- me
 		message.GameChat:         g.handleGameChat,
 		message.RefreshGameBoard: g.handleBoardRefresh,
 	}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		for { // BLOCKING
 			select {
 			case <-ctx.Done():

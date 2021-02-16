@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sync"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
@@ -74,19 +75,15 @@ func (cfg RunnerConfig) validate(log *log.Logger) error {
 
 // Run consumes messages from the message channel.  This channel is used to create sockets and send messages from games to them.
 // The messages recieved from sockets are sent on an "out" channel to be read by games.
-func (r *Runner) Run(ctx context.Context, in <-chan message.Message) <-chan message.Message {
+func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 	r.socketOut = make(chan message.Message)
 	out := make(chan message.Message)
+	wg.Add(1)
 	go func() {
-		defer func() {
-			for pn := range r.playerSockets {
-				m := message.Message{
-					PlayerName: pn,
-				}
-				r.removePlayer(ctx, m) // close the socket
-			}
-			close(out)
-		}()
+		defer wg.Done()
+		defer r.log.Println("socket runner stopped")
+		defer close(out)
+		defer r.removeAllPlayers(ctx)
 		for { // BLOCKING
 			select {
 			case <-ctx.Done():
@@ -95,7 +92,7 @@ func (r *Runner) Run(ctx context.Context, in <-chan message.Message) <-chan mess
 				if !ok {
 					return
 				}
-				r.handleLobbyMessage(ctx, m)
+				r.handleLobbyMessage(ctx, wg, m)
 			case m := <-r.socketOut:
 				r.handleSocketMessage(ctx, m, out)
 			}
@@ -105,7 +102,7 @@ func (r *Runner) Run(ctx context.Context, in <-chan message.Message) <-chan mess
 }
 
 // handleAddSocket adds a socket and sends a response if on the result channel of the request.
-func (r *Runner) addSocket(ctx context.Context, m message.Message) {
+func (r *Runner) addSocket(ctx context.Context, wg *sync.WaitGroup, m message.Message) {
 	switch {
 	case m.AddSocketRequest == nil:
 		r.log.Printf("no AddSocketRequest on message: %v", m)
@@ -114,7 +111,7 @@ func (r *Runner) addSocket(ctx context.Context, m message.Message) {
 		r.log.Printf("no AddSocketRequest Result channel on message: %v", m)
 		return
 	}
-	s, err := r.handleAddSocket(ctx, m.PlayerName, m.AddSocketRequest.ResponseWriter, m.AddSocketRequest.Request)
+	s, err := r.handleAddSocket(ctx, wg, m.PlayerName, m.AddSocketRequest.ResponseWriter, m.AddSocketRequest.Request)
 	m2 := message.Message{
 		PlayerName: m.PlayerName,
 	}
@@ -130,7 +127,7 @@ func (r *Runner) addSocket(ctx context.Context, m message.Message) {
 }
 
 // handleAddSocket runs and adds a socket for the player to the runner.
-func (r *Runner) handleAddSocket(ctx context.Context, pn player.Name, w http.ResponseWriter, req *http.Request) (*Socket, error) {
+func (r *Runner) handleAddSocket(ctx context.Context, wg *sync.WaitGroup, pn player.Name, w http.ResponseWriter, req *http.Request) (*Socket, error) {
 	if r.numSockets() >= r.MaxSockets {
 		return nil, fmt.Errorf("no room for another socket")
 	}
@@ -149,7 +146,7 @@ func (r *Runner) handleAddSocket(ctx context.Context, pn player.Name, w http.Res
 		return nil, fmt.Errorf("creating socket in runner: %v", err)
 	}
 	socketIn := make(chan message.Message)
-	s.Run(socketIn, r.socketOut)
+	s.Run(ctx, wg, socketIn, r.socketOut)
 	if r.hasSocket(s.Addr) {
 		return nil, fmt.Errorf("socket already exists with address of %v", s.Addr)
 	}
@@ -187,7 +184,7 @@ func (r *Runner) hasSocket(a net.Addr) bool {
 }
 
 // handleLobbyMessage writes the message to the appropriate sockets in the runner.
-func (r *Runner) handleLobbyMessage(ctx context.Context, m message.Message) {
+func (r *Runner) handleLobbyMessage(ctx context.Context, wg *sync.WaitGroup, m message.Message) {
 	switch m.Type {
 	case message.GameInfos:
 		r.sendGameInfos(ctx, m)
@@ -196,7 +193,7 @@ func (r *Runner) handleLobbyMessage(ctx context.Context, m message.Message) {
 	case message.PlayerRemove:
 		r.removePlayer(ctx, m)
 	case message.SocketAdd:
-		r.addSocket(ctx, m)
+		r.addSocket(ctx, wg, m)
 	default:
 		r.sendMessageForGame(ctx, m)
 	}
@@ -423,5 +420,15 @@ func (r *Runner) removePlayer(ctx context.Context, m message.Message) {
 			}
 			r.removeSocket(ctx, m2)
 		}
+	}
+}
+
+// removeAll players removes all players and games
+func (r *Runner) removeAllPlayers(ctx context.Context) {
+	for pn := range r.playerSockets {
+		m := message.Message{
+			PlayerName: pn,
+		}
+		r.removePlayer(ctx, m) // close the socket
 	}
 }

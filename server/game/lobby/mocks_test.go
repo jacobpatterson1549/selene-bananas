@@ -2,14 +2,15 @@ package lobby
 
 import (
 	"context"
+	"sync"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 )
 
 type mockRunner struct {
-	RunFunc func(ctx context.Context, in <-chan message.Message) <-chan message.Message
+	RunFunc func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message
 }
 
-func (m *mockRunner) Run(ctx context.Context, in <-chan message.Message) <-chan message.Message {
-	return m.RunFunc(ctx, in)
+func (m *mockRunner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+	return m.RunFunc(ctx, wg, in)
 }

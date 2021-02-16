@@ -87,7 +87,7 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	cfg := server.Config{
 		HTTPPort:      m.httpPort,
 		HTTPSPort:     m.httpsPort,
-		StopDur:       time.Second,
+		StopDur:       20 * time.Second, // should be longer than the PingPeriod of sockets so they can close gracefully
 		CacheSec:      m.cacheSec,
 		Version:       version,
 		Challenge:     challenge,

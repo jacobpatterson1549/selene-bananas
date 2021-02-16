@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -86,30 +84,6 @@ type mockUpgrader func(w http.ResponseWriter, r *http.Request) (Conn, error)
 
 func (u mockUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn, error) {
 	return u(w, r)
-}
-
-func newRunnerWithMocks(maxSockets int, maxPlayerSockets int, u mockUpgrader) *Runner {
-	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
-	socketCfg := Config{
-		TimeFunc:       func() int64 { return 0 },
-		ReadWait:       2 * time.Hour,
-		WriteWait:      1 * time.Hour,
-		PingPeriod:     2 * time.Hour, // these periods must be high to allow the test to be run safely with a high count
-		HTTPPingPeriod: 3 * time.Hour,
-	}
-	cfg := RunnerConfig{
-		MaxSockets:       maxSockets,
-		MaxPlayerSockets: maxPlayerSockets,
-		SocketConfig:     socketCfg,
-	}
-	r := Runner{
-		log:           testLog,
-		upgrader:      u,
-		playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
-		playerGames:   make(map[player.Name]map[game.ID]net.Addr),
-		RunnerConfig:  cfg,
-	}
-	return &r
 }
 
 func mockAddUserRequest(playerName string) (player.Name, http.ResponseWriter, *http.Request) {

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -116,13 +117,17 @@ func TestRunRunner(t *testing.T) {
 		},
 	}
 	for i, test := range runRunnerTests {
-		var r Runner
+		r := Runner{
+			log: log.New(ioutil.Discard, "test", log.LstdFlags),
+		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		defer cancelFunc()
+		var wg sync.WaitGroup
 		in := make(chan message.Message)
-		out := r.Run(ctx, in)
+		out := r.Run(ctx, &wg, in)
 		test.stopFunc(cancelFunc, in)
+		wg.Wait()
 		_, ok := <-out
 		if ok {
 			t.Errorf("Test %v: wanted 'out' channel to be closed after 'in' channel was closed", i)
@@ -235,8 +240,10 @@ func TestGameCreate(t *testing.T) {
 			RunnerConfig: test.RunnerConfig,
 		}
 		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		var wg sync.WaitGroup
 		in := make(chan message.Message)
-		out := r.Run(ctx, in)
+		out := r.Run(ctx, &wg, in)
 		in <- test.m
 		gotM := <-out
 		gotNumGames := len(r.games)
@@ -258,7 +265,14 @@ func TestGameCreate(t *testing.T) {
 			t.Errorf("Test %v: creating a game unwantedly stored the game's config in the runner", i)
 		case !reflect.DeepEqual(basicGameConfig, gotM.Game.Config):
 			t.Errorf("Test %v: game config not set to basic config:\nwanted: %#v\ngot:    %#v", i, basicGameConfig, gotM.Game.Config)
+		default:
+			gotM2 := <-out
+			if gotM2.Type != message.GameInfos {
+				t.Errorf("wanted gameInfos message to be broadcast afther a game was created")
+			}
 		}
+		cancelFunc()
+		wg.Wait()
 	}
 }
 
@@ -300,7 +314,9 @@ func TestGameDelete(t *testing.T) {
 			},
 		}
 		ctx := context.Background()
-		out := r.Run(ctx, in)
+		ctx, cancelFunc := context.WithCancel(ctx)
+		var wg sync.WaitGroup
+		out := r.Run(ctx, &wg, in)
 		messageHandled := false
 		go func() { // mock game
 			_, ok := <-gIn
@@ -329,6 +345,8 @@ func TestGameDelete(t *testing.T) {
 				t.Errorf("Test %v: message not handled", i)
 			}
 		}
+		cancelFunc()
+		wg.Wait()
 	}
 }
 
@@ -370,7 +388,9 @@ func TestHandleGameMessage(t *testing.T) {
 			},
 		}
 		ctx := context.Background()
-		out := r.Run(ctx, in)
+		ctx, cancelFunc := context.WithCancel(ctx)
+		var wg sync.WaitGroup
+		out := r.Run(ctx, &wg, in)
 		messageHandled := false
 		go func() { // mock game
 			_, ok := <-gIn
@@ -392,5 +412,7 @@ func TestHandleGameMessage(t *testing.T) {
 				t.Errorf("Test %v: message not handled", i)
 			}
 		}
+		cancelFunc()
+		wg.Wait()
 	}
 }

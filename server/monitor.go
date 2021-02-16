@@ -9,7 +9,7 @@ import (
 )
 
 // handleMonitor writes runtime information to the response.
-func (s Server) handleMonitor(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleMonitor(w http.ResponseWriter, r *http.Request) {
 	m := new(runtime.MemStats)
 	runtime.ReadMemStats(m)
 	hasTLS := s.validHTTPAddr()
