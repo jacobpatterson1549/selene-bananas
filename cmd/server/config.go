@@ -207,10 +207,10 @@ func gameConfig(m mainFlags, timeFunc func() int64) gameController.Config {
 	cfg := gameController.Config{
 		Debug:                  m.debugGame,
 		TimeFunc:               timeFunc,
-		MaxPlayers:             8,
+		MaxPlayers:             6,
 		PlayerCfg:              playerCfg,
 		NumNewTiles:            21,
-		TileLetters:            "",
+		TileLetters:            "", // 144 default tiles = 144-6*21 = 18 tiles left, which leaves a maximum of 3 snags
 		IdlePeriod:             60 * time.Minute,
 		ShuffleUnusedTilesFunc: shuffleUnusedTilesFunc,
 		ShufflePlayersFunc:     shufflePlayersFunc,
