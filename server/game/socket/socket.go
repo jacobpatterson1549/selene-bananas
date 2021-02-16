@@ -56,8 +56,8 @@ type (
 		WritePing() error
 		// WriteClose writes a close message on the connection.  The connestion is NOT closed.
 		WriteClose(reason string) error
-		// IsUnexpectedCloseError determines if the error message is an unexpected close error.
-		IsUnexpectedCloseError(err error) bool
+		// IsNormalClose determines if the error message is an error that implies a normal close or is unexpected.
+		IsNormalClose(err error) bool
 		// RemoteAddr gets the remote network address of the connection.
 		RemoteAddr() net.Addr
 	}
@@ -204,7 +204,7 @@ func (s *Socket) writeMessagesSync(in <-chan message.Message, pingTicker, httpPi
 func (s *Socket) readMessage() (*message.Message, error) {
 	var m message.Message
 	if err := s.Conn.ReadMessage(&m); err != nil { // BLOCKING
-		if s.Conn.IsUnexpectedCloseError(err) {
+		if !s.Conn.IsNormalClose(err) {
 			return nil, fmt.Errorf("unexpected socket closure: %v", err)
 		}
 		return nil, errSocketClosed

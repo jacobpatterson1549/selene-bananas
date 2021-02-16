@@ -294,8 +294,8 @@ func TestReadMessagesSync(t *testing.T) {
 			SetReadDeadlineFunc: func(t time.Time) error {
 				return test.setReadDeadlineErr
 			},
-			IsUnexpectedCloseErrorFunc: func(err error) bool { // TODO: rename to isNormalClose, refactor... or maybe isNormalClose, like ErrServerClosed
-				return !test.isNormalCloseErr
+			IsNormalCloseFunc: func(err error) bool {
+				return test.isNormalCloseErr
 			},
 			CloseFunc: func() error {
 				closeWG.Done()

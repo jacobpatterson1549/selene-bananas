@@ -46,10 +46,10 @@ func TestGorillaUpgraderUpgrade(t *testing.T) {
 	}
 }
 
-func TestGorillaConnIsUnexpectedCloseError(t *testing.T) {
-	isUnexpectedCloseErrorTests := []struct {
-		err  error
-		want bool
+func TestGorillaConnIsNormalClose(t *testing.T) {
+	isNormalCloseTests := []struct {
+		err     error
+		wantErr bool
 	}{
 		{},
 		{
@@ -75,14 +75,14 @@ func TestGorillaConnIsUnexpectedCloseError(t *testing.T) {
 				Code: websocket.CloseAbnormalClosure,
 				Text: "[an abnormal closure is unexpected]",
 			},
-			want: true,
+			wantErr: true,
 		},
 	}
-	for i, test := range isUnexpectedCloseErrorTests {
+	for i, test := range isNormalCloseTests {
 		var conn gorillaConn
-		got := conn.IsUnexpectedCloseError(test.err)
-		if test.want != got {
-			t.Errorf("Test %v: wanted IsUnexpectedCloseError to be %v for '%v'", i, test.want, test.err)
+		got := conn.IsNormalClose(test.err)
+		if test.wantErr == got {
+			t.Errorf("Test %v: wanted isNormalClose to be %v for '%v'", i, test.wantErr, test.err)
 		}
 	}
 }

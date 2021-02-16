@@ -30,16 +30,16 @@ func (a mockAddr) String() string {
 }
 
 type mockConn struct {
-	ReadMessageFunc            func(m *message.Message) error
-	WriteMessageFunc           func(m message.Message) error
-	SetReadDeadlineFunc        func(t time.Time) error
-	SetWriteDeadlineFunc       func(t time.Time) error
-	SetPongHandlerFunc         func(h func(appDauta string) error)
-	CloseFunc                  func() error
-	WritePingFunc              func() error
-	WriteCloseFunc             func(reason string) error
-	IsUnexpectedCloseErrorFunc func(err error) bool
-	RemoteAddrFunc             func() net.Addr
+	ReadMessageFunc      func(m *message.Message) error
+	WriteMessageFunc     func(m message.Message) error
+	SetReadDeadlineFunc  func(t time.Time) error
+	SetWriteDeadlineFunc func(t time.Time) error
+	SetPongHandlerFunc   func(h func(appDauta string) error)
+	CloseFunc            func() error
+	WritePingFunc        func() error
+	WriteCloseFunc       func(reason string) error
+	IsNormalCloseFunc    func(err error) bool
+	RemoteAddrFunc       func() net.Addr
 }
 
 func (c *mockConn) ReadMessage(m *message.Message) error {
@@ -74,8 +74,8 @@ func (c *mockConn) WriteClose(reason string) error {
 	return c.WriteCloseFunc(reason)
 }
 
-func (c *mockConn) IsUnexpectedCloseError(err error) bool {
-	return c.IsUnexpectedCloseErrorFunc(err)
+func (c *mockConn) IsNormalClose(err error) bool {
+	return c.IsNormalCloseFunc(err)
 }
 
 func (c *mockConn) RemoteAddr() net.Addr {
