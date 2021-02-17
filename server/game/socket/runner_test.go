@@ -176,7 +176,7 @@ func TestRunRunnerHandleSocketMessage(t *testing.T) {
 	}
 }
 
-func TestRunnerAddSocketCheckResult(t *testing.T) {
+func TestRunnerHandleAddSocketCheckResult(t *testing.T) {
 	runnerAddSocketTests := []struct {
 		m      message.Message
 		wantOk bool
@@ -259,7 +259,7 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 	runnerAddSocketTests := []struct {
 		maxSockets       int
 		maxPlayerSockets int
-		noPlayerName     bool
+		playerName       player.Name
 		wantOk           bool
 		upgradeErr       error
 		Config
@@ -272,21 +272,23 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 		{ // no playerName
 			maxSockets:       1,
 			maxPlayerSockets: 1,
-			noPlayerName:     true,
 		},
 		{ // bad upgrade
 			maxSockets:       1,
 			maxPlayerSockets: 1,
+			playerName:       "selene",
 			upgradeErr:       errors.New("upgrade error"),
 		},
 		{ // bad socket config
 			maxSockets:       1,
 			maxPlayerSockets: 1,
+			playerName:       "selene",
 			Config:           Config{},
 		},
 		{ // ok
 			maxSockets:       1,
 			maxPlayerSockets: 1,
+			playerName:       "selene",
 			Config: Config{
 				TimeFunc:       func() int64 { return 0 },
 				ReadWait:       2 * time.Hour,
@@ -298,9 +300,12 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 		},
 	}
 	for i, test := range runnerAddSocketTests {
-		readBlocker := make(chan struct{})
-		socketRun := true
+		socketRun := false
 		addr := mockAddr("an.addr")
+		var wg sync.WaitGroup
+		if test.wantOk {
+			wg.Add(1) // ensure SetReadDeadline is called
+		}
 		upgradeFunc := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
 			if test.upgradeErr != nil {
 				return nil, test.upgradeErr
@@ -309,24 +314,15 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 				RemoteAddrFunc: func() net.Addr {
 					return addr
 				},
-				ReadMessageFunc: func(m *message.Message) error {
-					<-readBlocker
-					return errors.New("stop run")
-				},
 				SetReadDeadlineFunc: func(t time.Time) error {
-					return nil
-				},
-				SetPongHandlerFunc: func(h func(appDauta string) error) {
-					// NOOP
-				},
-				IsNormalCloseFunc: func(err error) bool {
-					return test.wantOk
+					socketRun = true
+					wg.Done()
+					return errors.New("stop run for test")
 				},
 				WriteCloseFunc: func(reason string) error {
 					return nil
 				},
 				CloseFunc: func() error {
-					socketRun = true
 					return nil
 				},
 			}, nil
@@ -339,22 +335,13 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			RunnerConfig: RunnerConfig{
 				MaxSockets:       test.maxSockets,
 				MaxPlayerSockets: test.maxPlayerSockets,
-				SocketConfig: Config{
-					TimeFunc:       func() int64 { return 0 },
-					ReadWait:       2 * time.Hour,
-					WriteWait:      1 * time.Hour,
-					PingPeriod:     2 * time.Hour,
-					HTTPPingPeriod: 3 * time.Hour,
-				},
+				SocketConfig:     test.Config,
 			},
+			socketOut: make(chan message.Message, 1), // the socket will run and fail, posting a message here
 		}
-		r.SocketConfig = test.Config
-		pn, w, req := mockAddUserRequest("selene")
-		if test.noPlayerName {
-			pn = ""
-		}
+		pn, w, req := mockAddUserRequest(string(test.playerName))
 		ctx := context.Background()
-		var wg sync.WaitGroup
+		ctx, cancelFunc := context.WithCancel(ctx)
 		s, err := r.handleAddSocket(ctx, &wg, pn, w, req)
 		switch {
 		case !test.wantOk:
@@ -369,20 +356,16 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			t.Errorf("Test %v: wanted 1 player to have a socket, got %v", i, len(r.playerSockets))
 		case len(r.playerSockets[pn]) != 1:
 			t.Errorf("Test %v: wanted 1 socket for %v, got %v", i, pn, len(r.playerSockets[pn]))
-		default:
-			// test if the socket is running by sending it a message.  this relies on r.handleSocketMessage
-			close(readBlocker)
-			if !socketRun {
-				t.Errorf("Test %v: wanted socket to be run", i)
-			}
 		}
-		r.removeAllPlayers(ctx)
+		cancelFunc()
+		wg.Wait()
+		if test.wantOk && !socketRun {
+			t.Errorf("Test %v: wanted socket to be run", i)
+		}
 	}
 }
 
-func TestRunnerAddSecondSocket(t *testing.T) {
-	name1 := "fred"
-	socket1Addr := "fred.pc"
+func TestRunnerHandleAddSocketSecond(t *testing.T) {
 	runnerAddSecondSocketTests := []struct {
 		maxSockets            int
 		maxPlayerSockets      int
@@ -434,7 +417,8 @@ func TestRunnerAddSecondSocket(t *testing.T) {
 		},
 	}
 	for i, test := range runnerAddSecondSocketTests {
-		readBlocker := make(chan struct{})
+		name1 := "fred"
+		socket1Addr := "fred.pc"
 		j := 0
 		upgradeFunc := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
 			j++
@@ -451,18 +435,8 @@ func TestRunnerAddSecondSocket(t *testing.T) {
 				RemoteAddrFunc: func() net.Addr {
 					return addr
 				},
-				ReadMessageFunc: func(m *message.Message) error {
-					<-readBlocker
-					return errors.New("stop run for test")
-				},
 				SetReadDeadlineFunc: func(t time.Time) error {
-					return nil
-				},
-				SetPongHandlerFunc: func(h func(appDauta string) error) {
-					// NOOP
-				},
-				IsNormalCloseFunc: func(err error) bool {
-					return true
+					return errors.New("stop run for test")
 				},
 				WriteCloseFunc: func(reason string) error {
 					return nil
@@ -488,36 +462,32 @@ func TestRunnerAddSecondSocket(t *testing.T) {
 					HTTPPingPeriod: 3 * time.Hour,
 				},
 			},
+			socketOut: make(chan message.Message, 2), // the sockets will run and fail, posting a message here
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
-		in := make(chan message.Message)
 		var wg sync.WaitGroup
-		r.Run(ctx, &wg, in)
 		pn1, w1, r1 := mockAddUserRequest(name1)
 		_, err1 := r.handleAddSocket(ctx, &wg, pn1, w1, r1)
-		if err1 != nil {
-			t.Errorf("Test %v: unwanted error adding first socket: %v", i, err1)
-			close(readBlocker)
-			cancelFunc()
-			wg.Wait()
-			continue
-		}
-		pn2, w2, r2 := mockAddUserRequest(test.name2)
-		_, err2 := r.handleAddSocket(ctx, &wg, pn2, w2, r2)
 		switch {
-		case !test.wantOk:
-			if err2 == nil {
-				t.Errorf("Test %v: wanted error adding second socket", i)
+		case err1 != nil:
+			t.Errorf("Test %v: unwanted error adding first socket: %v", i, err1)
+		default:
+			pn2, w2, r2 := mockAddUserRequest(test.name2)
+			_, err2 := r.handleAddSocket(ctx, &wg, pn2, w2, r2)
+			switch {
+			case !test.wantOk:
+				if err2 == nil {
+					t.Errorf("Test %v: wanted error adding second socket", i)
+				}
+			case err2 != nil:
+				t.Errorf("Test %v: unwanted error adding second socket: %v", i, err2)
+			case len(r.playerSockets) != test.wantNumPlayers:
+				t.Errorf("Test %v: wanted %v players to have a socket, got %v", i, test.wantNumPlayers, len(r.playerSockets))
+			case len(r.playerSockets[pn2]) != test.wantNumPlayer2Sockets:
+				t.Errorf("Test %v: wanted %v socket for %v, got %v", i, test.wantNumPlayer2Sockets, pn2, len(r.playerSockets[pn2]))
 			}
-		case err2 != nil:
-			t.Errorf("Test %v: unwanted error adding second socket: %v", i, err2)
-		case len(r.playerSockets) != test.wantNumPlayers:
-			t.Errorf("Test %v: wanted %v players to have a socket, got %v", i, test.wantNumPlayers, len(r.playerSockets))
-		case len(r.playerSockets[pn2]) != test.wantNumPlayer2Sockets:
-			t.Errorf("Test %v: wanted %v socket for %v, got %v", i, test.wantNumPlayer2Sockets, pn2, len(r.playerSockets[pn2]))
 		}
-		close(readBlocker)
 		cancelFunc()
 		wg.Wait()
 	}
