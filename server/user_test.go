@@ -38,7 +38,7 @@ func TestHandleUserCreate(t *testing.T) {
 	}
 	for i, test := range handleUserCreateTests {
 		s := Server{
-			log: log.New(ioutil.Discard, "test", log.LstdFlags),
+			log: log.New(ioutil.Discard, "", 0),
 			userDao: mockUserDao{
 				createFunc: func(ctx context.Context, u user.User) error {
 					switch {
@@ -116,7 +116,7 @@ func TestHandleUserLogin(t *testing.T) {
 	wantToken := "created token for logged user"
 	for i, test := range handleUserLoginTests {
 		s := Server{
-			log: log.New(ioutil.Discard, "test", log.LstdFlags),
+			log: log.New(ioutil.Discard, "", 0),
 			userDao: mockUserDao{
 				readFunc: func(ctx context.Context, u user.User) (*user.User, error) {
 					switch {
@@ -204,7 +204,7 @@ func TestHandleUserLobby(t *testing.T) {
 	}
 	for i, test := range handleUserLobbyTests {
 		s := Server{
-			log: log.New(ioutil.Discard, "test", log.LstdFlags),
+			log: log.New(ioutil.Discard, "", 0),
 			tokenizer: mockTokenizer{
 				ReadUsernameFunc: func(tokenString string) (string, error) {
 					if test.accessToken != tokenString {
@@ -266,7 +266,7 @@ func TestHandleUserUpdatePassword(t *testing.T) {
 	for i, test := range handleUserUpdatePasswordTests {
 		userRemoved := false
 		s := Server{
-			log: log.New(ioutil.Discard, "test", log.LstdFlags),
+			log: log.New(ioutil.Discard, "", 0),
 			userDao: mockUserDao{
 				updatePasswordFunc: func(ctx context.Context, u user.User, newP string) error {
 					switch {
@@ -351,7 +351,7 @@ func TestHandleUserDelete(t *testing.T) {
 	for i, test := range handleUserDeleteTests {
 		userRemoved := false
 		s := Server{
-			log: log.New(ioutil.Discard, "test", log.LstdFlags),
+			log: log.New(ioutil.Discard, "", 0),
 			userDao: mockUserDao{
 				deleteFunc: func(ctx context.Context, u user.User) error {
 					switch {

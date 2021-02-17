@@ -256,7 +256,7 @@ func TestHandleError(t *testing.T) {
 	var buf bytes.Buffer
 	w := httptest.NewRecorder()
 	err := fmt.Errorf("mock error")
-	log := log.New(&buf, "", log.LstdFlags)
+	log := log.New(&buf, "", 0)
 	s := Server{
 		log: log,
 	}

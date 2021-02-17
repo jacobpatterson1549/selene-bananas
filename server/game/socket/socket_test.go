@@ -18,7 +18,7 @@ import (
 )
 
 func TestNewSocket(t *testing.T) {
-	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
+	testLog := log.New(ioutil.Discard, "", 0)
 	timeFunc := func() int64 { return 0 }
 	pn := player.Name("selene")
 	addr := mockAddr("selene.pc")
@@ -228,7 +228,7 @@ func TestRunSocket(t *testing.T) {
 		}
 		addr := mockAddr("some.addr")
 		s := Socket{
-			log:    log.New(ioutil.Discard, "test", log.LstdFlags),
+			log:    log.New(ioutil.Discard, "", 0),
 			Conn:   &conn,
 			Config: cfg,
 			Addr:   addr,
@@ -497,7 +497,7 @@ func TestWriteMessagesSync(t *testing.T) {
 		var bb bytes.Buffer
 		s := Socket{
 			Conn: &conn,
-			log:  log.New(&bb, "test", log.LstdFlags),
+			log:  log.New(&bb, "", 0),
 			Config: Config{
 				TimeFunc: func() int64 { return 0 },
 			},
@@ -629,7 +629,7 @@ func TestWriteClose(t *testing.T) {
 // This prevents deadlocks if the lobby keeps sending it messages before it is closed.
 func TestWriteMessagesSkipSend(t *testing.T) {
 	numMessagesWritten := 0
-	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
+	testLog := log.New(ioutil.Discard, "", 0)
 	timeFunc := func() int64 { return 0 }
 	conn := mockConn{
 		CloseFunc: func() error {

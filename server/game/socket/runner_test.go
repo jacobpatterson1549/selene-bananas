@@ -19,7 +19,7 @@ import (
 )
 
 func TestNewRunner(t *testing.T) {
-	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
+	testLog := log.New(ioutil.Discard, "", 0)
 	newRunnerTests := []struct {
 		log          *log.Logger
 		RunnerConfig RunnerConfig
@@ -108,7 +108,7 @@ func TestRunRunner(t *testing.T) {
 	for i, test := range runRunnerTests {
 		socketIn := make(chan message.Message)
 		r := Runner{
-			log: log.New(ioutil.Discard, "test", log.LstdFlags),
+			log: log.New(ioutil.Discard, "", 0),
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
 				"selene": {
 					mockAddr("selene.pc"): socketIn,
@@ -141,7 +141,7 @@ func TestRunRunnerHandleLobbyMessage(t *testing.T) {
 	var wg sync.WaitGroup
 	in := make(chan message.Message)
 	var bb bytes.Buffer
-	log := log.New(&bb, "test", log.LstdFlags)
+	log := log.New(&bb, "", 0)
 	r := Runner{
 		log: log,
 	}
@@ -162,7 +162,7 @@ func TestRunRunnerHandleSocketMessage(t *testing.T) {
 	var wg sync.WaitGroup
 	in := make(chan message.Message)
 	var bb bytes.Buffer
-	log := log.New(&bb, "test", log.LstdFlags)
+	log := log.New(&bb, "", 0)
 	r := Runner{
 		log: log,
 	}
@@ -195,7 +195,7 @@ func TestRunnerAddSocketCheckResult(t *testing.T) {
 		defer close(readBlocker)
 		r := Runner{
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
-			log:           log.New(ioutil.Discard, "scLog", log.LstdFlags),
+			log:           log.New(ioutil.Discard, "", 0),
 			RunnerConfig: RunnerConfig{
 				MaxSockets:       1,
 				MaxPlayerSockets: 1,
@@ -332,7 +332,7 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			}, nil
 		}
 		r := Runner{
-			log:           log.New(ioutil.Discard, "test", log.LstdFlags),
+			log:           log.New(ioutil.Discard, "", 0),
 			upgrader:      mockUpgrader(upgradeFunc),
 			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
 			playerGames:   make(map[player.Name]map[game.ID]net.Addr),
@@ -473,7 +473,7 @@ func TestRunnerAddSecondSocket(t *testing.T) {
 			}, nil
 		}
 		r := Runner{
-			log:           log.New(ioutil.Discard, "test", log.LstdFlags),
+			log:           log.New(ioutil.Discard, "", 0),
 			upgrader:      mockUpgrader(upgradeFunc),
 			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
 			playerGames:   make(map[player.Name]map[game.ID]net.Addr),
@@ -906,7 +906,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 	}
 	for i, test := range handleLobbyMessageTests {
 		var bb bytes.Buffer
-		log := log.New(&bb, "test", log.LstdFlags)
+		log := log.New(&bb, "", 0)
 		r := Runner{
 			log:           log,
 			playerSockets: test.playerSockets,
@@ -1168,7 +1168,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 	}
 	for i, test := range handleSocketMessageTests {
 		var bb bytes.Buffer
-		log := log.New(&bb, "test", log.LstdFlags)
+		log := log.New(&bb, "", 0)
 		r := Runner{
 			log:           log,
 			playerSockets: test.playerSockets,
@@ -1306,7 +1306,7 @@ func TestSendMessageForGameBadRunnerState(t *testing.T) {
 	}
 	for i, test := range tests {
 		var bb bytes.Buffer
-		log := log.New(&bb, "test", log.LstdFlags)
+		log := log.New(&bb, "", 0)
 		r := Runner{
 			log:           log,
 			playerSockets: test.playerSockets,
