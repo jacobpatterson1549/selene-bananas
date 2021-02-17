@@ -190,7 +190,7 @@ func (r *Runner) getGame(m message.Message) (chan<- message.Message, error) {
 // sendError adds a message for the player on the channel
 func (r *Runner) sendError(err error, pn player.Name, out chan<- message.Message) {
 	err = fmt.Errorf("player %v: %w", pn, err)
-	r.log.Print(err)
+	r.log.Printf("game runner error: %v", err)
 	m := message.Message{
 		Type:       message.SocketError,
 		Info:       err.Error(),

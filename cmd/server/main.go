@@ -15,7 +15,7 @@ import (
 // main configures and runs the server.
 func main() {
 	m := newMainFlags(os.Args, os.LookupEnv)
-	logFlags := log.Ldate | log.Ltime | log.LUTC | log.Llongfile | log.Lmsgprefix
+	logFlags := log.Ldate | log.Ltime | log.LUTC | log.Lshortfile | log.Lmsgprefix
 	log := log.New(os.Stdout, "", logFlags)
 	ctx := context.Background()
 	server, err := newServer(ctx, m, log)
