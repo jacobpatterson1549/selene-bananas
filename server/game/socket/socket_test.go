@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -205,7 +204,7 @@ func TestRunSocket(t *testing.T) {
 			},
 			ReadMessageFunc: func(m *message.Message) error {
 				<-readBlocker
-				return fmt.Errorf("socket close")
+				return errors.New("socket close")
 			},
 			IsNormalCloseFunc: func(err error) bool {
 				return true
@@ -217,7 +216,7 @@ func TestRunSocket(t *testing.T) {
 				return nil
 			},
 			SetWriteDeadlineFunc: func(t time.Time) error {
-				return fmt.Errorf("could not set write deadline")
+				return errors.New("could not set write deadline")
 			},
 		}
 		cfg := Config{
@@ -241,7 +240,7 @@ func TestRunSocket(t *testing.T) {
 		out := make(chan message.Message, 1)
 		s.Run(ctx, &wg, in, out)
 		close(readBlocker)
-		if (test.callCancelFunc) {
+		if test.callCancelFunc {
 			cancelFunc()
 		}
 		switch {
@@ -389,7 +388,7 @@ func TestReadMessagesSync(t *testing.T) {
 				t.Errorf("Test %v: wanted message to be logged", i)
 			}
 		case (bb.Len() != 0) != test.debug:
-			t.Errorf("Test %v: wanted no message to be logged, got '%v'", i, bb.String())
+			t.Errorf("Test %v: wanted message to be logged (%v), got '%v'", i, test.debug, bb.String())
 		case gotMessages[0].Info != normalMessageInfo:
 			t.Errorf("Test %v: wanted first message to be normal message, got %v", i, gotMessages[0])
 		}
@@ -536,5 +535,148 @@ func TestWriteMessagesSync(t *testing.T) {
 		}
 		cancelFunc()
 		wg.Wait()
+	}
+}
+
+func TestWriteMessage(t *testing.T) {
+	writeMessageTests := []struct {
+		m            message.Message
+		debug        bool
+		connWriteErr error
+		wantErr      bool
+		wantLog      bool
+	}{
+		{},
+		{
+			debug:   true,
+			wantLog: true,
+		},
+		{
+			connWriteErr: errors.New("cannot write message to connection"),
+			wantErr:      true,
+		},
+		{
+			m: message.Message{
+				Type: message.PlayerRemove,
+			},
+			wantErr: true, // stop sending to the player
+		},
+	}
+	for i, test := range writeMessageTests {
+		var bb bytes.Buffer
+		s := Socket{
+			log: log.New(&bb, "", 0),
+			Config: Config{
+				Debug: test.debug,
+			},
+			Conn: &mockConn{
+				WriteMessageFunc: func(m message.Message) error {
+					return test.connWriteErr
+				},
+			},
+		}
+		got := s.writeMessage(test.m)
+		switch {
+		case test.wantLog != (bb.Len() != 0):
+			t.Errorf("Test %v: wanted debug only when debug is on, got %v", i, bb.String())
+		case test.wantErr:
+			if got == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case got != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, got)
+		}
+	}
+}
+
+func TestWriteClose(t *testing.T) {
+	writeCloseTests := []struct {
+		connCloseErr error
+		reason       string
+		wantLog      bool
+	}{
+		{},
+		{
+			connCloseErr: errors.New("cannot write message to connection"),
+		},
+		{
+			reason:       "server shutting down",
+			connCloseErr: errors.New("cannot write message to connection"),
+		},
+		{
+			reason:  "server shutting down",
+			wantLog: true,
+		},
+	}
+	for i, test := range writeCloseTests {
+		var bb bytes.Buffer
+		s := Socket{
+			log: log.New(&bb, "", 0),
+			Conn: &mockConn{
+				WriteCloseFunc: func(reason string) error {
+					return test.connCloseErr
+				},
+			},
+		}
+		s.writeClose(test.reason)
+		if test.wantLog != (bb.Len() > 0) {
+			t.Errorf("Test %v: wanted log (%v), got '%v'", i, test.wantLog, bb.String())
+		}
+	}
+}
+
+// TestWriteMessagesSkipSend ensures that no messages are sent on the connection after it first fails.
+// This prevents deadlocks if the lobby keeps sending it messages before it is closed.
+func TestWriteMessagesSkipSend(t *testing.T) {
+	numMessagesWritten := 0
+	testLog := log.New(ioutil.Discard, "test", log.LstdFlags)
+	timeFunc := func() int64 { return 0 }
+	conn := mockConn{
+		CloseFunc: func() error {
+			return nil
+		},
+		WriteMessageFunc: func(m message.Message) error {
+			numMessagesWritten++
+			return nil
+		},
+		SetWriteDeadlineFunc: func(t time.Time) error {
+			if numMessagesWritten == 0 {
+				return nil
+			}
+			return errors.New("connection cannot set write deadline")
+		},
+		WriteCloseFunc: func(reason string) error {
+			return nil
+		},
+		WritePingFunc: func() error {
+			return nil
+		},
+	}
+	s := Socket{
+		log:  testLog,
+		Conn: &conn,
+		Config: Config{
+			TimeFunc: timeFunc,
+		},
+	}
+	ctx := context.Background()
+	ctx, cancelFunc := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	in := make(chan message.Message, 1)
+	pingTicker := &time.Ticker{
+		C: make(chan time.Time),
+	}
+	httpPingTicker := &time.Ticker{
+		C: make(chan time.Time),
+	}
+	wg.Add(1)
+	go s.writeMessagesSync(ctx, &wg, in, pingTicker, httpPingTicker)
+	for i := 0; i < 3; i++ {
+		in <- message.Message{}
+	}
+	cancelFunc()
+	wg.Wait()
+	if numMessagesWritten != 1 {
+		t.Errorf("wanted only 1 message written to the bad connection, got %v", numMessagesWritten)
 	}
 }

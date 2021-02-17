@@ -134,6 +134,48 @@ func TestRunRunner(t *testing.T) {
 	}
 }
 
+// TestRunRunnerHandleLobbyMessage ensures a basic yet invalid lobby message passes throgh the runner correctly.
+func TestRunRunnerHandleLobbyMessage(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancelFunc := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	in := make(chan message.Message)
+	var bb bytes.Buffer
+	log := log.New(&bb, "test", log.LstdFlags)
+	r := Runner{
+		log: log,
+	}
+	r.Run(ctx, &wg, in)
+	m := message.Message{}
+	in <- m
+	cancelFunc()
+	wg.Wait()
+	if bb.Len() == 0 {
+		t.Errorf("wanted error to be logged when loby sent socket runner invalid message")
+	}
+}
+
+// TestRunRunnerHandleSocketMessage ensures a basic, yet invalid socket messages passes throgh the runner correctly.
+func TestRunRunnerHandleSocketMessage(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancelFunc := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	in := make(chan message.Message)
+	var bb bytes.Buffer
+	log := log.New(&bb, "test", log.LstdFlags)
+	r := Runner{
+		log: log,
+	}
+	r.Run(ctx, &wg, in)
+	m := message.Message{}
+	r.socketOut <- m
+	cancelFunc()
+	wg.Wait()
+	if bb.Len() == 0 {
+		t.Errorf("wanted error to be logged when loby sent socket runner invalid message")
+	}
+}
+
 func TestRunnerAddSocketCheckResult(t *testing.T) {
 	runnerAddSocketTests := []struct {
 		m      message.Message
@@ -312,10 +354,7 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			pn = ""
 		}
 		ctx := context.Background()
-		ctx, cancelFunc := context.WithCancel(ctx)
 		var wg sync.WaitGroup
-		runnerIn := make(chan message.Message, 1)
-		r.Run(ctx, &wg, runnerIn)
 		s, err := r.handleAddSocket(ctx, &wg, pn, w, req)
 		switch {
 		case !test.wantOk:
@@ -337,8 +376,7 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 				t.Errorf("Test %v: wanted socket to be run", i)
 			}
 		}
-		cancelFunc()
-		wg.Wait()
+		r.removeAllPlayers(ctx)
 	}
 }
 
@@ -1222,7 +1260,8 @@ func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
-	r.removePlayer(ctx, m)
+	var wg sync.WaitGroup
+	r.handleLobbyMessage(ctx, &wg, m)
 	switch {
 	case !reflect.DeepEqual(wantPlayerSockets, r.playerSockets):
 		t.Errorf("player sockets not equal:\nwanted: %v\ngot:    %v", wantPlayerSockets, r.playerSockets)
@@ -1238,7 +1277,6 @@ func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 			t.Errorf("wansted c2 to be left open")
 		}
 	}
-
 }
 
 // TestSendMessageForGameBadRunnerState adds coverage for some scenarios where playerGames do do not have matching playerSocket entries
