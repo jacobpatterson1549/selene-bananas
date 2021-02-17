@@ -173,7 +173,7 @@ func (s *Socket) writeMessagesSync(ctx context.Context, wg *sync.WaitGroup, in <
 	skipWrite, stopWrite := false, false
 	write := func(writeFunc func() error) error {
 		if skipWrite {
-			return fmt.Errorf("skipping write for socket (%v) because an error has already occured", s) // TODO: test this
+			return fmt.Errorf("skipping write for socket (%v) because an error has already occured", s)
 		}
 		if err := s.refreshDeadline(s.Conn.SetWriteDeadline, s.WriteWait); err != nil {
 			return fmt.Errorf("setting write deadline: %v", err)
