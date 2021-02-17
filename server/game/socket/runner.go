@@ -80,10 +80,11 @@ func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 	out := make(chan message.Message)
 	wg.Add(1)
 	go func() {
+		ctx, cancelFunc := context.WithCancel(ctx)
 		defer wg.Done()
 		defer r.log.Println("socket runner stopped")
 		defer close(out)
-		defer r.removeAllPlayers(ctx)
+		defer cancelFunc()
 		for { // BLOCKING
 			select {
 			case <-ctx.Done():
@@ -420,15 +421,5 @@ func (r *Runner) removePlayer(ctx context.Context, m message.Message) {
 			}
 			r.removeSocket(ctx, m2)
 		}
-	}
-}
-
-// removeAll players removes all players and games
-func (r *Runner) removeAllPlayers(ctx context.Context) {
-	for pn := range r.playerSockets {
-		m := message.Message{
-			PlayerName: pn,
-		}
-		r.removePlayer(ctx, m) // close the socket
 	}
 }

@@ -72,9 +72,11 @@ func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 	out := make(chan message.Message)
 	wg.Add(1)
 	go func() {
+		ctx, cancelFunc := context.WithCancel(ctx)
 		defer wg.Done()
 		defer r.log.Println("game runner stopped")
 		defer close(out)
+		defer cancelFunc()
 		for { // BLOCKING
 			select {
 			case <-ctx.Done():

@@ -106,14 +106,8 @@ func TestRunRunner(t *testing.T) {
 		},
 	}
 	for i, test := range runRunnerTests {
-		socketIn := make(chan message.Message)
 		r := Runner{
 			log: log.New(ioutil.Discard, "", 0),
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
-				"selene": {
-					mockAddr("selene.pc"): socketIn,
-				},
-			},
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
@@ -126,10 +120,6 @@ func TestRunRunner(t *testing.T) {
 		_, runnerOutOpen := <-runnerOut
 		if runnerOutOpen {
 			t.Errorf("Test %v: wanted runner 'out' channel to be closed after 'in' channel was closed", i)
-		}
-		_, socketInOpen := <-socketIn
-		if socketInOpen {
-			t.Errorf("Test %v: wanted player socket to be closed", i)
 		}
 	}
 }
