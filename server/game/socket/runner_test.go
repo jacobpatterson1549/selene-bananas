@@ -191,40 +191,42 @@ func TestRunnerHandleAddSocketCheckResult(t *testing.T) {
 	}
 	for i, test := range runnerAddSocketTests {
 		addr := mockAddr("selen.pc")
-		readBlocker := make(chan struct{})
-		defer close(readBlocker)
-		r := Runner{
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
-			log:           log.New(ioutil.Discard, "", 0),
-			RunnerConfig: RunnerConfig{
-				MaxSockets:       1,
-				MaxPlayerSockets: 1,
-				SocketConfig: Config{
-					TimeFunc:       func() int64 { return 0 },
-					ReadWait:       2 * time.Hour,
-					WriteWait:      1 * time.Hour,
-					PingPeriod:     2 * time.Hour,
-					HTTPPingPeriod: 3 * time.Hour,
+		upgradeFunc := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
+			return &mockConn{
+				RemoteAddrFunc: func() net.Addr {
+					return addr
 				},
+				SetReadDeadlineFunc: func(t time.Time) error {
+					return errors.New("stop run for test")
+				},
+				ReadMessageFunc: func(m *message.Message) error {
+					return nil
+				},
+				WriteCloseFunc: func(reason string) error {
+					return nil
+				},
+				CloseFunc: func() error {
+					return nil
+				},
+			}, nil
+		}
+		runnerConfig := RunnerConfig{
+			MaxSockets:       1,
+			MaxPlayerSockets: 1,
+			SocketConfig: Config{
+				TimeFunc:       func() int64 { return 0 },
+				ReadWait:       2 * time.Hour,
+				WriteWait:      1 * time.Hour,
+				PingPeriod:     2 * time.Hour,
+				HTTPPingPeriod: 3 * time.Hour,
 			},
-			upgrader: mockUpgrader(func(w http.ResponseWriter, r *http.Request) (Conn, error) {
-				return &mockConn{
-					RemoteAddrFunc: func() net.Addr {
-						return addr
-					},
-					SetReadDeadlineFunc: func(t time.Time) error {
-						return nil
-					},
-					ReadMessageFunc: func(m *message.Message) error {
-						<-readBlocker
-						mockConnReadMinimalMessage(m)
-						return nil
-					},
-					SetPongHandlerFunc: func(h func(appDauta string) error) {
-						// NOOP
-					},
-				}, nil
-			}),
+		}
+		r := Runner{
+			log:           log.New(ioutil.Discard, "", 0),
+			upgrader:      mockUpgrader(upgradeFunc),
+			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
+			RunnerConfig:  runnerConfig,
+			socketOut:     make(chan message.Message, 1), // the socket will run and fail, posting a message here
 		}
 		ctx := context.Background()
 		result := make(chan message.Message, 1)
@@ -259,7 +261,7 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 	runnerAddSocketTests := []struct {
 		maxSockets       int
 		maxPlayerSockets int
-		playerName       player.Name
+		playerName       string
 		wantOk           bool
 		upgradeErr       error
 		Config
@@ -327,19 +329,20 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 				},
 			}, nil
 		}
+		runnerConfig := RunnerConfig{
+			MaxSockets:       test.maxSockets,
+			MaxPlayerSockets: test.maxPlayerSockets,
+			SocketConfig:     test.Config,
+		}
 		r := Runner{
 			log:           log.New(ioutil.Discard, "", 0),
 			upgrader:      mockUpgrader(upgradeFunc),
 			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
 			playerGames:   make(map[player.Name]map[game.ID]net.Addr),
-			RunnerConfig: RunnerConfig{
-				MaxSockets:       test.maxSockets,
-				MaxPlayerSockets: test.maxPlayerSockets,
-				SocketConfig:     test.Config,
-			},
-			socketOut: make(chan message.Message, 1), // the socket will run and fail, posting a message here
+			RunnerConfig:  runnerConfig,
+			socketOut:     make(chan message.Message, 1), // the socket will run and fail, posting a message here
 		}
-		pn, w, req := mockAddUserRequest(string(test.playerName))
+		pn, w, req := mockAddUserRequest(test.playerName)
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		s, err := r.handleAddSocket(ctx, &wg, pn, w, req)
@@ -446,23 +449,24 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 				},
 			}, nil
 		}
+		runnerConfig := RunnerConfig{
+			MaxSockets:       test.maxSockets,
+			MaxPlayerSockets: test.maxPlayerSockets,
+			SocketConfig: Config{
+				TimeFunc:       func() int64 { return 0 },
+				ReadWait:       2 * time.Hour,
+				WriteWait:      1 * time.Hour,
+				PingPeriod:     2 * time.Hour,
+				HTTPPingPeriod: 3 * time.Hour,
+			},
+		}
 		r := Runner{
 			log:           log.New(ioutil.Discard, "", 0),
 			upgrader:      mockUpgrader(upgradeFunc),
 			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
 			playerGames:   make(map[player.Name]map[game.ID]net.Addr),
-			RunnerConfig: RunnerConfig{
-				MaxSockets:       test.maxSockets,
-				MaxPlayerSockets: test.maxPlayerSockets,
-				SocketConfig: Config{
-					TimeFunc:       func() int64 { return 0 },
-					ReadWait:       2 * time.Hour,
-					WriteWait:      1 * time.Hour,
-					PingPeriod:     2 * time.Hour,
-					HTTPPingPeriod: 3 * time.Hour,
-				},
-			},
-			socketOut: make(chan message.Message, 2), // the sockets will run and fail, posting a message here
+			RunnerConfig:  runnerConfig,
+			socketOut:     make(chan message.Message, 2), // the sockets will run and fail, posting a message here
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
@@ -1196,24 +1200,26 @@ func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 	addr2 := mockAddr("addr2")
 	addr3 := mockAddr("addr3")
 	// player delete is sent from the lobby when the player is actually deleted
+	playerSockets := map[player.Name]map[net.Addr]chan<- message.Message{
+		"fred": {
+			addr1: c1,
+			addr3: c3,
+		},
+		"barney": {
+			addr2: c2,
+		},
+	}
+	playerGames := map[player.Name]map[game.ID]net.Addr{
+		"fred": {
+			1: addr1,
+		},
+		"barney": {
+			1: addr2,
+		},
+	}
 	r := Runner{
-		playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
-			"fred": {
-				addr1: c1,
-				addr3: c3,
-			},
-			"barney": {
-				addr2: c2,
-			},
-		},
-		playerGames: map[player.Name]map[game.ID]net.Addr{
-			"fred": {
-				1: addr1,
-			},
-			"barney": {
-				1: addr2,
-			},
-		},
+		playerSockets: playerSockets,
+		playerGames:   playerGames,
 	}
 	m := message.Message{
 		Type:       message.PlayerRemove,

@@ -194,29 +194,18 @@ func TestRunSocket(t *testing.T) {
 		},
 	}
 	for i, test := range runSocketTests {
-		readBlocker := make(chan struct{})
+		var wg sync.WaitGroup
+		wg.Add(1)
 		conn := mockConn{
 			SetReadDeadlineFunc: func(t time.Time) error {
-				return nil
-			},
-			SetPongHandlerFunc: func(h func(appDauta string) error) {
-				// NOOP
-			},
-			ReadMessageFunc: func(m *message.Message) error {
-				<-readBlocker
+				wg.Done() // ensures the socket is run
 				return errors.New("socket close")
-			},
-			IsNormalCloseFunc: func(err error) bool {
-				return true
-			},
-			CloseFunc: func() error {
-				return nil
 			},
 			WriteCloseFunc: func(reason string) error {
 				return nil
 			},
-			SetWriteDeadlineFunc: func(t time.Time) error {
-				return errors.New("could not set write deadline")
+			CloseFunc: func() error {
+				return nil
 			},
 		}
 		cfg := Config{
@@ -235,14 +224,12 @@ func TestRunSocket(t *testing.T) {
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
-		var wg sync.WaitGroup
 		in := make(chan message.Message)
 		out := make(chan message.Message, 1)
-		s.Run(ctx, &wg, in, out)
-		close(readBlocker)
 		if test.callCancelFunc {
 			cancelFunc()
 		}
+		s.Run(ctx, &wg, in, out)
 		switch {
 		case test.callCancelFunc:
 			wg.Wait()
@@ -261,7 +248,7 @@ func TestRunSocket(t *testing.T) {
 			}
 		}
 		cancelFunc()
-		wg.Wait()
+		wg.Wait() // ensure SetReadDeadline is called
 	}
 }
 
