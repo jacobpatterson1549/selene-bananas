@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
-	"io"
 	"testing"
 	"time"
 
@@ -23,7 +22,7 @@ func init() {
 	mockDriver = new(MockDriver)
 	sql.Register(mockDriverName, mockDriver)
 }
-func TestNewSQLDatabase(t *testing.T) {
+func TestNewDatabase(t *testing.T) {
 	newSQLDatabaseTests := []struct {
 		driverName  string
 		queryPeriod time.Duration
@@ -62,12 +61,7 @@ func TestNewSQLDatabase(t *testing.T) {
 	}
 }
 
-func TestDatabaseQueryRow(t *testing.T) {
-	cfg := DatabaseConfig{
-		DriverName:  mockDriverName,
-		DatabaseURL: testDatabaseURL,
-		QueryPeriod: 10 * time.Second, // test takes real time to run
-	}
+func TestDatabaseQuery(t *testing.T) {
 	queryTests := []struct {
 		cancelled bool
 		scanErr   error
@@ -84,16 +78,7 @@ func TestDatabaseQueryRow(t *testing.T) {
 		},
 	}
 	for i, test := range queryTests {
-		ctx := context.Background()
-		ctx, cancelFunc := context.WithCancel(ctx)
-		switch {
-		case test.cancelled:
-			cancelFunc()
-		default:
-			defer cancelFunc()
-		}
 		want := 6
-		rowNum := 0
 		mockRows := MockDriverRows{
 			ColumnsFunc: func() []string {
 				return []string{"?column?"}
@@ -102,12 +87,8 @@ func TestDatabaseQueryRow(t *testing.T) {
 				return nil
 			},
 			NextFunc: func(dest []driver.Value) error {
-				rowNum++
-				if rowNum == 1 {
-					dest[0] = want
-					return nil
-				}
-				return io.EOF
+				dest[0] = want
+				return nil
 			},
 		}
 		mockStmt := MockDriverStmt{
@@ -134,12 +115,23 @@ func TestDatabaseQueryRow(t *testing.T) {
 			cols:      []string{"?column?"},
 			arguments: []interface{}{want},
 		}
+		cfg := DatabaseConfig{
+			DriverName:  mockDriverName,
+			DatabaseURL: testDatabaseURL,
+			QueryPeriod: 10 * time.Hour, // test takes real time to run, but this should be large enough
+		}
 		db, err := cfg.NewDatabase()
 		if err != nil {
-			t.Errorf("unwanted error: %v", err)
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+			continue
+		}
+		var got int
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		if test.cancelled {
+			cancelFunc()
 		}
 		r := db.Query(ctx, q)
-		var got int
 		err = r.Scan(&got)
 		switch {
 		case err != nil:
@@ -151,6 +143,7 @@ func TestDatabaseQueryRow(t *testing.T) {
 		case want != got:
 			t.Errorf("Test %v: value not set correctly, wanted %v, got %v", i, want, got)
 		}
+		cancelFunc()
 	}
 }
 
