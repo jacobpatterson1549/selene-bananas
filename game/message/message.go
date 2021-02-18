@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"strconv"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
@@ -42,6 +41,7 @@ type (
 	}
 )
 
+//go:generate go run golang.org/x/tools/cmd/stringer -type=Type
 const (
 	_ Type = iota
 	// CreateGame is a MessageType that users send to open a new game.
@@ -79,7 +79,7 @@ const (
 	// SocketClose is sent when the socket is closed
 	SocketClose
 	// PlayerRemove is a MessageType that gets sent from the lobby to inform that all sockets should be removed.
-	PlayerRemove
+	PlayerRemove // keep last for tests
 )
 
 // Send is a unility function for sending messages. out on.
@@ -91,48 +91,4 @@ func Send(m Message, out chan<- Message, debug bool, log *log.Logger) {
 		defer log.Printf("[id: %v] message sent", id)
 	}
 	out <- m
-}
-
-// String prints the Type as a debug-useful string.
-func (t Type) String() string {
-	var s string
-	switch t {
-	case CreateGame:
-		s = "CreateGame"
-	case JoinGame:
-		s = "JoinGame"
-	case LeaveGame:
-		s = "LeaveGame"
-	case DeleteGame:
-		s = "DeleteGame"
-	case GameChat:
-		s = "GameChat"
-	case RefreshGameBoard:
-		s = "RefreshGameBoard"
-	case ChangeGameStatus:
-		s = "ChangeGameStatus"
-	case ChangeGameTiles:
-		s = "ChangeGameTiles"
-	case SnagGameTile:
-		s = "SnagGameTile"
-	case SwapGameTile:
-		s = "SwapGameTile"
-	case MoveGameTile:
-		s = "MoveGameTile"
-	case GameInfos:
-		s = "GameInfos"
-	case SocketWarning:
-		s = "SocketWarning"
-	case SocketError:
-		s = "SocketError"
-	case SocketHTTPPing:
-		s = "SocketHTTPPing"
-	case SocketAdd:
-		s = "SocketAdd"
-	case SocketClose:
-		s = "SocketClose"
-	case PlayerRemove:
-		s = "PlayerRemove"
-	}
-	return s + "(" + strconv.Itoa(int(t)) + ")"
 }
