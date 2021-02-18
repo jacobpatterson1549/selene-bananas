@@ -79,7 +79,7 @@ const (
 	// SocketClose is sent when the socket is closed
 	SocketClose
 	// PlayerRemove is a MessageType that gets sent from the lobby to inform that all sockets should be removed.
-	PlayerRemove
+	PlayerRemove // keep last for tests
 )
 
 // Send is a unility function for sending messages. out on.
@@ -93,46 +93,28 @@ func Send(m Message, out chan<- Message, debug bool, log *log.Logger) {
 	out <- m
 }
 
+var typeStrings = map[Type]string{
+	CreateGame:       "CreateGame",
+	JoinGame:         "JoinGame",
+	LeaveGame:        "LeaveGame",
+	DeleteGame:       "DeleteGame",
+	GameChat:         "GameChat",
+	RefreshGameBoard: "RefreshGameBoard",
+	ChangeGameStatus: "ChangeGameStatus",
+	ChangeGameTiles:  "ChangeGameTiles",
+	SnagGameTile:     "SnagGameTile",
+	SwapGameTile:     "SwapGameTile",
+	MoveGameTile:     "MoveGameTile",
+	GameInfos:        "GameInfos",
+	SocketWarning:    "SocketWarning",
+	SocketError:      "SocketError",
+	SocketHTTPPing:   "SocketHTTPPing",
+	SocketAdd:        "SocketAdd",
+	SocketClose:      "SocketClose",
+	PlayerRemove:     "PlayerRemove",
+}
+
 // String prints the Type as a debug-useful string.
 func (t Type) String() string {
-	var s string
-	switch t {
-	case CreateGame:
-		s = "CreateGame"
-	case JoinGame:
-		s = "JoinGame"
-	case LeaveGame:
-		s = "LeaveGame"
-	case DeleteGame:
-		s = "DeleteGame"
-	case GameChat:
-		s = "GameChat"
-	case RefreshGameBoard:
-		s = "RefreshGameBoard"
-	case ChangeGameStatus:
-		s = "ChangeGameStatus"
-	case ChangeGameTiles:
-		s = "ChangeGameTiles"
-	case SnagGameTile:
-		s = "SnagGameTile"
-	case SwapGameTile:
-		s = "SwapGameTile"
-	case MoveGameTile:
-		s = "MoveGameTile"
-	case GameInfos:
-		s = "GameInfos"
-	case SocketWarning:
-		s = "SocketWarning"
-	case SocketError:
-		s = "SocketError"
-	case SocketHTTPPing:
-		s = "SocketHTTPPing"
-	case SocketAdd:
-		s = "SocketAdd"
-	case SocketClose:
-		s = "SocketClose"
-	case PlayerRemove:
-		s = "PlayerRemove"
-	}
-	return s + "(" + strconv.Itoa(int(t)) + ")"
+	return typeStrings[t] + "(" + strconv.Itoa(int(t)) + ")"
 }
