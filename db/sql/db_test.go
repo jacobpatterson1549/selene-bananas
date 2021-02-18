@@ -197,20 +197,9 @@ func TestDatabaseExec(t *testing.T) {
 		},
 	}
 	for i, test := range execTests {
-		ctx := context.Background()
-		ctx, cancelFunc := context.WithCancel(ctx)
-		switch {
-		case test.cancelled:
-			cancelFunc()
-		default:
-			defer cancelFunc()
-		}
 		mockResult := MockDriverResult{
 			RowsAffectedFunc: func() (int64, error) {
-				if test.rowsAffectedErr != nil {
-					return 0, test.rowsAffectedErr
-				}
-				return test.rowsAffected, nil
+				return test.rowsAffected, test.rowsAffectedErr
 			},
 		}
 		mockStmt := MockDriverStmt{
@@ -224,10 +213,7 @@ func TestDatabaseExec(t *testing.T) {
 				return 2
 			},
 			ExecFunc: func(args []driver.Value) (driver.Result, error) {
-				if test.execErr != nil {
-					return nil, test.execErr
-				}
-				return mockResult, nil
+				return mockResult, test.execErr
 			},
 		}
 		mockTx := MockDriverTx{
@@ -243,10 +229,7 @@ func TestDatabaseExec(t *testing.T) {
 				return mockStmt, nil
 			},
 			BeginFunc: func() (driver.Tx, error) {
-				if test.beginErr != nil {
-					return nil, test.beginErr
-				}
-				return mockTx, nil
+				return mockTx, test.beginErr
 			},
 		}
 		mockDriver.OpenFunc = func(name string) (driver.Conn, error) {
@@ -269,6 +252,11 @@ func TestDatabaseExec(t *testing.T) {
 		if err != nil {
 			t.Errorf("unwanted error: %v", err)
 		}
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		if test.cancelled {
+			cancelFunc()
+		}
 		err = db.Exec(ctx, q)
 		switch {
 		case err != nil:
@@ -278,5 +266,6 @@ func TestDatabaseExec(t *testing.T) {
 		case !test.wantOk:
 			t.Errorf("Test %v: wanted error", i)
 		}
+		cancelFunc()
 	}
 }
