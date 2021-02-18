@@ -50,7 +50,7 @@ type (
 		SetReadDeadline(t time.Time) error
 		// SetWriteDeadline sets how long a read can take before it returns an error.
 		SetWriteDeadline(t time.Time) error
-		// SetPongHandler is triggered when the server recieves a pong response from a previous ping
+		// SetPongHandler is triggered when the server receives a pong response from a previous ping
 		SetPongHandler(h func(appData string) error)
 		// Close closes the connection.
 		Close() error
@@ -114,7 +114,7 @@ func (cfg Config) validate(log *log.Logger, pn player.Name, conn Conn) (net.Addr
 }
 
 // Run writes messages from the connection to the shared "out" channel.
-// Run writes messages recieved from the "in" channel to the connection,
+// Run writes messages received from the "in" channel to the connection,
 // The run stays active even if it errors out.  The only way to stop it is by closing the 'in' channel.
 // If the connection has an error, the socket will send a socketClose message on the out channel, but will still consume and ignore messages from the in channel until it is closed this prevents a channel blockage.
 func (s *Socket) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, out chan<- message.Message) {
@@ -129,7 +129,7 @@ func (s *Socket) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 // messages are not sent if the reading is cancelled from the done channel or an error is encountered and sent to the error channel.
 func (s *Socket) readMessagesSync(ctx context.Context, wg *sync.WaitGroup, out chan<- message.Message) {
 	defer wg.Done()
-	defer s.closeConn() // will casue writeMessages() to fail, but not stop until the in channel is closed.
+	defer s.closeConn() // will cause writeMessages() to fail, but not stop until the in channel is closed.
 	defer s.sendClose(ctx, out)
 	pongHandler := func(appData string) error {
 		if err := s.refreshDeadline(s.Conn.SetReadDeadline, s.ReadWait); err != nil {
@@ -168,12 +168,12 @@ func (s *Socket) readMessagesSync(ctx context.Context, wg *sync.WaitGroup, out c
 // The tickers are used to periodically write message different ping messages.
 func (s *Socket) writeMessagesSync(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, pingTicker, httpPingTicker *time.Ticker) {
 	defer wg.Done()
-	defer s.closeConn() // will casue readMessages() to fail
+	defer s.closeConn() // will cause readMessages() to fail
 	var err error
 	skipWrite, stopWrite := false, false
 	write := func(writeFunc func() error) error {
 		if skipWrite {
-			return fmt.Errorf("skipping write for socket (%v) because an error has already occured", s)
+			return fmt.Errorf("skipping write for socket (%v) because an error has already occurred", s)
 		}
 		if err := s.refreshDeadline(s.Conn.SetWriteDeadline, s.WriteWait); err != nil {
 			return fmt.Errorf("setting write deadline: %v", err)
@@ -204,7 +204,7 @@ func (s *Socket) writeMessagesSync(ctx context.Context, wg *sync.WaitGroup, in <
 		if err != nil {
 			closeReason := err.Error()
 			s.writeClose(closeReason)
-			s.closeConn() // will casue readMessages() to fail
+			s.closeConn() // will cause readMessages() to fail
 			if stopWrite {
 				return
 			}

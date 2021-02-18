@@ -10,7 +10,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 
-
 func TestDrawTile(t *testing.T) {
 	drawTileID := tile.ID(1)
 	drawTileTests := []struct {
