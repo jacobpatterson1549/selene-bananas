@@ -14,3 +14,6 @@ __debug_bin
 # SonarQube static analysis
 /.scannerwork
 /.coverage*.out
+
+# generated files
+game/message/type_string.go

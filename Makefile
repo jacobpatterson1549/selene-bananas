@@ -5,27 +5,34 @@ GO_LIST := go list
 GO_TEST := go test --cover -timeout 30s # -race # -run TestFuncName
 GO_BUILD := go build # -race
 GO_BENCH := go test -bench=.
+GO_INSTALL := go install
+GO_GENERATE  := go generate
 GO_WASM_ARGS := GOOS=js GOARCH=wasm
 GO_ARGS :=
 GO_WASM_PATH := $(shell go env GOROOT)/misc/wasm
 LINK := ln -fs
 OBJS := $(addprefix $(BUILD_DIR)/,main.wasm main version wasm_exec.js resources)
+GENERATE_FILES := game/message/type_string.go
 
 $(BUILD_DIR): $(OBJS)
 
-test-wasm:
+$(GENERATE_FILES):
+	$(GO_INSTALL) ./...
+	$(GO_GENERATE) ./...
+
+test-wasm: $(GENERATE_FILES)
 	$(GO_WASM_ARGS) $(GO_LIST) ./... | grep ui \
 		| $(GO_WASM_ARGS) xargs $(GO_TEST) \
 			-exec=$(GO_WASM_PATH)/go_js_wasm_exec
 
-test:
+test: $(GENERATE_FILES)
 	$(GO_LIST) ./... | grep -v ui \
 		| $(GO_ARGS) xargs $(GO_TEST)
 
 bench:
 	$(GO_BENCH) ./...
 
-mkdir-build:
+mkdir-build: 
 	mkdir -p $(BUILD_DIR)
 
 $(BUILD_DIR)/wasm_exec.js: | mkdir-build

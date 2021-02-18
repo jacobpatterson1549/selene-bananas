@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"strconv"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
@@ -42,6 +41,7 @@ type (
 	}
 )
 
+//go:generate go run golang.org/x/tools/cmd/stringer -type=Type
 const (
 	_ Type = iota
 	// CreateGame is a MessageType that users send to open a new game.
@@ -91,30 +91,4 @@ func Send(m Message, out chan<- Message, debug bool, log *log.Logger) {
 		defer log.Printf("[id: %v] message sent", id)
 	}
 	out <- m
-}
-
-var typeStrings = map[Type]string{
-	CreateGame:       "CreateGame",
-	JoinGame:         "JoinGame",
-	LeaveGame:        "LeaveGame",
-	DeleteGame:       "DeleteGame",
-	GameChat:         "GameChat",
-	RefreshGameBoard: "RefreshGameBoard",
-	ChangeGameStatus: "ChangeGameStatus",
-	ChangeGameTiles:  "ChangeGameTiles",
-	SnagGameTile:     "SnagGameTile",
-	SwapGameTile:     "SwapGameTile",
-	MoveGameTile:     "MoveGameTile",
-	GameInfos:        "GameInfos",
-	SocketWarning:    "SocketWarning",
-	SocketError:      "SocketError",
-	SocketHTTPPing:   "SocketHTTPPing",
-	SocketAdd:        "SocketAdd",
-	SocketClose:      "SocketClose",
-	PlayerRemove:     "PlayerRemove",
-}
-
-// String prints the Type as a debug-useful string.
-func (t Type) String() string {
-	return typeStrings[t] + "(" + strconv.Itoa(int(t)) + ")"
 }

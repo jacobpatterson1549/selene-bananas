@@ -2,7 +2,6 @@ package message
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"math/rand"
 	"reflect"
@@ -125,23 +124,5 @@ func TestSend(t *testing.T) {
 		case test.debug && strings.Count(b.String(), info) != 1:
 			t.Errorf("Test %v: wanted message to be logged once, got %v", i, b.String())
 		}
-	}
-}
-
-func TestString(t *testing.T) {
-	max := int(PlayerRemove)
-	uniqueStrings := make(map[string]struct{}, max)
-	for i := 0; i <= max; i++ { // start at zero value to include unknown type
-		s := Type(i).String()
-		if _, ok := uniqueStrings[s]; ok {
-			t.Errorf("multiple messages types with string %v, including type #%v", s, i)
-		}
-		if i > 0 {
-			defaultString := fmt.Sprintf("(%v)", i)
-			if defaultString == s {
-				t.Errorf("wanted type %v to have descriptive, non-numeric string, got %v", i, s)
-			}
-		}
-		uniqueStrings[s] = struct{}{}
 	}
 }
