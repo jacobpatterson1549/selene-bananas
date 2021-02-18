@@ -21,9 +21,9 @@ func TestRules(t *testing.T) {
 			AllowDuplicates: true,
 		},
 		{
-			CheckOnSnag: true,
-			Penalize: true,
-			MinLength: 2,
+			CheckOnSnag:     true,
+			Penalize:        true,
+			MinLength:       2,
 			AllowDuplicates: true,
 		},
 	}

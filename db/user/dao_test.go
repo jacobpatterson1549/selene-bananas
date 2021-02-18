@@ -9,8 +9,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/db"
 )
 
-
-
 func TestNewDao(t *testing.T) {
 	setupSQL := [][]byte{[]byte("test")}
 	newDaoTests := []struct {
