@@ -25,7 +25,7 @@ type (
 		wordChecker WordChecker
 		// UserDao increments user points when a game is finished.
 		userDao UserDao
-		// RunnerConfig contains configruation properties of the Runner.
+		// RunnerConfig contains configuration properties of the Runner.
 		RunnerConfig
 	}
 
