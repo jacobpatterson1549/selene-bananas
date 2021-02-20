@@ -19,7 +19,9 @@
                 <tr>
                     <th scope="col">Created</th>
                     <th scope="col">Players</th>
+                    <th scope="col">Capacity</th>
                     <th scope="col">State</th>
+                    <th scope="col">Join</th>
                 </tr>
             </thead>
             <tbody></tbody>
@@ -34,11 +36,12 @@
                 <td></td>
                 <td></td>
                 <td></td>
+                <td></td>
+                <td>
+                    <button class="button" onclick="game.join(event)" title="Users can jonly join games that they are a part of or are not started and are not full.">Join</button>
+                    <input type="number" class="game-id" hidden>
+                </td>
             </tr>
-        </template>
-        <template class="join-game-button">
-            <input type="number" class="game-id" hidden>
-            <button class="button" onclick="game.join(event)">Join</button>
         </template>
         <div class="actions">
             <button class="button" onclick="game.create()">Create Game</button>

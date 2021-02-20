@@ -1,6 +1,10 @@
 package game
 
-import "github.com/jacobpatterson1549/selene-bananas/game/board"
+import (
+	"strconv"
+
+	"github.com/jacobpatterson1549/selene-bananas/game/board"
+)
 
 // Info contains information about a game.
 type Info struct {
@@ -20,18 +24,27 @@ type Info struct {
 	Config *Config `json:"config,omitempty"`
 	// FinalBoards is used to describe the state of all player's boards when a game is finished.
 	FinalBoards map[string]board.Board `json:"finalBoards,omitempty"`
+	// Capacity is the maximum number of players that can play the game
+	Capacity int `json:"capacity,omitempty"`
 }
 
 // CanJoin indicates whether or not a player can join the game.
-// Players can only join games that are not started or that they were previously a part of,
+// Players can only join games that are not started or that they were previously a part of, assuming there is room.
 func (i Info) CanJoin(playerName string) bool {
-	if i.Status == NotStarted {
-		return true
-	}
+	return i.isInGame(playerName) || (int(i.Status) == int(NotStarted) && len(i.Players) < i.Capacity)
+}
+
+// isInGame determines if a player with the specified game is in the players slice.
+func (i Info) isInGame(playerName string) bool {
 	for _, n := range i.Players {
 		if n == playerName {
 			return true
 		}
 	}
 	return false
+}
+
+// CapacityRatio computes the compacity ratio of the game as a string.
+func (i Info) CapacityRatio() string {
+	return strconv.Itoa(len(i.Players)) + "/" + strconv.Itoa(i.Capacity)
 }

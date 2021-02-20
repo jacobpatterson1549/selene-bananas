@@ -9,6 +9,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
+	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
@@ -229,5 +230,38 @@ func TestCheckPlayerBoardPenalize(t *testing.T) {
 		if test.wantWinPoints != got {
 			t.Errorf("Test %v: wanted player to have %v winPoints, got %v", i, test.wantWinPoints, got)
 		}
+	}
+}
+
+func TestHandleInfoChanged(t *testing.T) {
+	want := message.Message{
+		Type: message.GameInfos,
+		Game: &game.Info{
+			ID:        7,
+			Status:    game.InProgress,
+			Players:   []string{"barney", "fred"},
+			CreatedAt: 555,
+			Capacity:  7,
+		},
+	}
+	g := Game{
+		id:     7,
+		status: game.InProgress,
+		players: map[player.Name]*playerController.Player{
+			"fred":   nil,
+			"barney": nil,
+		},
+		createdAt: 555,
+		Config: Config{
+			MaxPlayers: 7,
+		},
+	}
+	var got message.Message
+	send := func(m message.Message) {
+		got = m
+	}
+	g.handleInfoChanged(send)
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("messages not equal for game %v:\nwanted: %v\ngot:    %v", g, want, got)
 	}
 }

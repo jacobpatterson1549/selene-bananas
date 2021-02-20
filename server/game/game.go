@@ -628,6 +628,7 @@ func (g Game) handleInfoChanged(send messageSender) {
 		Status:    g.status,
 		Players:   g.playerNames(),
 		CreatedAt: g.createdAt,
+		Capacity:  g.MaxPlayers,
 	}
 	m := message.Message{
 		Type: message.GameInfos,

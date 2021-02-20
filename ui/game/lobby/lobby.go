@@ -81,12 +81,13 @@ func (l *Lobby) SetGameInfos(gameInfos []game.Info, username string) {
 		rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
 		players := strings.Join(gameInfo.Players, ", ")
 		rowElement.Get("children").Index(1).Set("innerHTML", players)
+		capacityRatio := gameInfo.CapacityRatio()
+		rowElement.Get("children").Index(2).Set("innerHTML", capacityRatio)
 		status := gameInfo.Status.String()
-		rowElement.Get("children").Index(2).Set("innerHTML", status)
-		if gameInfo.CanJoin(username) {
-			joinGameButtonElement := dom.CloneElement(".join-game-button")
-			joinGameButtonElement.Get("children").Index(0).Set("value", int(gameInfo.ID))
-			rowElement.Get("children").Index(2).Call("appendChild", joinGameButtonElement)
+		rowElement.Get("children").Index(3).Set("innerHTML", status)
+		if !gameInfo.CanJoin(username) {
+			joinElements := rowElement.Get("children").Index(4)
+			joinElements.Get("children").Index(0).Call("setAttribute", "disabled", true)
 		}
 		tbodyElement.Call("appendChild", gameInfoElement)
 	}
