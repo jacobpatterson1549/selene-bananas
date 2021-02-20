@@ -39,8 +39,9 @@ func TestWriteGoroutineExpectations(t *testing.T) {
 			}
 		}
 		want := strconv.Itoa(numExpectations[i])
-		if len(lines) < 2 || !strings.Contains(lines[1], want) {
-			t.Errorf("server %v: wanted %v goroutine expectations", i, want)
+		gotLine := lines[1]
+		if !strings.Contains(gotLine, want) {
+			t.Errorf("server %v: wanted %v goroutine expectations, got expectations line with: '%v'", i, want, gotLine)
 		}
 	}
 	if numExpectations[0] == numExpectations[1] {

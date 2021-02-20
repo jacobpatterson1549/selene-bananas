@@ -35,22 +35,23 @@ func writeGoroutineExpectations(w io.Writer, hasTLS bool) {
 	fmt.Fprintln(w, "--- Goroutine Expectations ---")
 	switch {
 	case hasTLS:
-		fmt.Fprintln(w, "Ten (10) goroutines are expected on an idling server.")
+		fmt.Fprintln(w, "Eleven (11) goroutines are expected on an idling server.")
 		fmt.Fprintln(w, "Note that the first two goroutines create extra threads for each tls connection.")
 		fmt.Fprintln(w, "* a goroutine listening for interrupt/termination signals so the server can stop gracefully")
 		fmt.Fprintln(w, "* a goroutine to handle tls connections")
 		fmt.Fprintln(w, "* a goroutine to run the https (tls) server")
 	default:
-		fmt.Fprintln(w, "Seven (7) goroutines are expected on an idling server.")
+		fmt.Fprintln(w, "Eight (8) goroutines are expected on an idling server.")
 	}
 	fmt.Fprintln(w, "* a goroutine to run the http server")
 	fmt.Fprintln(w, "* a goroutine to open new sql database connections")
-	fmt.Fprintln(w, "* a goroutine to reset existing sql database connections")
 	fmt.Fprintln(w, "* a goroutine to serve http/2 requests")
 	fmt.Fprintln(w, "* a goroutine to run the lobby")
+	fmt.Fprintln(w, "* a goroutine to manage the websockets used by players in the lobby")
+	fmt.Fprintln(w, "* a goroutine to manage the games in the lobby")
 	fmt.Fprintln(w, "* a goroutine to run the main procedure")
 	fmt.Fprintln(w, "* a goroutine to write profiling information about goroutines")
-	fmt.Fprintln(w, "Each player in the lobby should have two (2) goroutines to read and write websocket messages.")
+	fmt.Fprintln(w, "Each user with a tab connected to the lobby should have two (2) goroutines to read and write websocket messages.")
 	fmt.Fprintln(w, "Each game in the lobby runs on a single (1) goroutine.")
 }
 
