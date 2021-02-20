@@ -153,9 +153,9 @@ func TestUpdateUserPoints(t *testing.T) {
 		t.Errorf("unwanted error: %v", err)
 	}
 	g := Game{
-		players: map[player.Name]playerController.Player{
-			"alice":  *alicePlayer,
-			"selene": *selenePlayer,
+		players: map[player.Name]*playerController.Player{
+			"alice":  alicePlayer,
+			"selene": selenePlayer,
 			"bob":    {},
 		},
 		userDao: ud,
@@ -168,7 +168,7 @@ func TestUpdateUserPoints(t *testing.T) {
 
 func TestPlayerNames(t *testing.T) {
 	g := Game{
-		players: map[player.Name]playerController.Player{
+		players: map[player.Name]*playerController.Player{
 			"b": {},
 			"c": {},
 			"a": {},
@@ -211,7 +211,7 @@ func TestCheckPlayerBoardPenalize(t *testing.T) {
 		pn := player.Name("selene")
 		unusedTiles := []tile.Tile{{}} // 1 unused tile
 		g := Game{
-			players: map[player.Name]playerController.Player{
+			players: map[player.Name]*playerController.Player{
 				pn: {
 					Board:     board.New(unusedTiles, nil),
 					WinPoints: test.startWinPoints,
@@ -247,9 +247,9 @@ func TestHandleInfoChanged(t *testing.T) {
 	g := Game{
 		id:     7,
 		status: game.InProgress,
-		players: map[player.Name]playerController.Player{
-			"fred":   {},
-			"barney": {},
+		players: map[player.Name]*playerController.Player{
+			"fred":   nil,
+			"barney": nil,
 		},
 		createdAt: 555,
 		Config: Config{
