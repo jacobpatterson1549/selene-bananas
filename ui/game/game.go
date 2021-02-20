@@ -220,7 +220,12 @@ func (g *Game) replaceGameTiles(m message.Message) {
 // addUnusedTilesappends new tiles onto the game.
 func (g *Game) addUnusedTiles(m message.Message) {
 	tileStrings := make([]string, 0, len(m.Game.Board.UnusedTiles))
-	for _, t := range m.Game.Board.UnusedTiles {
+	for _, tID := range m.Game.Board.UnusedTileIDs {
+		t, ok := m.Game.Board.UnusedTiles[tID]
+		if !ok {
+			g.log.Error(("could not add all unused tiles"))
+			return
+		}
 		tileText := `"` + string(t.Ch) + `"`
 		tileStrings = append(tileStrings, tileText)
 		if err := g.board.AddTile(t); err != nil {
