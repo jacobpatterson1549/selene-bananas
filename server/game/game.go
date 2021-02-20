@@ -25,7 +25,7 @@ type (
 		id          game.ID
 		createdAt   int64
 		status      game.Status
-		players     map[player.Name]*playerController.Player
+		players     map[player.Name]playerController.Player
 		unusedTiles []tile.Tile
 		wordChecker WordChecker
 		userDao     UserDao
@@ -89,7 +89,7 @@ func (cfg Config) NewGame(log *log.Logger, id game.ID, wordChecker WordChecker, 
 		id:          id,
 		createdAt:   cfg.TimeFunc(),
 		status:      game.NotStarted,
-		players:     make(map[player.Name]*playerController.Player),
+		players:     make(map[player.Name]playerController.Player),
 		wordChecker: wordChecker,
 		userDao:     userDao,
 		Config:      cfg,
@@ -275,7 +275,7 @@ func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, send mess
 	if err != nil {
 		return fmt.Errorf("creating player: %w", err)
 	}
-	g.players[m.PlayerName] = p
+	g.players[m.PlayerName] = *p
 	m2, err := g.resizeBoard(m)
 	if err != nil {
 		return fmt.Errorf("creating board message: %w", err)
