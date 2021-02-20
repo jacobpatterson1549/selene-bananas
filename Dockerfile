@@ -1,5 +1,5 @@
 # download golang dependencies, add node to run wasm tests, american-english word list
-FROM golang:1.14-buster \
+FROM golang:1.16-buster \
     AS BUILDER
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 WORKDIR /app
