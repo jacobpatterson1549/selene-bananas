@@ -182,7 +182,7 @@ func (s *Socket) onMessage(event js.Value) {
 		s.lobby.SetGameInfos(m.Games, s.user.Username())
 	case message.PlayerRemove:
 		s.handlePlayerRemove(m)
-	case message.JoinGame, message.ChangeGameStatus, message.ChangeGameTiles:
+	case message.JoinGame, message.ChangeGameStatus, message.ChangeGameTiles, message.RefreshGameBoard:
 		s.handleInfo(m)
 	case message.SocketError:
 		s.log.Error(m.Info)

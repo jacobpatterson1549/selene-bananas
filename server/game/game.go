@@ -647,7 +647,7 @@ func (g *Game) resizeBoard(m message.Message) (*message.Message, error) {
 	}
 	m2 := message.Message{
 		Info:       rr.Info,
-		Type:       message.JoinGame,
+		Type:       m.Type,
 		PlayerName: m.PlayerName,
 		Game: &game.Info{
 			Board:     board.New(rr.Tiles, rr.TilePositions),
