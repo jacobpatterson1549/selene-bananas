@@ -33,15 +33,17 @@ func writeMemoryStats(w io.Writer, m *runtime.MemStats) {
 // writeGoroutineExpectations writes a message about the expected goroutines.
 func writeGoroutineExpectations(w io.Writer, hasTLS bool) {
 	fmt.Fprintln(w, "--- Goroutine Expectations ---")
+	signalGoroutineExpectation := "* a goroutine listening for interrupt/termination signals so the server can stop gracefully"
 	switch {
 	case hasTLS:
 		fmt.Fprintln(w, "Eleven (11) goroutines are expected on an idling server.")
 		fmt.Fprintln(w, "Note that the first two goroutines create extra threads for each tls connection.")
-		fmt.Fprintln(w, "* a goroutine listening for interrupt/termination signals so the server can stop gracefully")
+		fmt.Fprintln(w, signalGoroutineExpectation)
 		fmt.Fprintln(w, "* a goroutine to handle tls connections")
 		fmt.Fprintln(w, "* a goroutine to run the https (tls) server")
 	default:
-		fmt.Fprintln(w, "Eight (8) goroutines are expected on an idling server.")
+		fmt.Fprintln(w, "Nine (9) goroutines are expected on an idling server.")
+		fmt.Fprintln(w, signalGoroutineExpectation)
 	}
 	fmt.Fprintln(w, "* a goroutine to run the http server")
 	fmt.Fprintln(w, "* a goroutine to open new sql database connections")
