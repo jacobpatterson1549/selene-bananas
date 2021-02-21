@@ -22,6 +22,10 @@ WASM_EXEC_OBJ    := $(BUILD_DIR)/wasm_exec.js
 SERVER_TEST      := $(BUILD_DIR)/server.test
 CLIENT_TEST      := $(BUILD_DIR)/client.test
 SERVER_BENCHMARK := $(BUILD_DIR)/server.benchmark
+SERVER_SOURCE_DIRS := cmd/server/ game/ server/ db/ resources/
+CLIENT_SOURCE_DIRS := cmd/ui/     game/ ui/
+SERVER_SOURCE := $(shell find $(SERVER_SOURCE_DIRS))
+CLIENT_SOURCE := $(shell find $(CLIENT_SOURCE_DIRS))
 
 $(SERVER_OBJ): $(SERVER_TEST)  $(CLIENT_OBJ) $(WASM_EXEC_OBJ) $(VERSION_OBJ) $(BUILD_DIR)/$(RESOURCES_DIR) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep cmd/server \
@@ -38,18 +42,18 @@ $(WASM_EXEC_OBJ): | $(BUILD_DIR)
 		$(GO_WASM_PATH)/$(@F) \
 		$@
 
-$(SERVER_TEST): $(GENERATE_SRC) | $(BUILD_DIR)
+$(SERVER_TEST): $(SERVER_SOURCE) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
 		| $(GO_ARGS) xargs $(GO_TEST)
 	touch $(SERVER_TEST)
 
-$(CLIENT_TEST): $(GENERATE_SRC) | $(BUILD_DIR)
+$(CLIENT_TEST): $(CLIENT_SOURCE) | $(BUILD_DIR)
 	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep ui \
 		| $(GO_WASM_ARGS) xargs $(GO_TEST) \
 			-exec=$(GO_WASM_PATH)/go_js_wasm_exec
 	touch $(CLIENT_TEST)
 
-$(SERVER_BENCHMARK): | $(BUILD_DIR)
+$(SERVER_BENCHMARK): $(SERVER_SOURCE) | $(BUILD_DIR)
 	$(GO_BENCH) $(GO_PACKAGES)
 	touch $(SERVER_BENCHMARK)
 
@@ -65,7 +69,7 @@ $(BUILD_DIR)/$(RESOURCES_DIR): | $(BUILD_DIR)
 		$(PWD)/$(@F) \
 		$@
 
-$(VERSION_OBJ): | $(BUILD_DIR)
+$(VERSION_OBJ): $(SERVER_SOURCE) $(CLIENT_SOURCE) | $(BUILD_DIR)
 	find . \
 			-mindepth 2 \
 			-path "*/.*" -prune -o \
@@ -92,3 +96,6 @@ serve-tcp: $(BUILD_DIR)
 
 clean:
 	rm -rf $(BUILD_DIR) $(GENERATE_SRC)
+
+# list rules: https://stackoverflow.com/a/7144684/1330346
+# make -pn | grep -A1 "^# makefile"| grep -v "^#\|^--" | sort | uniq
