@@ -27,7 +27,7 @@ CLIENT_SOURCE_DIRS := cmd/ui/     game/ ui/
 SERVER_SOURCE := $(shell find $(SERVER_SOURCE_DIRS))
 CLIENT_SOURCE := $(shell find $(CLIENT_SOURCE_DIRS))
 
-$(SERVER_OBJ): $(SERVER_TEST)  $(CLIENT_OBJ) $(WASM_EXEC_OBJ) $(VERSION_OBJ) $(BUILD_DIR)/$(RESOURCES_DIR) | $(BUILD_DIR)
+$(SERVER_OBJ): $(SERVER_TEST) $(CLIENT_OBJ) $(WASM_EXEC_OBJ) $(VERSION_OBJ) $(BUILD_DIR)/$(RESOURCES_DIR) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep cmd/server \
 		| $(GO_ARGS) xargs $(GO_BUILD) \
 			-o $@
@@ -82,16 +82,14 @@ $(VERSION_OBJ): $(SERVER_SOURCE) $(CLIENT_SOURCE) | $(BUILD_DIR)
 		| tee $@ \
 		| xargs echo $(@F)
 
-serve: $(BUILD_DIR)
+serve: $(SERVER_OBJ)
 	export $(shell grep -s -v '^#' .env | xargs) \
-		&& cd $(BUILD_DIR) \
 		&& ./$(SERVER_OBJ)
 
-serve-tcp: $(BUILD_DIR)
-	sudo setcap 'cap_net_bind_service=+ep' $(BUILD_DIR)/$(SERVER_OBJ)
+serve-tcp: $(SERVER_OBJ)
+	sudo setcap 'cap_net_bind_service=+ep' $(SERVER_OBJ)
 	export $(shell grep -s -v '^#' .env | xargs \
 			| xargs -I {} echo "{} HTTP_PORT=80 HTTPS_PORT=443") \
-		&& cd $(BUILD_DIR) \
 		&& sudo -E ./$(SERVER_OBJ)
 
 clean:
