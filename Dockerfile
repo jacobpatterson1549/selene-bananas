@@ -33,5 +33,4 @@ COPY --from=BUILDER \
     /app/
 ENTRYPOINT [ \
     "/app/main", \
-    "-words-file=/app/american-english-large", \
-    "-version-file=/app/version" ]
+    "-words-file=/app/american-english-large" ]

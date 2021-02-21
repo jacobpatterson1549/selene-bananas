@@ -32,7 +32,6 @@ func TestNewMainFlags(t *testing.T) {
 				"-tls-cert-file=9",
 				"-tls-key-file=a",
 				"-no-tls-redirect",
-				"-version-file=c",
 			},
 			want: mainFlags{
 				httpPort:       1,
@@ -46,7 +45,6 @@ func TestNewMainFlags(t *testing.T) {
 				tlsCertFile:    "9",
 				tlsKeyFile:     "a",
 				noTLSRedirect:  true,
-				versionFile:    "c",
 			},
 		},
 		{ // all environment variables
@@ -62,7 +60,6 @@ func TestNewMainFlags(t *testing.T) {
 				"TLS_CERT_FILE":        "9",
 				"TLS_KEY_FILE":         "a",
 				"NO_TLS_REDIRECT":      "",
-				"VERSION_FILE":         "c",
 			},
 			want: mainFlags{
 				httpPort:       1,
@@ -76,7 +73,6 @@ func TestNewMainFlags(t *testing.T) {
 				tlsCertFile:    "9",
 				tlsKeyFile:     "a",
 				noTLSRedirect:  true,
-				versionFile:    "c",
 			},
 		},
 	}

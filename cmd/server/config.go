@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
 	"github.com/jacobpatterson1549/selene-bananas/db/sql"
@@ -75,7 +76,7 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby: %w", err)
 	}
-	version, err := version(m)
+	version, err := cleanVersion(version)
 	if err != nil {
 		return nil, fmt.Errorf("creating build version: %w", err)
 	}
@@ -237,13 +238,19 @@ func socketRunnerConfig(m mainFlags, timeFunc func() int64) socket.RunnerConfig 
 	return cfg
 }
 
-// version reads the first word of the versionFile to use as the version.
-func version(m mainFlags) (string, error) {
-	b, err := ioutil.ReadFile(m.versionFile)
-	if err != nil {
-		return "", err
+// cleanVersion returns the version, but cleaned up to only be letters and numbers.
+// Spaces on each end are trimmed, but spaces in the middle of the version or special characters cause an error to be returned.
+func cleanVersion(v string) (string, error) {
+	cleanV := strings.TrimSpace(v)
+	switch {
+	case len(cleanV) == 0:
+		return "", fmt.Errorf("empty")
+	default:
+		for i, r := range cleanV {
+			if !unicode.In(r, unicode.Letter, unicode.Digit) {
+				return "", fmt.Errorf("only letters and digits are allowed: invalid rune at index %v of '%v': '%v'", i, cleanV, string(r))
+			}
+		}
 	}
-	version := string(b)
-	version = strings.TrimSpace(version) // version often ends in newline
-	return version, nil
+	return cleanV, nil
 }

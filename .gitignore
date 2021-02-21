@@ -1,6 +1,9 @@
 # binaries created by make
 /build
 
+# build files linked for embedding
+cmd/server/embed
+
 # environment variables
 /.env
 
