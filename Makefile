@@ -1,4 +1,4 @@
-.PHONY:  serve serve-tcp clean
+.PHONY: serve serve-tcp clean
 
 BUILD_DIR := build
 RESOURCES_DIR := resources
@@ -22,10 +22,11 @@ WASM_EXEC_OBJ    := $(BUILD_DIR)/wasm_exec.js
 SERVER_TEST      := $(BUILD_DIR)/server.test
 CLIENT_TEST      := $(BUILD_DIR)/client.test
 SERVER_BENCHMARK := $(BUILD_DIR)/server.benchmark
-SERVER_SOURCE_DIRS := cmd/server/ game/ server/ db/ resources/
-CLIENT_SOURCE_DIRS := cmd/ui/     game/ ui/
-SERVER_SOURCE := $(shell find $(SERVER_SOURCE_DIRS))
-CLIENT_SOURCE := $(shell find $(CLIENT_SOURCE_DIRS))
+SERVER_SRC_DIRS := cmd/server/ game/ server/ db/
+CLIENT_SRC_DIRS := cmd/ui/     game/ ui/
+SERVER_SRC    := $(shell find  $(SERVER_SRC_DIRS)  -type f)
+CLIENT_SRC    := $(shell find  $(CLIENT_SRC_DIRS)  -type f)
+RESOURCES_SRC := $(shell find  $(RESOURCES_DIR)    -type f)
 
 $(SERVER_OBJ): $(SERVER_TEST) $(CLIENT_OBJ) $(WASM_EXEC_OBJ) $(VERSION_OBJ) $(BUILD_DIR)/$(RESOURCES_DIR) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep cmd/server \
@@ -42,19 +43,20 @@ $(WASM_EXEC_OBJ): | $(BUILD_DIR)
 		$(GO_WASM_PATH)/$(@F) \
 		$@
 
-$(SERVER_TEST): $(SERVER_SOURCE) | $(BUILD_DIR)
+$(SERVER_TEST): $(SERVER_SRC) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
 		| $(GO_ARGS) xargs $(GO_TEST)
 	touch $(SERVER_TEST)
 
-$(CLIENT_TEST): $(CLIENT_SOURCE) | $(BUILD_DIR)
+$(CLIENT_TEST): $(CLIENT_SRC) | $(BUILD_DIR)
 	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep ui \
 		| $(GO_WASM_ARGS) xargs $(GO_TEST) \
 			-exec=$(GO_WASM_PATH)/go_js_wasm_exec
 	touch $(CLIENT_TEST)
 
-$(SERVER_BENCHMARK): $(SERVER_SOURCE) | $(BUILD_DIR)
-	$(GO_BENCH) $(GO_PACKAGES)
+$(SERVER_BENCHMARK): $(SERVER_SRC) | $(BUILD_DIR)
+	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
+		| $(GO_ARGS) xargs $(GO_BENCH)
 	touch $(SERVER_BENCHMARK)
 
 $(GENERATE_SRC):
@@ -64,12 +66,12 @@ $(GENERATE_SRC):
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/$(RESOURCES_DIR): | $(BUILD_DIR)
+$(BUILD_DIR)/$(RESOURCES_DIR): $(RESOURCES_SRC) | $(BUILD_DIR)
 	$(LINK) \
 		$(PWD)/$(@F) \
 		$@
 
-$(VERSION_OBJ): $(SERVER_SOURCE) $(CLIENT_SOURCE) | $(BUILD_DIR)
+$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(BUILD_DIR)
 	find . \
 			-mindepth 2 \
 			-path "*/.*" -prune -o \
