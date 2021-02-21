@@ -1,10 +1,10 @@
-.PHONY: test-wasm test bench mkdir-build serve serve-tcp clean
+.PHONY: serve serve-tcp clean
 
 BUILD_DIR := build
 RESOURCES_DIR := resources
-GO := go
+GENERATE_SRC := game/message/type_string.go
 GO_PACKAGES := ./...
-GO_GENERATE_SRC := game/message/type_string.go
+GO := go
 GO_INSTALL   := $(GO) install
 GO_GENERATE  := $(GO) generate
 GO_LIST      := $(GO) list
@@ -15,44 +15,63 @@ GO_WASM_ARGS := GOOS=js GOARCH=wasm
 GO_ARGS :=
 GO_WASM_PATH := $(shell $(GO) env GOROOT)/misc/wasm
 LINK := ln -fs
-CLIENT_OBJ := main.wasm
-SERVER_OBJ := main
-VERSION_OBJ := version
-WASM_EXEC_OBJ := wasm_exec.js
-OBJS := $(addprefix $(BUILD_DIR)/,$(CLIENT_OBJ) $(SERVER_OBJ) $(VERSION_OBJ) $(WASM_EXEC_OBJ) $(RESOURCES_DIR))
+CLIENT_OBJ       := $(BUILD_DIR)/main.wasm
+SERVER_OBJ       := $(BUILD_DIR)/main
+VERSION_OBJ      := $(BUILD_DIR)/version
+WASM_EXEC_OBJ    := $(BUILD_DIR)/wasm_exec.js
+SERVER_TEST      := $(BUILD_DIR)/server.test
+CLIENT_TEST      := $(BUILD_DIR)/client.test
+SERVER_BENCHMARK := $(BUILD_DIR)/server.benchmark
+SERVER_SRC_DIRS := cmd/server/ game/ server/ db/
+CLIENT_SRC_DIRS := cmd/ui/     game/ ui/
+SERVER_SRC    := $(shell find  $(SERVER_SRC_DIRS)  -type f)
+CLIENT_SRC    := $(shell find  $(CLIENT_SRC_DIRS)  -type f)
+RESOURCES_SRC := $(shell find  $(RESOURCES_DIR)    -type f)
 
-$(BUILD_DIR): $(OBJS)
+$(SERVER_OBJ): $(SERVER_TEST) $(CLIENT_OBJ) $(WASM_EXEC_OBJ) $(VERSION_OBJ) $(BUILD_DIR)/$(RESOURCES_DIR) | $(BUILD_DIR)
+	$(GO_LIST) $(GO_PACKAGES) | grep cmd/server \
+		| $(GO_ARGS) xargs $(GO_BUILD) \
+			-o $@
+
+$(CLIENT_OBJ): $(CLIENT_TEST) | $(BUILD_DIR)
+	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep cmd/ui \
+		| $(GO_WASM_ARGS) xargs $(GO_BUILD) \
+			-o $@
+
+$(WASM_EXEC_OBJ): | $(BUILD_DIR)
+	$(LINK) \
+		$(GO_WASM_PATH)/$(@F) \
+		$@
+
+$(SERVER_TEST): $(SERVER_SRC) | $(BUILD_DIR)
+	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
+		| $(GO_ARGS) xargs $(GO_TEST)
+	touch $(SERVER_TEST)
+
+$(CLIENT_TEST): $(CLIENT_SRC) | $(BUILD_DIR)
+	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep ui \
+		| $(GO_WASM_ARGS) xargs $(GO_TEST) \
+			-exec=$(GO_WASM_PATH)/go_js_wasm_exec
+	touch $(CLIENT_TEST)
+
+$(SERVER_BENCHMARK): $(SERVER_SRC) | $(BUILD_DIR)
+	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
+		| $(GO_ARGS) xargs $(GO_BENCH)
+	touch $(SERVER_BENCHMARK)
 
 $(GENERATE_SRC):
 	$(GO_INSTALL) $(GO_PACKAGES)
 	$(GO_GENERATE) $(GO_PACKAGES)
 
-test-wasm: $(GENERATE_SRC)
-	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep ui \
-		| $(GO_WASM_ARGS) xargs $(GO_TEST) \
-			-exec=$(GO_WASM_PATH)/go_js_wasm_exec
-
-test: $(GENERATE_SRC)
-	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
-		| $(GO_ARGS) xargs $(GO_TEST)
-
-bench:
-	$(GO_BENCH) $(GO_PACKAGES)
-
-mkdir-build: 
+$(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/$(WASM_EXEC_OBJ): | mkdir-build
-	$(LINK) \
-		$(GO_WASM_PATH)/$(@F) \
-		$@
-
-$(BUILD_DIR)/$(RESOURCES_DIR): | mkdir-build
+$(BUILD_DIR)/$(RESOURCES_DIR): $(RESOURCES_SRC) | $(BUILD_DIR)
 	$(LINK) \
 		$(PWD)/$(@F) \
 		$@
 
-$(BUILD_DIR)/$(VERSION_OBJ): | mkdir-build
+$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(BUILD_DIR)
 	find . \
 			-mindepth 2 \
 			-path "*/.*" -prune -o \
@@ -65,27 +84,18 @@ $(BUILD_DIR)/$(VERSION_OBJ): | mkdir-build
 		| tee $@ \
 		| xargs echo $(@F)
 
-$(BUILD_DIR)/$(CLIENT_OBJ): test-wasm | mkdir-build
-	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep cmd/ui \
-		| $(GO_WASM_ARGS) xargs $(GO_BUILD) \
-			-o $@
-
-$(BUILD_DIR)/$(SERVER_OBJ): test | mkdir-build
-	$(GO_LIST) $(GO_PACKAGES) | grep cmd/server \
-		| $(GO_ARGS) xargs $(GO_BUILD) \
-			-o $@
-
-serve: $(BUILD_DIR)
+serve: $(SERVER_OBJ)
 	export $(shell grep -s -v '^#' .env | xargs) \
-		&& cd $(BUILD_DIR) \
 		&& ./$(SERVER_OBJ)
 
-serve-tcp: $(BUILD_DIR)
-	sudo setcap 'cap_net_bind_service=+ep' $(BUILD_DIR)/$(SERVER_OBJ)
+serve-tcp: $(SERVER_OBJ)
+	sudo setcap 'cap_net_bind_service=+ep' $(SERVER_OBJ)
 	export $(shell grep -s -v '^#' .env | xargs \
 			| xargs -I {} echo "{} HTTP_PORT=80 HTTPS_PORT=443") \
-		&& cd $(BUILD_DIR) \
 		&& sudo -E ./$(SERVER_OBJ)
 
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) $(GENERATE_SRC)
+
+# list rules: https://stackoverflow.com/a/7144684/1330346
+# make -pn | grep -A1 "^# makefile"| grep -v "^#\|^--" | sort | uniq
