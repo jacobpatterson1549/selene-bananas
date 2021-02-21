@@ -1,10 +1,10 @@
-.PHONY: test-wasm test bench mkdir-build serve serve-tcp clean
+.PHONY: test test-wasm bench serve serve-tcp clean
 
 BUILD_DIR := build
 RESOURCES_DIR := resources
-GO := go
+GENERATE_SRC := game/message/type_string.go
 GO_PACKAGES := ./...
-GO_GENERATE_SRC := game/message/type_string.go
+GO := go
 GO_INSTALL   := $(GO) install
 GO_GENERATE  := $(GO) generate
 GO_LIST      := $(GO) list
@@ -15,44 +15,51 @@ GO_WASM_ARGS := GOOS=js GOARCH=wasm
 GO_ARGS :=
 GO_WASM_PATH := $(shell $(GO) env GOROOT)/misc/wasm
 LINK := ln -fs
-CLIENT_OBJ := main.wasm
-SERVER_OBJ := main
-VERSION_OBJ := version
-WASM_EXEC_OBJ := wasm_exec.js
-OBJS := $(addprefix $(BUILD_DIR)/,$(CLIENT_OBJ) $(SERVER_OBJ) $(VERSION_OBJ) $(WASM_EXEC_OBJ) $(RESOURCES_DIR))
+CLIENT_OBJ    := $(BUILD_DIR)/main.wasm
+SERVER_OBJ    := $(BUILD_DIR)/main
+VERSION_OBJ   := $(BUILD_DIR)/version
+WASM_EXEC_OBJ := $(BUILD_DIR)/wasm_exec.js
 
-$(BUILD_DIR): $(OBJS)
+$(SERVER_OBJ): test  $(CLIENT_OBJ) $(WASM_EXEC_OBJ) $(VERSION_OBJ) $(BUILD_DIR)/$(RESOURCES_DIR) | $(BUILD_DIR)
+	$(GO_LIST) $(GO_PACKAGES) | grep cmd/server \
+		| $(GO_ARGS) xargs $(GO_BUILD) \
+			-o $@
+
+$(CLIENT_OBJ): test-wasm | $(BUILD_DIR)
+	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep cmd/ui \
+		| $(GO_WASM_ARGS) xargs $(GO_BUILD) \
+			-o $@
+
+$(WASM_EXEC_OBJ): | $(BUILD_DIR)
+	$(LINK) \
+		$(GO_WASM_PATH)/$(@F) \
+		$@
+
+test: $(GENERATE_SRC)
+	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
+		| $(GO_ARGS) xargs $(GO_TEST) \
+
+test-wasm: $(GENERATE_SRC)
+	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep ui \
+		| $(GO_WASM_ARGS) xargs $(GO_TEST) \
+			-exec=$(GO_WASM_PATH)/go_js_wasm_exec \
+
+bench:
+	$(GO_BENCH) $(GO_PACKAGES) \
 
 $(GENERATE_SRC):
 	$(GO_INSTALL) $(GO_PACKAGES)
 	$(GO_GENERATE) $(GO_PACKAGES)
 
-test-wasm: $(GENERATE_SRC)
-	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep ui \
-		| $(GO_WASM_ARGS) xargs $(GO_TEST) \
-			-exec=$(GO_WASM_PATH)/go_js_wasm_exec
-
-test: $(GENERATE_SRC)
-	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
-		| $(GO_ARGS) xargs $(GO_TEST)
-
-bench:
-	$(GO_BENCH) $(GO_PACKAGES)
-
-mkdir-build: 
+$(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/$(WASM_EXEC_OBJ): | mkdir-build
-	$(LINK) \
-		$(GO_WASM_PATH)/$(@F) \
-		$@
-
-$(BUILD_DIR)/$(RESOURCES_DIR): | mkdir-build
+$(BUILD_DIR)/$(RESOURCES_DIR): | $(BUILD_DIR)
 	$(LINK) \
 		$(PWD)/$(@F) \
 		$@
 
-$(BUILD_DIR)/$(VERSION_OBJ): | mkdir-build
+$(VERSION_OBJ): | $(BUILD_DIR)
 	find . \
 			-mindepth 2 \
 			-path "*/.*" -prune -o \
@@ -65,15 +72,6 @@ $(BUILD_DIR)/$(VERSION_OBJ): | mkdir-build
 		| tee $@ \
 		| xargs echo $(@F)
 
-$(BUILD_DIR)/$(CLIENT_OBJ): test-wasm | mkdir-build
-	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep cmd/ui \
-		| $(GO_WASM_ARGS) xargs $(GO_BUILD) \
-			-o $@
-
-$(BUILD_DIR)/$(SERVER_OBJ): test | mkdir-build
-	$(GO_LIST) $(GO_PACKAGES) | grep cmd/server \
-		| $(GO_ARGS) xargs $(GO_BUILD) \
-			-o $@
 
 serve: $(BUILD_DIR)
 	export $(shell grep -s -v '^#' .env | xargs) \
@@ -88,4 +86,4 @@ serve-tcp: $(BUILD_DIR)
 		&& sudo -E ./$(SERVER_OBJ)
 
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) $(GENERATE_SRC)
