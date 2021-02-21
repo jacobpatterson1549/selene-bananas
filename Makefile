@@ -24,11 +24,11 @@ WASM_EXEC_OBJ    := $(BUILD_DIR)/wasm_exec.js
 SERVER_TEST      := $(BUILD_DIR)/server.test
 CLIENT_TEST      := $(BUILD_DIR)/client.test
 SERVER_BENCHMARK := $(BUILD_DIR)/server.benchmark
-SERVER_SRC_DIRS := cmd/server/ game/ server/ db/
-CLIENT_SRC_DIRS := cmd/ui/     game/ ui/
-SERVER_SRC    := $(shell find $(SERVER_SRC_DIRS) $(foreach g,$(GENERATE_SRC),-path $g -prune -o) -name *.go -print)
-CLIENT_SRC    := $(shell find $(CLIENT_SRC_DIRS) $(foreach g,$(GENERATE_SRC),-path $g -prune -o) -name *.go -print)
 RESOURCES_SRC := $(shell find $(RESOURCES_DIR) -type f)
+# exclude the generated source from go sources because it is created after the version, which depends on romal source
+GO_SRC_FN = find $(1) $(foreach g,$(GENERATE_SRC),-path $g -prune -o) -name *.go -print
+SERVER_SRC    := $(shell $(call GO_SRC_FN, cmd/server/ game/ server/ db/))
+CLIENT_SRC    := $(shell $(call GO_SRC_FN, cmd/ui/     game/ ui/))
 
 $(SERVER_OBJ): $(SERVER_TEST) $(CLIENT_OBJ) $(WASM_EXEC_OBJ) $(BUILD_DIR)/$(RESOURCES_DIR) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep cmd/server \
