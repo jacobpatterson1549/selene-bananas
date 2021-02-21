@@ -1,4 +1,4 @@
-.PHONY: test test-wasm bench serve serve-tcp clean
+.PHONY:  serve serve-tcp clean
 
 BUILD_DIR := build
 RESOURCES_DIR := resources
@@ -15,17 +15,20 @@ GO_WASM_ARGS := GOOS=js GOARCH=wasm
 GO_ARGS :=
 GO_WASM_PATH := $(shell $(GO) env GOROOT)/misc/wasm
 LINK := ln -fs
-CLIENT_OBJ    := $(BUILD_DIR)/main.wasm
-SERVER_OBJ    := $(BUILD_DIR)/main
-VERSION_OBJ   := $(BUILD_DIR)/version
-WASM_EXEC_OBJ := $(BUILD_DIR)/wasm_exec.js
+CLIENT_OBJ       := $(BUILD_DIR)/main.wasm
+SERVER_OBJ       := $(BUILD_DIR)/main
+VERSION_OBJ      := $(BUILD_DIR)/version
+WASM_EXEC_OBJ    := $(BUILD_DIR)/wasm_exec.js
+SERVER_TEST      := $(BUILD_DIR)/server.test
+CLIENT_TEST      := $(BUILD_DIR)/client.test
+SERVER_BENCHMARK := $(BUILD_DIR)/server.benchmark
 
-$(SERVER_OBJ): test  $(CLIENT_OBJ) $(WASM_EXEC_OBJ) $(VERSION_OBJ) $(BUILD_DIR)/$(RESOURCES_DIR) | $(BUILD_DIR)
+$(SERVER_OBJ): $(SERVER_TEST)  $(CLIENT_OBJ) $(WASM_EXEC_OBJ) $(VERSION_OBJ) $(BUILD_DIR)/$(RESOURCES_DIR) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep cmd/server \
 		| $(GO_ARGS) xargs $(GO_BUILD) \
 			-o $@
 
-$(CLIENT_OBJ): test-wasm | $(BUILD_DIR)
+$(CLIENT_OBJ): $(CLIENT_TEST) | $(BUILD_DIR)
 	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep cmd/ui \
 		| $(GO_WASM_ARGS) xargs $(GO_BUILD) \
 			-o $@
@@ -35,17 +38,20 @@ $(WASM_EXEC_OBJ): | $(BUILD_DIR)
 		$(GO_WASM_PATH)/$(@F) \
 		$@
 
-test: $(GENERATE_SRC)
+$(SERVER_TEST): $(GENERATE_SRC) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
-		| $(GO_ARGS) xargs $(GO_TEST) \
+		| $(GO_ARGS) xargs $(GO_TEST)
+	touch $(SERVER_TEST)
 
-test-wasm: $(GENERATE_SRC)
+$(CLIENT_TEST): $(GENERATE_SRC) | $(BUILD_DIR)
 	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep ui \
 		| $(GO_WASM_ARGS) xargs $(GO_TEST) \
-			-exec=$(GO_WASM_PATH)/go_js_wasm_exec \
+			-exec=$(GO_WASM_PATH)/go_js_wasm_exec
+	touch $(CLIENT_TEST)
 
-bench:
-	$(GO_BENCH) $(GO_PACKAGES) \
+$(SERVER_BENCHMARK): | $(BUILD_DIR)
+	$(GO_BENCH) $(GO_PACKAGES)
+	touch $(SERVER_BENCHMARK)
 
 $(GENERATE_SRC):
 	$(GO_INSTALL) $(GO_PACKAGES)
@@ -71,7 +77,6 @@ $(VERSION_OBJ): | $(BUILD_DIR)
 		| cut -c -32 \
 		| tee $@ \
 		| xargs echo $(@F)
-
 
 serve: $(BUILD_DIR)
 	export $(shell grep -s -v '^#' .env | xargs) \
