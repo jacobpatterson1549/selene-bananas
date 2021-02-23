@@ -28,7 +28,7 @@ SERVER_SRC := $(shell $(call GO_SRC_FN, cmd/server/ game/ server/ db/))
 CLIENT_SRC := $(shell $(call GO_SRC_FN, cmd/ui/     game/ ui/))
 SERVE_ARGS := $(shell grep -s -v "^\#" .env)
 
-$(BUILD_DIR)/$(SERVER_OBJ): $(BUILD_DIR)/$(CLIENT_OBJ) $(BUILD_DIR)/$(SERVER_TEST) $(BUILD_DIR)/$(VERSION_OBJ) | $(BUILD_DIR)
+$(BUILD_DIR)/$(SERVER_OBJ): $(BUILD_DIR)/$(CLIENT_OBJ) $(BUILD_DIR)/$(SERVER_TEST) $(BUILD_DIR)/$(VERSION_OBJ) $(RESOURCES_SRC) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep cmd/server \
 		| $(GO_ARGS) xargs $(GO_BUILD) \
 			-o $@
@@ -56,11 +56,11 @@ $(BUILD_DIR)/$(SERVER_BENCHMARK): $(SERVER_SRC) $(GENERATE_SRC) | $(BUILD_DIR)
 		| $(GO_ARGS) xargs $(GO_BENCH)
 	touch $@
 
-$(GENERATE_SRC): $(SERVER_EMBED_DIR)
+$(GENERATE_SRC): | $(SERVER_EMBED_DIR)
 	$(GO_INSTALL) $(GO_PACKAGES)
 	$(GO_GENERATE) $(GO_PACKAGES)
 
-$(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) | $(SERVER_EMBED_DIR)
+$(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(SERVER_EMBED_DIR)
 	find . \
 			-mindepth 2 \
 			-path "*/.*" -prune -o \
@@ -90,10 +90,10 @@ $(SERVER_EMBED_DIR): $(RESOURCES_DIR)
 	touch $(SERVER_EMBED_DIR)/$(CLIENT_OBJ)
 	touch $(SERVER_EMBED_DIR)/$(VERSION_OBJ)
 
-serve: $(SERVER_OBJ)
+serve: $(BUILD_DIR)/$(SERVER_OBJ)
 	$(SERVE_ARGS) $(BUILD_DIR)/$(SERVER_OBJ)
 
-serve-tcp: $(SERVER_OBJ)
+serve-tcp: $(BUILD_DIR)/$(SERVER_OBJ)
 	sudo setcap cap_net_bind_service=+ep $(SERVER_OBJ)
 	$(SERVE_ARGS) HTTP_PORT=80 HTTPS_PORT=443 $(BUILD_DIR)/$(SERVER_OBJ)
 
