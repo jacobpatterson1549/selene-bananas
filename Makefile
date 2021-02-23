@@ -1,7 +1,6 @@
 .PHONY: serve serve-tcp clean
 
 BUILD_DIR := build
-# TODO: embed all resources in server - including main.wasm (make server depend on client)
 RESOURCES_DIR    := resources
 SERVER_EMBED_DIR := cmd/server/embed
 GENERATE_SRC := game/message/type_string.go
@@ -26,8 +25,9 @@ SERVER_BENCHMARK := $(BUILD_DIR)/server.benchmark
 RESOURCES_SRC := $(shell find $(RESOURCES_DIR) -type f)
 # exclude the generated source from go sources because it is created after the version, which depends on romal source
 GO_SRC_FN = find $(1) $(foreach g,$(GENERATE_SRC),-path $g -prune -o) -name *.go -print
-SERVER_SRC    := $(shell $(call GO_SRC_FN, cmd/server/ game/ server/ db/))
-CLIENT_SRC    := $(shell $(call GO_SRC_FN, cmd/ui/     game/ ui/))
+SERVER_SRC := $(shell $(call GO_SRC_FN, cmd/server/ game/ server/ db/))
+CLIENT_SRC := $(shell $(call GO_SRC_FN, cmd/ui/     game/ ui/))
+SERVE_ARGS := $(shell grep -s -v "^\#" .env)
 
 $(SERVER_OBJ): $(CLIENT_OBJ) $(SERVER_TEST) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep cmd/server \
@@ -88,14 +88,11 @@ $(SERVER_EMBED_DIR): $(RESOURCES_DIR)
 	touch $(CLIENT_OBJ)
 
 serve: $(SERVER_OBJ)
-	export $(shell grep -s -v '^#' .env | xargs) \
-		&& ./$(SERVER_OBJ)
+	$(SERVE_ARGS) $(SERVER_OBJ)
 
 serve-tcp: $(SERVER_OBJ)
-	sudo setcap 'cap_net_bind_service=+ep' $(SERVER_OBJ)
-	export $(shell grep -s -v '^#' .env | xargs \
-			| xargs -I {} echo "{} HTTP_PORT=80 HTTPS_PORT=443") \
-		&& sudo -E ./$(SERVER_OBJ)
+	sudo setcap cap_net_bind_service=+ep $(SERVER_OBJ)
+	$(SERVE_ARGS) HTTP_PORT=80 HTTPS_PORT=443 $(SERVER_OBJ)
 
 clean:
 	rm -rf $(BUILD_DIR) $(SERVER_EMBED_DIR) $(GENERATE_SRC)
