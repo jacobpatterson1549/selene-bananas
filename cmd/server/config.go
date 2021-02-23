@@ -4,10 +4,12 @@ import (
 	"context"
 	crypto_rand "crypto/rand"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"io/fs"
 	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 	"unicode"
@@ -49,11 +51,11 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if err != nil {
 		return nil, fmt.Errorf("creating SQL database: %w", err)
 	}
-	sqlFiles, err := userSQLFiles()
+	setupSQL, err := setupSQL(embeddedSQLFS)
 	if err != nil {
 		return nil, fmt.Errorf("loading SQL files to manage user data: %w", err)
 	}
-	userDao, err := user.NewDao(ctx, sqlDB, sqlFiles)
+	userDao, err := user.NewDao(ctx, sqlDB, setupSQL)
 	if err != nil {
 		return nil, fmt.Errorf("creating user dao: %w", err)
 	}
@@ -76,7 +78,7 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby: %w", err)
 	}
-	version, err := cleanVersion(version)
+	version, err := cleanVersion(embedVersion)
 	if err != nil {
 		return nil, fmt.Errorf("creating build version: %w", err)
 	}
@@ -138,27 +140,21 @@ func sqlDatabase(m mainFlags) (db.Database, error) {
 	return cfg.NewDatabase()
 }
 
-// userSQLFiles loads the SQL files needed to manage user data.
-func userSQLFiles() ([][]byte, error) {
-	// SQLFiles are the SQL files that are used for and by the dao.
-	userSQLFileNames := []string{
-		"users",
-		"user_create",
-		"user_read",
-		"user_update_password",
-		"user_update_points_increment",
-		"user_delete",
+// setupSQL loads the SQL files needed to manage user data.
+func setupSQL(fsys fs.FS) ([][]byte, error) {
+	files, err := Files(fsys)
+	if err != nil {
+		return nil, err
 	}
-	userSQLFiles := make([][]byte, len(userSQLFileNames))
-	for i, n := range userSQLFileNames {
-		n = fmt.Sprintf("resources/sql/%s.sql", n)
-		b, err := ioutil.ReadFile(n)
+	setupSQL := make([][]byte, 0, len(files))
+	for n, f := range files {
+		b, err := io.ReadAll(f)
 		if err != nil {
-			return nil, fmt.Errorf("reading setup file %v: %w", n, err)
+			return nil, fmt.Errorf("reading setup query %v: %v", n, err)
 		}
-		userSQLFiles[i] = b
+		setupSQL = append(setupSQL, b)
 	}
-	return userSQLFiles, nil
+	return setupSQL, nil
 }
 
 // lobbyConfig creates the configuration for running and managing players of games.
@@ -253,4 +249,42 @@ func cleanVersion(v string) (string, error) {
 		}
 	}
 	return cleanV, nil
+}
+
+// Files collects the files in the file system by name.
+func Files(fsys fs.FS) (map[string]fs.File, error) {
+	if fsys == nil {
+		return nil, nil
+	}
+	files := make(map[string]fs.File)
+	var walkDir fs.WalkDirFunc
+	walkDir = func(path string, d fs.DirEntry, err error) error {
+		switch {
+		case err == fs.SkipDir:
+			// NOOP
+		case d.IsDir():
+			dirEntries, err := fs.ReadDir(fsys, path)
+			if err != nil {
+				return err
+			}
+			for _, de := range dirEntries {
+				p := filepath.Join(path, de.Name())
+				if err := walkDir(p, de, nil); err != nil {
+					return err
+				}
+			}
+		default:
+			f, err := fsys.Open(path)
+			if err != nil {
+				return err
+			}
+			files[path] = f
+		}
+		return nil
+	}
+	err := fs.WalkDir(fsys, ".", walkDir)
+	if err != nil {
+		return nil, fmt.Errorf("collecting files: %w", err)
+	}
+	return files, nil
 }

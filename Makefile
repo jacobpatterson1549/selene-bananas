@@ -1,11 +1,11 @@
 .PHONY: serve serve-tcp clean
 
 BUILD_DIR := build
-RESOURCES_DIR    := resources # TODO: embed all resources in server - including main.wasm (make server depend on client)
+# TODO: embed all resources in server - including main.wasm (make server depend on client)
+RESOURCES_DIR    := resources
 SERVER_EMBED_DIR := cmd/server/embed
 GENERATE_SRC := game/message/type_string.go
 VERSION_OBJ  := $(SERVER_EMBED_DIR)/version.txt
-EMBED_SRC    := $(VERSION_OBJ) #TODO: add more here
 GO := go
 GO_PACKAGES  := ./...
 GO_INSTALL   := $(GO) install
@@ -56,17 +56,17 @@ $(CLIENT_TEST): $(CLIENT_SRC) | $(BUILD_DIR)
 			-exec=$(GO_WASM_PATH)/go_js_wasm_exec
 	touch $(CLIENT_TEST)
 
-$(SERVER_BENCHMARK): $(SERVER_SRC) $(GENERATE_SRC) $(EMBED_SRC) | $(BUILD_DIR)
+$(SERVER_BENCHMARK): $(SERVER_SRC) $(GENERATE_SRC) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
 		| $(GO_ARGS) xargs $(GO_BENCH)
 	touch $(SERVER_BENCHMARK)
 
-$(BUILD_DIR)/$(RESOURCES_DIR): $(RESOURCES_SRC) | $(BUILD_DIR)
+$(BUILD_DIR)/$(RESOURCES_DIR): $(RESOURCES_SRC) | $(BUILD_DIR) # TODO: DELETEME when all resources are embedded, including main.wasm and wasm_exec.js
 	$(LINK) \
 		$(PWD)/$(@F) \
 		$@
 
-$(GENERATE_SRC): $(EMBED_SRC)
+$(GENERATE_SRC): $(VERSION_OBJ)
 	$(GO_INSTALL) $(GO_PACKAGES)
 	$(GO_GENERATE) $(GO_PACKAGES)
 
@@ -75,6 +75,7 @@ $(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(SERVER_EMBED_DI
 			-mindepth 2 \
 			-path "*/.*" -prune -o \
 			-path "./$(BUILD_DIR)/*" -prune -o \
+			-path "./$(SERVER_EMBED_DIR)/*" -prune -o \
 			-path $@ -prune -o \
 			-type f \
 			-print \
@@ -87,8 +88,10 @@ $(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(SERVER_EMBED_DI
 $(BUILD_DIR):
 	mkdir -p $@
 
-$(SERVER_EMBED_DIR):
+$(SERVER_EMBED_DIR): $(RESOURCES_DIR)
 	mkdir -p $@
+	# creating hard links for resources
+	cp -Rlf $(PWD)/$(RESOURCES_DIR)/* $(SERVER_EMBED_DIR)
 
 serve: $(SERVER_OBJ)
 	export $(shell grep -s -v '^#' .env | xargs) \
