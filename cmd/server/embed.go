@@ -19,4 +19,10 @@ var embeddedSQLFS embed.FS
 //go:embed embed/index.css
 //go:embed embed/*.js
 //go:embed embed/manifest.json
-var embeddedServerFS embed.FS
+var embeddedTemplateFS embed.FS
+
+//go:embed embed/main.wasm
+//go:embed embed/wasm_exec.js
+//go:embed embed/robots.txt
+//go:embed embed/favicon.png
+var embeddedStaticFS embed.FS

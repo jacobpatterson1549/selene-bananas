@@ -59,6 +59,7 @@ func TestHandleFileVersion(t *testing.T) {
 		},
 	}
 	h := func(w http.ResponseWriter, r *http.Request) {}
+	hf := http.HandlerFunc(h)
 	for i, test := range handleFileVersionTests {
 		s := Server{
 			Config: Config{
@@ -67,7 +68,7 @@ func TestHandleFileVersion(t *testing.T) {
 		}
 		r := httptest.NewRequest("", test.url, nil)
 		w := httptest.NewRecorder()
-		s.handleFile(w, r, h)
+		s.handleFile(w, r, hf)
 		gotCode := w.Code
 		gotHeader := w.Header()
 		delete(gotHeader, "Cache-Control")
@@ -123,7 +124,8 @@ func TestHandleFile(t *testing.T) {
 		h := func(w http.ResponseWriter, r *http.Request) {
 			handlerCalled = true
 		}
-		s.handleFile(w, r, h)
+		hf := http.HandlerFunc(h)
+		s.handleFile(w, r, hf)
 		gotHeader := w.Header()
 		switch {
 		case !handlerCalled:

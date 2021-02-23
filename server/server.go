@@ -35,6 +35,7 @@ type (
 		httpServer  *http.Server
 		cacheMaxAge string
 		template    *template.Template
+		staticFiles http.Handler
 		Config
 	}
 
@@ -115,7 +116,7 @@ const (
 )
 
 // NewServer creates a Server from the Config
-func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby, serverFS fs.FS) (*Server, error) {
+func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby, templateFS, staticFS fs.FS) (*Server, error) {
 	if err := cfg.validate(log, tokenizer, userDao, lobby); err != nil {
 		return nil, fmt.Errorf("creating server: validation: %w", err)
 	}
@@ -155,10 +156,12 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 	}
 	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
 	templateFileGlobs := templateFileGlobs()
-	template, err := template.ParseFS(serverFS, templateFileGlobs...)
+	template, err := template.ParseFS(templateFS, templateFileGlobs...)
 	if err != nil {
 		return nil, fmt.Errorf("parsing template: %v", err)
 	}
+	staticFileSystem := http.FS(staticFS)
+	staticFilesHandler := http.FileServer(staticFileSystem)
 	s := Server{
 		log:         log,
 		data:        data,
@@ -169,6 +172,7 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 		httpServer:  httpServer,
 		cacheMaxAge: cacheMaxAge,
 		template:    template,
+		staticFiles: staticFilesHandler,
 		Config:      cfg,
 	}
 	httpsServeMux.HandleFunc("/", s.handleHTTPS)
@@ -331,10 +335,8 @@ func (s *Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/", "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html":
 		s.handleFile(w, r, s.serveTemplate(r.URL.Path))
-	case "/wasm_exec.js", "/main.wasm":
-		s.handleFile(w, r, s.serveFile("."+r.URL.Path))
-	case "/robots.txt", "/favicon.png":
-		s.handleFile(w, r, s.serveFile("resources"+r.URL.Path))
+	case "/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png":
+		s.handleFile(w, r, s.staticFiles)
 	case "/lobby":
 		s.handleUserLobby(w, r)
 	case "/monitor":
@@ -400,15 +402,8 @@ func (s *Server) serveTemplate(name string) http.HandlerFunc {
 	}
 }
 
-// serveFile serves the file from the filesystem.
-func (*Server) serveFile(name string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, name)
-	}
-}
-
 // handleFile wraps the handling of the file, add cache-control header and gzip compression, if possible.
-func (s *Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.HandlerFunc) {
+func (s *Server) handleFile(w http.ResponseWriter, r *http.Request, h http.Handler) {
 	switch r.URL.Path {
 	default:
 		if r.URL.Query().Get("v") != s.Version {
@@ -435,7 +430,7 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request, fn http.Hand
 		}
 		w.Header().Set(HeaderContentEncoding, "gzip")
 	}
-	fn(w, r)
+	h.ServeHTTP(w, r)
 }
 
 // httpError writes the error status code.

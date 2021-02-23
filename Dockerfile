@@ -19,16 +19,14 @@ RUN go mod download \
 COPY \
     . \
     ./
-RUN make build \
-    GO_ARGS="CGO_ENABLED=0" \
-    LINK="cp -R" \
-    -j 2
+RUN make \
+    GO_ARGS="CGO_ENABLED=0"
 
 # copy files to a minimal build image
 FROM scratch
 WORKDIR /app
 COPY --from=BUILDER \
-    /app/build \
+    /app/build/main \
     /usr/share/dict/american-english-large \
     /app/
 ENTRYPOINT [ \

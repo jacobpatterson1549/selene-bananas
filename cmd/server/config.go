@@ -95,11 +95,15 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 		ColorConfig:   colorConfig,
 		NoTLSRedirect: m.noTLSRedirect,
 	}
-	serverFS, err := fs.Sub(embeddedServerFS, "embed")
+	templateFS, err := fs.Sub(embeddedTemplateFS, "embed")
 	if err != nil {
-		return nil, fmt.Errorf("getting embed subdirectory for server file system: %w", err)
+		return nil, fmt.Errorf("getting embed subdirectory for server template file system: %w", err)
 	}
-	return cfg.NewServer(log, tokenizer, userDao, lobby, serverFS)
+	staticFS, err := fs.Sub(embeddedStaticFS, "embed")
+	if err != nil {
+		return nil, fmt.Errorf("getting embed subdirectory for server static file system: %w", err)
+	}
+	return cfg.NewServer(log, tokenizer, userDao, lobby, templateFS, staticFS)
 }
 
 // colorConfig creates the color config for the css.
