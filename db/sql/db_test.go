@@ -26,6 +26,8 @@ func TestNewDatabase(t *testing.T) {
 	newSQLDatabaseTests := []struct {
 		driverName  string
 		queryPeriod time.Duration
+		openFunc    func(name string) (driver.Conn, error)
+		setupSQL    [][]byte
 		wantOk      bool
 	}{
 		{
@@ -37,8 +39,40 @@ func TestNewDatabase(t *testing.T) {
 		},
 		{
 			driverName:  mockDriverName,
-			queryPeriod: 1,
+			queryPeriod: 1 * time.Hour,
+			setupSQL: [][]byte{
+				[]byte("test"),
+			},
+			openFunc: func(name string) (driver.Conn, error) {
+				return nil, fmt.Errorf("could not open connection for setup queries")
+			},
+			wantOk: true,
+		},
+		{ // no setupSQL
+			driverName:  mockDriverName,
+			queryPeriod: 1 * time.Hour,
 			wantOk:      true,
+		},
+		{
+			driverName:  mockDriverName,
+			queryPeriod: 1 * time.Hour,
+			openFunc: func(name string) (driver.Conn, error) {
+				mockTx := MockDriverTx{
+					CommitFunc: func() error {
+						return nil
+					},
+				}
+				mockConn := MockDriverConn{
+					BeginFunc: func() (driver.Tx, error) {
+						return mockTx, nil
+					},
+				}
+				return mockConn, nil
+			},
+			setupSQL: [][]byte{
+				[]byte("test"),
+			},
+			wantOk: true,
 		},
 	}
 	for i, test := range newSQLDatabaseTests {
@@ -47,7 +81,10 @@ func TestNewDatabase(t *testing.T) {
 			DatabaseURL: testDatabaseURL,
 			QueryPeriod: test.queryPeriod,
 		}
-		sqlDB, err := cfg.NewDatabase()
+		ctx := context.Background()
+		var setupSQL [][]byte
+		mockDriver.OpenFunc = test.openFunc
+		sqlDB, err := cfg.NewDatabase(ctx, setupSQL)
 		switch {
 		case err != nil:
 			if test.wantOk {
@@ -120,14 +157,14 @@ func TestDatabaseQuery(t *testing.T) {
 			DatabaseURL: testDatabaseURL,
 			QueryPeriod: 10 * time.Hour, // test takes real time to run, but this should be large enough
 		}
-		db, err := cfg.NewDatabase()
-		if err != nil {
-			t.Errorf("Test %v: unwanted error: %v", i, err)
-			continue
-		}
-		var got int
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
+		var setupSQL [][]byte
+		db, err := cfg.NewDatabase(ctx, setupSQL)
+		if err != nil {
+			t.Fatalf("Test %v: unwanted error: %v", i, err)
+		}
+		var got int
 		if test.cancelled {
 			cancelFunc()
 		}
@@ -248,12 +285,13 @@ func TestDatabaseExec(t *testing.T) {
 				},
 			}
 		}
-		db, err := cfg.NewDatabase()
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		var setupSQL [][]byte
+		db, err := cfg.NewDatabase(ctx, setupSQL)
 		if err != nil {
 			t.Errorf("unwanted error: %v", err)
 		}
-		ctx := context.Background()
-		ctx, cancelFunc := context.WithCancel(ctx)
 		if test.cancelled {
 			cancelFunc()
 		}

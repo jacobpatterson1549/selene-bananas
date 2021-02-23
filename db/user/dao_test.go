@@ -10,37 +10,18 @@ import (
 )
 
 func TestNewDao(t *testing.T) {
-	setupSQL := [][]byte{[]byte("test")}
 	newDaoTests := []struct {
-		db       db.Database
-		setupSQL [][]byte
-		wantOk   bool
+		db     db.Database
+		wantOk bool
 	}{
 		{},
-		{ // no setupSQL
-			db: mockDatabase{},
-		},
-		{ // setup error
-			db: mockDatabase{
-				execFunc: func(ctx context.Context, queries ...db.Query) error {
-					return fmt.Errorf("error running setup query")
-				},
-			},
-			setupSQL: setupSQL,
-		},
 		{
-			db: mockDatabase{
-				execFunc: func(ctx context.Context, queries ...db.Query) error {
-					return nil
-				},
-			},
-			setupSQL: setupSQL,
-			wantOk:   true,
+			db:     mockDatabase{},
+			wantOk: true,
 		},
 	}
 	for i, test := range newDaoTests {
-		ctx := context.Background()
-		d, err := NewDao(ctx, test.db, test.setupSQL)
+		d, err := NewDao(test.db)
 		switch {
 		case err != nil:
 			if test.wantOk {

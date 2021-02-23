@@ -29,8 +29,8 @@ type (
 )
 
 // NewDatabase creates a SQL database from a databaseURL.
-func (cfg DatabaseConfig) NewDatabase() (db.Database, error) {
-	sqlDB, err := cfg.validate()
+func (cfg DatabaseConfig) NewDatabase(ctx context.Context, setupSQL [][]byte) (db.Database, error) {
+	sqlDB, err := cfg.validate(setupSQL)
 	if err != nil {
 		return nil, fmt.Errorf("creating sql database: validation: %w", err)
 	}
@@ -38,15 +38,24 @@ func (cfg DatabaseConfig) NewDatabase() (db.Database, error) {
 		db:          sqlDB,
 		queryPeriod: cfg.QueryPeriod,
 	}
+	queries := make([]db.Query, len(setupSQL))
+	for i, b := range setupSQL {
+		queries[i] = RawQuery(string(b))
+	}
+	if len(queries) > 0 {
+		if err := sDB.Exec(ctx, queries...); err != nil {
+			return nil, fmt.Errorf("running setup queries %w", err)
+		}
+	}
 	return sDB, nil
 }
 
-func (cfg DatabaseConfig) validate() (*sql.DB, error) {
+func (cfg DatabaseConfig) validate(setupSQL [][]byte) (*sql.DB, error) {
 	sqlDB, err := sql.Open(cfg.DriverName, cfg.DatabaseURL)
-	if err != nil {
+	switch {
+	case err != nil:
 		return nil, fmt.Errorf("opening database %w", err)
-	}
-	if cfg.QueryPeriod <= 0 {
+	case cfg.QueryPeriod <= 0:
 		return nil, fmt.Errorf("positive idle period required")
 	}
 	return sqlDB, nil

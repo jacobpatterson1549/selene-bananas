@@ -13,31 +13,22 @@ type Dao struct {
 	db db.Database
 }
 
-// NewDao creates a Dao on the specified database, running the setup queries
-func NewDao(ctx context.Context, database db.Database, setupSQL [][]byte) (*Dao, error) {
-	if err := validate(database, setupSQL); err != nil {
+// NewDao creates a Dao on the specified database.
+func NewDao(database db.Database) (*Dao, error) {
+	if err := validate(database); err != nil {
 		return nil, fmt.Errorf("creating user dao: validation: %w", err)
 	}
 	d := Dao{
 		db: database,
 	}
-	queries := make([]db.Query, len(setupSQL))
-	for i, b := range setupSQL {
-		queries[i] = sql.RawQuery(string(b))
-	}
-	if err := database.Exec(ctx, queries...); err != nil {
-		return nil, fmt.Errorf("running setup queries %w", err)
-	}
 	return &d, nil
 }
 
 // validate checks fields to set up the dao.
-func validate(database db.Database, setupSQL [][]byte) error {
+func validate(database db.Database) error {
 	switch {
 	case database == nil:
 		return fmt.Errorf("database required")
-	case setupSQL == nil:
-		return fmt.Errorf("setup sql files required")
 	}
 	return nil
 }

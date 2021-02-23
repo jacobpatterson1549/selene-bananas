@@ -47,15 +47,11 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if len(m.databaseURL) == 0 {
 		return nil, fmt.Errorf("missing data-source uri")
 	}
-	sqlDB, err := sqlDatabase(m)
+	sqlDB, err := sqlDatabase(ctx, m)
 	if err != nil {
 		return nil, fmt.Errorf("creating SQL database: %w", err)
 	}
-	setupSQL, err := setupSQL(embeddedSQLFS)
-	if err != nil {
-		return nil, fmt.Errorf("loading SQL files to manage user data: %w", err)
-	}
-	userDao, err := user.NewDao(ctx, sqlDB, setupSQL)
+	userDao, err := user.NewDao(sqlDB)
 	if err != nil {
 		return nil, fmt.Errorf("creating user dao: %w", err)
 	}
@@ -131,30 +127,25 @@ func tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
 }
 
 // sqlDatabase creates a SQL database to persist user information.
-func sqlDatabase(m mainFlags) (db.Database, error) {
+func sqlDatabase(ctx context.Context, m mainFlags) (db.Database, error) {
+	sqlFiles, err := Files(embeddedSQLFS)
+	if err != nil {
+		return nil, err
+	}
+	setupSQL := make([][]byte, 0, len(sqlFiles))
+	for n, f := range sqlFiles {
+		b, err := io.ReadAll(f)
+		if err != nil {
+			return nil, fmt.Errorf("reading sql setup query %v: %v", n, err)
+		}
+		setupSQL = append(setupSQL, b)
+	}
 	cfg := sql.DatabaseConfig{
 		DriverName:  "postgres",
 		DatabaseURL: m.databaseURL,
 		QueryPeriod: 5 * time.Second,
 	}
-	return cfg.NewDatabase()
-}
-
-// setupSQL loads the SQL files needed to manage user data.
-func setupSQL(fsys fs.FS) ([][]byte, error) {
-	files, err := Files(fsys)
-	if err != nil {
-		return nil, err
-	}
-	setupSQL := make([][]byte, 0, len(files))
-	for n, f := range files {
-		b, err := io.ReadAll(f)
-		if err != nil {
-			return nil, fmt.Errorf("reading setup query %v: %v", n, err)
-		}
-		setupSQL = append(setupSQL, b)
-	}
-	return setupSQL, nil
+	return cfg.NewDatabase(ctx, setupSQL)
 }
 
 // lobbyConfig creates the configuration for running and managing players of games.
