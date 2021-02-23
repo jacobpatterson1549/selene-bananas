@@ -58,7 +58,9 @@ func TestHandleFileVersion(t *testing.T) {
 			},
 		},
 	}
-	h := func(w http.ResponseWriter, r *http.Request) {}
+	h := func(w http.ResponseWriter, r *http.Request) {
+		// NOOP - the version is handled before the handler is called
+	}
 	hf := http.HandlerFunc(h)
 	for i, test := range handleFileVersionTests {
 		s := Server{

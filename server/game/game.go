@@ -123,7 +123,7 @@ func (cfg Config) validate(log *log.Logger, id game.ID, wordChecker WordChecker,
 		return fmt.Errorf("function to shuffle tiles required")
 	case cfg.ShufflePlayersFunc == nil:
 		return fmt.Errorf("function to shuffle player draw order required")
-	case (len(cfg.TileLetters) != 0 && len(cfg.TileLetters) < cfg.NumNewTiles) || len(defaultTileLetters) < cfg.NumNewTiles:
+	case len(cfg.TileLetters) != 0 && len(cfg.TileLetters) < cfg.NumNewTiles, len(defaultTileLetters) < cfg.NumNewTiles:
 		return fmt.Errorf("not enough tiles for a single player to join the game")
 	}
 	return nil
@@ -140,9 +140,7 @@ func (g *Game) initializeUnusedTiles() error {
 		}
 		g.unusedTiles[i] = *t
 	}
-	if g.ShuffleUnusedTilesFunc != nil {
-		g.ShuffleUnusedTilesFunc(g.unusedTiles)
-	}
+	g.ShuffleUnusedTilesFunc(g.unusedTiles)
 	return nil
 }
 

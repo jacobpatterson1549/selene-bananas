@@ -159,13 +159,17 @@ func TestGameCreate(t *testing.T) {
 			RunnerConfig: RunnerConfig{
 				MaxGames: 1,
 				GameConfig: Config{
-					PlayerCfg:              playerController.Config{WinPoints: 10},
-					TimeFunc:               func() int64 { return 0 },
-					MaxPlayers:             1,
-					NumNewTiles:            1,
-					IdlePeriod:             1 * time.Hour,
-					ShuffleUnusedTilesFunc: func(tiles []tile.Tile) {},
-					ShufflePlayersFunc:     func(playerNames []player.Name) {},
+					PlayerCfg:   playerController.Config{WinPoints: 10},
+					TimeFunc:    func() int64 { return 0 },
+					MaxPlayers:  1,
+					NumNewTiles: 1,
+					IdlePeriod:  1 * time.Hour,
+					ShuffleUnusedTilesFunc: func(tiles []tile.Tile) {
+						// Not called
+					},
+					ShufflePlayersFunc: func(playerNames []player.Name) {
+						// Not called
+					},
 				},
 			},
 			wantOk: true,

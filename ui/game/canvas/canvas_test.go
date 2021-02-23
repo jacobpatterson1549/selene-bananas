@@ -56,13 +56,20 @@ func TestDrawTile(t *testing.T) {
 		},
 	}
 	var gotDrawn bool
+
 	ctx := mockContext{
 		FillTextFunc: func(text string, x, y int) {
 			gotDrawn = true
 		},
-		StrokeRectFunc:   func(x, y, width, height int) {},
-		SetFillColorFunc: func(name string) {},
-		FillRectFunc:     func(x, y, width, height int) {},
+		StrokeRectFunc: func(x, y, width, height int) {
+			// not tested
+		},
+		SetFillColorFunc: func(name string) {
+			// not tested
+		},
+		FillRectFunc: func(x, y, width, height int) {
+			// not tested
+		},
 	}
 	for i, test := range drawTileTests {
 		gotDrawn = false

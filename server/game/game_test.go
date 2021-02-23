@@ -50,77 +50,49 @@ func TestInitializeUnusedTilesShuffled(t *testing.T) {
 
 func TestInitializeUnusedTiles(t *testing.T) {
 	initializeUnusedTilesTests := []struct {
-		tileLetters         string
-		wantNum             int
-		checkAllLettersUsed bool
-		wantErr             bool
+		tileLetters string
+		wantErr     bool
+		want        []tile.Tile
 	}{
-		{
-			tileLetters:         defaultTileLetters,
-			wantNum:             144,
-			checkAllLettersUsed: true,
-		},
-		{
-			tileLetters: "AAAABBABACCABAC",
-		},
-		{
-			tileLetters: "SELENE",
-		},
 		{
 			tileLetters: ":(",
 			wantErr:     true,
 		},
+		{
+			tileLetters: "AAABAC",
+			want: []tile.Tile{
+				{ID: 6, Ch: "C"},
+				{ID: 4, Ch: "B"},
+				{ID: 1, Ch: "A"},
+				{ID: 2, Ch: "A"},
+				{ID: 3, Ch: "A"},
+				{ID: 5, Ch: "A"},
+			},
+		},
 	}
 	for i, test := range initializeUnusedTilesTests {
+		shuffleFunc := func(tiles []tile.Tile) {
+			sort.Slice(tiles, func(i, j int) bool {
+				if tiles[i].Ch == tiles[j].Ch {
+					return tiles[i].ID < tiles[j].ID
+				}
+				return tiles[i].Ch > tiles[j].Ch
+			})
+		}
 		g := Game{
 			Config: Config{
-				TileLetters: test.tileLetters,
+				TileLetters:            test.tileLetters,
+				ShuffleUnusedTilesFunc: shuffleFunc,
 			},
 		}
 		err := g.initializeUnusedTiles()
-		if test.wantNum == 0 {
-			test.wantNum = len(test.tileLetters)
-		}
 		switch {
 		case test.wantErr:
 			if err == nil {
 				t.Errorf("Test %v: wanted error", i)
 			}
-		case test.wantNum != len(g.unusedTiles):
-			t.Errorf("wanted %v tiles, but got %v", test.wantNum, len(g.unusedTiles))
-		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
-		case test.checkAllLettersUsed:
-			m := make(map[rune]struct{}, 26)
-			for _, v := range g.unusedTiles {
-				ch := rune(v.Ch[0])
-				if ch < 'A' || ch > 'Z' {
-					t.Errorf("invalid tile: %v", v)
-				}
-				m[ch] = struct{}{}
-			}
-			want := 26
-			got := len(m)
-			if want != got {
-				t.Errorf("wanted %v different letters, but got %v", want, got)
-			}
-		default:
-			// unique ids:
-			tileIDs := make(map[tile.ID]struct{}, len(g.unusedTiles))
-			for _, tile := range g.unusedTiles {
-				if _, ok := tileIDs[tile.ID]; ok {
-					t.Errorf("tile id %v repeated", tile.ID)
-				}
-				tileIDs[tile.ID] = struct{}{}
-			}
-			// Letter char:
-			for i, ti := range g.unusedTiles {
-				want := tile.Letter(test.tileLetters[i : i+1])
-				got := ti.Ch
-				if want != got {
-					t.Errorf("wanted %v tiles, but got %v", want, got)
-				}
-			}
+		case !reflect.DeepEqual(test.want, g.unusedTiles):
+			t.Errorf("Test %v: unusedTiles not equal:\nwanted: %v\ngot:    %v", i, test.want, g.unusedTiles)
 		}
 	}
 }

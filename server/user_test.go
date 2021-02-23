@@ -113,7 +113,7 @@ func TestHandleUserLogin(t *testing.T) {
 		},
 	}
 	wantPoints := 8
-	wantToken := "created token for logged user"
+	wantToken := "created token for logged-in user"
 	for i, test := range handleUserLoginTests {
 		s := Server{
 			log: log.New(io.Discard, "", 0),
@@ -155,16 +155,9 @@ func TestHandleUserLogin(t *testing.T) {
 		w := httptest.NewRecorder()
 		s.handleUserLogin(w, &r)
 		gotCode := w.Code
-		if test.wantCode != gotCode {
-			t.Errorf("Test %v: wanted response code to be %v, but was %v", i, test.wantCode, gotCode)
-		}
 		switch {
-		case test.wantCode == 200:
-			gotBody := w.Body.String()
-			if wantToken != gotBody {
-				t.Errorf("Test %v: wanted response body to be %v, but was %v", i, wantToken, gotBody)
-			}
-			continue
+		case test.wantCode != gotCode:
+			t.Errorf("Test %v: wanted response code to be %v, but was %v", i, test.wantCode, gotCode)
 		case test.tokenizerErr != nil:
 			want := test.tokenizerErr.Error()
 			got := w.Body.String()
@@ -172,10 +165,8 @@ func TestHandleUserLogin(t *testing.T) {
 			if !strings.Contains(got, want) {
 				t.Errorf("Test %v: wanted response body to be %v, but was %v", i, want, got)
 			}
-		default:
-			if w.Body.Len() == 0 {
-				t.Errorf("Test %v: response body should not be empty when an error occurred", i)
-			}
+		case w.Body.Len() == 0:
+			t.Errorf("Test %v: response body should not be empty when an error occurred", i)
 		}
 	}
 }
@@ -244,48 +235,54 @@ func TestHandleUserUpdatePassword(t *testing.T) {
 		username        string
 		password        string
 		newPassword     string
-		wantHandleError bool
-		daoErr          error
-		wantRemoveUser  bool
+		daoUpdateErr    error
+		wantStatusCode  int
+		wantLobbyRemove bool
 	}{
 		{
-			wantHandleError: true,
-		},
-		{
-			username:    "selene",
-			password:    "password123",
-			newPassword: "top_s3cr3t!",
-			daoErr:      fmt.Errorf("problem updating user password"),
+			username:       "INVALID username!",
+			wantStatusCode: 500,
 		},
 		{
 			username:       "selene",
-			password:       "password123",
-			wantRemoveUser: true,
+			password:       "TOP_s3cret!",
+			newPassword:    "MoR&_sCr3T",
+			daoUpdateErr:   fmt.Errorf("error updating user password"),
+			wantStatusCode: 500,
+		},
+		{
+			username:        "selene",
+			password:        "TOP_s3cret!",
+			newPassword:     "MoR&_sCr3T",
+			wantStatusCode:  200,
+			wantLobbyRemove: true,
 		},
 	}
 	for i, test := range handleUserUpdatePasswordTests {
-		userRemoved := false
+		ud := mockUserDao{
+			updatePasswordFunc: func(ctx context.Context, u user.User, newP string) error {
+				switch {
+				case test.username != u.Username:
+					t.Errorf("Test %v: wanted user %v to be deleted, got %v", i, test.username, u.Username)
+				case test.newPassword != newP:
+					t.Errorf("Test %v: wanted new password to be %v, got %v", i, test.newPassword, newP)
+				}
+				return test.daoUpdateErr
+			},
+		}
+		gotLobbyRemove := false
+		l := mockLobby{
+			removeUserFunc: func(username string) {
+				if test.username != username {
+					t.Errorf("Test %v: wanted %v to be removed from lobby, got %v", i, test.username, username)
+				}
+				gotLobbyRemove = true
+			},
+		}
 		s := Server{
-			log: log.New(io.Discard, "", 0),
-			userDao: mockUserDao{
-				updatePasswordFunc: func(ctx context.Context, u user.User, newP string) error {
-					switch {
-					case test.username != u.Username:
-						t.Errorf("Test %v wanted username to update to be %v, got %v", i, test.username, u.Username)
-					case newP != test.newPassword:
-						t.Errorf("Test %v wanted username to update to be %v, got %v", i, test.newPassword, newP)
-					}
-					return test.daoErr
-				},
-			},
-			lobby: mockLobby{
-				removeUserFunc: func(username string) {
-					if test.username != username {
-						t.Errorf("wanted username %v, got %v", test.username, username)
-					}
-					userRemoved = true
-				},
-			},
+			log:     log.New(io.Discard, "", 0),
+			userDao: ud,
+			lobby:   l,
 		}
 		r := http.Request{
 			Form: url.Values{
@@ -296,32 +293,12 @@ func TestHandleUserUpdatePassword(t *testing.T) {
 		}
 		w := httptest.NewRecorder()
 		s.handleUserUpdatePassword(w, &r)
+		gotStatusCode := w.Result().StatusCode
 		switch {
-		case test.wantRemoveUser:
-			if !userRemoved {
-				t.Errorf("Test %v: wanted user to be removed, but was not", i)
-			}
-			want := 200
-			got := w.Code
-			if want != got {
-				t.Errorf("Test %v: wanted response code to be %v, but was %v", i, want, got)
-			}
-		case test.daoErr != nil:
-			want := test.daoErr.Error()
-			got := w.Body.String()
-			if !strings.Contains(got, want) {
-				t.Errorf("Test %v: wanted response body to be %v, but was %v", i, want, got)
-			}
-			fallthrough
-		default: // user creation error
-			if userRemoved {
-				t.Errorf("Test %v: wanted user to notbe removed, but was", i)
-			}
-			want := 500
-			got := w.Code
-			if want != got {
-				t.Errorf("Test %v: wanted response code to be %v, but was %v", i, want, got)
-			}
+		case test.wantStatusCode != gotStatusCode:
+			t.Errorf("Test %v: wanted status code to be %v, got %v", i, test.wantStatusCode, gotStatusCode)
+		case test.wantLobbyRemove != gotLobbyRemove:
+			t.Errorf("Test %v: wanted lobby.RemoveUser to be called %v, got %v", i, test.wantLobbyRemove, gotLobbyRemove)
 		}
 	}
 }
@@ -330,45 +307,49 @@ func TestHandleUserDelete(t *testing.T) {
 	handleUserDeleteTests := []struct {
 		username        string
 		password        string
-		wantHandleError bool
-		daoErr          error
-		wantRemoveUser  bool
+		daoDeleteErr    error
+		wantStatusCode  int
+		wantLobbyRemove bool
 	}{
 		{
-			wantHandleError: true,
-		},
-		{
-			username: "selene",
-			password: "password123",
-			daoErr:   fmt.Errorf("problem updating user password"),
+			username:       "INVALID username!",
+			wantStatusCode: 500,
 		},
 		{
 			username:       "selene",
-			password:       "password123",
-			wantRemoveUser: true,
+			password:       "TOP_s3cret!",
+			daoDeleteErr:   fmt.Errorf("error deleting user from dao"),
+			wantStatusCode: 500,
+		},
+		{
+			username:        "selene",
+			password:        "TOP_s3cret!",
+			wantStatusCode:  200,
+			wantLobbyRemove: true,
 		},
 	}
 	for i, test := range handleUserDeleteTests {
-		userRemoved := false
+		ud := mockUserDao{
+			deleteFunc: func(ctx context.Context, u user.User) error {
+				if test.username != u.Username {
+					t.Errorf("Test %v: wanted user %v to be deleted, got %v", i, test.username, u.Username)
+				}
+				return test.daoDeleteErr
+			},
+		}
+		gotLobbyRemove := false
+		l := mockLobby{
+			removeUserFunc: func(username string) {
+				if test.username != username {
+					t.Errorf("Test %v: wanted %v to be removed from lobby, got %v", i, test.username, username)
+				}
+				gotLobbyRemove = true
+			},
+		}
 		s := Server{
-			log: log.New(io.Discard, "", 0),
-			userDao: mockUserDao{
-				deleteFunc: func(ctx context.Context, u user.User) error {
-					switch {
-					case test.username != u.Username:
-						t.Errorf("Test %v wanted username to update to be %v, got %v", i, test.username, u.Username)
-					}
-					return test.daoErr
-				},
-			},
-			lobby: mockLobby{
-				removeUserFunc: func(username string) {
-					if test.username != username {
-						t.Errorf("wanted username %v, got %v", test.username, username)
-					}
-					userRemoved = true
-				},
-			},
+			log:     log.New(io.Discard, "", 0),
+			userDao: ud,
+			lobby:   l,
 		}
 		r := http.Request{
 			Form: url.Values{
@@ -378,32 +359,12 @@ func TestHandleUserDelete(t *testing.T) {
 		}
 		w := httptest.NewRecorder()
 		s.handleUserDelete(w, &r)
+		gotStatusCode := w.Result().StatusCode
 		switch {
-		case test.wantRemoveUser:
-			if !userRemoved {
-				t.Errorf("Test %v: wanted user to be removed, but was not", i)
-			}
-			want := 200
-			got := w.Code
-			if want != got {
-				t.Errorf("Test %v: wanted response code to be %v, but was %v", i, want, got)
-			}
-		case test.daoErr != nil:
-			want := test.daoErr.Error()
-			got := w.Body.String()
-			if !strings.Contains(got, want) {
-				t.Errorf("Test %v: wanted response body to be %v, but was %v", i, want, got)
-			}
-			fallthrough
-		default: // user creation error
-			if userRemoved {
-				t.Errorf("Test %v: wanted user to notbe removed, but was", i)
-			}
-			want := 500
-			got := w.Code
-			if want != got {
-				t.Errorf("Test %v: wanted response code to be %v, but was %v", i, want, got)
-			}
+		case test.wantStatusCode != gotStatusCode:
+			t.Errorf("Test %v: wanted status code to be %v, got %v", i, test.wantStatusCode, gotStatusCode)
+		case test.wantLobbyRemove != gotLobbyRemove:
+			t.Errorf("Test %v: wanted lobby.RemoveUser to be called %v, got %v", i, test.wantLobbyRemove, gotLobbyRemove)
 		}
 	}
 }

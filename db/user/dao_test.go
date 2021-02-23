@@ -196,23 +196,20 @@ func TestDaoUpdatePassword(t *testing.T) {
 		}
 		s := mockScanner{
 			scanFunc: func(dest ...interface{}) error {
-				if len(dest) == 3 {
-					if d, ok := dest[1].(*string); ok {
-						*d = test.dbP
-					}
-				}
+				*dest[1].(*string) = test.dbP
 				return nil
 			},
 		}
-		d := Dao{
-			db: mockDatabase{
-				queryFunc: func(ctx context.Context, q db.Query) db.Scanner {
-					return s
-				},
-				execFunc: func(ctx context.Context, queries ...db.Query) error {
-					return test.dbExecErr
-				},
+		db := mockDatabase{
+			queryFunc: func(ctx context.Context, q db.Query) db.Scanner {
+				return s
 			},
+			execFunc: func(ctx context.Context, queries ...db.Query) error {
+				return test.dbExecErr
+			},
+		}
+		d := Dao{
+			db: db,
 		}
 		ctx := context.Background()
 		err := d.UpdatePassword(ctx, u, test.newP)
@@ -245,42 +242,26 @@ func TestDaoUpdatePointsIncrement(t *testing.T) {
 			wantOk: true,
 		},
 	}
-	checkUpdateQueries := func(usernamePoints map[string]int, queries []db.Query) error {
-		updatedUsernames := make(map[string]struct{}, len(usernamePoints))
-		for i, q := range queries {
-			args := q.Args()
-			u, ok := args[0].(string)
-			if !ok {
-				return fmt.Errorf("query %v: arg0 was not a string", i)
-			}
-			p2, ok := args[1].(int)
-			if !ok {
-				return fmt.Errorf("query %v: arg1 was not an int", i)
-			}
-			p1, ok := usernamePoints[u]
-			switch {
-			case !ok:
-				return fmt.Errorf("query %v: unwanted username: %v", i, u)
-			case p1 != p2:
-				return fmt.Errorf("query %v: wanted to update points for %v to %v, got: %v ", i, u, p1, p2)
-			}
-			updatedUsernames[u] = struct{}{}
-		}
-		if len(usernamePoints) != len(updatedUsernames) {
-			return fmt.Errorf("wanted to update %v users, got %v", len(usernamePoints), len(updatedUsernames))
-		}
-		return nil
-	}
 	for i, test := range updatePointsIncrementTests {
-		d := Dao{
-			db: mockDatabase{
-				execFunc: func(ctx context.Context, queries ...db.Query) error {
-					if test.dbExecErr != nil {
-						return test.dbExecErr
-					}
-					return checkUpdateQueries(test.usernamePoints, queries)
-				},
+		db := mockDatabase{
+			execFunc: func(ctx context.Context, queries ...db.Query) error {
+				if test.dbExecErr != nil {
+					return test.dbExecErr
+				}
+				updatedUsernamePoints := make(map[string]int, len(queries))
+				for _, q := range queries {
+					u := q.Args()[0].(string)
+					p := q.Args()[1].(int)
+					updatedUsernamePoints[u] = p
+				}
+				if !reflect.DeepEqual(test.usernamePoints, updatedUsernamePoints) {
+					return fmt.Errorf("Test %v: update usernamePoints not equal:\nwanted: %v\ngot:    %v", i, test.usernamePoints, updatedUsernamePoints)
+				}
+				return nil
 			},
+		}
+		d := Dao{
+			db: db,
 		}
 		ctx := context.Background()
 		err := d.UpdatePointsIncrement(ctx, test.usernamePoints)
