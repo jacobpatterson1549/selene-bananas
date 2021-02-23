@@ -81,8 +81,9 @@ $(SERVER_EMBED_DIR): $(RESOURCES_DIR)
 	mkdir -p $@
 	# creating hard links, not soft symbolic links because we own the resources:
 	cp -Rlf $(PWD)/$(RESOURCES_DIR)/* $@
+	cp -lf LICENSE $@
 	# copying wasm_exec.js because linking it may require us to have write privileges on it
-	cp -Rf $(GO_WASM_PATH)/wasm_exec.js $@
+	cp -f $(GO_WASM_PATH)/wasm_exec.js $@
 	# the client object is required by go install as an embedded file, even though it is built later
 	touch $(CLIENT_OBJ)
 

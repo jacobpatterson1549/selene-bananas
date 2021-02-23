@@ -335,7 +335,7 @@ func (s *Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/", "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html":
 		s.handleFile(w, r, s.serveTemplate(r.URL.Path))
-	case "/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png":
+	case "/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/LICENSE":
 		s.handleFile(w, r, s.staticFiles)
 	case "/lobby":
 		s.handleUserLobby(w, r)

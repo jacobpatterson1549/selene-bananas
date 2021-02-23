@@ -25,4 +25,5 @@ var embeddedTemplateFS embed.FS
 //go:embed embed/wasm_exec.js
 //go:embed embed/robots.txt
 //go:embed embed/favicon.png
+//go:embed embed/LICENSE
 var embeddedStaticFS embed.FS
