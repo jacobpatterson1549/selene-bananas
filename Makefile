@@ -4,9 +4,8 @@ BUILD_DIR := build
 RESOURCES_DIR    := resources
 SERVER_EMBED_DIR := cmd/server/embed
 GENERATE_SRC := game/message/type_string.go
-VERSION_OBJ   := $(SERVER_EMBED_DIR)/version.txt
-CLIENT_OBJ    := $(SERVER_EMBED_DIR)/main.wasm
-WASM_EXEC_OBJ := $(SERVER_EMBED_DIR)/wasm_exec.js
+VERSION_OBJ   := version.txt
+CLIENT_OBJ    := main.wasm
 GO := go
 GO_PACKAGES  := ./...
 GO_INSTALL   := $(GO) install
@@ -18,10 +17,10 @@ GO_BUILD     := $(GO) build # -race
 GO_ARGS      :=
 GO_WASM_ARGS := GOOS=js GOARCH=wasm
 GO_WASM_PATH := $(shell $(GO) env GOROOT)/misc/wasm
-SERVER_OBJ       := $(BUILD_DIR)/main
-SERVER_TEST      := $(BUILD_DIR)/server.test
-CLIENT_TEST      := $(BUILD_DIR)/client.test
-SERVER_BENCHMARK := $(BUILD_DIR)/server.benchmark
+SERVER_OBJ       := main
+SERVER_TEST      := server.test
+CLIENT_TEST      := client.test
+SERVER_BENCHMARK := server.benchmark
 RESOURCES_SRC := $(shell find $(RESOURCES_DIR) -type f)
 # exclude the generated source from go sources because it is created after the version, which depends on romal source
 GO_SRC_FN = find $(1) $(foreach g,$(GENERATE_SRC),-path $g -prune -o) -name *.go -print
@@ -29,37 +28,39 @@ SERVER_SRC := $(shell $(call GO_SRC_FN, cmd/server/ game/ server/ db/))
 CLIENT_SRC := $(shell $(call GO_SRC_FN, cmd/ui/     game/ ui/))
 SERVE_ARGS := $(shell grep -s -v "^\#" .env)
 
-$(SERVER_OBJ): $(CLIENT_OBJ) $(SERVER_TEST) | $(BUILD_DIR)
+$(BUILD_DIR)/$(SERVER_OBJ): $(BUILD_DIR)/$(CLIENT_OBJ) $(BUILD_DIR)/$(SERVER_TEST) $(BUILD_DIR)/$(VERSION_OBJ) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep cmd/server \
 		| $(GO_ARGS) xargs $(GO_BUILD) \
 			-o $@
 
-$(CLIENT_OBJ): $(CLIENT_TEST) | $(SERVER_EMBED_DIR)
+$(BUILD_DIR)/$(CLIENT_OBJ): $(BUILD_DIR)/$(CLIENT_TEST) | $(SERVER_EMBED_DIR)
 	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep cmd/ui \
 		| $(GO_WASM_ARGS) xargs $(GO_BUILD) \
-			-o $@
+			-o $(SERVER_EMBED_DIR)/$(@F)
+	touch $@
 
-$(SERVER_TEST): $(GENERATE_SRC) | $(BUILD_DIR)
+
+$(BUILD_DIR)/$(SERVER_TEST): $(SERVER_SRC) $(GENERATE_SRC) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
 		| $(GO_ARGS) xargs $(GO_TEST)
 	touch $@
 
-$(CLIENT_TEST): $(GENERATE_SRC) | $(BUILD_DIR)
+$(BUILD_DIR)/$(CLIENT_TEST): $(CLIENT_SRC) $(GENERATE_SRC) | $(BUILD_DIR)
 	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep ui \
 		| $(GO_WASM_ARGS) xargs $(GO_TEST) \
 			-exec=$(GO_WASM_PATH)/go_js_wasm_exec
 	touch $@
 
-$(SERVER_BENCHMARK): $(SERVER_SRC) $(GENERATE_SRC) | $(BUILD_DIR)
+$(BUILD_DIR)/$(SERVER_BENCHMARK): $(SERVER_SRC) $(GENERATE_SRC) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
 		| $(GO_ARGS) xargs $(GO_BENCH)
 	touch $@
 
-$(GENERATE_SRC): $(VERSION_OBJ)
+$(GENERATE_SRC): $(SERVER_EMBED_DIR)
 	$(GO_INSTALL) $(GO_PACKAGES)
 	$(GO_GENERATE) $(GO_PACKAGES)
 
-$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(SERVER_EMBED_DIR)
+$(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) | $(SERVER_EMBED_DIR)
 	find . \
 			-mindepth 2 \
 			-path "*/.*" -prune -o \
@@ -71,8 +72,9 @@ $(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(SERVER_EMBED_DIR)
 		| xargs tar -c \
 		| md5sum \
 		| cut -c -32 \
-		| tee $@ \
-		| xargs echo $@ is
+		| tee $(SERVER_EMBED_DIR)/$(@F) \
+		| xargs echo $(SERVER_EMBED_DIR)/$(@F) is
+	touch $@
 
 $(BUILD_DIR):
 	mkdir -p $@
@@ -84,15 +86,16 @@ $(SERVER_EMBED_DIR): $(RESOURCES_DIR)
 	cp -lf LICENSE $@
 	# copying wasm_exec.js because linking it may require us to have write privileges on it
 	cp -f $(GO_WASM_PATH)/wasm_exec.js $@
-	# the client object is required by go install as an embedded file, even though it is built later
-	touch $(CLIENT_OBJ)
+	# the client object and version are required by go install as embedded files, even though they are built later
+	touch $(SERVER_EMBED_DIR)/$(CLIENT_OBJ)
+	touch $(SERVER_EMBED_DIR)/$(VERSION_OBJ)
 
 serve: $(SERVER_OBJ)
-	$(SERVE_ARGS) $(SERVER_OBJ)
+	$(SERVE_ARGS) $(BUILD_DIR)/$(SERVER_OBJ)
 
 serve-tcp: $(SERVER_OBJ)
 	sudo setcap cap_net_bind_service=+ep $(SERVER_OBJ)
-	$(SERVE_ARGS) HTTP_PORT=80 HTTPS_PORT=443 $(SERVER_OBJ)
+	$(SERVE_ARGS) HTTP_PORT=80 HTTPS_PORT=443 $(BUILD_DIR)/$(SERVER_OBJ)
 
 clean:
 	rm -rf $(BUILD_DIR) $(SERVER_EMBED_DIR) $(GENERATE_SRC)
