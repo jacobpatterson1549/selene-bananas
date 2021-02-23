@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/fs"
 	"log"
 	"mime"
 	"net"
@@ -114,7 +115,7 @@ const (
 )
 
 // NewServer creates a Server from the Config
-func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby) (*Server, error) {
+func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby, serverFS fs.FS) (*Server, error) {
 	if err := cfg.validate(log, tokenizer, userDao, lobby); err != nil {
 		return nil, fmt.Errorf("creating server: validation: %w", err)
 	}
@@ -153,11 +154,8 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 		Handler: httpServeMux,
 	}
 	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
-	templateFiles, err := templateFiles()
-	if err != nil {
-		return nil, fmt.Errorf("loading template file names: %v", err)
-	}
-	template, err := template.ParseFiles(templateFiles...)
+	templateFileGlobs := templateFileGlobs()
+	template, err := template.ParseFS(serverFS, templateFileGlobs...)
 	if err != nil {
 		return nil, fmt.Errorf("parsing template: %v", err)
 	}
@@ -374,25 +372,16 @@ func (s *Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// templateFiles gets the list of available resources for templates
-func templateFiles() ([]string, error) {
-	var filenames []string
-	templateFileGlobs := []string{
-		"resources/html/**/*.html",
-		"resources/fa/*.svg",
-		"resources/favicon.svg",
-		"resources/index.css",
-		"resources/*.js",
-		"resources/manifest.json",
+// templateFileGlobs gets the list of available resources for templates
+func templateFileGlobs() []string {
+	return []string{
+		"html/**/*.html",
+		"fa/*.svg",
+		"favicon.svg",
+		"index.css",
+		"*.js",
+		"manifest.json",
 	}
-	for _, g := range templateFileGlobs {
-		matches, err := filepath.Glob(g)
-		if err != nil {
-			return nil, err
-		}
-		filenames = append(filenames, matches...)
-	}
-	return filenames, nil
 }
 
 // serveTemplate servers the file from the data-driven template.  The name is assumed to have a leading slash that is ignored.
