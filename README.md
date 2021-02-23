@@ -15,7 +15,7 @@ Uses WebAssembly to manage browser logic.
 
 ## Dependencies
 
-New dependencies are automatically added to [go.mod](go/go.mod) when the project is built.
+New dependencies are automatically added to [go.mod](go.mod) when the project is built.
 * [pq](https://github.com/lib/pq) provides the Postgres driver for storing user passwords and points
 * [Gorilla Websockets](https://github.com/gorilla/websocket) are used for bidirectional communication between users and the server
 * [jwt-go](https://github.com/dgrijalva/jwt-go) is used for stateless web sessions
@@ -23,6 +23,14 @@ New dependencies are automatically added to [go.mod](go/go.mod) when the project
 * [Font-Awesome](https://github.com/FortAwesome/Font-Awesome) provides the "copyright", "github," "linkedin", and "gavel" icons on the about page; they were copied from version [5.13.0](https://github.com/FortAwesome/Font-Awesome/releases/tag/5.13.0) to [resources/fa](resources/fa).
 
 ## Build/Run
+
+Building the application requires [Go 1.16](https://golang.org/dl/).
+
+The [Makefile](Makefile) builds and runs the application. Run `make` without any arguments to build the server with the client and other resources embedded in it.  This will likely need to be done before using an IDE in order to generate some files and prepropulate the embedded filesystem used by the the server.
+
+[Node](https://github.com/nodejs) is needed to run WebAssembly tests.
+
+Run `make serve` to build and run the application.
 
 ### Environment configuration
 
@@ -88,13 +96,9 @@ By default, the server will run on ports 80 and 443 for http and https traffic. 
 
 If the server handles HTTPS by providing its own certificate, use the `PORT` variable to specify the https port.  When POST is defined, no HTTP server will be started from `HTTP_PORT` and certificates are not read from the `TLS_CERT_FILE` and `TLS_KEY_FILE`.
 
-##### Local Default TCP HTTP Ports
+##### Serve on Default TCP HTTP Ports
 
 Run `make serve-tcp` to run on port 80 for HTTP and port 443 for HTTPS (default TCP ports).  Using these ports requires `sudo` (root) access.
-
-### Make
-
-The [Makefile](Makefile) runs the application locally.  This requires Go and a Postgres database to be installed.  [Node](https://github.com/nodejs) is needed to run WebAssembly tests.  Run `make serve` to build and run the application.
 
 ### Docker
 
