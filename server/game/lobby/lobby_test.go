@@ -2,7 +2,7 @@ package lobby
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http/httptest"
 	"reflect"
@@ -15,7 +15,7 @@ import (
 )
 
 func TestNewLobby(t *testing.T) {
-	testLog := log.New(ioutil.Discard, "", 0)
+	testLog := log.New(io.Discard, "", 0)
 	testSocketRunner := mockRunner{
 		RunFunc: func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 			t.Error("sm run called")
@@ -120,7 +120,7 @@ func TestRun(t *testing.T) {
 		socketRunnerRun := false
 		gameRunnerRun := false
 		l := Lobby{
-			log: log.New(ioutil.Discard, "", 0),
+			log: log.New(io.Discard, "", 0),
 			socketRunner: &mockRunner{
 				RunFunc: func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 					socketRunnerRun = true
@@ -179,7 +179,7 @@ func TestAddUser(t *testing.T) {
 		r := httptest.NewRequest("GET", "/addUser", nil)
 		socketRunnerIn := make(chan message.Message, 1)
 		l := Lobby{
-			log: log.New(ioutil.Discard, "", 0),
+			log: log.New(io.Discard, "", 0),
 			socketRunner: &mockRunner{
 				RunFunc: func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 					wg.Add(1)
@@ -236,7 +236,7 @@ func TestRemoveUser(t *testing.T) {
 	}
 	var wg sync.WaitGroup
 	l := &Lobby{
-		log: log.New(ioutil.Discard, "", 0),
+		log: log.New(io.Discard, "", 0),
 		socketRunner: &mockRunner{
 			RunFunc: func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 				go func() {
@@ -272,7 +272,7 @@ func TestHandleSocketMessage(t *testing.T) {
 		Info: "test message",
 	}
 	l := Lobby{
-		log: log.New(ioutil.Discard, "", 0),
+		log: log.New(io.Discard, "", 0),
 		socketRunner: &mockRunner{
 			RunFunc: func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 				return socketRunnerOut
@@ -383,7 +383,7 @@ func TestHandleGameMessage(t *testing.T) {
 		gmOut := make(chan message.Message)
 		var wg sync.WaitGroup
 		l := Lobby{
-			log: log.New(ioutil.Discard, "", 0),
+			log: log.New(io.Discard, "", 0),
 			socketRunner: &mockRunner{
 				RunFunc: func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 					wg.Add(1)

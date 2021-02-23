@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -19,7 +19,7 @@ import (
 )
 
 func TestNewRunner(t *testing.T) {
-	testLog := log.New(ioutil.Discard, "", 0)
+	testLog := log.New(io.Discard, "", 0)
 	newRunnerTests := []struct {
 		log          *log.Logger
 		RunnerConfig RunnerConfig
@@ -107,7 +107,7 @@ func TestRunRunner(t *testing.T) {
 	}
 	for i, test := range runRunnerTests {
 		r := Runner{
-			log: log.New(ioutil.Discard, "", 0),
+			log: log.New(io.Discard, "", 0),
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
@@ -212,7 +212,7 @@ func TestRunnerHandleAddSocketCheckResult(t *testing.T) {
 			},
 		}
 		r := Runner{
-			log:           log.New(ioutil.Discard, "", 0),
+			log:           log.New(io.Discard, "", 0),
 			upgrader:      mockUpgrader(upgradeFunc),
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
 			RunnerConfig:  runnerConfig,
@@ -325,7 +325,7 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			SocketConfig:     test.Config,
 		}
 		r := Runner{
-			log:           log.New(ioutil.Discard, "", 0),
+			log:           log.New(io.Discard, "", 0),
 			upgrader:      mockUpgrader(upgradeFunc),
 			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
 			playerGames:   make(map[player.Name]map[game.ID]net.Addr),
@@ -451,7 +451,7 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 			},
 		}
 		r := Runner{
-			log:           log.New(ioutil.Discard, "", 0),
+			log:           log.New(io.Discard, "", 0),
 			upgrader:      mockUpgrader(upgradeFunc),
 			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
 			playerGames:   make(map[player.Name]map[game.ID]net.Addr),

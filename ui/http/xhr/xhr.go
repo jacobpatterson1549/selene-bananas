@@ -5,7 +5,7 @@ package xhr
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"strings"
 	"syscall/js"
 	"time"
@@ -39,7 +39,7 @@ func (c HTTPClient) Do(req http.Request) (*http.Response, error) {
 	}
 	var body string
 	if req.Body != nil {
-		bytes, err := ioutil.ReadAll(req.Body)
+		bytes, err := io.ReadAll(req.Body)
 		if err != nil {
 			return nil, errors.New("getting request body: " + err.Error())
 		}
@@ -63,7 +63,7 @@ func handleEvent(xhr js.Value, responseC chan<- http.Response, errC chan<- error
 			code := xhr.Get("status").Int()
 			response := xhr.Get("response").String()
 			responseR := strings.NewReader(response)
-			body := ioutil.NopCloser(responseR)
+			body := io.NopCloser(responseR)
 			responseC <- http.Response{
 				Code: code,
 				Body: body,

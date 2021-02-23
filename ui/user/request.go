@@ -5,7 +5,6 @@ package user
 import (
 	"errors"
 	"io"
-	"io/ioutil"
 	"strconv"
 	"strings"
 	"syscall/js"
@@ -99,7 +98,7 @@ func (u *User) newRequest(f dom.Form) (*request, error) {
 	case "/user_login":
 		handler = func(body io.ReadCloser) {
 			defer body.Close()
-			jwt, err := ioutil.ReadAll(body)
+			jwt, err := io.ReadAll(body)
 			if err != nil {
 				u.log.Error("reading response body: " + err.Error())
 				return
@@ -125,7 +124,7 @@ func (u *User) handleResponseError(resp *http.Response) {
 	u.Logout()
 	body := resp.Body
 	defer body.Close()
-	message, err := ioutil.ReadAll(body)
+	message, err := io.ReadAll(body)
 	switch {
 	case err != nil:
 		u.log.Error("reading error response body: " + err.Error())

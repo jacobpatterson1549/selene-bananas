@@ -2,7 +2,7 @@ package game
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"log"
 	"reflect"
 	"sync"
@@ -20,7 +20,7 @@ import (
 func TestNewRunner(t *testing.T) {
 	wc := mockWordChecker{}
 	ud := mockUserDao{}
-	testLog := log.New(ioutil.Discard, "", 0)
+	testLog := log.New(io.Discard, "", 0)
 	newRunnerTests := []struct {
 		log *log.Logger
 		RunnerConfig
@@ -118,7 +118,7 @@ func TestRunRunner(t *testing.T) {
 	}
 	for i, test := range runRunnerTests {
 		r := Runner{
-			log: log.New(ioutil.Discard, "", 0),
+			log: log.New(io.Discard, "", 0),
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
@@ -139,7 +139,7 @@ func TestGameCreate(t *testing.T) {
 	basicGameConfig := &game.Config{
 		CheckOnSnag: true,
 	}
-	testLog := log.New(ioutil.Discard, "", 0)
+	testLog := log.New(io.Discard, "", 0)
 	gameCreateTests := []struct {
 		m      message.Message
 		wantOk bool
@@ -308,7 +308,7 @@ func TestGameDelete(t *testing.T) {
 		in := make(chan message.Message)
 		gIn := make(chan message.Message)
 		r := Runner{
-			log: log.New(ioutil.Discard, "", 0),
+			log: log.New(io.Discard, "", 0),
 			games: map[game.ID]chan<- message.Message{
 				5: gIn,
 			},
@@ -382,7 +382,7 @@ func TestHandleGameMessage(t *testing.T) {
 		in := make(chan message.Message)
 		gIn := make(chan message.Message)
 		r := Runner{
-			log: log.New(ioutil.Discard, "", 0),
+			log: log.New(io.Discard, "", 0),
 			games: map[game.ID]chan<- message.Message{
 				3: gIn,
 			},
