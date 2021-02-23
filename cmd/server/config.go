@@ -9,7 +9,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 	"unicode"
@@ -95,11 +94,11 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 		ColorConfig:   colorConfig,
 		NoTLSRedirect: m.noTLSRedirect,
 	}
-	templateFS, err := fs.Sub(embeddedTemplateFS, "embed")
+	templateFS, err := unembedFS(embeddedTemplateFS)
 	if err != nil {
 		return nil, fmt.Errorf("getting embed subdirectory for server template file system: %w", err)
 	}
-	staticFS, err := fs.Sub(embeddedStaticFS, "embed")
+	staticFS, err := unembedFS(embeddedStaticFS)
 	if err != nil {
 		return nil, fmt.Errorf("getting embed subdirectory for server static file system: %w", err)
 	}
@@ -136,7 +135,11 @@ func tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
 
 // sqlDatabase creates a SQL database to persist user information.
 func sqlDatabase(ctx context.Context, m mainFlags) (db.Database, error) {
-	sqlFiles, err := Files(embeddedSQLFS)
+	sqlFS, err := unembedFS(embeddedSQLFS)
+	if err != nil {
+		return nil, fmt.Errorf("getting embed subdirectory for sql file system: %w", err)
+	}
+	sqlFiles, err := sqlFiles(sqlFS)
 	if err != nil {
 		return nil, err
 	}
@@ -154,6 +157,30 @@ func sqlDatabase(ctx context.Context, m mainFlags) (db.Database, error) {
 		QueryPeriod: 5 * time.Second,
 	}
 	return cfg.NewDatabase(ctx, setupSQL)
+}
+
+// sqlFiles opens the SQL files needed to manage user data.
+func sqlFiles(fsys fs.FS) ([]fs.File, error) {
+	// sqlFileNames are the SQL files that are used for and by the dao.
+	// They are ordered.
+	sqlFileNames := []string{
+		"users",
+		"user_create",
+		"user_read",
+		"user_update_password",
+		"user_update_points_increment",
+		"user_delete",
+	}
+	userSQLFiles := make([]fs.File, len(sqlFileNames))
+	for i, n := range sqlFileNames {
+		n = fmt.Sprintf("sql/%s.sql", n)
+		f, err := fsys.Open(n)
+		if err != nil {
+			return nil, fmt.Errorf("opening setup file %v: %w", n, err)
+		}
+		userSQLFiles[i] = f
+	}
+	return userSQLFiles, nil
 }
 
 // lobbyConfig creates the configuration for running and managing players of games.
@@ -248,42 +275,4 @@ func cleanVersion(v string) (string, error) {
 		}
 	}
 	return cleanV, nil
-}
-
-// Files collects the files in the file system by name.
-func Files(fsys fs.FS) (map[string]fs.File, error) {
-	if fsys == nil {
-		return nil, nil
-	}
-	files := make(map[string]fs.File)
-	var walkDir fs.WalkDirFunc
-	walkDir = func(path string, d fs.DirEntry, err error) error {
-		switch {
-		case err == fs.SkipDir:
-			// NOOP
-		case d.IsDir():
-			dirEntries, err := fs.ReadDir(fsys, path)
-			if err != nil {
-				return err
-			}
-			for _, de := range dirEntries {
-				p := filepath.Join(path, de.Name())
-				if err := walkDir(p, de, nil); err != nil {
-					return err
-				}
-			}
-		default:
-			f, err := fsys.Open(path)
-			if err != nil {
-				return err
-			}
-			files[path] = f
-		}
-		return nil
-	}
-	err := fs.WalkDir(fsys, ".", walkDir)
-	if err != nil {
-		return nil, fmt.Errorf("collecting files: %w", err)
-	}
-	return files, nil
 }

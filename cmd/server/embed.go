@@ -1,6 +1,9 @@
 package main
 
-import "embed"
+import (
+	"embed"
+	"io/fs"
+)
 
 //go:embed embed/version.txt
 var embedVersion string
@@ -27,3 +30,8 @@ var embeddedTemplateFS embed.FS
 //go:embed embed/favicon.png
 //go:embed embed/LICENSE
 var embeddedStaticFS embed.FS
+
+// unembedFS returns the embed/ subdirectory of the file system.
+func unembedFS(fsys fs.FS) (fs.FS, error) {
+	return fs.Sub(fsys, "embed")
+}
