@@ -281,16 +281,16 @@ func (s *Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 	case r.TLS == nil && s.NoTLSRedirect && !s.hasSecHeader(r):
 		s.redirectToHTTPS(w, r)
 	case r.Method == "GET":
-		s.handleHTTPSGet(w, r)
+		s.handleGet(w, r)
 	case r.Method == "POST":
-		s.handleHTTPSPost(w, r)
+		s.handlePost(w, r)
 	default:
 		s.httpError(w, http.StatusMethodNotAllowed)
 	}
 }
 
-// handleHTTPSGet calls handlers for GET endpoints.
-func (s *Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
+// handleGet calls handlers for GET endpoints.
+func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/", "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html":
 		s.handleFile(w, r, s.serveTemplate(r.URL.Path[1:]))
@@ -305,8 +305,8 @@ func (s *Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleHTTPSPost checks authentication and calls handlers for POST endpoints.
-func (s *Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
+// handlePost checks authentication and calls handlers for POST endpoints.
+func (s *Server) handlePost(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/user_create", "/user_login":
 		// [unauthenticated]

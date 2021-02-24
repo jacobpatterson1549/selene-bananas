@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"io"
@@ -12,6 +13,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/jacobpatterson1549/selene-bananas/db/user"
 )
 
 func TestHandleFileVersion(t *testing.T) {
@@ -420,5 +423,134 @@ func TestWrappedResponseWriter(t *testing.T) {
 	got := bb.String()
 	if want != got {
 		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
+	}
+}
+
+func TestHandleGet(t *testing.T) {
+	type handleGetTest struct {
+		path     string
+		wantCode int
+	}
+	var handleGetTests []handleGetTest
+	for _, path := range []string{"/invalid/get/path", "/ping"} {
+		handleGetTests = append(handleGetTests,
+			handleGetTest{path: path, wantCode: 404},
+		)
+	}
+	// TODO: add mock monitor, test GET /monitor (because running monitor slows down testing)
+	for _, path := range []string{"/", "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html", "/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/LICENSE", "/lobby"} {
+		handleGetTests = append(handleGetTests,
+			handleGetTest{path: path, wantCode: 200},
+		)
+	}
+	for i, test := range handleGetTests {
+		r := httptest.NewRequest("", test.path+"?v=1", nil)
+		w := httptest.NewRecorder()
+		tmplName := test.path[1:]
+		if len(tmplName) == 0 {
+			tmplName = "index.html"
+		}
+		tmpl := template.Must(template.New(tmplName).Parse(""))
+		s := Server{
+			log: log.New(io.Discard, "", 0),
+			tokenizer: mockTokenizer{
+				ReadUsernameFunc: func(tokenString string) (string, error) {
+					return "", nil
+				},
+			},
+			lobby: mockLobby{
+				addUserFunc: func(username string, w http.ResponseWriter, r *http.Request) error {
+					return nil
+				},
+			},
+			template: tmpl,
+			serveStatic: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+				// NOOP
+			}),
+			Config: Config{
+				Version: "1",
+			},
+		}
+		s.handleGet(w, r)
+		gotCode := w.Code
+		if test.wantCode != gotCode {
+			t.Errorf("Test %v:\nGET to %v: status codes not equal: wanted: %v, got: %v", i, test.path, test.wantCode, gotCode)
+		}
+	}
+}
+
+func TestHandlePost(t *testing.T) {
+	type handlePostTest struct {
+		path          string
+		authorization string
+		wantCode      int
+	}
+	var handlePostTests []handlePostTest
+	for _, path := range []string{"/", "/invalid/post/path"} {
+		handlePostTests = append(handlePostTests,
+			handlePostTest{path: path, wantCode: 403},
+			handlePostTest{path: path, wantCode: 404, authorization: "Bearer GOOD"},
+		)
+	}
+	for _, path := range []string{"/user_create", "/user_login"} {
+		handlePostTests = append(handlePostTests,
+			handlePostTest{path: path, wantCode: 200},
+		)
+	}
+	for _, path := range []string{"/user_update_password", "/user_delete", "/ping"} {
+		handlePostTests = append(handlePostTests,
+			handlePostTest{path: path, wantCode: 403},
+			handlePostTest{path: path, wantCode: 200, authorization: "Bearer GOOD"},
+		)
+	}
+	u := "selene"
+	formParams := url.Values{
+		"username":         {u},
+		"password":         {"s3cr3t_old"},
+		"password_confirm": {"s3cr3t_new"},
+	}
+	mockTokenizer := mockTokenizer{
+		CreateFunc: func(username string, points int) (string, error) {
+			return "", nil
+		},
+		ReadUsernameFunc: func(tokenString string) (string, error) {
+			return u, nil
+		},
+	}
+	mockLobby := mockLobby{
+		removeUserFunc: func(username string) {
+			// NOOP
+		},
+	}
+	mockUserDao := mockUserDao{
+		createFunc: func(ctx context.Context, u user.User) error {
+			return nil
+		},
+		readFunc: func(ctx context.Context, u user.User) (*user.User, error) {
+			return &user.User{}, nil
+		},
+		updatePasswordFunc: func(ctx context.Context, u user.User, newP string) error {
+			return nil
+		},
+		deleteFunc: func(ctx context.Context, u user.User) error {
+			return nil
+		},
+	}
+	for i, test := range handlePostTests {
+		r := httptest.NewRequest("", test.path, nil)
+		r.Form = formParams
+		r.Header.Add("Authorization", test.authorization)
+		w := httptest.NewRecorder()
+		s := Server{
+			log:       log.New(io.Discard, "", 0),
+			tokenizer: mockTokenizer,
+			lobby:     mockLobby,
+			userDao:   mockUserDao,
+		}
+		s.handlePost(w, r)
+		gotCode := w.Code
+		if test.wantCode != gotCode {
+			t.Errorf("Test %v:\nPOST to %v, authorization='%v': status codes not equal: wanted: %v, got: %v", i, test.path, test.authorization, test.wantCode, gotCode)
+		}
 	}
 }
