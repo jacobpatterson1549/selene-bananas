@@ -31,11 +31,11 @@ type (
 		tokenizer   Tokenizer
 		userDao     UserDao
 		lobby       Lobby
-		httpsServer *http.Server
 		httpServer  *http.Server
+		httpsServer *http.Server
 		cacheMaxAge string
 		template    *template.Template
-		staticFiles http.Handler
+		serveStatic http.Handler
 		Config
 	}
 
@@ -94,12 +94,6 @@ type (
 		Create(username string, points int) (string, error)
 		ReadUsername(tokenString string) (string, error)
 	}
-
-	// wrappedResponseWriter wraps response writing with another writer.
-	wrappedResponseWriter struct {
-		io.Writer
-		http.ResponseWriter
-	}
 )
 
 const (
@@ -136,23 +130,23 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 		Colors:      cfg.ColorConfig,
 		Rules:       gameConfig.Rules(),
 	}
-	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
-	if cfg.HTTPSPort <= 0 {
-		return nil, fmt.Errorf("invalid https port: %v", cfg.HTTPSPort)
-	}
 	httpAddr := fmt.Sprintf(":%d", cfg.HTTPPort)
 	if cfg.HTTPPort <= 0 {
 		httpAddr = ""
 	}
-	httpsServeMux := new(http.ServeMux)
-	httpsServer := &http.Server{
-		Addr:    httpsAddr,
-		Handler: httpsServeMux,
+	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
+	if cfg.HTTPSPort <= 0 {
+		return nil, fmt.Errorf("invalid https port: %v", cfg.HTTPSPort)
 	}
 	httpServeMux := new(http.ServeMux)
 	httpServer := &http.Server{
 		Addr:    httpAddr,
 		Handler: httpServeMux,
+	}
+	httpsServeMux := new(http.ServeMux)
+	httpsServer := &http.Server{
+		Addr:    httpsAddr,
+		Handler: httpsServeMux,
 	}
 	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
 	templateFileGlobs := []string{
@@ -175,15 +169,15 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 		tokenizer:   tokenizer,
 		userDao:     userDao,
 		lobby:       lobby,
-		httpsServer: httpsServer,
 		httpServer:  httpServer,
+		httpsServer: httpsServer,
 		cacheMaxAge: cacheMaxAge,
 		template:    template,
-		staticFiles: staticFilesHandler,
+		serveStatic: staticFilesHandler,
 		Config:      cfg,
 	}
-	httpsServeMux.HandleFunc("/", s.handleHTTPS)
 	httpServeMux.HandleFunc("/", s.handleHTTP)
+	httpsServeMux.HandleFunc("/", s.handleHTTPS)
 	return &s, nil
 }
 
@@ -213,29 +207,6 @@ func (s *Server) Run(ctx context.Context) <-chan error {
 	s.runHTTPServer(ctx, errC)
 	s.runHTTPSServer(ctx, errC)
 	return errC
-}
-
-// validHTTPAddr determines if the HTTP address is valid.
-// If the HTTP address is valid, the HTTP server should be started to redirect to HTTPS and handle certificate creation.
-func (s *Server) validHTTPAddr() bool {
-	return len(s.httpServer.Addr) > 0
-}
-
-// hasSecHeader returns true if thhe request has any header starting with "Sec-".
-func (*Server) hasSecHeader(r *http.Request) bool {
-	for header := range r.Header {
-		if strings.HasPrefix(header, "Sec-") {
-			return true
-		}
-	}
-	return false
-}
-
-// addMimeType adds the applicable mime type to the response.
-func (*Server) addMimeType(fileName string, w http.ResponseWriter) {
-	extension := filepath.Ext(fileName)
-	mimeType := mime.TypeByExtension(extension)
-	w.Header().Set(HeaderContentType, mimeType)
 }
 
 // runHTTPSServer runs the http server asynchronously, adding the return error to the channel when done.
@@ -318,32 +289,13 @@ func (s *Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// redirectToHTTPS redirects the page to https.
-func (s *Server) redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
-	host := r.Host
-	if strings.Contains(host, ":") {
-		var err error
-		host, _, err = net.SplitHostPort(host)
-		if err != nil {
-			err = fmt.Errorf("could not redirect to https: %w", err)
-			s.handleError(w, err)
-			return
-		}
-	}
-	if s.httpsServer.Addr != ":443" && !s.NoTLSRedirect {
-		host = host + s.httpsServer.Addr
-	}
-	httpsURI := "https://" + host + r.URL.Path
-	http.Redirect(w, r, httpsURI, http.StatusTemporaryRedirect)
-}
-
 // handleHTTPSGet calls handlers for GET endpoints.
 func (s *Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/", "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html":
 		s.handleFile(w, r, s.serveTemplate(r.URL.Path))
 	case "/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/LICENSE":
-		s.handleFile(w, r, s.staticFiles)
+		s.handleFile(w, r, s.serveStatic)
 	case "/lobby":
 		s.handleUserLobby(w, r)
 	case "/monitor":
@@ -381,22 +333,6 @@ func (s *Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// serveTemplate servers the file from the data-driven template.  The name is assumed to have a leading slash that is ignored.
-func (s *Server) serveTemplate(name string) http.HandlerFunc {
-	name = name[1:]
-	if len(name) == 0 {
-		name = "index.html"
-	}
-	return func(w http.ResponseWriter, r *http.Request) {
-		s.addMimeType(name, w)
-		if err := s.template.ExecuteTemplate(w, name, s.data); err != nil {
-			err = fmt.Errorf("rendering template: %v", err)
-			s.handleError(w, err)
-			return
-		}
-	}
-}
-
 // handleFile wraps the handling of the file, add cache-control header and gzip compression, if possible.
 func (s *Server) handleFile(w http.ResponseWriter, r *http.Request, h http.Handler) {
 	switch r.URL.Path {
@@ -428,15 +364,45 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request, h http.Handl
 	h.ServeHTTP(w, r)
 }
 
-// httpError writes the error status code.
-func (*Server) httpError(w http.ResponseWriter, statusCode int) {
-	http.Error(w, http.StatusText(statusCode), statusCode)
+// serveTemplate servers the file from the data-driven template.  The name is assumed to have a leading slash that is ignored.
+func (s *Server) serveTemplate(name string) http.HandlerFunc {
+	name = name[1:]
+	if len(name) == 0 {
+		name = "index.html"
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		s.addMimeType(name, w)
+		if err := s.template.ExecuteTemplate(w, name, s.data); err != nil {
+			err = fmt.Errorf("rendering template: %v", err)
+			s.handleError(w, err)
+			return
+		}
+	}
 }
 
-// handleError logs and writes the error as an internal server error (500).
-func (s *Server) handleError(w http.ResponseWriter, err error) {
-	s.log.Printf("server error: %v", err)
-	http.Error(w, err.Error(), http.StatusInternalServerError)
+// validHTTPAddr determines if the HTTP address is valid.
+// If the HTTP address is valid, the HTTP server should be started to redirect to HTTPS and handle certificate creation.
+func (s *Server) validHTTPAddr() bool {
+	return len(s.httpServer.Addr) > 0
+}
+
+// redirectToHTTPS redirects the page to https.
+func (s *Server) redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
+	host := r.Host
+	if strings.Contains(host, ":") {
+		var err error
+		host, _, err = net.SplitHostPort(host)
+		if err != nil {
+			err = fmt.Errorf("could not redirect to https: %w", err)
+			s.handleError(w, err)
+			return
+		}
+	}
+	if s.httpsServer.Addr != ":443" && !s.NoTLSRedirect {
+		host = host + s.httpsServer.Addr
+	}
+	httpsURI := "https://" + host + r.URL.Path
+	http.Redirect(w, r, httpsURI, http.StatusTemporaryRedirect)
 }
 
 // checkTokenUsername ensures the username in the authorization header matches that in the username form value.
@@ -455,6 +421,40 @@ func (s *Server) checkTokenUsername(r *http.Request) error {
 		return fmt.Errorf("username not same as token username")
 	}
 	return nil
+}
+
+// handleError logs and writes the error as an internal server error (500).
+func (s *Server) handleError(w http.ResponseWriter, err error) {
+	s.log.Printf("server error: %v", err)
+	http.Error(w, err.Error(), http.StatusInternalServerError)
+}
+
+// httpError writes the error status code.
+func (*Server) httpError(w http.ResponseWriter, statusCode int) {
+	http.Error(w, http.StatusText(statusCode), statusCode)
+}
+
+// hasSecHeader returns true if thhe request has any header starting with "Sec-".
+func (*Server) hasSecHeader(r *http.Request) bool {
+	for header := range r.Header {
+		if strings.HasPrefix(header, "Sec-") {
+			return true
+		}
+	}
+	return false
+}
+
+// addMimeType adds the applicable mime type to the response.
+func (*Server) addMimeType(fileName string, w http.ResponseWriter) {
+	extension := filepath.Ext(fileName)
+	mimeType := mime.TypeByExtension(extension)
+	w.Header().Set(HeaderContentType, mimeType)
+}
+
+// wrappedResponseWriter wraps response writing with another writer.
+type wrappedResponseWriter struct {
+	io.Writer
+	http.ResponseWriter
 }
 
 // Write delegates the write to the wrapped writer.
