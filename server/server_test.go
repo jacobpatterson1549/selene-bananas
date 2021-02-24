@@ -3,6 +3,8 @@ package server
 import (
 	"bytes"
 	"fmt"
+	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -14,48 +16,40 @@ import (
 
 func TestHandleFileVersion(t *testing.T) {
 	handleFileVersionTests := []struct {
-		version    string
-		url        string
-		wantCode   int
-		wantHeader http.Header
+		version      string
+		url          string
+		wantCode     int
+		wantLocation string
 	}{
 		{
-			url:        "http://example.com/",
-			wantCode:   200,
-			wantHeader: make(http.Header),
+			url:      "http://example.com/",
+			wantCode: 200,
 		},
 		{
-			url:        "http://example.com/main.wasm?v=",
-			wantCode:   200,
-			wantHeader: make(http.Header),
-		},
-		{
-			version:    "abc",
-			url:        "http://example.com/main.wasm?v=abc",
-			wantCode:   200,
-			wantHeader: make(http.Header),
-		},
-		{
-			version:    "abc",
-			url:        "http://example.com/favicon.svg",
-			wantCode:   200,
-			wantHeader: make(http.Header),
+			url:      "http://example.com/main.wasm?v=",
+			wantCode: 200,
 		},
 		{
 			version:  "abc",
-			url:      "http://example.com/main.wasm",
-			wantCode: 301,
-			wantHeader: http.Header{
-				"Location": {"http://example.com/main.wasm?v=abc"},
-			},
+			url:      "http://example.com/main.wasm?v=abc",
+			wantCode: 200,
 		},
 		{
 			version:  "abc",
-			url:      "http://example.com/main.wasm?v=defg",
-			wantCode: 301,
-			wantHeader: http.Header{
-				"Location": {"http://example.com/main.wasm?v=abc"},
-			},
+			url:      "http://example.com/favicon.svg",
+			wantCode: 200,
+		},
+		{
+			version:      "abc",
+			url:          "http://example.com/main.wasm",
+			wantCode:     301,
+			wantLocation: "http://example.com/main.wasm?v=abc",
+		},
+		{
+			version:      "abc",
+			url:          "http://example.com/main.wasm?v=defg",
+			wantCode:     301,
+			wantLocation: "http://example.com/main.wasm?v=abc",
 		},
 	}
 	h := func(w http.ResponseWriter, r *http.Request) {
@@ -77,8 +71,8 @@ func TestHandleFileVersion(t *testing.T) {
 		switch {
 		case test.wantCode != gotCode:
 			t.Errorf("Test %v: wanted %v status code, got %v", i, test.wantCode, gotCode)
-		case !reflect.DeepEqual(test.wantHeader, gotHeader):
-			t.Errorf("Test %v: different headers:\nwanted %+v\ngot    %v", i, test.wantHeader, gotHeader)
+		case test.wantCode == 301 && test.wantLocation != w.Header().Get("Location"):
+			t.Errorf("Test %v: wanted Location header %v, got %v", i, test.wantLocation, w.Header().Get("Location"))
 		}
 	}
 }
@@ -93,23 +87,27 @@ func TestHandleFile(t *testing.T) {
 		{
 			path: "/",
 			wantHeader: http.Header{
-				"Cache-Control": []string{"no-store"},
+				"Cache-Control": {"no-store"},
+				"Content-Type":  {"text/html; charset=utf-8"},
 			},
 		},
 		{
 			path: "/",
 			requestHeader: http.Header{
 				"Accept-Encoding": {"gzip"},
+				"Content-Type":    {"text/html; charset=utf-8"},
 			},
 			wantHeader: http.Header{
-				"Cache-Control":    []string{"no-store"},
-				"Content-Encoding": []string{"gzip"},
+				"Cache-Control":    {"no-store"},
+				"Content-Encoding": {"gzip"},
+				"Content-Type":     {"text/html; charset=utf-8"},
 			},
 		},
 		{
-			path: "/file",
+			path: "/file.html",
 			wantHeader: http.Header{
-				"Cache-Control": []string{cacheMaxAge},
+				"Cache-Control": {cacheMaxAge},
+				"Content-Type":  {"text/html; charset=utf-8"},
 			},
 		},
 	}
@@ -117,9 +115,7 @@ func TestHandleFile(t *testing.T) {
 		s := Server{
 			cacheMaxAge: cacheMaxAge,
 		}
-		w := &mockResponseWriter{
-			HTTPHeader: http.Header{},
-		}
+		w := httptest.NewRecorder()
 		r := httptest.NewRequest("", test.path, nil)
 		r.Header = test.requestHeader
 		handlerCalled := false
@@ -288,8 +284,8 @@ func TestHasSecHeader(t *testing.T) {
 	var s Server
 	for header, want := range hasSecHeaderTests {
 		r := http.Request{
-			Header: map[string][]string{
-				header: nil,
+			Header: http.Header{
+				header: {},
 			},
 		}
 		got := s.hasSecHeader(&r)
@@ -306,15 +302,123 @@ func TestAddMimeType(t *testing.T) {
 		"manifest.json": "application/json",
 		"init.js":       "application/javascript",
 		"main.wasm":     "application/wasm",
-		"/":             "", // no mime type
+		"LICENSE":       "text/plain; charset=utf-8",
+		"any.html":      "text/html; charset=utf-8",
+		"/":             "text/html; charset=utf-8",
 	}
 	for fileName, want := range addMimeTypeTests {
-		var s Server
 		w := httptest.NewRecorder()
-		s.addMimeType(fileName, w)
+		addMimeType(fileName, w)
 		got := w.Header().Get("Content-Type")
 		if want != got {
 			t.Errorf("when filename = %v, wanted mimeType %v, got %v", fileName, want, got)
 		}
+	}
+}
+
+func TestServeTemplate(t *testing.T) {
+	serveTemplateTests := []struct {
+		templateName    string
+		templateText    string
+		path            string
+		data            interface{}
+		wantStatusCode  int
+		wantContentType string
+		wantBody        string
+	}{
+		{
+			path:            "/unknown",
+			wantStatusCode:  500,
+			wantContentType: "text/plain; charset=utf-8",
+		},
+		{ // empty path should go to index.html
+			path:            "/",
+			templateName:    "index.html",
+			templateText:    "stuff",
+			wantStatusCode:  200,
+			wantContentType: "text/html; charset=utf-8",
+			wantBody:        "stuff",
+		},
+		{ // different content type
+			templateName:    "init.js",
+			path:            "/init.js",
+			wantStatusCode:  200,
+			wantContentType: "application/javascript",
+		},
+		{
+			templateName:    "name.html",
+			templateText:    "template for {{ . }}",
+			path:            "/name.html",
+			data:            "selene",
+			wantStatusCode:  200,
+			wantContentType: "text/html; charset=utf-8",
+			wantBody:        "template for selene",
+		},
+	}
+	for i, test := range serveTemplateTests {
+		s := Server{
+			log:      log.New(io.Discard, "", 0),
+			template: template.Must(template.New(test.templateName).Parse(test.templateText)),
+			data:     test.data,
+		}
+		w := httptest.NewRecorder()
+		r := http.Request{
+			URL: &url.URL{
+				Path: test.path,
+			},
+		}
+		h := s.serveTemplate(test.path[1:])
+		h.ServeHTTP(w, &r)
+		switch {
+		case test.wantStatusCode != w.Code:
+			t.Errorf("Test %v: status codes not equal: wanted: %v, got:    %v", i, test.wantStatusCode, w.Code)
+		case test.wantContentType != w.Header().Get("Content-Type"):
+			t.Errorf("Test %v: headers content types not equal:\nwanted: %v\ngot:    %v", i, test.wantContentType, w.Header().Get("Content-Type"))
+		case test.wantStatusCode == 200 && test.wantBody != w.Body.String():
+			t.Errorf("Test %v: body not equal:\nwanted: %v\ngot:    %v", i, test.wantBody, w.Body.String())
+		}
+	}
+}
+
+func TestValidHTTPAddr(t *testing.T) {
+	validHTTPAddrTests := []struct {
+		addr string
+		want bool
+	}{
+		{},
+		{
+			addr: "example.com",
+			want: true,
+		},
+		{
+			addr: ":8001",
+			want: true,
+		},
+	}
+	for i, test := range validHTTPAddrTests {
+		s := Server{
+			httpServer: &http.Server{
+				Addr: test.addr,
+			},
+		}
+		got := s.validHTTPAddr()
+		if test.want != got {
+			t.Errorf("Test %v: wanted %v, got %v for when addr is '%v'", i, test.want, got, test.addr)
+		}
+	}
+}
+
+func TestWrappedResponseWriter(t *testing.T) {
+	w := httptest.NewRecorder()
+	var bb bytes.Buffer
+	w2 := wrappedResponseWriter{
+		Writer:         &bb,
+		ResponseWriter: w,
+	}
+	want := "sent to bb"
+	w2.Write([]byte(want))
+	got := bb.String()
+	if want != got {
+		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
 	}
 }

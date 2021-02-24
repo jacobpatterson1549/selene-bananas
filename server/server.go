@@ -293,7 +293,7 @@ func (s *Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHTTPSGet(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
 	case "/", "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html":
-		s.handleFile(w, r, s.serveTemplate(r.URL.Path))
+		s.handleFile(w, r, s.serveTemplate(r.URL.Path[1:]))
 	case "/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/LICENSE":
 		s.handleFile(w, r, s.serveStatic)
 	case "/lobby":
@@ -359,19 +359,19 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request, h http.Handl
 			Writer:         w2,
 			ResponseWriter: w,
 		}
-		w.Header().Set(HeaderContentEncoding, "gzip")
+		w.Header().Add(HeaderContentEncoding, "gzip")
 	}
+	addMimeType(r.URL.Path, w)
 	h.ServeHTTP(w, r)
 }
 
 // serveTemplate servers the file from the data-driven template.  The name is assumed to have a leading slash that is ignored.
 func (s *Server) serveTemplate(name string) http.HandlerFunc {
-	name = name[1:]
 	if len(name) == 0 {
 		name = "index.html"
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		s.addMimeType(name, w)
+		addMimeType(name, w)
 		if err := s.template.ExecuteTemplate(w, name, s.data); err != nil {
 			err = fmt.Errorf("rendering template: %v", err)
 			s.handleError(w, err)
@@ -445,10 +445,16 @@ func (*Server) hasSecHeader(r *http.Request) bool {
 }
 
 // addMimeType adds the applicable mime type to the response.
-func (*Server) addMimeType(fileName string, w http.ResponseWriter) {
+func addMimeType(fileName string, w http.ResponseWriter) {
+	switch {
+	case fileName == "/":
+		fileName = ".html" // assume html for page root
+	case !strings.Contains(fileName, "."):
+		fileName = ".txt"
+	}
 	extension := filepath.Ext(fileName)
 	mimeType := mime.TypeByExtension(extension)
-	w.Header().Set(HeaderContentType, mimeType)
+	w.Header().Add(HeaderContentType, mimeType)
 }
 
 // wrappedResponseWriter wraps response writing with another writer.

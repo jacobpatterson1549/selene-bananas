@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"net/http"
 	"sync"
@@ -61,24 +60,4 @@ func (l mockLobby) AddUser(username string, w http.ResponseWriter, r *http.Reque
 
 func (l mockLobby) RemoveUser(username string) {
 	l.removeUserFunc(username)
-}
-
-// mockResponseWriter is more simple than httptest.ResponseRecorder.
-// It implements http.ResponseWriter, logs everything written to its buffer, and stores the status code.
-type mockResponseWriter struct {
-	HTTPHeader http.Header
-	bytes.Buffer
-	StatusCode int
-}
-
-func (w *mockResponseWriter) Header() http.Header {
-	return w.HTTPHeader
-}
-
-func (w *mockResponseWriter) Write(p []byte) (int, error) {
-	return w.Buffer.Write(p)
-}
-
-func (w *mockResponseWriter) WriteHeader(statusCode int) {
-	w.StatusCode = statusCode
 }
