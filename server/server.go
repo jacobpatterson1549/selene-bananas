@@ -259,7 +259,7 @@ func (s *Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
 		switch {
 		case s.validHTTPAddr():
 			if _, err := tls.LoadX509KeyPair(s.TLSCertFile, s.TLSKeyFile); err != nil {
-				s.log.Printf("Problem loading tls certificate: %v", err)
+				errC <- fmt.Errorf("Problem loading tls certificate: %v", err)
 				return
 			}
 			errC <- s.httpsServer.ListenAndServeTLS(s.TLSCertFile, s.TLSKeyFile)
