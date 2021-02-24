@@ -155,7 +155,14 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 		Handler: httpServeMux,
 	}
 	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
-	templateFileGlobs := templateFileGlobs()
+	templateFileGlobs := []string{
+		"html/**/*.html",
+		"fa/*.svg",
+		"favicon.svg",
+		"index.css",
+		"*.js",
+		"manifest.json",
+	}
 	template, err := template.ParseFS(templateFS, templateFileGlobs...)
 	if err != nil {
 		return nil, fmt.Errorf("parsing template: %v", err)
@@ -371,18 +378,6 @@ func (s *Server) handleHTTPSPost(w http.ResponseWriter, r *http.Request) {
 		// NOOP
 	default:
 		s.httpError(w, http.StatusNotFound)
-	}
-}
-
-// templateFileGlobs gets the list of available resources for templates
-func templateFileGlobs() []string {
-	return []string{
-		"html/**/*.html",
-		"fa/*.svg",
-		"favicon.svg",
-		"index.css",
-		"*.js",
-		"manifest.json",
 	}
 }
 
