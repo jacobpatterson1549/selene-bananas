@@ -33,7 +33,7 @@ $(BUILD_DIR)/$(SERVER_OBJ): $(BUILD_DIR)/$(CLIENT_OBJ) $(BUILD_DIR)/$(SERVER_TES
 		| $(GO_ARGS) xargs $(GO_BUILD) \
 			-o $@
 
-$(BUILD_DIR)/$(CLIENT_OBJ): $(BUILD_DIR)/$(CLIENT_TEST) | $(SERVER_EMBED_DIR)
+$(BUILD_DIR)/$(CLIENT_OBJ): $(BUILD_DIR)/$(CLIENT_TEST) | $(BUILD_DIR) $(SERVER_EMBED_DIR)
 	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep cmd/ui \
 		| $(GO_WASM_ARGS) xargs $(GO_BUILD) \
 			-o $(SERVER_EMBED_DIR)/$(@F)
@@ -60,7 +60,7 @@ $(GENERATE_SRC): | $(SERVER_EMBED_DIR)
 	$(GO_INSTALL) $(GO_PACKAGES)
 	$(GO_GENERATE) $(GO_PACKAGES)
 
-$(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(SERVER_EMBED_DIR)
+$(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(BUILD_DIR) $(SERVER_EMBED_DIR)
 	find . \
 			-mindepth 2 \
 			-path "*/.*" -prune -o \
@@ -79,7 +79,7 @@ $(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(SE
 $(BUILD_DIR):
 	mkdir -p $@
 
-$(SERVER_EMBED_DIR): $(RESOURCES_DIR)
+$(SERVER_EMBED_DIR): $(RESOURCES_SRC)
 	mkdir -p $@
 	# creating hard links, not soft symbolic links because we own the resources:
 	cp -Rlf $(PWD)/$(RESOURCES_DIR)/* $@
