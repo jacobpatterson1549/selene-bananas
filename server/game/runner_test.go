@@ -334,20 +334,14 @@ func TestGameDelete(t *testing.T) {
 		m2 := <-out
 		gotNumGames := len(r.games)
 		switch {
-		case !test.wantOk:
-			if gotNumGames != 1 {
-				t.Errorf("Test %v: wanted 1 game to be not be deleted, got %v", i, gotNumGames)
-			}
-			if m2.Type != message.SocketError {
-				t.Errorf("Test %v: wanted socket error message, got %v", i, m2.Type)
-			}
-		default:
-			if gotNumGames != 0 {
-				t.Errorf("Test %v: wanted game to be deleted, yet %v still existed", i, gotNumGames)
-			}
-			if !messageHandled {
-				t.Errorf("Test %v: message not handled", i)
-			}
+		case !test.wantOk && gotNumGames != 1:
+			t.Errorf("Test %v: wanted 1 game to be not be deleted, got %v", i, gotNumGames)
+		case !test.wantOk && m2.Type != message.SocketError:
+			t.Errorf("Test %v: wanted socket error message, got %v", i, m2.Type)
+		case test.wantOk && gotNumGames != 0:
+			t.Errorf("Test %v: wanted game to be deleted, yet %v still existed", i, gotNumGames)
+		case test.wantOk && !messageHandled:
+			t.Errorf("Test %v: message not handled", i)
 		}
 		cancelFunc()
 		wg.Wait()

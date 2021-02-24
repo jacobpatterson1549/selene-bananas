@@ -7,10 +7,8 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 )
 
-type mockRunner struct {
-	RunFunc func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message
-}
+type mockRunner func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message
 
-func (m *mockRunner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
-	return m.RunFunc(ctx, wg, in)
+func (r mockRunner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+	return r(ctx, wg, in)
 }

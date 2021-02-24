@@ -370,13 +370,11 @@ func TestReadMessagesSync(t *testing.T) {
 			t.Errorf("Test %v: wanted last message to be socket close, got %v", i, gotMessages[len(gotMessages)-1])
 		case test.setReadDeadlineErr == nil && !setPongHandlerFuncCalled:
 			t.Errorf("Test %v: wanted pong handler to be set", i)
-		case !test.wantOk:
-			if bb.Len() == 0 && !test.isNormalCloseErr {
-				t.Errorf("Test %v: wanted message to be logged", i)
-			}
-		case (bb.Len() != 0) != test.debug:
+		case !test.wantOk && bb.Len() == 0 && !test.isNormalCloseErr:
+			t.Errorf("Test %v: wanted message to be logged", i)
+		case test.wantOk && (bb.Len() != 0) != test.debug:
 			t.Errorf("Test %v: wanted message to be logged (%v), got '%v'", i, test.debug, bb.String())
-		case gotMessages[0].Info != normalMessageInfo:
+		case test.wantOk && gotMessages[0].Info != normalMessageInfo:
 			t.Errorf("Test %v: wanted first message to be normal message, got %v", i, gotMessages[0])
 		}
 		cancelFunc()
@@ -507,14 +505,11 @@ func TestWriteMessagesSync(t *testing.T) {
 		switch {
 		case test.callCancelFunc:
 			// NOOP
-		case !test.wantOk:
-			if len(writtenMessages) != 0 {
-				t.Errorf("Test %v: wanted no messages written to connection", i)
-			}
-			if !test.inClosed && test.setWriteDeadlineErr != nil {
-				close(in)
-			}
-		case !test.pingTick:
+		case !test.wantOk && len(writtenMessages) != 0:
+			t.Errorf("Test %v: wanted no messages written to connection", i)
+		case !test.wantOk && !test.inClosed && test.setWriteDeadlineErr != nil:
+			close(in)
+		case test.wantOk && !test.pingTick:
 			gotM := <-writtenMessages
 			if !reflect.DeepEqual(test.wantM, gotM) {
 				t.Errorf("Test %v: messages not equal:\nwanted: %v\ngot:    %v", i, test.wantM, gotM)

@@ -880,21 +880,12 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 		var wg sync.WaitGroup
 		r.handleLobbyMessage(ctx, &wg, test.m)
 		switch {
-		case test.wantErr:
-			if bb.Len() == 0 {
-				t.Errorf("Test %v: wanted error logged for bad message", i)
-			}
-		case !reflect.DeepEqual(test.wantPlayerGames, r.playerGames):
+		case test.wantErr && bb.Len() == 0:
+			t.Errorf("Test %v: wanted error logged for bad message", i)
+		case !test.wantErr && !reflect.DeepEqual(test.wantPlayerGames, r.playerGames):
 			t.Errorf("Test %v: player games not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerGames, r.playerGames)
-		default:
-			// ensure each non-nil socket has a message sent to it.  The test setup should only make buffered message channels if a message is expected to be sent on it.
-			for pn, addrs := range r.playerSockets {
-				for addr, socketIn := range addrs {
-					if socketIn != nil && len(socketIn) != 1 {
-						t.Errorf("Test %v: wanted 1 message to be sent on socket for %v at %v", i, pn, addr)
-					}
-				}
-			}
+		case !test.wantErr:
+			verifyAllSocketsSentOneMessage(t, r, i)
 		}
 	}
 }
@@ -1144,39 +1135,15 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 		gameOut := make(chan message.Message, 1)
 		r.handleSocketMessage(ctx, test.m, gameOut)
 		switch {
-		case !test.wantOk:
-			if bb.Len() == 0 {
-				t.Errorf("Test %v: wanted error logged for bad message", i)
-			}
-		case !reflect.DeepEqual(test.wantPlayerSockets, r.playerSockets):
+		case !test.wantOk && bb.Len() == 0:
+			t.Errorf("Test %v: wanted error logged for bad message", i)
+		case test.wantOk && !reflect.DeepEqual(test.wantPlayerSockets, r.playerSockets):
 			t.Errorf("Test %v: player sockets not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerSockets, r.playerSockets)
-		case !reflect.DeepEqual(test.wantPlayerGames, r.playerGames):
+		case test.wantOk && !reflect.DeepEqual(test.wantPlayerGames, r.playerGames):
 			t.Errorf("Test %v: player games not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerGames, r.playerGames)
-		default:
-			switch len(gameOut) {
-			case 0:
-				if !test.skipOutSend {
-					t.Errorf("Test %v: wanted message to be sent to game runner", i)
-				}
-			case 1:
-				if test.skipOutSend {
-					t.Errorf("Test %v: wanted no message to be sent to game runner", i)
-					continue
-				}
-				got := <-gameOut
-				if !reflect.DeepEqual(test.m, got) { // dumb check to ensure the messages is passed through without modification
-					t.Errorf("Test %v: game messages not equal:\nwanted: %v\ngot:    %v", i, test.want, got)
-				}
-			default:
-				t.Errorf("too many messages sent on out channel")
-			}
-			for n, addrs := range test.playerSockets {
-				for a, socketIn := range addrs {
-					if socketIn != nil && len(socketIn) != 1 {
-						t.Errorf("Test %v: wanted 1 message to be sent to %v at %v", i, n, a)
-					}
-				}
-			}
+		case test.wantOk:
+			verifyMessagesSent(t, gameOut, i, test.skipOutSend, test.m)
+			verifyAllSocketsSentOneMessage(t, r, i)
 		}
 	}
 }
@@ -1320,5 +1287,30 @@ func TestRemoveSocket(t *testing.T) {
 		t.Errorf("wanted player socket to be removed")
 	case len(r.playerGames) != 0:
 		t.Errorf("wanted player game to be removed")
+	}
+}
+
+func verifyMessagesSent(t *testing.T, gameOut <-chan message.Message, i int, skipOutSend bool, wantM message.Message) {
+	numMessagesSent := len(gameOut)
+	switch {
+	case skipOutSend && numMessagesSent != 0:
+		t.Errorf("Test %v: wanted no message to be sent to game runner, got %v", i, numMessagesSent)
+	case !skipOutSend && numMessagesSent != 1:
+		t.Errorf("Test %v: wanted one message to be sent to game runner, got %v", i, numMessagesSent)
+	case !skipOutSend && numMessagesSent == 1:
+		gotM := <-gameOut
+		if !reflect.DeepEqual(wantM, gotM) { // dumb check to ensure the messages is passed through without modification
+			t.Errorf("Test %v: game messages not equal:\nwanted: %v\ngot:    %v", i, wantM, gotM)
+		}
+	}
+}
+
+func verifyAllSocketsSentOneMessage(t *testing.T, r Runner, i int) {
+	for pn, addrs := range r.playerSockets {
+		for addr, socketIn := range addrs {
+			if socketIn != nil && len(socketIn) != 1 {
+				t.Errorf("Test %v: wanted 1 message to be sent on socket for %v at %v", i, pn, addr)
+			}
+		}
 	}
 }
