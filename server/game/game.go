@@ -81,9 +81,6 @@ func (cfg Config) NewGame(log *log.Logger, id game.ID, wordChecker WordChecker, 
 	if err := cfg.validate(log, id, wordChecker, userDao); err != nil {
 		return nil, fmt.Errorf("creating game: validation: %w", err)
 	}
-	if len(cfg.TileLetters) == 0 {
-		cfg.TileLetters = defaultTileLetters
-	}
 	g := Game{
 		log:         log,
 		id:          id,
@@ -101,18 +98,22 @@ func (cfg Config) NewGame(log *log.Logger, id game.ID, wordChecker WordChecker, 
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(log *log.Logger, id game.ID, wordChecker WordChecker, userDao UserDao) error {
+// the config is modified to use the default tile letters if the tile letters are empty.
+func (cfg *Config) validate(log *log.Logger, id game.ID, wordChecker WordChecker, userDao UserDao) error {
+	if len(cfg.TileLetters) == 0 {
+		cfg.TileLetters = defaultTileLetters
+	}
 	switch {
 	case log == nil:
 		return fmt.Errorf("log required")
 	case id <= 0:
 		return fmt.Errorf("positive id required")
-	case cfg.TimeFunc == nil:
-		return fmt.Errorf("time func required")
 	case wordChecker == nil:
 		return fmt.Errorf("word checker required")
 	case userDao == nil:
 		return fmt.Errorf("user dao required")
+	case cfg.TimeFunc == nil:
+		return fmt.Errorf("time func required")
 	case cfg.MaxPlayers <= 0:
 		return fmt.Errorf("positive max player count required")
 	case cfg.NumNewTiles <= 0:
@@ -123,7 +124,7 @@ func (cfg Config) validate(log *log.Logger, id game.ID, wordChecker WordChecker,
 		return fmt.Errorf("function to shuffle tiles required")
 	case cfg.ShufflePlayersFunc == nil:
 		return fmt.Errorf("function to shuffle player draw order required")
-	case len(cfg.TileLetters) != 0 && len(cfg.TileLetters) < cfg.NumNewTiles, len(defaultTileLetters) < cfg.NumNewTiles:
+	case len(cfg.TileLetters) < cfg.NumNewTiles:
 		return fmt.Errorf("not enough tiles for a single player to join the game")
 	}
 	return nil
