@@ -8,15 +8,19 @@ import (
 	"runtime/pprof"
 )
 
-// handleMonitor writes runtime information to the response.
-func (s *Server) handleMonitor(w http.ResponseWriter, r *http.Request) {
+// runtimeMonitor is a httpHandler that prints runtime information.
+type runtimeMonitor struct {
+	hasTLS bool
+}
+
+// ServeHTTP writes runtime information to the response.
+func (rm runtimeMonitor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m := new(runtime.MemStats)
 	runtime.ReadMemStats(m)
-	hasTLS := s.validHTTPAddr()
 	p := pprof.Lookup("goroutine")
 	writeMemoryStats(w, m)
 	fmt.Fprintln(w)
-	writeGoroutineExpectations(w, hasTLS)
+	writeGoroutineExpectations(w, rm.hasTLS)
 	fmt.Fprintln(w)
 	writeGoroutineStackTraces(w, p)
 }

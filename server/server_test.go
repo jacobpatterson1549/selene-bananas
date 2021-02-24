@@ -437,8 +437,21 @@ func TestHandleGet(t *testing.T) {
 			handleGetTest{path: path, wantCode: 404},
 		)
 	}
-	// TODO: add mock monitor, test GET /monitor (because running monitor slows down testing)
-	for _, path := range []string{"/", "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html", "/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/LICENSE", "/lobby"} {
+	validGetEndpoints := []string{
+		"/",
+		"/manifest.json",
+		"/serviceWorker.js",
+		"/favicon.svg",
+		"/network_check.html",
+		"/wasm_exec.js",
+		"/main.wasm",
+		"/robots.txt",
+		"/favicon.png",
+		"/LICENSE",
+		"/lobby",
+		"/monitor",
+	}
+	for _, path := range validGetEndpoints {
 		handleGetTests = append(handleGetTests,
 			handleGetTest{path: path, wantCode: 200},
 		)
@@ -465,6 +478,9 @@ func TestHandleGet(t *testing.T) {
 			},
 			template: tmpl,
 			serveStatic: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+				// NOOP
+			}),
+			monitor: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 				// NOOP
 			}),
 			Config: Config{

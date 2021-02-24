@@ -36,6 +36,7 @@ type (
 		cacheMaxAge string
 		template    *template.Template
 		serveStatic http.Handler
+		monitor     http.Handler
 		Config
 	}
 
@@ -176,6 +177,9 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 		serveStatic: staticFilesHandler,
 		Config:      cfg,
 	}
+	s.monitor = runtimeMonitor{
+		hasTLS: s.validHTTPAddr(),
+	}
 	httpServeMux.HandleFunc("/", s.handleHTTP)
 	httpsServeMux.HandleFunc("/", s.handleHTTPS)
 	return &s, nil
@@ -299,7 +303,7 @@ func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
 	case "/lobby":
 		s.handleUserLobby(w, r)
 	case "/monitor":
-		s.handleMonitor(w, r)
+		s.monitor.ServeHTTP(w, r)
 	default:
 		s.httpError(w, http.StatusNotFound)
 	}
