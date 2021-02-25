@@ -11,7 +11,6 @@ import (
 	"io/fs"
 	"log"
 	"mime"
-	"net"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -424,14 +423,10 @@ func (s *Server) validHTTPAddr() bool {
 // redirectToHTTPS redirects the page to https.
 func (s *Server) redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
 	host := r.Host
-	if strings.Contains(host, ":") {
-		var err error
-		host, _, err = net.SplitHostPort(host)
-		if err != nil {
-			err = fmt.Errorf("could not redirect to https: %w", err)
-			s.writeInternalError(w, err)
-			return
-		}
+	// derived from net.SplitHostPort, but does not throw error :
+	lastColonIndex := strings.LastIndex(host, ":")
+	if lastColonIndex >= 0 {
+		host = host[:lastColonIndex]
 	}
 	if s.httpsServer.Addr != ":443" && !s.NoTLSRedirect {
 		host = host + s.httpsServer.Addr
