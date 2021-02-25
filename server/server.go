@@ -112,8 +112,12 @@ const (
 
 // NewServer creates a Server from the Config
 func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby, templateFS, staticFS fs.FS) (*Server, error) {
-	if err := cfg.validate(log, tokenizer, userDao, lobby); err != nil {
+	if err := cfg.validate(log, tokenizer, userDao, lobby, templateFS, staticFS); err != nil {
 		return nil, fmt.Errorf("creating server: validation: %w", err)
+	}
+	template, err := parseTemplate(templateFS)
+	if err != nil {
+		return nil, err
 	}
 	var gameConfig game.Config
 	data := struct {
@@ -136,9 +140,6 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 		httpAddr = ""
 	}
 	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
-	if cfg.HTTPSPort <= 0 {
-		return nil, fmt.Errorf("invalid https port: %v", cfg.HTTPSPort)
-	}
 	httpServeMux := new(http.ServeMux)
 	httpServer := &http.Server{
 		Addr:    httpAddr,
@@ -150,18 +151,6 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 		Handler: httpsServeMux,
 	}
 	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
-	templateFileGlobs := []string{
-		"html/**/*.html",
-		"fa/*.svg",
-		"favicon.svg",
-		"index.css",
-		"*.js",
-		"manifest.json",
-	}
-	template, err := template.ParseFS(templateFS, templateFileGlobs...)
-	if err != nil {
-		return nil, fmt.Errorf("parsing template: %v", err)
-	}
 	staticFileSystem := http.FS(staticFS)
 	staticFilesHandler := http.FileServer(staticFileSystem)
 	s := Server{
@@ -186,7 +175,7 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby) error {
+func (cfg Config) validate(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby, templateFS, staticFS fs.FS) error {
 	switch {
 	case log == nil:
 		return fmt.Errorf("log required")
@@ -196,12 +185,35 @@ func (cfg Config) validate(log *log.Logger, tokenizer Tokenizer, userDao UserDao
 		return fmt.Errorf("user dao required")
 	case lobby == nil:
 		return fmt.Errorf("lobby required")
+	case templateFS == nil:
+		return fmt.Errorf("template file system required")
+	case staticFS == nil:
+		return fmt.Errorf("static file system required")
 	case cfg.StopDur <= 0:
-		return fmt.Errorf("shop timeout duration required")
+		return fmt.Errorf("stop timeout duration required")
 	case cfg.CacheSec < 0:
-		return fmt.Errorf("non-negative cache time required")
+		return fmt.Errorf("nonnegative cache seconds required")
+	case cfg.HTTPSPort <= 0:
+		return fmt.Errorf("positive https port required")
 	}
 	return nil
+}
+
+// parseTemplate parses the template file system to create the template
+func parseTemplate(templateFS fs.FS) (*template.Template, error) {
+	templateFileGlobs := []string{
+		"html/**/*.html",
+		"fa/*.svg",
+		"favicon.svg",
+		"index.css",
+		"*.js",
+		"manifest.json",
+	}
+	t, err := template.ParseFS(templateFS, templateFileGlobs...)
+	if err != nil {
+		return nil, fmt.Errorf("parsing template file system: %v", err)
+	}
+	return t, nil
 }
 
 // Run the server asynchronously until it receives a shutdown signal.

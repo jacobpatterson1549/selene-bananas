@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -13,9 +14,172 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"testing/fstest"
+	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 )
+
+func TestNewServer(t *testing.T) {
+	testLog := log.New(io.Discard, "", 0)
+	var tokenizer mockTokenizer
+	var userDao mockUserDao
+	var lobby mockLobby
+	templateFS := fstest.MapFS{ // tests parseTemplate
+		"html/main/index.html": &fstest.MapFile{Data: []byte{}},
+		"fa/copyright.svg":     &fstest.MapFile{Data: []byte{}},
+		"favicon.svg":          &fstest.MapFile{Data: []byte{}},
+		"index.css":            &fstest.MapFile{Data: []byte{}},
+		"init.js":              &fstest.MapFile{Data: []byte{}},
+		"manifest.json":        &fstest.MapFile{Data: []byte{}},
+	}
+	var staticFS fstest.MapFS
+	newServerTests := []struct {
+		Config
+		*log.Logger
+		Tokenizer
+		UserDao
+		Lobby
+		templateFS, staticFS fs.FS
+		wantOk               bool
+		want                 *Server
+	}{
+		{}, // no log
+		{ // no tokenizer
+			Logger: testLog,
+		},
+		{ // no userDao
+			Logger:    testLog,
+			Tokenizer: tokenizer,
+		},
+		{ // no lobby
+			Logger:    testLog,
+			Tokenizer: tokenizer,
+			UserDao:   userDao,
+		},
+		{ // no templateFS
+			Logger:    testLog,
+			Tokenizer: tokenizer,
+			UserDao:   userDao,
+			Lobby:     lobby,
+		},
+		{ // no staticFS
+			Logger:     testLog,
+			Tokenizer:  tokenizer,
+			UserDao:    userDao,
+			Lobby:      lobby,
+			templateFS: templateFS,
+		},
+		{ // no stopDur
+			Logger:     testLog,
+			Tokenizer:  tokenizer,
+			UserDao:    userDao,
+			Lobby:      lobby,
+			templateFS: templateFS,
+			staticFS:   staticFS,
+		},
+		{ // bad cacheSec
+			Logger:     testLog,
+			Tokenizer:  tokenizer,
+			UserDao:    userDao,
+			Lobby:      lobby,
+			templateFS: templateFS,
+			staticFS:   staticFS,
+			Config: Config{
+				StopDur:  1 * time.Hour,
+				CacheSec: -1,
+			},
+		},
+		{ // missing httpsPort
+			Logger:     testLog,
+			Tokenizer:  tokenizer,
+			UserDao:    userDao,
+			Lobby:      lobby,
+			templateFS: templateFS,
+			staticFS:   staticFS,
+			Config: Config{
+				StopDur: 1 * time.Hour,
+			},
+		},
+		{ // bad templateFS
+			Logger:     testLog,
+			Tokenizer:  tokenizer,
+			UserDao:    userDao,
+			Lobby:      lobby,
+			templateFS: make(fstest.MapFS),
+			staticFS:   staticFS,
+			Config: Config{
+				StopDur:   1 * time.Hour,
+				HTTPSPort: 443,
+			},
+		},
+		{ // minimum happy path
+			Logger:     testLog,
+			Tokenizer:  tokenizer,
+			UserDao:    userDao,
+			Lobby:      lobby,
+			templateFS: templateFS,
+			staticFS:   staticFS,
+			Config: Config{
+				StopDur:   1 * time.Hour,
+				CacheSec:  86400,
+				HTTPSPort: 443,
+				ColorConfig: ColorConfig{
+					CanvasPrimary: "blue",
+				},
+			},
+			wantOk: true,
+			want: &Server{
+				log:       testLog,
+				tokenizer: tokenizer,
+				userDao:   userDao,
+				lobby:     lobby,
+				Config: Config{
+					StopDur:   1 * time.Hour,
+					CacheSec:  86400,
+					HTTPSPort: 443,
+					ColorConfig: ColorConfig{
+						CanvasPrimary: "blue",
+					},
+				},
+				cacheMaxAge: "max-age=86400",
+			},
+		},
+	}
+	for i, test := range newServerTests {
+		got, err := test.Config.NewServer(test.Logger, test.Tokenizer, test.UserDao, test.Lobby, test.templateFS, test.staticFS)
+		switch {
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		// cannot use DeepEqual on Server because http.Server and template.Template contain a error fields:
+		case !reflect.DeepEqual(test.want.log, got.log),
+			!reflect.DeepEqual(test.want.tokenizer, got.tokenizer),
+			!reflect.DeepEqual(test.want.userDao, got.userDao),
+			!reflect.DeepEqual(test.want.lobby, got.lobby),
+			test.want.cacheMaxAge != got.cacheMaxAge,
+			test.want.Config != got.Config:
+			t.Errorf("Test %v: server not copied from from arguments properly: %v", i, got)
+		default:
+			nilChecks := []interface{}{
+				got.log,
+				got.httpServer,
+				got.httpsServer,
+				got.template,
+				got.serveStatic,
+				got.monitor,
+			}
+			for j, gotJ := range nilChecks {
+				if gotJ == nil {
+					t.Errorf("Test %v: server left reference %v nil: %v", i, j, gotJ)
+				}
+			}
+		}
+	}
+}
 
 func TestHandleFileVersion(t *testing.T) {
 	handleFileVersionTests := []struct {
