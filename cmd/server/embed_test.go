@@ -9,6 +9,7 @@ import (
 func TestUnembedFS(t *testing.T) {
 	unembedFSTests := []struct {
 		fs.FS
+		subdirectory  string
 		wantFileNames []string
 	}{
 		{},
@@ -21,25 +22,38 @@ func TestUnembedFS(t *testing.T) {
 				"subdir/f2": &fstest.MapFile{},
 			},
 		},
-		{ // empty embedded file system
+		{ // empty embedded file system, no subdirectory
 			FS: fstest.MapFS{
 				"embed": &fstest.MapFile{},
 			},
 		},
+		{ // empty embedded file system
+			FS: fstest.MapFS{
+				"embed/d1": &fstest.MapFile{},
+			},
+			subdirectory: "d1",
+		},
 		{
 			FS: fstest.MapFS{
-				"f0":                &fstest.MapFile{}, // should be ignored
+				"f0":                &fstest.MapFile{},
 				"embed/f1":          &fstest.MapFile{},
-				"embed/d1/d2/d3/f2": &fstest.MapFile{},
+				"embed/d1/f2":       &fstest.MapFile{},
+				"embed/d1/d2/d3/f3": &fstest.MapFile{},
+				"embed/d1/d4/f4":    &fstest.MapFile{},
+				"embed/d1/d4/f5":    &fstest.MapFile{},
+				"embed/d2/f6":       &fstest.MapFile{},
 			},
+			subdirectory: "d1",
 			wantFileNames: []string{
-				"f1",
-				"d1/d2/d3/f2",
+				"f2",
+				"d2/d3/f3",
+				"d4/f4",
+				"d4/f5",
 			},
 		},
 	}
 	for i, test := range unembedFSTests {
-		got, err := unembedFS(test.FS)
+		got, err := unembedFS(test.FS, test.subdirectory)
 		switch {
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)

@@ -94,11 +94,11 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 		ColorConfig:   colorConfig,
 		NoTLSRedirect: m.noTLSRedirect,
 	}
-	templateFS, err := unembedFS(embeddedTemplateFS)
+	templateFS, err := unembedFS(embeddedTemplateFS, "template")
 	if err != nil {
 		return nil, fmt.Errorf("getting embed subdirectory for server template file system: %w", err)
 	}
-	staticFS, err := unembedFS(embeddedStaticFS)
+	staticFS, err := unembedFS(embeddedStaticFS, "static")
 	if err != nil {
 		return nil, fmt.Errorf("getting embed subdirectory for server static file system: %w", err)
 	}
@@ -135,7 +135,7 @@ func tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
 
 // sqlDatabase creates a SQL database to persist user information.
 func sqlDatabase(ctx context.Context, m mainFlags) (db.Database, error) {
-	sqlFS, err := unembedFS(embeddedSQLFS)
+	sqlFS, err := unembedFS(embeddedSQLFS, "sql")
 	if err != nil {
 		return nil, fmt.Errorf("getting embed subdirectory for sql file system: %w", err)
 	}
@@ -173,7 +173,7 @@ func sqlFiles(fsys fs.FS) ([]fs.File, error) {
 	}
 	userSQLFiles := make([]fs.File, len(sqlFileNames))
 	for i, n := range sqlFileNames {
-		n = fmt.Sprintf("sql/%s.sql", n)
+		n = fmt.Sprintf("%s.sql", n)
 		f, err := fsys.Open(n)
 		if err != nil {
 			return nil, fmt.Errorf("opening setup file %v: %w", n, err)

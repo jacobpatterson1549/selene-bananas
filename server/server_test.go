@@ -26,12 +26,7 @@ func TestNewServer(t *testing.T) {
 	var userDao mockUserDao
 	var lobby mockLobby
 	templateFS := fstest.MapFS{ // tests parseTemplate
-		"html/main/index.html": &fstest.MapFile{Data: []byte{}},
-		"fa/copyright.svg":     &fstest.MapFile{Data: []byte{}},
-		"favicon.svg":          &fstest.MapFile{Data: []byte{}},
-		"index.css":            &fstest.MapFile{Data: []byte{}},
-		"init.js":              &fstest.MapFile{Data: []byte{}},
-		"manifest.json":        &fstest.MapFile{Data: []byte{}},
+		"index.html": &fstest.MapFile{Data: []byte{}},
 	}
 	var staticFS fstest.MapFS
 	newServerTests := []struct {

@@ -199,17 +199,9 @@ func (cfg Config) validate(log *log.Logger, tokenizer Tokenizer, userDao UserDao
 	return nil
 }
 
-// parseTemplate parses the template file system to create the template
+// parseTemplate parses the whole template file system to create a template.
 func parseTemplate(templateFS fs.FS) (*template.Template, error) {
-	templateFileGlobs := []string{
-		"html/**/*.html",
-		"fa/*.svg",
-		"favicon.svg",
-		"index.css",
-		"*.js",
-		"manifest.json",
-	}
-	t, err := template.ParseFS(templateFS, templateFileGlobs...)
+	t, err := template.ParseFS(templateFS, "*")
 	if err != nil {
 		return nil, fmt.Errorf("parsing template file system: %v", err)
 	}
