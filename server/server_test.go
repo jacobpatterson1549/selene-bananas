@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"html/template"
 	"io"
@@ -422,6 +423,92 @@ func TestHandleHTTP(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestHandleHTTPS(t *testing.T) {
+	username := "selene" // used to check token for POST
+	withTLS := func(r *http.Request) *http.Request {
+		r.TLS = &tls.ConnectionState{}
+		return r
+	}
+	withSecHeader := func(r *http.Request) *http.Request {
+		r.Header.Add("Sec-Fetch-Mode", "same-origin")
+		return r
+	}
+	withAuthorization := func(r *http.Request) *http.Request {
+		r.Header.Add("Authorization", "Bearer GOOD")
+		r.Form = url.Values{"username": {username}}
+		return r
+	}
+	handleHTTPSTests := []struct {
+		*http.Request
+		*Server
+		wantCode int
+	}{
+		{
+			Request: httptest.NewRequest("GET", "/challenge", nil),
+			Server: &Server{
+				challenge: mockChallenge{
+					IsForFunc: func(path string) bool {
+						return true
+					},
+					HandleFunc: func(w io.Writer, path string) error {
+						return nil
+					},
+				},
+			},
+			wantCode: 200,
+		},
+		{
+			Request: httptest.NewRequest("GET", "/want-redirect", nil),
+			Server: &Server{
+				httpsServer: &http.Server{},
+				Config: Config{
+					NoTLSRedirect: true,
+				},
+			},
+			wantCode: 307,
+		},
+		{
+			Request: withSecHeader(httptest.NewRequest("GET", "/unknown", nil)),
+			Server: &Server{
+				httpsServer: &http.Server{},
+				Config: Config{
+					NoTLSRedirect: true,
+				},
+			},
+			wantCode: 404,
+		},
+		{
+			Request:  withTLS(httptest.NewRequest("GET", "/unknown", nil)),
+			Server:   &Server{},
+			wantCode: 404,
+		},
+		{
+			Request: withTLS(withAuthorization(httptest.NewRequest("POST", "/unknown", nil))),
+			Server: &Server{
+				tokenizer: mockTokenizer{
+					ReadUsernameFunc: func(tokenString string) (string, error) {
+						return username, nil
+					},
+				},
+			},
+			wantCode: 404,
+		},
+		{
+			Request:  withTLS(httptest.NewRequest("DELETE", "/", nil)),
+			Server:   &Server{},
+			wantCode: 405,
+		},
+	}
+	for i, test := range handleHTTPSTests {
+		w := httptest.NewRecorder()
+		test.Server.handleHTTPS(w, test.Request)
+		gotCode := w.Code
+		if test.wantCode != gotCode {
+			t.Errorf("Test %v: status codes not equal: wanted: %v, got %v", i, test.wantCode, gotCode)
+		}
+	}
 }
 
 func TestCheckTokenUsername(t *testing.T) {
