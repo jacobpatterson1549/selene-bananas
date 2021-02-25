@@ -32,12 +32,12 @@ func (s *Server) handleUserCreate(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password_confirm")
 	u, err := user.New(username, password)
 	if err != nil {
-		s.handleError(w, err)
+		s.writeInternalError(w, err)
 		return
 	}
 	ctx := r.Context()
 	if err := s.userDao.Create(ctx, *u); err != nil {
-		s.handleError(w, err)
+		s.writeInternalError(w, err)
 		return
 	}
 }
@@ -48,7 +48,7 @@ func (s *Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	u, err := user.New(username, password)
 	if err != nil {
-		s.handleError(w, err)
+		s.writeInternalError(w, err)
 		return
 	}
 	ctx := r.Context()
@@ -60,12 +60,12 @@ func (s *Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	token, err := s.tokenizer.Create(u2.Username, u2.Points)
 	if err != nil {
-		s.handleError(w, err)
+		s.writeInternalError(w, err)
 		return
 	}
 	if _, err := w.Write([]byte(token)); err != nil {
 		err = fmt.Errorf("writing authorization token: %w", err)
-		s.handleError(w, err)
+		s.writeInternalError(w, err)
 		return
 	}
 }
@@ -81,7 +81,7 @@ func (s *Server) handleUserLobby(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.lobby.AddUser(username, w, r); err != nil {
 		err = fmt.Errorf("websocket error: %w", err)
-		s.handleError(w, err)
+		s.writeInternalError(w, err)
 		return
 	}
 }
@@ -93,12 +93,12 @@ func (s *Server) handleUserUpdatePassword(w http.ResponseWriter, r *http.Request
 	newPassword := r.FormValue("password_confirm")
 	u, err := user.New(username, password)
 	if err != nil {
-		s.handleError(w, err)
+		s.writeInternalError(w, err)
 		return
 	}
 	ctx := r.Context()
 	if err := s.userDao.UpdatePassword(ctx, *u, newPassword); err != nil {
-		s.handleError(w, err)
+		s.writeInternalError(w, err)
 		return
 	}
 	s.lobby.RemoveUser(username)
@@ -110,12 +110,12 @@ func (s *Server) handleUserDelete(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	u, err := user.New(username, password)
 	if err != nil {
-		s.handleError(w, err)
+		s.writeInternalError(w, err)
 		return
 	}
 	ctx := r.Context()
 	if err := s.userDao.Delete(ctx, *u); err != nil {
-		s.handleError(w, err)
+		s.writeInternalError(w, err)
 		return
 	}
 	s.lobby.RemoveUser(username)

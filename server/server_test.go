@@ -507,7 +507,7 @@ func TestHandleError(t *testing.T) {
 		log: log,
 	}
 	want := 500
-	s.handleError(w, err)
+	s.writeInternalError(w, err)
 	got := w.Code
 	switch {
 	case want != got:

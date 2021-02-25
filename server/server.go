@@ -301,7 +301,7 @@ func (s *Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	case s.challenge.IsFor(r.URL.Path):
 		if err := s.challenge.Handle(w, r.URL.Path); err != nil {
 			err := fmt.Errorf("serving acme challenge: %v", err)
-			s.handleError(w, err)
+			s.writeInternalError(w, err)
 		}
 	default:
 		s.redirectToHTTPS(w, r)
@@ -409,7 +409,7 @@ func (s *Server) serveTemplate(name string) http.HandlerFunc {
 		addMimeType(name, w)
 		if err := s.template.ExecuteTemplate(w, name, s.data); err != nil {
 			err = fmt.Errorf("rendering template: %v", err)
-			s.handleError(w, err)
+			s.writeInternalError(w, err)
 			return
 		}
 	}
@@ -429,7 +429,7 @@ func (s *Server) redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
 		host, _, err = net.SplitHostPort(host)
 		if err != nil {
 			err = fmt.Errorf("could not redirect to https: %w", err)
-			s.handleError(w, err)
+			s.writeInternalError(w, err)
 			return
 		}
 	}
@@ -458,8 +458,8 @@ func (s *Server) checkTokenUsername(r *http.Request) error {
 	return nil
 }
 
-// handleError logs and writes the error as an internal server error (500).
-func (s *Server) handleError(w http.ResponseWriter, err error) {
+// writeInternalError logs and writes the error as an internal server error (500).
+func (s *Server) writeInternalError(w http.ResponseWriter, err error) {
 	s.log.Printf("server error: %v", err)
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
