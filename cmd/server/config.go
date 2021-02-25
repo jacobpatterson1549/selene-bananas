@@ -101,7 +101,16 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if err != nil {
 		return nil, fmt.Errorf("getting embed subdirectory for server static file system: %w", err)
 	}
-	return cfg.NewServer(log, tokenizer, userDao, lobby, challenge, templateFS, staticFS)
+	p := server.Parameters{
+		Log:        log,
+		Tokenizer:  tokenizer,
+		UserDao:    userDao,
+		Lobby:      lobby,
+		Challenge:  challenge,
+		TemplateFS: templateFS,
+		StaticFS:   staticFS,
+	}
+	return cfg.NewServer(p)
 }
 
 // colorConfig creates the color config for the css.

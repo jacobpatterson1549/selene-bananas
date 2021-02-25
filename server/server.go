@@ -99,6 +99,16 @@ type (
 		IsFor(path string) bool
 		Handle(w io.Writer, path string) error
 	}
+
+	// Parameters contains the interfaces needed to create a new server
+	Parameters struct {
+		Log *log.Logger
+		Tokenizer
+		UserDao
+		Lobby
+		Challenge
+		TemplateFS, StaticFS fs.FS
+	}
 )
 
 const (
@@ -115,11 +125,11 @@ const (
 )
 
 // NewServer creates a Server from the Config
-func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby, challenge Challenge, templateFS, staticFS fs.FS) (*Server, error) {
-	if err := cfg.validate(log, tokenizer, userDao, lobby, challenge, templateFS, staticFS); err != nil {
+func (cfg Config) NewServer(p Parameters) (*Server, error) {
+	if err := cfg.validate(p); err != nil {
 		return nil, fmt.Errorf("creating server: validation: %w", err)
 	}
-	template, err := parseTemplate(templateFS)
+	template, err := parseTemplate(p.TemplateFS)
 	if err != nil {
 		return nil, err
 	}
@@ -155,15 +165,15 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 		Handler: httpsServeMux,
 	}
 	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
-	staticFileSystem := http.FS(staticFS)
+	staticFileSystem := http.FS(p.StaticFS)
 	staticFilesHandler := http.FileServer(staticFileSystem)
 	s := Server{
-		log:         log,
+		log:         p.Log,
 		data:        data,
-		tokenizer:   tokenizer,
-		userDao:     userDao,
-		lobby:       lobby,
-		challenge:   challenge,
+		tokenizer:   p.Tokenizer,
+		userDao:     p.UserDao,
+		lobby:       p.Lobby,
+		challenge:   p.Challenge,
 		httpServer:  httpServer,
 		httpsServer: httpsServer,
 		cacheMaxAge: cacheMaxAge,
@@ -179,29 +189,39 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 	return &s, nil
 }
 
-// validate ensures the configuration has no errors.
-func (cfg Config) validate(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby, challenge Challenge, templateFS, staticFS fs.FS) error {
+// validate ensures the configuration and parameters have no errors.
+func (cfg Config) validate(p Parameters) error {
+	if err := p.validate(); err != nil {
+		return err
+	}
 	switch {
-	case log == nil:
-		return fmt.Errorf("log required")
-	case tokenizer == nil:
-		return fmt.Errorf("tokenizer required")
-	case userDao == nil:
-		return fmt.Errorf("user dao required")
-	case lobby == nil:
-		return fmt.Errorf("lobby required")
-	case challenge == nil:
-		return fmt.Errorf("challenge required")
-	case templateFS == nil:
-		return fmt.Errorf("template file system required")
-	case staticFS == nil:
-		return fmt.Errorf("static file system required")
 	case cfg.StopDur <= 0:
 		return fmt.Errorf("stop timeout duration required")
 	case cfg.CacheSec < 0:
 		return fmt.Errorf("nonnegative cache seconds required")
 	case cfg.HTTPSPort <= 0:
 		return fmt.Errorf("positive https port required")
+	}
+	return nil
+}
+
+// validate ensures that all of the parameters are present.
+func (p Parameters) validate() error {
+	switch {
+	case p.Log == nil:
+		return fmt.Errorf("log required")
+	case p.Tokenizer == nil:
+		return fmt.Errorf("tokenizer required")
+	case p.UserDao == nil:
+		return fmt.Errorf("user dao required")
+	case p.Lobby == nil:
+		return fmt.Errorf("lobby required")
+	case p.Challenge == nil:
+		return fmt.Errorf("challenge required")
+	case p.TemplateFS == nil:
+		return fmt.Errorf("template file system required")
+	case p.StaticFS == nil:
+		return fmt.Errorf("static file system required")
 	}
 	return nil
 }

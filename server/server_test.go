@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/fs"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -31,105 +30,122 @@ func TestNewServer(t *testing.T) {
 	}
 	var staticFS fstest.MapFS
 	newServerTests := []struct {
+		Parameters
 		Config
-		*log.Logger
-		Tokenizer
-		UserDao
-		Lobby
-		Challenge
-		templateFS, staticFS fs.FS
-		wantOk               bool
-		want                 *Server
+		wantOk bool
+		want   *Server
 	}{
 		{}, // no log
 		{ // no tokenizer
-			Logger: testLog,
+			Parameters: Parameters{
+				Log: testLog,
+			},
 		},
 		{ // no userDao
-			Logger:    testLog,
-			Tokenizer: tokenizer,
+			Parameters: Parameters{
+				Log:       testLog,
+				Tokenizer: tokenizer,
+			},
 		},
 		{ // no lobby
-			Logger:    testLog,
-			Tokenizer: tokenizer,
-			UserDao:   userDao,
+			Parameters: Parameters{
+				Log:       testLog,
+				Tokenizer: tokenizer,
+				UserDao:   userDao,
+			},
 		},
 		{ // no challenge
-			Logger:    testLog,
-			Tokenizer: tokenizer,
-			UserDao:   userDao,
-			Lobby:     lobby,
+			Parameters: Parameters{
+				Log:       testLog,
+				Tokenizer: tokenizer,
+				UserDao:   userDao,
+				Lobby:     lobby,
+			},
 		},
 		{ // no templateFS
-			Logger:    testLog,
-			Tokenizer: tokenizer,
-			UserDao:   userDao,
-			Lobby:     lobby,
-			Challenge: challenge,
+			Parameters: Parameters{
+				Log:       testLog,
+				Tokenizer: tokenizer,
+				UserDao:   userDao,
+				Lobby:     lobby,
+				Challenge: challenge,
+			},
 		},
 		{ // no staticFS
-			Logger:     testLog,
-			Tokenizer:  tokenizer,
-			UserDao:    userDao,
-			Lobby:      lobby,
-			Challenge:  challenge,
-			templateFS: templateFS,
+			Parameters: Parameters{
+				Log:        testLog,
+				Tokenizer:  tokenizer,
+				UserDao:    userDao,
+				Lobby:      lobby,
+				Challenge:  challenge,
+				TemplateFS: templateFS,
+			},
 		},
 		{ // no stopDur
-			Logger:     testLog,
-			Tokenizer:  tokenizer,
-			UserDao:    userDao,
-			Lobby:      lobby,
-			Challenge:  challenge,
-			templateFS: templateFS,
-			staticFS:   staticFS,
+			Parameters: Parameters{
+				Log:        testLog,
+				Tokenizer:  tokenizer,
+				UserDao:    userDao,
+				Lobby:      lobby,
+				Challenge:  challenge,
+				TemplateFS: templateFS,
+				StaticFS:   staticFS,
+			},
 		},
 		{ // bad cacheSec
-			Logger:     testLog,
-			Tokenizer:  tokenizer,
-			UserDao:    userDao,
-			Lobby:      lobby,
-			Challenge:  challenge,
-			templateFS: templateFS,
-			staticFS:   staticFS,
+			Parameters: Parameters{
+				Log:        testLog,
+				Tokenizer:  tokenizer,
+				UserDao:    userDao,
+				Lobby:      lobby,
+				Challenge:  challenge,
+				TemplateFS: templateFS,
+				StaticFS:   staticFS,
+			},
 			Config: Config{
 				StopDur:  1 * time.Hour,
 				CacheSec: -1,
 			},
 		},
 		{ // missing httpsPort
-			Logger:     testLog,
-			Tokenizer:  tokenizer,
-			UserDao:    userDao,
-			Lobby:      lobby,
-			Challenge:  challenge,
-			templateFS: templateFS,
-			staticFS:   staticFS,
+			Parameters: Parameters{
+				Log:        testLog,
+				Tokenizer:  tokenizer,
+				UserDao:    userDao,
+				Lobby:      lobby,
+				Challenge:  challenge,
+				TemplateFS: templateFS,
+				StaticFS:   staticFS,
+			},
 			Config: Config{
 				StopDur: 1 * time.Hour,
 			},
 		},
 		{ // bad templateFS
-			Logger:     testLog,
-			Tokenizer:  tokenizer,
-			UserDao:    userDao,
-			Lobby:      lobby,
-			Challenge:  challenge,
-			templateFS: make(fstest.MapFS),
-			staticFS:   staticFS,
+			Parameters: Parameters{
+				Log:        testLog,
+				Tokenizer:  tokenizer,
+				UserDao:    userDao,
+				Lobby:      lobby,
+				Challenge:  challenge,
+				TemplateFS: make(fstest.MapFS),
+				StaticFS:   staticFS,
+			},
 			Config: Config{
 				StopDur:   1 * time.Hour,
 				HTTPSPort: 443,
 			},
 		},
 		{ // minimum happy path
-			Logger:     testLog,
-			Tokenizer:  tokenizer,
-			UserDao:    userDao,
-			Lobby:      lobby,
-			Challenge:  challenge,
-			templateFS: templateFS,
-			staticFS:   staticFS,
+			Parameters: Parameters{
+				Log:        testLog,
+				Tokenizer:  tokenizer,
+				UserDao:    userDao,
+				Lobby:      lobby,
+				Challenge:  challenge,
+				TemplateFS: templateFS,
+				StaticFS:   staticFS,
+			},
 			Config: Config{
 				StopDur:   1 * time.Hour,
 				CacheSec:  86400,
@@ -158,7 +174,7 @@ func TestNewServer(t *testing.T) {
 		},
 	}
 	for i, test := range newServerTests {
-		got, err := test.Config.NewServer(test.Logger, test.Tokenizer, test.UserDao, test.Lobby, test.Challenge, test.templateFS, test.staticFS)
+		got, err := test.Config.NewServer(test.Parameters)
 		switch {
 		case !test.wantOk:
 			if err == nil {
