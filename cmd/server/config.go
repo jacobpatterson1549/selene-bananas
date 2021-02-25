@@ -88,7 +88,6 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 		StopDur:       20 * time.Second, // should be longer than the PingPeriod of sockets so they can close gracefully
 		CacheSec:      m.cacheSec,
 		Version:       version,
-		Challenge:     challenge,
 		TLSCertFile:   m.tlsCertFile,
 		TLSKeyFile:    m.tlsKeyFile,
 		ColorConfig:   colorConfig,
@@ -102,7 +101,7 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if err != nil {
 		return nil, fmt.Errorf("getting embed subdirectory for server static file system: %w", err)
 	}
-	return cfg.NewServer(log, tokenizer, userDao, lobby, templateFS, staticFS)
+	return cfg.NewServer(log, tokenizer, userDao, lobby, challenge, templateFS, staticFS)
 }
 
 // colorConfig creates the color config for the css.

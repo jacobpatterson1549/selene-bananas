@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"sync"
 
@@ -60,4 +61,17 @@ func (l mockLobby) AddUser(username string, w http.ResponseWriter, r *http.Reque
 
 func (l mockLobby) RemoveUser(username string) {
 	l.removeUserFunc(username)
+}
+
+type mockChallenge struct {
+	IsForFunc  func(path string) bool
+	HandleFunc func(w io.Writer, path string) error
+}
+
+func (c mockChallenge) IsFor(path string) bool {
+	return c.IsForFunc(path)
+}
+
+func (c mockChallenge) Handle(w io.Writer, path string) error {
+	return c.HandleFunc(w, path)
 }

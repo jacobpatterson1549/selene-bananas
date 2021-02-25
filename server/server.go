@@ -18,7 +18,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
 	"github.com/jacobpatterson1549/selene-bananas/server/game"
 )
 
@@ -31,6 +30,7 @@ type (
 		tokenizer   Tokenizer
 		userDao     UserDao
 		lobby       Lobby
+		challenge   Challenge
 		httpServer  *http.Server
 		httpsServer *http.Server
 		cacheMaxAge string
@@ -52,8 +52,6 @@ type (
 		CacheSec int
 		// Version is used to bust caches of files from older server version
 		Version string
-		// Challenge is the ACME HTTP-01 Challenge used to get a certificate
-		Challenge certificate.Challenge
 		// The public HTTPS certificate file.
 		TLSCertFile string
 		// The private HTTPS key file.
@@ -95,6 +93,12 @@ type (
 		Create(username string, points int) (string, error)
 		ReadUsername(tokenString string) (string, error)
 	}
+
+	// Challenge is used to fufill authentication checks to get a certificate.
+	Challenge interface {
+		IsFor(path string) bool
+		Handle(w io.Writer, path string) error
+	}
 )
 
 const (
@@ -111,8 +115,8 @@ const (
 )
 
 // NewServer creates a Server from the Config
-func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby, templateFS, staticFS fs.FS) (*Server, error) {
-	if err := cfg.validate(log, tokenizer, userDao, lobby, templateFS, staticFS); err != nil {
+func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby, challenge Challenge, templateFS, staticFS fs.FS) (*Server, error) {
+	if err := cfg.validate(log, tokenizer, userDao, lobby, challenge, templateFS, staticFS); err != nil {
 		return nil, fmt.Errorf("creating server: validation: %w", err)
 	}
 	template, err := parseTemplate(templateFS)
@@ -159,6 +163,7 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 		tokenizer:   tokenizer,
 		userDao:     userDao,
 		lobby:       lobby,
+		challenge:   challenge,
 		httpServer:  httpServer,
 		httpsServer: httpsServer,
 		cacheMaxAge: cacheMaxAge,
@@ -175,7 +180,7 @@ func (cfg Config) NewServer(log *log.Logger, tokenizer Tokenizer, userDao UserDa
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby, templateFS, staticFS fs.FS) error {
+func (cfg Config) validate(log *log.Logger, tokenizer Tokenizer, userDao UserDao, lobby Lobby, challenge Challenge, templateFS, staticFS fs.FS) error {
 	switch {
 	case log == nil:
 		return fmt.Errorf("log required")
@@ -185,6 +190,8 @@ func (cfg Config) validate(log *log.Logger, tokenizer Tokenizer, userDao UserDao
 		return fmt.Errorf("user dao required")
 	case lobby == nil:
 		return fmt.Errorf("lobby required")
+	case challenge == nil:
+		return fmt.Errorf("challenge required")
 	case templateFS == nil:
 		return fmt.Errorf("template file system required")
 	case staticFS == nil:
@@ -271,10 +278,10 @@ func (s *Server) Stop(ctx context.Context) error {
 // handleHTTPS handles http endpoints.
 func (s *Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
-	case s.Challenge.IsFor(r.URL.Path):
-		if err := s.Challenge.Handle(w, r.URL.Path); err != nil {
-			s.log.Printf("serving acme challenge: %v", err)
-			s.httpError(w, http.StatusInternalServerError)
+	case s.challenge.IsFor(r.URL.Path):
+		if err := s.challenge.Handle(w, r.URL.Path); err != nil {
+			err := fmt.Errorf("serving acme challenge: %v", err)
+			s.handleError(w, err)
 		}
 	default:
 		s.redirectToHTTPS(w, r)

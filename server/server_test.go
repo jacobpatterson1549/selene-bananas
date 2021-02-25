@@ -25,6 +25,7 @@ func TestNewServer(t *testing.T) {
 	var tokenizer mockTokenizer
 	var userDao mockUserDao
 	var lobby mockLobby
+	var challenge mockChallenge
 	templateFS := fstest.MapFS{ // tests parseTemplate
 		"index.html": &fstest.MapFile{Data: []byte{}},
 	}
@@ -35,6 +36,7 @@ func TestNewServer(t *testing.T) {
 		Tokenizer
 		UserDao
 		Lobby
+		Challenge
 		templateFS, staticFS fs.FS
 		wantOk               bool
 		want                 *Server
@@ -52,17 +54,25 @@ func TestNewServer(t *testing.T) {
 			Tokenizer: tokenizer,
 			UserDao:   userDao,
 		},
+		{ // no challenge
+			Logger:    testLog,
+			Tokenizer: tokenizer,
+			UserDao:   userDao,
+			Lobby:     lobby,
+		},
 		{ // no templateFS
 			Logger:    testLog,
 			Tokenizer: tokenizer,
 			UserDao:   userDao,
 			Lobby:     lobby,
+			Challenge: challenge,
 		},
 		{ // no staticFS
 			Logger:     testLog,
 			Tokenizer:  tokenizer,
 			UserDao:    userDao,
 			Lobby:      lobby,
+			Challenge:  challenge,
 			templateFS: templateFS,
 		},
 		{ // no stopDur
@@ -70,6 +80,7 @@ func TestNewServer(t *testing.T) {
 			Tokenizer:  tokenizer,
 			UserDao:    userDao,
 			Lobby:      lobby,
+			Challenge:  challenge,
 			templateFS: templateFS,
 			staticFS:   staticFS,
 		},
@@ -78,6 +89,7 @@ func TestNewServer(t *testing.T) {
 			Tokenizer:  tokenizer,
 			UserDao:    userDao,
 			Lobby:      lobby,
+			Challenge:  challenge,
 			templateFS: templateFS,
 			staticFS:   staticFS,
 			Config: Config{
@@ -90,6 +102,7 @@ func TestNewServer(t *testing.T) {
 			Tokenizer:  tokenizer,
 			UserDao:    userDao,
 			Lobby:      lobby,
+			Challenge:  challenge,
 			templateFS: templateFS,
 			staticFS:   staticFS,
 			Config: Config{
@@ -101,6 +114,7 @@ func TestNewServer(t *testing.T) {
 			Tokenizer:  tokenizer,
 			UserDao:    userDao,
 			Lobby:      lobby,
+			Challenge:  challenge,
 			templateFS: make(fstest.MapFS),
 			staticFS:   staticFS,
 			Config: Config{
@@ -113,6 +127,7 @@ func TestNewServer(t *testing.T) {
 			Tokenizer:  tokenizer,
 			UserDao:    userDao,
 			Lobby:      lobby,
+			Challenge:  challenge,
 			templateFS: templateFS,
 			staticFS:   staticFS,
 			Config: Config{
@@ -129,6 +144,7 @@ func TestNewServer(t *testing.T) {
 				tokenizer: tokenizer,
 				userDao:   userDao,
 				lobby:     lobby,
+				challenge: challenge,
 				Config: Config{
 					StopDur:   1 * time.Hour,
 					CacheSec:  86400,
@@ -142,7 +158,7 @@ func TestNewServer(t *testing.T) {
 		},
 	}
 	for i, test := range newServerTests {
-		got, err := test.Config.NewServer(test.Logger, test.Tokenizer, test.UserDao, test.Lobby, test.templateFS, test.staticFS)
+		got, err := test.Config.NewServer(test.Logger, test.Tokenizer, test.UserDao, test.Lobby, test.Challenge, test.templateFS, test.staticFS)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -155,12 +171,12 @@ func TestNewServer(t *testing.T) {
 			!reflect.DeepEqual(test.want.tokenizer, got.tokenizer),
 			!reflect.DeepEqual(test.want.userDao, got.userDao),
 			!reflect.DeepEqual(test.want.lobby, got.lobby),
+			!reflect.DeepEqual(test.want.challenge, got.challenge),
 			test.want.cacheMaxAge != got.cacheMaxAge,
 			test.want.Config != got.Config:
 			t.Errorf("Test %v: server not copied from from arguments properly: %v", i, got)
 		default:
 			nilChecks := []interface{}{
-				got.log,
 				got.httpServer,
 				got.httpsServer,
 				got.template,
@@ -297,46 +313,99 @@ func TestHandleFile(t *testing.T) {
 }
 
 func TestHandleHTTP(t *testing.T) {
-	handleHTTPTests := []struct {
-		httpURI   string
-		httpsAddr string
-		want      string
-	}{
-		{
-			httpURI:   "http://example.com",
-			httpsAddr: ":443",
-			want:      "https://example.com",
-		},
-		{
-			httpURI:   "https://example.com",
-			httpsAddr: ":443",
-			want:      "https://example.com",
-		},
-		{
-			httpURI:   "http://example.com:80/abc",
-			httpsAddr: ":443",
-			want:      "https://example.com/abc",
-		},
-		{
-			httpURI:   "http://example.com:8001/abc/d",
-			httpsAddr: ":8000",
-			want:      "https://example.com:8000/abc/d",
-		},
-	}
-	for i, test := range handleHTTPTests {
-		s := Server{
-			httpsServer: &http.Server{
-				Addr: test.httpsAddr,
+	t.Run("TestHandleHTTPChallenge", func(t *testing.T) {
+		handleHTTPChallengeTests := []struct {
+			isForPath   bool
+			handleError error
+			wantCode    int
+		}{
+			{
+				wantCode: 307,
+			},
+			{
+				isForPath:   true,
+				handleError: fmt.Errorf("challenge handle error"),
+				wantCode:    500,
+			},
+			{
+				isForPath: true,
+				wantCode:  200,
 			},
 		}
-		r := httptest.NewRequest("", test.httpURI, nil)
-		w := httptest.NewRecorder()
-		s.handleHTTP(w, r)
-		got := w.Header().Get("Location")
-		if test.want != got {
-			t.Errorf("test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
+		for i, test := range handleHTTPChallengeTests {
+			s := Server{
+				log: log.New(io.Discard, "", 0),
+				challenge: mockChallenge{
+					IsForFunc: func(path string) bool {
+						return test.isForPath
+					},
+					HandleFunc: func(w io.Writer, path string) error {
+						return test.handleError
+					},
+				},
+				httpsServer: &http.Server{},
+			}
+			r := httptest.NewRequest("", "/", nil)
+			w := httptest.NewRecorder()
+			s.handleHTTP(w, r)
+			gotCode := w.Code
+			if test.wantCode != gotCode {
+				t.Errorf("Test %v: %#v: wanted status code %v, got %v", i, test, test.wantCode, gotCode)
+			}
 		}
-	}
+	})
+	t.Run("TestHandleHTTPRedirect", func(t *testing.T) {
+		handleHTTPRedirectTests := []struct {
+			httpURI      string
+			httpsAddr    string
+			wantLocation string
+		}{
+			{
+				httpURI:      "http://example.com",
+				httpsAddr:    ":443",
+				wantLocation: "https://example.com",
+			},
+			{
+				httpURI:      "https://example.com",
+				httpsAddr:    ":443",
+				wantLocation: "https://example.com",
+			},
+			{
+				httpURI:      "http://example.com:80/abc",
+				httpsAddr:    ":443",
+				wantLocation: "https://example.com/abc",
+			},
+			{
+				httpURI:      "http://example.com:8001/abc/d",
+				httpsAddr:    ":8000",
+				wantLocation: "https://example.com:8000/abc/d",
+			},
+		}
+		wantCode := 307
+		for i, test := range handleHTTPRedirectTests {
+			s := Server{
+				challenge: mockChallenge{
+					IsForFunc: func(path string) bool {
+						return false
+					},
+				},
+				httpsServer: &http.Server{
+					Addr: test.httpsAddr,
+				},
+			}
+			r := httptest.NewRequest("", test.httpURI, nil)
+			w := httptest.NewRecorder()
+			s.handleHTTP(w, r)
+			gotCode := w.Code
+			gotLocation := w.Header().Get("Location")
+			switch {
+			case wantCode != gotCode:
+				t.Errorf("Test %v: wanted status code %v, got %v", i, wantCode, gotCode)
+			case test.wantLocation != gotLocation:
+				t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.wantLocation, gotLocation)
+			}
+		}
+	})
 }
 
 func TestCheckTokenUsername(t *testing.T) {
