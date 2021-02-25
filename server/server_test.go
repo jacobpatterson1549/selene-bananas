@@ -487,9 +487,8 @@ func TestCheckTokenUsername(t *testing.T) {
 
 func TestHTTPError(t *testing.T) {
 	w := httptest.NewRecorder()
-	var s Server
 	want := 400
-	s.httpError(w, want)
+	httpError(w, want)
 	got := w.Code
 	switch {
 	case want != got:
@@ -528,14 +527,13 @@ func TestHasSecHeader(t *testing.T) {
 		"inSec-t":         false,
 		"Sec-Fetch-Mode:": true,
 	}
-	var s Server
 	for header, want := range hasSecHeaderTests {
 		r := http.Request{
 			Header: http.Header{
 				header: {},
 			},
 		}
-		got := s.hasSecHeader(&r)
+		got := hasSecHeader(&r)
 		if want != got {
 			t.Errorf("wanted hasSecHeader = %v when header = %v", want, header)
 		}

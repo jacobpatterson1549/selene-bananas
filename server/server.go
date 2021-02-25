@@ -313,14 +313,14 @@ func (s *Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.TLS == nil && !s.NoTLSRedirect:
 		s.handleHTTP(w, r)
-	case r.TLS == nil && s.NoTLSRedirect && !s.hasSecHeader(r):
+	case r.TLS == nil && s.NoTLSRedirect && !hasSecHeader(r):
 		s.redirectToHTTPS(w, r)
 	case r.Method == "GET":
 		s.handleGet(w, r)
 	case r.Method == "POST":
 		s.handlePost(w, r)
 	default:
-		s.httpError(w, http.StatusMethodNotAllowed)
+		httpError(w, http.StatusMethodNotAllowed)
 	}
 }
 
@@ -336,7 +336,7 @@ func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
 	case "/monitor":
 		s.monitor.ServeHTTP(w, r)
 	default:
-		s.httpError(w, http.StatusNotFound)
+		httpError(w, http.StatusNotFound)
 	}
 }
 
@@ -348,7 +348,7 @@ func (s *Server) handlePost(w http.ResponseWriter, r *http.Request) {
 	default:
 		if err := s.checkTokenUsername(r); err != nil {
 			s.log.Print(err)
-			s.httpError(w, http.StatusForbidden)
+			httpError(w, http.StatusForbidden)
 			return
 		}
 	}
@@ -364,7 +364,7 @@ func (s *Server) handlePost(w http.ResponseWriter, r *http.Request) {
 	case "/ping":
 		// NOOP
 	default:
-		s.httpError(w, http.StatusNotFound)
+		httpError(w, http.StatusNotFound)
 	}
 }
 
@@ -465,12 +465,12 @@ func (s *Server) handleError(w http.ResponseWriter, err error) {
 }
 
 // httpError writes the error status code.
-func (*Server) httpError(w http.ResponseWriter, statusCode int) {
+func httpError(w http.ResponseWriter, statusCode int) {
 	http.Error(w, http.StatusText(statusCode), statusCode)
 }
 
 // hasSecHeader returns true if thhe request has any header starting with "Sec-".
-func (*Server) hasSecHeader(r *http.Request) bool {
+func hasSecHeader(r *http.Request) bool {
 	for header := range r.Header {
 		if strings.HasPrefix(header, "Sec-") {
 			return true
