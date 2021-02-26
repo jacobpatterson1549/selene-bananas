@@ -297,11 +297,11 @@ func TestDatabaseExec(t *testing.T) {
 		}
 		err = db.Exec(ctx, q)
 		switch {
-		case err != nil:
-			if test.wantOk {
+		case !test.wantOk:
+			if err == nil {
 				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
-		case !test.wantOk:
+		case err != nil:
 			t.Errorf("Test %v: wanted error", i)
 		}
 		cancelFunc()
