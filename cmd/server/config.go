@@ -7,9 +7,9 @@ import (
 	"io"
 	"log"
 	"math/rand"
-	"os"
 	"time"
 
+	"github.com/jacobpatterson1549/selene-bananas/db"
 	"github.com/jacobpatterson1549/selene-bananas/db/sql"
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
@@ -26,7 +26,7 @@ import (
 )
 
 // newServer creates the server.
-func (m mainFlags) newServer(ctx context.Context, log *log.Logger, e embeddedData) (*server.Server, error) {
+func (m mainFlags) newServer(ctx context.Context, log *log.Logger, db db.Database, wordsFile io.Reader, e embeddedData) (*server.Server, error) {
 	timeFunc := func() int64 {
 		return time.Now().UTC().Unix()
 	}
@@ -39,16 +39,7 @@ func (m mainFlags) newServer(ctx context.Context, log *log.Logger, e embeddedDat
 	if err != nil {
 		return nil, fmt.Errorf("creating authentication tokenizer: %w", err)
 	}
-	setupSQL, err := m.setupSQL(e)
-	if err != nil {
-		return nil, err
-	}
-	sqlDatabaseConfig := m.sqlDatabaseConfig(ctx)
-	sqlDB, err := sqlDatabaseConfig.NewDatabase(ctx, setupSQL)
-	if err != nil {
-		return nil, fmt.Errorf("creating SQL database: %w", err)
-	}
-	userDao, err := user.NewDao(sqlDB)
+	userDao, err := user.NewDao(db)
 	if err != nil {
 		return nil, fmt.Errorf("creating user dao: %w", err)
 	}
@@ -57,10 +48,7 @@ func (m mainFlags) newServer(ctx context.Context, log *log.Logger, e embeddedDat
 	if err != nil {
 		return nil, fmt.Errorf("creating socket runner: %w", err)
 	}
-	wordChecker, err := m.wordChecker()
-	if err != nil {
-		return nil, err
-	}
+	wordChecker := word.NewChecker(wordsFile)
 	gameRunnerCfg := m.gameRunnerConfig(timeFunc)
 	gameRunner, err := gameRunnerCfg.NewRunner(log, wordChecker, userDao)
 	if err != nil {
@@ -93,8 +81,8 @@ func (m mainFlags) newServer(ctx context.Context, log *log.Logger, e embeddedDat
 		UserDao:    userDao,
 		Lobby:      lobby,
 		Challenge:  challenge,
-		TemplateFS: e.TemplateFS,
 		StaticFS:   e.StaticFS,
+		TemplateFS: e.TemplateFS,
 	}
 	return cfg.NewServer(p)
 }
@@ -127,25 +115,8 @@ func (mainFlags) tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
 	return cfg
 }
 
-// setupSQL reads the sql files from the embedParameters.
-func (mainFlags) setupSQL(e embeddedData) ([][]byte, error) {
-	sqlFiles, err := e.sqlFiles()
-	if err != nil {
-		return nil, err
-	}
-	setupSQL := make([][]byte, 0, len(sqlFiles))
-	for n, f := range sqlFiles {
-		b, err := io.ReadAll(f)
-		if err != nil {
-			return nil, fmt.Errorf("reading sql setup query %v: %v", n, err)
-		}
-		setupSQL = append(setupSQL, b)
-	}
-	return setupSQL, nil
-}
-
 // sqlDatabase creates the configuration for a SQL database to persist user information.
-func (m mainFlags) sqlDatabaseConfig(ctx context.Context) sql.DatabaseConfig {
+func (m mainFlags) sqlDatabaseConfig() sql.DatabaseConfig {
 	cfg := sql.DatabaseConfig{
 		DriverName:  "postgres",
 		DatabaseURL: m.databaseURL,
@@ -171,16 +142,6 @@ func (m mainFlags) gameRunnerConfig(timeFunc func() int64) gameController.Runner
 		GameConfig: gameCfg,
 	}
 	return cfg
-}
-
-// wordChecker creates the word checker.
-func (m mainFlags) wordChecker() (*word.Checker, error) {
-	wordsFile, err := os.Open(m.wordsFile)
-	if err != nil {
-		return nil, fmt.Errorf("trying to open words file: %w", err)
-	}
-	wc := word.NewChecker(wordsFile)
-	return wc, nil
 }
 
 // gameConfig creates the base configuration for all games.

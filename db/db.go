@@ -1,14 +1,19 @@
 // Package db interacts with storing user attributes so they can be retrieved after the server restarts
 package db
 
-import "context"
+import (
+	"context"
+	"io"
+)
 
 type (
 	// Database contains methods to create, read, update, and delete data.
 	Database interface {
-		// query reads from the database without updating it.
+		// Setup initializes the database by reading the files.
+		Setup(ctx context.Context, files []io.Reader) error
+		// Query reads from the database without updating it.
 		Query(ctx context.Context, q Query) Scanner
-		// exec makes a change to existing data, creating/modifying/removing it.
+		// Exec makes a change to existing data, creating/modifying/removing it.
 		Exec(ctx context.Context, queries ...Query) error
 	}
 

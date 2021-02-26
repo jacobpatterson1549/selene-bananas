@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"io/fs"
 	"testing"
 	"testing/fstest"
@@ -206,31 +207,24 @@ func TestCleanVersion(t *testing.T) {
 // The table creation scripts must be run before other scripts reference the tables.
 func TestSQLFiles(t *testing.T) {
 	sqlFilesTests := []struct {
-		sqlFS         fs.FS
-		wantOk        bool
-		wantFileNames []string
+		sqlFS  fs.FS
+		wantOk bool
+		want   string
 	}{
 		{
 			sqlFS: fstest.MapFS{},
 		},
 		{
 			sqlFS: fstest.MapFS{
-				"user_create.sql":                  &fstest.MapFile{},
-				"user_delete.sql":                  &fstest.MapFile{},
-				"user_read.sql":                    &fstest.MapFile{},
-				"users.sql":                        &fstest.MapFile{},
-				"user_update_password.sql":         &fstest.MapFile{},
-				"user_update_points_increment.sql": &fstest.MapFile{},
+				"user_create.sql":                  &fstest.MapFile{Data: []byte("2")},
+				"user_delete.sql":                  &fstest.MapFile{Data: []byte("6")},
+				"user_read.sql":                    &fstest.MapFile{Data: []byte("3")},
+				"users.sql":                        &fstest.MapFile{Data: []byte("1")},
+				"user_update_password.sql":         &fstest.MapFile{Data: []byte("4")},
+				"user_update_points_increment.sql": &fstest.MapFile{Data: []byte("5")},
 			},
 			wantOk: true,
-			wantFileNames: []string{
-				"users.sql",
-				"user_create.sql",
-				"user_read.sql",
-				"user_update_password.sql",
-				"user_update_points_increment.sql",
-				"user_delete.sql",
-			},
+			want:   "123456",
 		},
 	}
 	for i, test := range sqlFilesTests {
@@ -245,17 +239,17 @@ func TestSQLFiles(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
-		case len(test.wantFileNames) != len(gotFiles):
-			t.Errorf("Test %v: wanted %v files, got %v", i, len(test.wantFileNames), len(gotFiles))
 		default:
-			for j, wantFileName := range test.wantFileNames {
-				gotFileInfo, err := gotFiles[j].Stat()
-				switch {
-				case err != nil:
-					t.Errorf("Test %v: error getting generated file %v info: %v", i, j, err)
-				case wantFileName != gotFileInfo.Name():
-					t.Errorf("Test %v: wanted file %v to be named %v, got %v", i, j, wantFileName, gotFileInfo.Name())
+			got := ""
+			for j, f := range gotFiles {
+				b, err := io.ReadAll(f)
+				if err != nil {
+					t.Errorf("Test %v: could not read file %v: %v", i, j, err)
 				}
+				got += string(b)
+			}
+			if test.want != got {
+				t.Errorf("Test %v: concatenation of files not equal: wanted %v, got %v", i, test.want, got)
 			}
 		}
 	}

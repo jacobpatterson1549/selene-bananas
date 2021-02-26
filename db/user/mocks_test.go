@@ -2,6 +2,8 @@ package user
 
 import (
 	"context"
+	"fmt"
+	"io"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
 )
@@ -22,6 +24,10 @@ func (ph mockPasswordHandler) IsCorrect(hashedPassword []byte, password string) 
 type mockDatabase struct {
 	queryFunc func(ctx context.Context, q db.Query) db.Scanner
 	execFunc  func(ctx context.Context, queries ...db.Query) error
+}
+
+func (d mockDatabase) Setup(ctx context.Context, files []io.Reader) error {
+	return fmt.Errorf("Setup should not be called by the server")
 }
 
 func (d mockDatabase) Query(ctx context.Context, q db.Query) db.Scanner {

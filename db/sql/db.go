@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
@@ -28,37 +29,35 @@ type (
 	}
 )
 
-// NewDatabase creates a SQL database from a databaseURL.
-func (cfg DatabaseConfig) NewDatabase(ctx context.Context, setupSQL [][]byte) (db.Database, error) {
-	sqlDB, err := cfg.validate(setupSQL)
+// NewDatabase creates and opens a SQL database from a databaseURL.
+func (cfg DatabaseConfig) NewDatabase() (db.Database, error) {
+	sqlDB, err := sql.Open(cfg.DriverName, cfg.DatabaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("creating sql database: validation: %w", err)
+		return nil, fmt.Errorf("opening database %w", err)
 	}
 	sDB := Database{
 		db:          sqlDB,
 		queryPeriod: cfg.QueryPeriod,
 	}
-	queries := make([]db.Query, len(setupSQL))
-	for i, b := range setupSQL {
-		queries[i] = RawQuery(string(b))
-	}
-	if len(queries) > 0 {
-		if err := sDB.Exec(ctx, queries...); err != nil {
-			return nil, fmt.Errorf("running setup queries %w", err)
-		}
-	}
 	return sDB, nil
 }
 
-func (cfg DatabaseConfig) validate(setupSQL [][]byte) (*sql.DB, error) {
-	sqlDB, err := sql.Open(cfg.DriverName, cfg.DatabaseURL)
-	switch {
-	case err != nil:
-		return nil, fmt.Errorf("opening database %w", err)
-	case cfg.QueryPeriod <= 0:
-		return nil, fmt.Errorf("positive idle period required")
+// Setup initializes the database by reading the files and executing their contents as raw queries.
+func (s Database) Setup(ctx context.Context, files []io.Reader) error {
+	ctx, cancelFunc := context.WithTimeout(ctx, s.queryPeriod)
+	defer cancelFunc()
+	queries := make([]db.Query, len(files))
+	for i, f := range files {
+		b, err := io.ReadAll(f)
+		if err != nil {
+			return fmt.Errorf("reading sql setup query %v: %w", i, err)
+		}
+		queries[i] = RawQuery(string(b))
 	}
-	return sqlDB, nil
+	if err := s.Exec(ctx, queries...); err != nil {
+		return fmt.Errorf("running setup queries %w", err)
+	}
+	return nil
 }
 
 // Query returns the row referenced by the query.

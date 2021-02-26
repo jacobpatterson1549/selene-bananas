@@ -5,7 +5,10 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"io"
+	"strings"
 	"testing"
+	"testing/iotest"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
@@ -26,8 +29,6 @@ func TestNewDatabase(t *testing.T) {
 	newSQLDatabaseTests := []struct {
 		driverName  string
 		queryPeriod time.Duration
-		openFunc    func(name string) (driver.Conn, error)
-		setupSQL    [][]byte
 		wantOk      bool
 	}{
 		{
@@ -35,45 +36,16 @@ func TestNewDatabase(t *testing.T) {
 			queryPeriod: 1,
 		},
 		{
-			driverName: mockDriverName,
-		},
-		{
-			driverName:  mockDriverName,
-			queryPeriod: 1 * time.Hour,
-			setupSQL: [][]byte{
-				[]byte("test"),
-			},
-			openFunc: func(name string) (driver.Conn, error) {
-				return nil, fmt.Errorf("could not open connection for setup queries")
-			},
-			wantOk: true,
-		},
-		{ // no setupSQL
 			driverName:  mockDriverName,
 			queryPeriod: 1 * time.Hour,
 			wantOk:      true,
 		},
-		{
-			driverName:  mockDriverName,
-			queryPeriod: 1 * time.Hour,
-			openFunc: func(name string) (driver.Conn, error) {
-				mockTx := MockDriverTx{
-					CommitFunc: func() error {
-						return nil
-					},
-				}
-				mockConn := MockDriverConn{
-					BeginFunc: func() (driver.Tx, error) {
-						return mockTx, nil
-					},
-				}
-				return mockConn, nil
-			},
-			setupSQL: [][]byte{
-				[]byte("test"),
-			},
-			wantOk: true,
-		},
+	}
+	mockDriver.OpenFunc = func(name string) (driver.Conn, error) {
+		if mockDriverName != name {
+			return nil, fmt.Errorf("draver names not equal: wanted %v, got %v", mockDriverName, name)
+		}
+		return MockDriverConn{}, nil
 	}
 	for i, test := range newSQLDatabaseTests {
 		cfg := DatabaseConfig{
@@ -81,24 +53,115 @@ func TestNewDatabase(t *testing.T) {
 			DatabaseURL: testDatabaseURL,
 			QueryPeriod: test.queryPeriod,
 		}
-		ctx := context.Background()
-		var setupSQL [][]byte
-		mockDriver.OpenFunc = test.openFunc
-		sqlDB, err := cfg.NewDatabase(ctx, setupSQL)
+		sqlDB, err := cfg.NewDatabase()
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case sqlDB == nil:
 			t.Errorf("Test %v: wanted database to be set", i)
 		}
 	}
 }
 
+func TestDatabaseSetup(t *testing.T) {
+	cfg := DatabaseConfig{
+		DriverName:  mockDriverName,
+		DatabaseURL: testDatabaseURL,
+		QueryPeriod: 1 * time.Hour,
+	}
+	setupTests := []struct {
+		files   []io.Reader
+		execErr error
+		wantErr bool
+	}{
+		{},
+		{
+			files: []io.Reader{
+				strings.NewReader("1"),
+				iotest.ErrReader(fmt.Errorf("error reading file 2")),
+				strings.NewReader("3"),
+			},
+			wantErr: true,
+		},
+		{
+			files: []io.Reader{
+				strings.NewReader("1"),
+			},
+			execErr: fmt.Errorf("error executing files"),
+			wantErr: true,
+		},
+		{
+			files: []io.Reader{
+				strings.NewReader("1"),
+				strings.NewReader("2"),
+				strings.NewReader("3"),
+			},
+		},
+	}
+	for i, test := range setupTests {
+		mockResult := MockDriverResult{
+			RowsAffectedFunc: func() (int64, error) {
+				return 0, nil
+			},
+		}
+		mockStmt := MockDriverStmt{
+			CloseFunc: func() error {
+				return nil
+			},
+			NumInputFunc: func() int {
+				return 0
+			},
+			ExecFunc: func(args []driver.Value) (driver.Result, error) {
+				return mockResult, test.execErr
+			},
+		}
+		mockTx := MockDriverTx{
+			CommitFunc: func() error {
+				return nil
+			},
+			RollbackFunc: func() error {
+				return nil
+			},
+		}
+		mockConn := MockDriverConn{
+			PrepareFunc: func(query string) (driver.Stmt, error) {
+				return mockStmt, nil
+			},
+			BeginFunc: func() (driver.Tx, error) {
+				return mockTx, nil
+			},
+		}
+		mockDriver.OpenFunc = func(name string) (driver.Conn, error) {
+			return mockConn, nil
+		}
+		db, err := cfg.NewDatabase()
+		if err != nil {
+			t.Errorf("unwanted error: %v", err)
+			continue
+		}
+		ctx := context.Background()
+		err = db.Setup(ctx, test.files)
+		switch {
+		case test.wantErr:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		}
+	}
+}
+
 func TestDatabaseQuery(t *testing.T) {
+	cfg := DatabaseConfig{
+		DriverName:  mockDriverName,
+		DatabaseURL: testDatabaseURL,
+		QueryPeriod: 1 * time.Hour,
+	}
 	queryTests := []struct {
 		cancelled bool
 		scanErr   error
@@ -152,31 +215,26 @@ func TestDatabaseQuery(t *testing.T) {
 			cols:      []string{"?column?"},
 			arguments: []interface{}{want},
 		}
-		cfg := DatabaseConfig{
-			DriverName:  mockDriverName,
-			DatabaseURL: testDatabaseURL,
-			QueryPeriod: 10 * time.Hour, // test takes real time to run, but this should be large enough
+		db, err := cfg.NewDatabase()
+		if err != nil {
+			t.Errorf("unwanted error: %v", err)
+			continue
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
-		var setupSQL [][]byte
-		db, err := cfg.NewDatabase(ctx, setupSQL)
-		if err != nil {
-			t.Fatalf("Test %v: unwanted error: %v", i, err)
-		}
-		var got int
 		if test.cancelled {
 			cancelFunc()
 		}
 		r := db.Query(ctx, q)
+		var got int
 		err = r.Scan(&got)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case want != got:
 			t.Errorf("Test %v: value not set correctly, wanted %v, got %v", i, want, got)
 		}
@@ -188,7 +246,7 @@ func TestDatabaseExec(t *testing.T) {
 	cfg := DatabaseConfig{
 		DriverName:  mockDriverName,
 		DatabaseURL: testDatabaseURL,
-		QueryPeriod: 10 * time.Second, // test takes real time to run
+		QueryPeriod: 1 * time.Hour,
 	}
 	execTests := []struct {
 		cancelled       bool
@@ -285,13 +343,13 @@ func TestDatabaseExec(t *testing.T) {
 				},
 			}
 		}
-		ctx := context.Background()
-		ctx, cancelFunc := context.WithCancel(ctx)
-		var setupSQL [][]byte
-		db, err := cfg.NewDatabase(ctx, setupSQL)
+		db, err := cfg.NewDatabase()
 		if err != nil {
 			t.Errorf("unwanted error: %v", err)
+			continue
 		}
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
 		if test.cancelled {
 			cancelFunc()
 		}

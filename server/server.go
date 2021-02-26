@@ -106,7 +106,9 @@ type (
 		UserDao
 		Lobby
 		Challenge
-		TemplateFS, StaticFS fs.FS
+		StaticFS   fs.FS
+		TemplateFS fs.FS
+		sqlFiles   []fs.File
 	}
 )
 
@@ -217,10 +219,10 @@ func (p Parameters) validate() error {
 		return fmt.Errorf("lobby required")
 	case p.Challenge == nil:
 		return fmt.Errorf("challenge required")
-	case p.TemplateFS == nil:
-		return fmt.Errorf("template file system required")
 	case p.StaticFS == nil:
 		return fmt.Errorf("static file system required")
+	case p.TemplateFS == nil:
+		return fmt.Errorf("template file system required")
 	}
 	return nil
 }

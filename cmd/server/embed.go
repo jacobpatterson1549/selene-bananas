@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"io"
 	"io/fs"
 	"path/filepath"
 	"strings"
@@ -93,7 +94,7 @@ func cleanVersion(v string) (string, error) {
 }
 
 // sqlFiles opens the SQL files needed to manage user data.
-func (e embeddedData) sqlFiles() ([]fs.File, error) {
+func (e embeddedData) sqlFiles() ([]io.Reader, error) {
 	sqlFileNames := []string{
 		"users",
 		"user_create",
@@ -102,7 +103,7 @@ func (e embeddedData) sqlFiles() ([]fs.File, error) {
 		"user_update_points_increment",
 		"user_delete",
 	}
-	userSQLFiles := make([]fs.File, len(sqlFileNames))
+	userSQLFiles := make([]io.Reader, len(sqlFileNames))
 	for i, n := range sqlFileNames {
 		n = fmt.Sprintf("%s.sql", n)
 		f, err := e.SQLFS.Open(n)
