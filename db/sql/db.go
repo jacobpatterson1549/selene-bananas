@@ -12,39 +12,45 @@ import (
 )
 
 type (
-	// Database is a SQL db.Database.
+	// Database is a SQL db.Database with additional configuration
 	Database struct {
-		db          *sql.DB
-		queryPeriod time.Duration
+		*sql.DB
+		Config
 	}
 
-	// DatabaseConfig contains opnions for creating a new SQL database.
-	DatabaseConfig struct {
-		// DriverName the type of SQL database.
-		DriverName string
-		// DatabaseURL is a connection url that the driver for the database can interpret.
-		DatabaseURL string
+	// Config contains opnions for how the database should run.
+	Config struct {
 		// QueryPeriod is the amount of time that any database action can take before it should timeout.
 		QueryPeriod time.Duration
 	}
 )
 
-// NewDatabase creates and opens a SQL database from a databaseURL.
-func (cfg DatabaseConfig) NewDatabase() (db.Database, error) {
-	sqlDB, err := sql.Open(cfg.DriverName, cfg.DatabaseURL)
-	if err != nil {
-		return nil, fmt.Errorf("opening database %w", err)
+// NewDatabase creates a SQL database from the database.
+func (cfg Config) NewDatabase(db *sql.DB) (db.Database, error) {
+	if err := cfg.validate(db); err != nil {
+		return nil, fmt.Errorf("creating database: validation: %w", err)
 	}
 	sDB := Database{
-		db:          sqlDB,
-		queryPeriod: cfg.QueryPeriod,
+		DB:     db,
+		Config: cfg,
 	}
 	return sDB, nil
 }
 
+// validate ensures the configuration and parameters have no errors.
+func (cfg Config) validate(db *sql.DB) error {
+	switch {
+	case db == nil:
+		return fmt.Errorf("database required")
+	case cfg.QueryPeriod <= 0:
+		return fmt.Errorf("positive idle period required")
+	}
+	return nil
+}
+
 // Setup initializes the database by reading the files and executing their contents as raw queries.
 func (s Database) Setup(ctx context.Context, files []io.Reader) error {
-	ctx, cancelFunc := context.WithTimeout(ctx, s.queryPeriod)
+	ctx, cancelFunc := context.WithTimeout(ctx, s.QueryPeriod)
 	defer cancelFunc()
 	queries := make([]db.Query, len(files))
 	for i, f := range files {
@@ -62,16 +68,16 @@ func (s Database) Setup(ctx context.Context, files []io.Reader) error {
 
 // Query returns the row referenced by the query.
 func (s Database) Query(ctx context.Context, q db.Query) db.Scanner {
-	ctx, cancelFunc := context.WithTimeout(ctx, s.queryPeriod)
+	ctx, cancelFunc := context.WithTimeout(ctx, s.QueryPeriod)
 	defer cancelFunc()
-	return s.db.QueryRowContext(ctx, q.Cmd(), q.Args()...)
+	return s.DB.QueryRowContext(ctx, q.Cmd(), q.Args()...)
 }
 
 // Exec evaluates multiple queries in a transaction, ensuring each execSQLFunction one only updates one row.
 func (s Database) Exec(ctx context.Context, queries ...db.Query) error {
-	ctx, cancelFunc := context.WithTimeout(ctx, s.queryPeriod)
+	ctx, cancelFunc := context.WithTimeout(ctx, s.QueryPeriod)
 	defer cancelFunc()
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("beginning transaction: %w", err)
 	}

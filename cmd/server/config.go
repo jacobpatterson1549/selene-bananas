@@ -22,7 +22,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/server/game/lobby"
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/server/game/socket"
-	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
 )
 
 // newServer creates the server.
@@ -116,10 +115,8 @@ func (mainFlags) tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
 }
 
 // sqlDatabase creates the configuration for a SQL database to persist user information.
-func (m mainFlags) sqlDatabaseConfig() sql.DatabaseConfig {
-	cfg := sql.DatabaseConfig{
-		DriverName:  "postgres",
-		DatabaseURL: m.databaseURL,
+func (m mainFlags) sqlDatabaseConfig() sql.Config {
+	cfg := sql.Config{
 		QueryPeriod: 5 * time.Second,
 	}
 	return cfg

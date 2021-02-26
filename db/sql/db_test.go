@@ -27,18 +27,20 @@ func init() {
 }
 func TestNewDatabase(t *testing.T) {
 	newSQLDatabaseTests := []struct {
-		driverName  string
-		queryPeriod time.Duration
-		wantOk      bool
+		*sql.DB
+		Config
+		wantOk bool
 	}{
+		{},
 		{
-			driverName:  "imaginary_mock_" + mockDriverName,
-			queryPeriod: 1,
+			DB: &sql.DB{},
 		},
 		{
-			driverName:  mockDriverName,
-			queryPeriod: 1 * time.Hour,
-			wantOk:      true,
+			DB:     &sql.DB{},
+			wantOk: true,
+			Config: Config{
+				QueryPeriod: 1 * time.Hour,
+			},
 		},
 	}
 	mockDriver.OpenFunc = func(name string) (driver.Conn, error) {
@@ -48,12 +50,10 @@ func TestNewDatabase(t *testing.T) {
 		return MockDriverConn{}, nil
 	}
 	for i, test := range newSQLDatabaseTests {
-		cfg := DatabaseConfig{
-			DriverName:  test.driverName,
-			DatabaseURL: testDatabaseURL,
-			QueryPeriod: test.queryPeriod,
+		cfg := Config{
+			QueryPeriod: test.QueryPeriod,
 		}
-		sqlDB, err := cfg.NewDatabase()
+		sqlDB, err := cfg.NewDatabase(test.DB)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -68,10 +68,9 @@ func TestNewDatabase(t *testing.T) {
 }
 
 func TestDatabaseSetup(t *testing.T) {
-	cfg := DatabaseConfig{
-		DriverName:  mockDriverName,
-		DatabaseURL: testDatabaseURL,
-		QueryPeriod: 1 * time.Hour,
+	sqlDB, err := sql.Open(mockDriverName, testDatabaseURL)
+	if err != nil {
+		t.Fatalf("unwanted error: %v", err)
 	}
 	setupTests := []struct {
 		files   []io.Reader
@@ -138,10 +137,11 @@ func TestDatabaseSetup(t *testing.T) {
 		mockDriver.OpenFunc = func(name string) (driver.Conn, error) {
 			return mockConn, nil
 		}
-		db, err := cfg.NewDatabase()
-		if err != nil {
-			t.Errorf("unwanted error: %v", err)
-			continue
+		db := Database{
+			DB: sqlDB,
+			Config: Config{
+				QueryPeriod: 1 * time.Hour,
+			},
 		}
 		ctx := context.Background()
 		err = db.Setup(ctx, test.files)
@@ -157,10 +157,9 @@ func TestDatabaseSetup(t *testing.T) {
 }
 
 func TestDatabaseQuery(t *testing.T) {
-	cfg := DatabaseConfig{
-		DriverName:  mockDriverName,
-		DatabaseURL: testDatabaseURL,
-		QueryPeriod: 1 * time.Hour,
+	sqlDB, err := sql.Open(mockDriverName, testDatabaseURL)
+	if err != nil {
+		t.Fatalf("unwanted error: %v", err)
 	}
 	queryTests := []struct {
 		cancelled bool
@@ -215,10 +214,11 @@ func TestDatabaseQuery(t *testing.T) {
 			cols:      []string{"?column?"},
 			arguments: []interface{}{want},
 		}
-		db, err := cfg.NewDatabase()
-		if err != nil {
-			t.Errorf("unwanted error: %v", err)
-			continue
+		db := Database{
+			DB: sqlDB,
+			Config: Config{
+				QueryPeriod: 1 * time.Hour,
+			},
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
@@ -243,10 +243,9 @@ func TestDatabaseQuery(t *testing.T) {
 }
 
 func TestDatabaseExec(t *testing.T) {
-	cfg := DatabaseConfig{
-		DriverName:  mockDriverName,
-		DatabaseURL: testDatabaseURL,
-		QueryPeriod: 1 * time.Hour,
+	sqlDB, err := sql.Open(mockDriverName, testDatabaseURL)
+	if err != nil {
+		t.Fatalf("unwanted error: %v", err)
 	}
 	execTests := []struct {
 		cancelled       bool
@@ -343,10 +342,11 @@ func TestDatabaseExec(t *testing.T) {
 				},
 			}
 		}
-		db, err := cfg.NewDatabase()
-		if err != nil {
-			t.Errorf("unwanted error: %v", err)
-			continue
+		db := Database{
+			DB: sqlDB,
+			Config: Config{
+				QueryPeriod: 1 * time.Hour,
+			},
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)

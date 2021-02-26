@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
 	"github.com/jacobpatterson1549/selene-bananas/server"
+	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
 )
 
 // main configures and runs the server.
@@ -60,8 +62,12 @@ func runServer(ctx context.Context, server *server.Server, log *log.Logger) {
 
 // database creates and sets up the database.
 func database(ctx context.Context, m mainFlags, e embeddedData) (db.Database, error) {
-	sqlDatabaseConfig := m.sqlDatabaseConfig()
-	db, err := sqlDatabaseConfig.NewDatabase()
+	cfg := m.sqlDatabaseConfig()
+	db, err := sql.Open("postgres", m.databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("opening database %w", err)
+	}
+	sqlDB, err := cfg.NewDatabase(db)
 	if err != nil {
 		return nil, fmt.Errorf("creating SQL database: %w", err)
 	}
@@ -69,6 +75,8 @@ func database(ctx context.Context, m mainFlags, e embeddedData) (db.Database, er
 	if err != nil {
 		return nil, err
 	}
-	db.Setup(ctx, setupSQL)
-	return db, nil
+	if err := sqlDB.Setup(ctx, setupSQL); err != nil {
+		return nil, fmt.Errorf("setting up database: %w", err)
+	}
+	return sqlDB, nil
 }
