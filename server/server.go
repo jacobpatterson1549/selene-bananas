@@ -93,7 +93,7 @@ type (
 		ReadUsername(tokenString string) (string, error)
 	}
 
-	// Challenge is used to fufill authentication checks to get a certificate.
+	// Challenge is used to fulfill authentication checks to get a certificate.
 	Challenge interface {
 		IsFor(path string) bool
 		Handle(w io.Writer, path string) error
