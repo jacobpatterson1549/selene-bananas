@@ -14,11 +14,15 @@ import (
 
 // main configures and runs the server.
 func main() {
+	e, err := newEmbedParameters(embedVersion, embeddedStaticFS, embeddedTemplateFS, embeddedSQLFS)
+	if err != nil {
+		log.Fatalf("reading embedded files: %v", err)
+	}
 	m := newMainFlags(os.Args, os.LookupEnv)
+	ctx := context.Background()
 	logFlags := log.Ldate | log.Ltime | log.LUTC | log.Lshortfile | log.Lmsgprefix
 	log := log.New(os.Stdout, "", logFlags)
-	ctx := context.Background()
-	server, err := newServer(ctx, m, log)
+	server, err := m.newServer(ctx, log, *e)
 	if err != nil {
 		log.Fatalf("creating server: %v", err)
 	}

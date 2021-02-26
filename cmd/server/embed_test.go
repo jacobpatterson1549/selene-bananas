@@ -11,8 +11,8 @@ func TestUnembedFS(t *testing.T) {
 		fs.FS
 		subdirectory  string
 		wantFileNames []string
+		wantOk        bool
 	}{
-		{},
 		{
 			FS: fstest.MapFS{},
 		},
@@ -22,9 +22,20 @@ func TestUnembedFS(t *testing.T) {
 				"subdir/f2": &fstest.MapFile{},
 			},
 		},
+		{ // empty embedded file system, missing subdirectory
+			FS: fstest.MapFS{
+				"embed/d1": &fstest.MapFile{},
+			},
+			subdirectory: "d2",
+		},
 		{ // empty embedded file system, no subdirectory
 			FS: fstest.MapFS{
-				"embed": &fstest.MapFile{},
+				"embed":    &fstest.MapFile{},
+				"embed/f1": &fstest.MapFile{},
+			},
+			wantOk: true,
+			wantFileNames: []string{
+				"f1",
 			},
 		},
 		{ // empty embedded file system
@@ -32,6 +43,7 @@ func TestUnembedFS(t *testing.T) {
 				"embed/d1": &fstest.MapFile{},
 			},
 			subdirectory: "d1",
+			wantOk:       true,
 		},
 		{
 			FS: fstest.MapFS{
@@ -50,11 +62,16 @@ func TestUnembedFS(t *testing.T) {
 				"d4/f4",
 				"d4/f5",
 			},
+			wantOk: true,
 		},
 	}
 	for i, test := range unembedFSTests {
 		got, err := unembedFS(test.FS, test.subdirectory)
 		switch {
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case got == nil:
@@ -63,6 +80,181 @@ func TestUnembedFS(t *testing.T) {
 			for _, n := range test.wantFileNames {
 				if _, err := got.Open(n); err != nil {
 					t.Errorf("Test %v: wanted file named '%v' in unembedded file stystem", i, n)
+				}
+			}
+		}
+	}
+}
+
+func TestNewEmbedParameters(t *testing.T) {
+	var emptyFS fstest.MapFS
+	staticFS := fstest.MapFS{
+		"embed/static": &fstest.MapFile{},
+	}
+	templateFS := fstest.MapFS{
+		"embed/template": &fstest.MapFile{},
+	}
+	sqlFS := fstest.MapFS{
+		"embed/sql": &fstest.MapFile{},
+	}
+	newEmbedParametersTests := []struct {
+		embeddedData
+		wantOk      bool
+		wantVersion string
+	}{
+		{}, // bad version
+		{ // missing static fs
+			embeddedData: embeddedData{
+				Version: "ok",
+			},
+		},
+		{ // missing template fs
+			embeddedData: embeddedData{
+				Version:  "ok",
+				StaticFS: emptyFS,
+			},
+		},
+		{ // missing SQL fs
+			embeddedData: embeddedData{
+				Version:    "ok",
+				StaticFS:   emptyFS,
+				TemplateFS: emptyFS,
+			},
+		},
+		{ // bad static fs
+			embeddedData: embeddedData{
+				Version:    "ok",
+				StaticFS:   emptyFS,
+				TemplateFS: emptyFS,
+				SQLFS:      emptyFS,
+			},
+		},
+		{ // bad template fs
+			embeddedData: embeddedData{
+				Version:    "ok",
+				StaticFS:   staticFS,
+				TemplateFS: emptyFS,
+				SQLFS:      emptyFS,
+			},
+		},
+		{ // bad SQL fs
+			embeddedData: embeddedData{
+				Version:    "ok",
+				StaticFS:   staticFS,
+				TemplateFS: templateFS,
+				SQLFS:      emptyFS,
+			},
+		},
+		{ // happy path
+			embeddedData: embeddedData{
+				Version:    "ok\n",
+				StaticFS:   staticFS,
+				TemplateFS: templateFS,
+				SQLFS:      sqlFS,
+			},
+			wantOk:      true,
+			wantVersion: "ok",
+		},
+	}
+	for i, test := range newEmbedParametersTests {
+		got, err := newEmbedParameters(test.Version, test.StaticFS, test.TemplateFS, test.SQLFS)
+		switch {
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case test.wantVersion != got.Version:
+			t.Errorf("Test %v: not equal:\nwanted: %v\ngot:    %v", i, test.wantVersion, got.Version)
+		}
+	}
+}
+
+func TestCleanVersion(t *testing.T) {
+	cleanVersionTests := []struct {
+		v      string
+		wantOk bool
+		want   string
+	}{
+		{},
+		{
+			v:      "9d2ffad8e5e5383569d37ec381147f2d\n",
+			wantOk: true,
+			want:   "9d2ffad8e5e5383569d37ec381147f2d",
+		},
+		{
+			v: "adhoc version",
+		},
+	}
+	for i, test := range cleanVersionTests {
+		got, err := cleanVersion(test.v)
+		switch {
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error when version is '%v'", i, test.v)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error when version is '%v': %v", i, test.v, err)
+		case test.want != got:
+			t.Errorf("Test %v: when version is '%v':\nwanted: '%v'\ngot:    '%v", i, test.v, test.want, got)
+		}
+	}
+}
+
+// TestSQLFiles ensures the files are en order before being sent to the database.
+// The table creation scripts must be run before other scripts reference the tables.
+func TestSQLFiles(t *testing.T) {
+	sqlFilesTests := []struct {
+		sqlFS         fs.FS
+		wantOk        bool
+		wantFileNames []string
+	}{
+		{
+			sqlFS: fstest.MapFS{},
+		},
+		{
+			sqlFS: fstest.MapFS{
+				"user_create.sql":                  &fstest.MapFile{},
+				"user_delete.sql":                  &fstest.MapFile{},
+				"user_read.sql":                    &fstest.MapFile{},
+				"users.sql":                        &fstest.MapFile{},
+				"user_update_password.sql":         &fstest.MapFile{},
+				"user_update_points_increment.sql": &fstest.MapFile{},
+			},
+			wantOk: true,
+			wantFileNames: []string{
+				"users.sql",
+				"user_create.sql",
+				"user_read.sql",
+				"user_update_password.sql",
+				"user_update_points_increment.sql",
+				"user_delete.sql",
+			},
+		},
+	}
+	for i, test := range sqlFilesTests {
+		e := embeddedData{
+			SQLFS: test.sqlFS,
+		}
+		gotFiles, err := e.sqlFiles()
+		switch {
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case len(test.wantFileNames) != len(gotFiles):
+			t.Errorf("Test %v: wanted %v files, got %v", i, len(test.wantFileNames), len(gotFiles))
+		default:
+			for j, wantFileName := range test.wantFileNames {
+				gotFileInfo, err := gotFiles[j].Stat()
+				switch {
+				case err != nil:
+					t.Errorf("Test %v: error getting generated file %v info: %v", i, j, err)
+				case wantFileName != gotFileInfo.Name():
+					t.Errorf("Test %v: wanted file %v to be named %v, got %v", i, j, wantFileName, gotFileInfo.Name())
 				}
 			}
 		}

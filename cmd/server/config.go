@@ -5,15 +5,11 @@ import (
 	crypto_rand "crypto/rand"
 	"fmt"
 	"io"
-	"io/fs"
 	"log"
 	"math/rand"
 	"os"
-	"strings"
 	"time"
-	"unicode"
 
-	"github.com/jacobpatterson1549/selene-bananas/db"
 	"github.com/jacobpatterson1549/selene-bananas/db/sql"
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
@@ -30,7 +26,7 @@ import (
 )
 
 // newServer creates the server.
-func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Server, error) {
+func (m mainFlags) newServer(ctx context.Context, log *log.Logger, e embeddedData) (*server.Server, error) {
 	timeFunc := func() int64 {
 		return time.Now().UTC().Unix()
 	}
@@ -38,15 +34,17 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if _, err := crypto_rand.Reader.Read(key); err != nil {
 		return nil, fmt.Errorf("generating Tokenizer key: %w", err)
 	}
-	tokenizerCfg := tokenizerConfig(timeFunc)
+	tokenizerCfg := m.tokenizerConfig(timeFunc)
 	tokenizer, err := tokenizerCfg.NewTokenizer(key)
 	if err != nil {
 		return nil, fmt.Errorf("creating authentication tokenizer: %w", err)
 	}
-	if len(m.databaseURL) == 0 {
-		return nil, fmt.Errorf("missing data-source uri")
+	setupSQL, err := m.setupSQL(e)
+	if err != nil {
+		return nil, err
 	}
-	sqlDB, err := sqlDatabase(ctx, m)
+	sqlDatabaseConfig := m.sqlDatabaseConfig(ctx)
+	sqlDB, err := sqlDatabaseConfig.NewDatabase(ctx, setupSQL)
 	if err != nil {
 		return nil, fmt.Errorf("creating SQL database: %w", err)
 	}
@@ -54,52 +52,40 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 	if err != nil {
 		return nil, fmt.Errorf("creating user dao: %w", err)
 	}
-	socketRunnerCfg := socketRunnerConfig(m, timeFunc)
+	socketRunnerCfg := m.socketRunnerConfig(timeFunc)
 	socketRunner, err := socketRunnerCfg.NewRunner(log)
 	if err != nil {
 		return nil, fmt.Errorf("creating socket runner: %w", err)
 	}
-	wordChecker, err := wordChecker(m)
+	wordChecker, err := m.wordChecker()
 	if err != nil {
-		return nil, fmt.Errorf("creating word checker: %w", err)
+		return nil, err
 	}
-	gameRunnerCfg := gameRunnerConfig(m, timeFunc)
+	gameRunnerCfg := m.gameRunnerConfig(timeFunc)
 	gameRunner, err := gameRunnerCfg.NewRunner(log, wordChecker, userDao)
 	if err != nil {
 		return nil, fmt.Errorf("creating game runner: %w", err)
 	}
-	lobbyCfg := lobbyConfig(m)
+	lobbyCfg := m.lobbyConfig()
 	lobby, err := lobbyCfg.NewLobby(log, socketRunner, gameRunner)
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby: %w", err)
-	}
-	version, err := cleanVersion(embedVersion)
-	if err != nil {
-		return nil, fmt.Errorf("creating build version: %w", err)
 	}
 	challenge := certificate.Challenge{
 		Token: m.challengeToken,
 		Key:   m.challengeKey,
 	}
-	colorConfig := colorConfig()
+	colorConfig := m.colorConfig()
 	cfg := server.Config{
 		HTTPPort:      m.httpPort,
 		HTTPSPort:     m.httpsPort,
 		StopDur:       20 * time.Second, // should be longer than the PingPeriod of sockets so they can close gracefully
 		CacheSec:      m.cacheSec,
-		Version:       version,
+		Version:       e.Version,
 		TLSCertFile:   m.tlsCertFile,
 		TLSKeyFile:    m.tlsKeyFile,
 		ColorConfig:   colorConfig,
 		NoTLSRedirect: m.noTLSRedirect,
-	}
-	templateFS, err := unembedFS(embeddedTemplateFS, "template")
-	if err != nil {
-		return nil, fmt.Errorf("getting embed subdirectory for server template file system: %w", err)
-	}
-	staticFS, err := unembedFS(embeddedStaticFS, "static")
-	if err != nil {
-		return nil, fmt.Errorf("getting embed subdirectory for server static file system: %w", err)
 	}
 	p := server.Parameters{
 		Log:        log,
@@ -107,14 +93,14 @@ func newServer(ctx context.Context, m mainFlags, log *log.Logger) (*server.Serve
 		UserDao:    userDao,
 		Lobby:      lobby,
 		Challenge:  challenge,
-		TemplateFS: templateFS,
-		StaticFS:   staticFS,
+		TemplateFS: e.TemplateFS,
+		StaticFS:   e.StaticFS,
 	}
 	return cfg.NewServer(p)
 }
 
 // colorConfig creates the color config for the css.
-func colorConfig() server.ColorConfig {
+func (mainFlags) colorConfig() server.ColorConfig {
 	cc := server.ColorConfig{
 		CanvasPrimary: "#000000",
 		CanvasDrag:    "#0000ff",
@@ -132,7 +118,7 @@ func colorConfig() server.ColorConfig {
 }
 
 // tokenizerConfig creates the configuration for authentication token reader/writer.
-func tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
+func (mainFlags) tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
 	oneDay := 24 * time.Hour.Seconds()
 	cfg := auth.TokenizerConfig{
 		TimeFunc: timeFunc,
@@ -141,13 +127,9 @@ func tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
 	return cfg
 }
 
-// sqlDatabase creates a SQL database to persist user information.
-func sqlDatabase(ctx context.Context, m mainFlags) (db.Database, error) {
-	sqlFS, err := unembedFS(embeddedSQLFS, "sql")
-	if err != nil {
-		return nil, fmt.Errorf("getting embed subdirectory for sql file system: %w", err)
-	}
-	sqlFiles, err := sqlFiles(sqlFS)
+// setupSQL reads the sql files from the embedParameters.
+func (mainFlags) setupSQL(e embeddedData) ([][]byte, error) {
+	sqlFiles, err := e.sqlFiles()
 	if err != nil {
 		return nil, err
 	}
@@ -159,40 +141,21 @@ func sqlDatabase(ctx context.Context, m mainFlags) (db.Database, error) {
 		}
 		setupSQL = append(setupSQL, b)
 	}
+	return setupSQL, nil
+}
+
+// sqlDatabase creates the configuration for a SQL database to persist user information.
+func (m mainFlags) sqlDatabaseConfig(ctx context.Context) sql.DatabaseConfig {
 	cfg := sql.DatabaseConfig{
 		DriverName:  "postgres",
 		DatabaseURL: m.databaseURL,
 		QueryPeriod: 5 * time.Second,
 	}
-	return cfg.NewDatabase(ctx, setupSQL)
-}
-
-// sqlFiles opens the SQL files needed to manage user data.
-func sqlFiles(fsys fs.FS) ([]fs.File, error) {
-	// sqlFileNames are the SQL files that are used for and by the dao.
-	// They are ordered.
-	sqlFileNames := []string{
-		"users",
-		"user_create",
-		"user_read",
-		"user_update_password",
-		"user_update_points_increment",
-		"user_delete",
-	}
-	userSQLFiles := make([]fs.File, len(sqlFileNames))
-	for i, n := range sqlFileNames {
-		n = fmt.Sprintf("%s.sql", n)
-		f, err := fsys.Open(n)
-		if err != nil {
-			return nil, fmt.Errorf("opening setup file %v: %w", n, err)
-		}
-		userSQLFiles[i] = f
-	}
-	return userSQLFiles, nil
+	return cfg
 }
 
 // lobbyConfig creates the configuration for running and managing players of games.
-func lobbyConfig(m mainFlags) lobby.Config {
+func (m mainFlags) lobbyConfig() lobby.Config {
 	cfg := lobby.Config{
 		Debug: m.debugGame,
 	}
@@ -200,8 +163,8 @@ func lobbyConfig(m mainFlags) lobby.Config {
 }
 
 // gameRunnerConfig creates the configuration for running and managing games.
-func gameRunnerConfig(m mainFlags, timeFunc func() int64) gameController.RunnerConfig {
-	gameCfg := gameConfig(m, timeFunc)
+func (m mainFlags) gameRunnerConfig(timeFunc func() int64) gameController.RunnerConfig {
+	gameCfg := m.gameConfig(timeFunc)
 	cfg := gameController.RunnerConfig{
 		Debug:      m.debugGame,
 		MaxGames:   4,
@@ -211,7 +174,7 @@ func gameRunnerConfig(m mainFlags, timeFunc func() int64) gameController.RunnerC
 }
 
 // wordChecker creates the word checker.
-func wordChecker(m mainFlags) (*word.Checker, error) {
+func (m mainFlags) wordChecker() (*word.Checker, error) {
 	wordsFile, err := os.Open(m.wordsFile)
 	if err != nil {
 		return nil, fmt.Errorf("trying to open words file: %w", err)
@@ -221,7 +184,7 @@ func wordChecker(m mainFlags) (*word.Checker, error) {
 }
 
 // gameConfig creates the base configuration for all games.
-func gameConfig(m mainFlags, timeFunc func() int64) gameController.Config {
+func (m mainFlags) gameConfig(timeFunc func() int64) gameController.Config {
 	playerCfg := playerController.Config{
 		WinPoints: 10,
 	}
@@ -250,7 +213,7 @@ func gameConfig(m mainFlags, timeFunc func() int64) gameController.Config {
 }
 
 // socketRunnerConfig creates the configuration for creating new sockets (each tab that is connected to the lobby).
-func socketRunnerConfig(m mainFlags, timeFunc func() int64) socket.RunnerConfig {
+func (m mainFlags) socketRunnerConfig(timeFunc func() int64) socket.RunnerConfig {
 	socketCfg := socket.Config{
 		Debug:          m.debugGame,
 		TimeFunc:       timeFunc,
@@ -266,21 +229,4 @@ func socketRunnerConfig(m mainFlags, timeFunc func() int64) socket.RunnerConfig 
 		SocketConfig:     socketCfg,
 	}
 	return cfg
-}
-
-// cleanVersion returns the version, but cleaned up to only be letters and numbers.
-// Spaces on each end are trimmed, but spaces in the middle of the version or special characters cause an error to be returned.
-func cleanVersion(v string) (string, error) {
-	cleanV := strings.TrimSpace(v)
-	switch {
-	case len(cleanV) == 0:
-		return "", fmt.Errorf("empty")
-	default:
-		for i, r := range cleanV {
-			if !unicode.In(r, unicode.Letter, unicode.Digit) {
-				return "", fmt.Errorf("only letters and digits are allowed: invalid rune at index %v of '%v': '%v'", i, cleanV, string(r))
-			}
-		}
-	}
-	return cleanV, nil
 }
