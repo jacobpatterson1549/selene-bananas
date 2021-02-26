@@ -12,7 +12,7 @@ RUN go mod download \
     && apt-get install \
         --no-install-recommends \
         -y \
-            nodejs=10.23.1~dfsg-1~deb10u1 \
+            nodejs=10.24.0~dfsg-1~deb10u1 \
             wamerican-large=2018.04.16-1
 
 # build the application without static libraries (and create version hash, test, copy resources instead of linking)
