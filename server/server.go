@@ -123,6 +123,8 @@ const (
 	HeaderAcceptEncoding = "Accept-Encoding"
 	// HeaderContentEncoding is used to tell browsers how the document is encoded.
 	HeaderContentEncoding = "Content-Encoding"
+	// rootTemplateName is the name of the template for the root of the site
+	rootTemplateName = "index.html"
 )
 
 // NewServer creates a Server from the Config
@@ -404,7 +406,7 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request, h http.Handl
 // serveTemplate servers the file from the data-driven template.  The name is assumed to have a leading slash that is ignored.
 func (s *Server) serveTemplate(name string) http.HandlerFunc {
 	if len(name) == 0 {
-		name = "index.html"
+		name = rootTemplateName
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		addMimeType(name, w)

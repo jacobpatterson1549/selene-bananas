@@ -27,7 +27,7 @@ func TestNewServer(t *testing.T) {
 	var lobby mockLobby
 	var challenge mockChallenge
 	templateFS := fstest.MapFS{ // tests parseTemplate
-		"index.html": &fstest.MapFile{Data: []byte{}},
+		rootTemplateName: &fstest.MapFile{Data: []byte{}},
 	}
 	var staticFS fstest.MapFS
 	newServerTests := []struct {
@@ -663,9 +663,9 @@ func TestServeTemplate(t *testing.T) {
 			wantStatusCode:  500,
 			wantContentType: "text/plain; charset=utf-8",
 		},
-		{ // empty path should go to index.html
+		{ // empty path should go to root template
 			path:            "/",
-			templateName:    "index.html",
+			templateName:    rootTemplateName,
 			templateText:    "stuff",
 			wantStatusCode:  200,
 			wantContentType: "text/html; charset=utf-8",
@@ -790,7 +790,7 @@ func TestHandleGet(t *testing.T) {
 		w := httptest.NewRecorder()
 		tmplName := test.path[1:]
 		if len(tmplName) == 0 {
-			tmplName = "index.html"
+			tmplName = rootTemplateName
 		}
 		tmpl := template.Must(template.New(tmplName).Parse(""))
 		s := Server{
