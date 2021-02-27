@@ -130,7 +130,7 @@ const (
 
 // NewServer creates a Server from the Config
 func (cfg Config) NewServer(p Parameters) (*Server, error) {
-	cfg.Version = strings.TrimSpace(cfg.Version) // TODO: test this
+	cfg.Version = strings.TrimSpace(cfg.Version)
 	if err := cfg.validate(p); err != nil {
 		return nil, fmt.Errorf("creating server: validation: %w", err)
 	}
