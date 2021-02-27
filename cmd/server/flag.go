@@ -12,7 +12,6 @@ const (
 	environmentVariableHTTPSPort      = "HTTPS_PORT"
 	environmentVariablePort           = "PORT"
 	environmentVariableDatabaseURL    = "DATABASE_URL"
-	environmentVariableWordsFile      = "WORDS_FILE"
 	environmentVariableDebugGame      = "DEBUG_MESSAGES"
 	environmentVariableNoTLSRedirect  = "NO_TLS_REDIRECT"
 	environmentVariableCacheSec       = "CACHE_SECONDS"
@@ -27,7 +26,6 @@ type mainFlags struct {
 	httpPort       int
 	httpsPort      int
 	databaseURL    string
-	wordsFile      string
 	challengeToken string
 	challengeKey   string
 	tlsCertFile    string
@@ -47,7 +45,6 @@ func usage(fs *flag.FlagSet) {
 		environmentVariableHTTPPort,
 		environmentVariableHTTPSPort,
 		environmentVariableDatabaseURL,
-		environmentVariableWordsFile,
 		environmentVariableDebugGame,
 		environmentVariableNoTLSRedirect,
 		environmentVariableCacheSec,
@@ -90,7 +87,6 @@ func (m *mainFlags) newFlagSet(osLookupEnvFunc func(string) (string, bool), port
 	fs.IntVar(&m.httpPort, "http-port", envValueInt(environmentVariableHTTPPort, 0), "The TCP port for server http requests.  All traffic is redirected to the https port.")
 	fs.IntVar(&m.httpsPort, "https-port", envValueInt(environmentVariableHTTPSPort, 0), "The TCP port for server https requests.")
 	fs.IntVar(portOverride, "port", envValueInt(environmentVariablePort, 0), "The single port to run the server on.  Overrides the -https-port flag.  Causes the server to not handle http requests, ignoring -http-port.")
-	fs.StringVar(&m.wordsFile, "words-file", envValue(environmentVariableWordsFile), "The list of valid lower-case words that can be used.")
 	fs.StringVar(&m.challengeToken, "acme-challenge-token", envValue(environmentVariableChallengeToken), "The ACME HTTP-01 Challenge token used to get a certificate.")
 	fs.StringVar(&m.challengeKey, "acme-challenge-key", envValue(environmentVariableChallengeKey), "The ACME HTTP-01 Challenge key used to get a certificate.")
 	fs.StringVar(&m.tlsCertFile, "tls-cert-file", envValue(environmentVariableTLSCertFile), "The absolute path of the certificate file to use for TLS.")

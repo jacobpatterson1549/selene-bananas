@@ -6,6 +6,8 @@ SERVER_EMBED_DIR := cmd/server/embed
 STATIC_DIR       := static
 TEMPLATE_DIR     := template
 SQL_DIR          := sql
+LICENSE_FILE     := LICENSE
+WORDS_FILE       := /usr/share/dict/american-english-large # the list of lower-case words used to check player boards
 COPY := cp -f
 LINK := $(COPY) -l
 GO := go
@@ -22,6 +24,7 @@ GO_WASM_PATH := $(shell $(GO) env GOROOT)/misc/wasm
 SERVER_OBJ  := main
 VERSION_OBJ := version.txt
 CLIENT_OBJ  := main.wasm
+WORDS_OBJ   := words.txt
 SERVER_TEST      := server.test
 CLIENT_TEST      := client.test
 SERVER_BENCHMARK := server.benchmark
@@ -30,7 +33,7 @@ GENERATE_SRC  := game/message/type_string.go
 GO_SRC_FN      = find $(1) $(foreach g,$(GENERATE_SRC),-path $g -prune -o) -name *.go -print # exclude the generated source from go sources because it is created after the version, which depends on normal source
 SERVER_SRC    := $(shell $(call GO_SRC_FN,cmd/server/ game/ server/ db/))
 CLIENT_SRC    := $(shell $(call GO_SRC_FN,cmd/ui/     game/ ui/))
-RESOURCES_SRC := $(shell find $(RESOURCES_DIR) -type f)
+RESOURCES_SRC := $(shell find $(RESOURCES_DIR) -type f) $(LICENSE) $(WORDS_FILE)
 EMBED_RESOURCES_FN = find $(PWD)/$(RESOURCES_DIR)/$(1) -type f | xargs $(LINK) -t $(SERVER_EMBED_DIR)/$(1)
 
 $(BUILD_DIR)/$(SERVER_OBJ): $(BUILD_DIR)/$(CLIENT_OBJ) $(BUILD_DIR)/$(SERVER_TEST) $(BUILD_DIR)/$(VERSION_OBJ) $(RESOURCES_SRC) | $(BUILD_DIR)
@@ -92,7 +95,8 @@ $(SERVER_EMBED_DIR): $(RESOURCES_SRC)
 	touch \
 		$@/$(VERSION_OBJ) \
 		$@/$(STATIC_DIR)/$(CLIENT_OBJ)
-	$(LINK) LICENSE                      $@/$(STATIC_DIR)
+	$(COPY) $(WORDS_FILE)                $@/$(WORDS_OBJ)
+	$(LINK) $(LICENSE_FILE)              $@/$(STATIC_DIR)
 	$(COPY) $(GO_WASM_PATH)/wasm_exec.js $@/$(STATIC_DIR)
 	$(call EMBED_RESOURCES_FN,$(STATIC_DIR))
 	$(call EMBED_RESOURCES_FN,$(TEMPLATE_DIR))

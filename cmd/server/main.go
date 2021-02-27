@@ -18,20 +18,16 @@ import (
 
 // main configures and runs the server.
 func main() {
-	e, err := newEmbedParameters(embedVersion, embeddedStaticFS, embeddedTemplateFS, embeddedSQLFS)
+	e, err := newEmbedParameters(embedVersion, embeddedWords, embeddedStaticFS, embeddedTemplateFS, embeddedSQLFS)
 	if err != nil {
 		log.Fatalf("reading embedded files: %v", err)
 	}
 	m := newMainFlags(os.Args, os.LookupEnv)
-	wordsFile, err := os.Open(m.wordsFile)
-	if err != nil {
-		log.Fatalf("trying to open words file: %v", err)
-	}
 	ctx := context.Background()
 	db, err := database(ctx, m, *e)
 	logFlags := log.Ldate | log.Ltime | log.LUTC | log.Lshortfile | log.Lmsgprefix
 	log := log.New(os.Stdout, "", logFlags)
-	server, err := m.newServer(ctx, log, db, wordsFile, *e)
+	server, err := m.newServer(ctx, log, db, *e)
 	if err != nil {
 		log.Fatalf("creating server: %v", err)
 	}

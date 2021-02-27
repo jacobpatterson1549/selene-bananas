@@ -4,7 +4,6 @@ import (
 	"context"
 	crypto_rand "crypto/rand"
 	"fmt"
-	"io"
 	"log"
 	"math/rand"
 	"time"
@@ -25,7 +24,7 @@ import (
 )
 
 // newServer creates the server.
-func (m mainFlags) newServer(ctx context.Context, log *log.Logger, db db.Database, wordsFile io.Reader, e embeddedData) (*server.Server, error) {
+func (m mainFlags) newServer(ctx context.Context, log *log.Logger, db db.Database, e embeddedData) (*server.Server, error) {
 	timeFunc := func() int64 {
 		return time.Now().UTC().Unix()
 	}
@@ -47,7 +46,7 @@ func (m mainFlags) newServer(ctx context.Context, log *log.Logger, db db.Databas
 	if err != nil {
 		return nil, fmt.Errorf("creating socket runner: %w", err)
 	}
-	wordChecker := word.NewChecker(wordsFile)
+	wordChecker := word.NewChecker(e.WordsReader)
 	gameRunnerCfg := m.gameRunnerConfig(timeFunc)
 	gameRunner, err := gameRunnerCfg.NewRunner(log, wordChecker, userDao)
 	if err != nil {

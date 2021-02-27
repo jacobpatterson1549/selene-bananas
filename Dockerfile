@@ -27,8 +27,5 @@ FROM scratch
 WORKDIR /app
 COPY --from=BUILDER \
     /app/build/main \
-    /usr/share/dict/american-english-large \
     /app/
-ENTRYPOINT [ \
-    "/app/main", \
-    "-words-file=/app/american-english-large" ]
+ENTRYPOINT [ "/app/main" ]

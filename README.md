@@ -22,7 +22,7 @@ New dependencies are automatically added to [go.mod](go.mod) when the project is
 * [crypto](https://github.com/golang/crypto) is used to  encrypt passwords with bcrypt
 * [Font-Awesome](https://github.com/FortAwesome/Font-Awesome) provides the "copyright", "github," "linkedin", and "gavel" icons on the about page; they were copied from version [5.13.0](https://github.com/FortAwesome/Font-Awesome/releases/tag/5.13.0) to [resources/fa](resources/fa).
 
-## Build/Run
+## Build
 
 Building the application requires [Go 1.16](https://golang.org/dl/).
 
@@ -37,10 +37,13 @@ Run `make serve` to build and run the application.
 Environment variables are needed to customize the server.  Sample config:
 ```
 DATABASE_URL=postgres://selene:selene123@127.0.0.1:54320/selene_bananas_db?sslmode=disable
-WORDS_FILE=/usr/share/dict/american-english-large
+HTTP_PORT=8001
+HTTPS_PORT=8000
+TLS_CERT_FILE=/home/ants280/dev/127.0.0.1.pem
+TLS_KEY_FILE=/home/ants280/dev/127.0.0.1-key.pem
 ```
 
-It is recommended to install the [wamerican-large](https://packages.debian.org/buster/wamerican-large) package.  This package provides /usr/share/dict/american-english-large to be used as a words list in games.  Lowercase words are read from the word list for checking valid words in the game.  This can be overridden by providing the `WORDS_FILE` environment variable.
+It is recommended to install the [wamerican-large](https://packages.debian.org/buster/wamerican-large) package.  This package provides /usr/share/dict/american-english-large to be used as a words list in games.  Lowercase words are read from the word list for checking valid words in the game.  This can be overridden by providing the `WORDS_FILE` variable when running make: `make WORDS_FILE=/path/to/words/file.txt`.
 
 For development, set `CACHE_SECONDS` to `0` to not cache files.
 
@@ -84,10 +87,10 @@ Generate certificates for localhost at 127.0.0.1
 ```bash
 mkcert 127.0.0.1
 ```
-Then, add the certificate files to the run environment configuration in `.env`.  The certificate files should be in the root of the application, but are aliased to be up a directory since the server runs in the build folder when running locally.
+Then, add the certificate files to the run environment configuration in `.env`.  The certificate files should be in the root of the application.
 ```
-TLS_CERT_FILE=../127.0.0.1.pem
-TLS_KEY_FILE=../127.0.0.1-key.pem
+TLS_CERT_FILE=127.0.0.1.pem
+TLS_KEY_FILE=127.0.0.1-key.pem
 ```
 
 ### Server Ports
@@ -96,7 +99,11 @@ By default, the server will run on ports 80 and 443 for http and https traffic. 
 
 If the server handles HTTPS by providing its own certificate, use the `PORT` variable to specify the https port.  When POST is defined, no HTTP server will be started from `HTTP_PORT` and certificates are not read from the `TLS_CERT_FILE` and `TLS_KEY_FILE`.
 
-##### Serve on Default TCP HTTP Ports
+## Run the server
+
+Rune `make serve` to serve the application with flags specified in `.env`.
+
+### Serve on Default TCP HTTP Ports
 
 Run `make serve-tcp` to run on port 80 for HTTP and port 443 for HTTPS (default TCP ports).  Using these ports requires `sudo` (root) access.
 
