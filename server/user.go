@@ -63,11 +63,7 @@ func (s *Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
 		s.writeInternalError(w, err)
 		return
 	}
-	if _, err := w.Write([]byte(token)); err != nil {
-		err = fmt.Errorf("writing authorization token: %w", err)
-		s.writeInternalError(w, err)
-		return
-	}
+	w.Write([]byte(token))
 }
 
 // handleUserLobby adds the user to the lobby.
