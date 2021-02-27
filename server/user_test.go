@@ -49,14 +49,12 @@ func TestHandleUserCreate(t *testing.T) {
 				},
 			},
 		}
-		r := http.Request{
-			Form: url.Values{
-				"username":         {test.username},
-				"password_confirm": {test.password},
-			},
-		}
+		r := httptest.NewRequest("", "/", nil)
+		r.Form = make(url.Values)
+		r.Form.Add("username", test.username)
+		r.Form.Add("password_confirm", test.password)
 		w := httptest.NewRecorder()
-		s.handleUserCreate(w, &r)
+		s.handleUserCreate(w, r)
 		switch {
 		case test.wantOk:
 			want := 200
@@ -146,14 +144,12 @@ func TestHandleUserLogin(t *testing.T) {
 				},
 			},
 		}
-		r := http.Request{
-			Form: url.Values{
-				"username": {test.username},
-				"password": {test.password},
-			},
-		}
+		r := httptest.NewRequest("", "/", nil)
+		r.Form = make(url.Values)
+		r.Form.Add("username", test.username)
+		r.Form.Add("password", test.password)
 		w := httptest.NewRecorder()
-		s.handleUserLogin(w, &r)
+		s.handleUserLogin(w, r)
 		gotCode := w.Code
 		switch {
 		case test.wantCode != gotCode:
@@ -216,13 +212,11 @@ func TestHandleUserLobby(t *testing.T) {
 				},
 			},
 		}
-		r := http.Request{
-			Form: url.Values{
-				"access_token": {test.accessToken},
-			},
-		}
+		r := httptest.NewRequest("", "/", nil)
+		r.Form = make(url.Values)
+		r.Form.Add("access_token", test.accessToken)
 		w := httptest.NewRecorder()
-		s.handleUserLobby(w, &r)
+		s.handleUserLobby(w, r)
 		gotCode := w.Code
 		if test.wantCode != gotCode {
 			t.Errorf("Test %v: wanted response code to be %v, but was %v.  Response body: %v", i, test.wantCode, gotCode, w.Body.String())
@@ -284,15 +278,13 @@ func TestHandleUserUpdatePassword(t *testing.T) {
 			userDao: ud,
 			lobby:   l,
 		}
-		r := http.Request{
-			Form: url.Values{
-				"username":         {test.username},
-				"password":         {test.password},
-				"password_confirm": {test.newPassword},
-			},
-		}
+		r := httptest.NewRequest("", "/", nil)
+		r.Form = make(url.Values)
+		r.Form.Add("username", test.username)
+		r.Form.Add("password", test.password)
+		r.Form.Add("password_confirm", test.newPassword)
 		w := httptest.NewRecorder()
-		s.handleUserUpdatePassword(w, &r)
+		s.handleUserUpdatePassword(w, r)
 		gotStatusCode := w.Result().StatusCode
 		switch {
 		case test.wantStatusCode != gotStatusCode:
@@ -351,14 +343,12 @@ func TestHandleUserDelete(t *testing.T) {
 			userDao: ud,
 			lobby:   l,
 		}
-		r := http.Request{
-			Form: url.Values{
-				"username": {test.username},
-				"password": {test.password},
-			},
-		}
+		r := httptest.NewRequest("", "/", nil)
+		r.Form = make(url.Values)
+		r.Form.Add("username", test.username)
+		r.Form.Add("password", test.password)
 		w := httptest.NewRecorder()
-		s.handleUserDelete(w, &r)
+		s.handleUserDelete(w, r)
 		gotStatusCode := w.Result().StatusCode
 		switch {
 		case test.wantStatusCode != gotStatusCode:

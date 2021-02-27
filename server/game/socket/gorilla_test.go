@@ -17,7 +17,7 @@ func TestGorillaUpgraderUpgrade(t *testing.T) {
 	}{
 		{
 			w:       &httptest.ResponseRecorder{},
-			r:       &http.Request{},
+			r:       httptest.NewRequest("", "/", nil),
 			wantErr: true,
 		},
 		{

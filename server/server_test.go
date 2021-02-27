@@ -572,15 +572,11 @@ func TestCheckTokenUsername(t *testing.T) {
 				},
 			},
 		}
-		r := http.Request{
-			Header: http.Header{
-				"Authorization": {test.authorizationHeader},
-			},
-			Form: url.Values{
-				"username": {test.formUsername},
-			},
-		}
-		err := s.checkTokenUsername(&r)
+		r := httptest.NewRequest("", "/", nil)
+		r.Header.Add("Authorization", test.authorizationHeader)
+		r.Form = make(url.Values)
+		r.Form.Add("username", test.formUsername)
+		err := s.checkTokenUsername(r)
 		switch {
 		case err != nil:
 			if test.wantOk {
@@ -635,12 +631,9 @@ func TestHasSecHeader(t *testing.T) {
 		"Sec-Fetch-Mode:": true,
 	}
 	for header, want := range hasSecHeaderTests {
-		r := http.Request{
-			Header: http.Header{
-				header: {},
-			},
-		}
-		got := hasSecHeader(&r)
+		r := httptest.NewRequest("", "/", nil)
+		r.Header.Add(header, "")
+		got := hasSecHeader(r)
 		if want != got {
 			t.Errorf("wanted hasSecHeader = %v when header = %v", want, header)
 		}
