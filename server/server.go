@@ -304,7 +304,7 @@ func (s *Server) Stop(ctx context.Context) error {
 
 // handleHTTPS creates a handler for HTTP endpoints.
 func (s *Server) httpHandler() http.Handler {
-	httpMux := new(http.ServeMux)
+	httpMux := http.NewServeMux()
 	httpMux.HandleFunc(acmeHeader, http.HandlerFunc(s.handleAcmeChallenge))
 	httpMux.Handle("/", http.HandlerFunc(s.redirectToHTTPS))
 	return httpMux
@@ -333,7 +333,7 @@ func (s *Server) httpsHandler() http.HandlerFunc {
 
 // getHandler forwards calls to various endpoints.
 func (s *Server) getHandler() http.Handler {
-	getMux := new(http.ServeMux)
+	getMux := http.NewServeMux()
 	templatePatterns := []string{rootTemplatePath, "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html"}
 	staticPatterns := []string{"/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/LICENSE"}
 	templateHandler := s.fileHandler(http.HandlerFunc(s.serveTemplate))
@@ -351,7 +351,7 @@ func (s *Server) getHandler() http.Handler {
 
 // postHandler checks authentication and calls handlers for POST endpoints.
 func (s *Server) postHandler() http.Handler {
-	postMux := new(http.ServeMux)
+	postMux := http.NewServeMux()
 	noopHandler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// NOOP
 	})
