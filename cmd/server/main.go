@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/jacobpatterson1549/selene-bananas/server"
+	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
 )
 
 // main configures and runs the server.
@@ -23,7 +24,7 @@ func main() {
 		log.Fatalf("reading embedded files: %v", err)
 	}
 	m := newMainFlags(os.Args, os.LookupEnv)
-	db, err := m.createDatabase(ctx, *e)
+	db, err := m.createDatabase(ctx, "postgres", *e)
 	if err != nil {
 		log.Fatalf("setting up database: %v", err)
 	}

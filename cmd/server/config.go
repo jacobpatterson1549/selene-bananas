@@ -22,13 +22,12 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/server/game/lobby"
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/server/game/socket"
-	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
 )
 
 // createDatabase creates and sets up the database.
-func (m mainFlags) createDatabase(ctx context.Context, e embeddedData) (db.Database, error) {
+func (m mainFlags) createDatabase(ctx context.Context, driverName string, e embeddedData) (db.Database, error) {
 	cfg := m.sqlDatabaseConfig()
-	db, err := sql.Open("postgres", m.databaseURL)
+	db, err := sql.Open(driverName, m.databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("opening database %w", err)
 	}
@@ -110,7 +109,7 @@ func (m mainFlags) createServer(ctx context.Context, log *log.Logger, db db.Data
 
 // colorConfig creates the color config for the css.
 func (mainFlags) colorConfig() server.ColorConfig {
-	cc := server.ColorConfig{
+	cfg := server.ColorConfig{
 		CanvasPrimary: "#000000",
 		CanvasDrag:    "#0000ff",
 		CanvasTile:    "#f0d0b5",
@@ -123,7 +122,7 @@ func (mainFlags) colorConfig() server.ColorConfig {
 		ButtonHover:   "#dddddd",
 		ButtonActive:  "#cccccc",
 	}
-	return cc
+	return cfg
 }
 
 // tokenizerConfig creates the configuration for authentication token reader/writer.
