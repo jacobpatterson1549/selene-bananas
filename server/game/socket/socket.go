@@ -169,7 +169,6 @@ func (s *Socket) readMessagesSync(ctx context.Context, wg *sync.WaitGroup, out c
 func (s *Socket) writeMessagesSync(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, pingTicker, httpPingTicker *time.Ticker) {
 	defer wg.Done()
 	defer s.closeConn() // will cause readMessages() to fail
-	var err error
 	skipWrite, stopWrite := false, false
 	write := func(writeFunc func() error) error {
 		if skipWrite {
@@ -180,6 +179,7 @@ func (s *Socket) writeMessagesSync(ctx context.Context, wg *sync.WaitGroup, in <
 		}
 		return writeFunc()
 	}
+	var err error
 	for { // BLOCKING
 		select {
 		case <-ctx.Done():

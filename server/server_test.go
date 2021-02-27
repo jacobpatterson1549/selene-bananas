@@ -888,7 +888,7 @@ func TestHandlePost(t *testing.T) {
 		"password":         {"s3cr3t_old"},
 		"password_confirm": {"s3cr3t_new"},
 	}
-	mockTokenizer := mockTokenizer{
+	tokenizer := mockTokenizer{
 		CreateFunc: func(username string, points int) (string, error) {
 			return "", nil
 		},
@@ -896,12 +896,12 @@ func TestHandlePost(t *testing.T) {
 			return u, nil
 		},
 	}
-	mockLobby := mockLobby{
+	lobby := mockLobby{
 		removeUserFunc: func(username string) {
 			// NOOP
 		},
 	}
-	mockUserDao := mockUserDao{
+	userDao := mockUserDao{
 		createFunc: func(ctx context.Context, u user.User) error {
 			return nil
 		},
@@ -922,9 +922,9 @@ func TestHandlePost(t *testing.T) {
 		w := httptest.NewRecorder()
 		s := Server{
 			log:       log.New(io.Discard, "", 0),
-			tokenizer: mockTokenizer,
-			lobby:     mockLobby,
-			userDao:   mockUserDao,
+			tokenizer: tokenizer,
+			lobby:     lobby,
+			userDao:   userDao,
 		}
 		s.handlePost(w, r)
 		gotCode := w.Code

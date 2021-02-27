@@ -277,7 +277,7 @@ func (s *Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
 		switch {
 		case s.validHTTPAddr():
 			if _, err := tls.LoadX509KeyPair(s.TLSCertFile, s.TLSKeyFile); err != nil {
-				errC <- fmt.Errorf("Problem loading tls certificate: %v", err)
+				errC <- fmt.Errorf("problem loading tls certificate: %v", err)
 				return
 			}
 			errC <- s.httpsServer.ListenAndServeTLS(s.TLSCertFile, s.TLSKeyFile)
@@ -312,8 +312,8 @@ func (s *Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case s.challenge.IsFor(r.URL.Path):
 		if err := s.challenge.Handle(w, r.URL.Path); err != nil {
-			err := fmt.Errorf("serving acme challenge: %v", err)
-			s.writeInternalError(w, err)
+			err2 := fmt.Errorf("serving acme challenge: %v", err)
+			s.writeInternalError(w, err2)
 		}
 	default:
 		s.redirectToHTTPS(w, r)

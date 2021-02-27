@@ -69,10 +69,10 @@ func (cfg RunnerConfig) NewRunner(log *log.Logger, wordChecker WordChecker, user
 // Run consumes messages from the "in" channel, processing them on a new goroutine until the "in" channel closes.
 // The results of messages are sent on the "out" channel to be read by the subscriber.
 func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+	ctx, cancelFunc := context.WithCancel(ctx)
 	out := make(chan message.Message)
 	wg.Add(1)
 	go func() {
-		ctx, cancelFunc := context.WithCancel(ctx)
 		defer wg.Done()
 		defer r.log.Println("game runner stopped")
 		defer close(out)

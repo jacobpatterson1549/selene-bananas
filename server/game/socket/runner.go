@@ -76,11 +76,11 @@ func (cfg RunnerConfig) validate(log *log.Logger) error {
 // Run consumes messages from the message channel.  This channel is used to create sockets and send messages from games to them.
 // The messages received from sockets are sent on an "out" channel to be read by games.
 func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+	ctx, cancelFunc := context.WithCancel(ctx)
 	r.socketOut = make(chan message.Message)
 	out := make(chan message.Message)
 	wg.Add(1)
 	go func() {
-		ctx, cancelFunc := context.WithCancel(ctx)
 		defer wg.Done()
 		defer r.log.Println("socket runner stopped")
 		defer close(out)
