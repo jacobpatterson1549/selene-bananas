@@ -25,6 +25,9 @@ func main() {
 	m := newMainFlags(os.Args, os.LookupEnv)
 	ctx := context.Background()
 	db, err := database(ctx, m, *e)
+	if err != nil {
+		log.Fatalf("setting up database: %v", err)
+	}
 	logFlags := log.Ldate | log.Ltime | log.LUTC | log.Lshortfile | log.Lmsgprefix
 	log := log.New(os.Stdout, "", logFlags)
 	server, err := m.newServer(ctx, log, db, *e)
@@ -72,7 +75,7 @@ func database(ctx context.Context, m mainFlags, e embeddedData) (db.Database, er
 		return nil, err
 	}
 	if err := sqlDB.Setup(ctx, setupSQL); err != nil {
-		return nil, fmt.Errorf("setting up database: %w", err)
+		return nil, fmt.Errorf("setting up SQL database: %w", err)
 	}
 	return sqlDB, nil
 }
