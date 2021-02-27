@@ -124,8 +124,8 @@ const (
 	HeaderAcceptEncoding = "Accept-Encoding"
 	// HeaderContentEncoding is used to tell browsers how the document is encoded.
 	HeaderContentEncoding = "Content-Encoding"
-	// rootTemplateName is the name of the template for the root of the site
-	rootTemplateName = "index.html"
+	// rootTemplatePath is the name of the template for the root of the site
+	rootTemplatePath = "/index.html"
 	// acmeHeader is the path of the endpoint to serve the challenge at.
 	acmeHeader = "/.well-known/acme-challenge/"
 )
@@ -162,12 +162,10 @@ func (cfg Config) NewServer(p Parameters) (*Server, error) {
 	}
 	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
 	httpServer := &http.Server{
-		Addr:    httpAddr,
+		Addr: httpAddr,
 	}
-	httpsServeMux := new(http.ServeMux)
 	httpsServer := &http.Server{
-		Addr:    httpsAddr,
-		Handler: httpsServeMux,
+		Addr: httpsAddr,
 	}
 	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
 	staticFileSystem := http.FS(p.StaticFS)
@@ -188,8 +186,8 @@ func (cfg Config) NewServer(p Parameters) (*Server, error) {
 	s.monitor = runtimeMonitor{
 		hasTLS: s.validHTTPAddr(),
 	}
-	s.httpServer.Handler = s.handleHTTP()
-	httpsServeMux.HandleFunc("/", s.handleHTTPS)
+	s.httpServer.Handler = s.httpHandler()
+	s.httpsServer.Handler = s.httpsHandler()
 	return &s, nil
 }
 
@@ -304,71 +302,91 @@ func (s *Server) Stop(ctx context.Context) error {
 	return nil
 }
 
-// handleHTTPS creates a handler for http endpoints.
-func (s *Server) handleHTTP() http.Handler {
+// handleHTTPS creates a handler for HTTP endpoints.
+func (s *Server) httpHandler() http.Handler {
 	httpMux := new(http.ServeMux)
 	httpMux.HandleFunc(acmeHeader, http.HandlerFunc(s.handleAcmeChallenge))
 	httpMux.Handle("/", http.HandlerFunc(s.redirectToHTTPS))
 	return httpMux
 }
 
-// handleHTTPS handles https endpoints.
-func (s *Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case r.TLS == nil && !s.NoTLSRedirect:
-		s.httpServer.Handler.ServeHTTP(w, r)
-	case r.TLS == nil && s.NoTLSRedirect && !hasSecHeader(r):
-		s.redirectToHTTPS(w, r)
-	case r.Method == "GET":
-		s.handleGet(w, r)
-	case r.Method == "POST":
-		s.handlePost(w, r)
-	default:
-		httpError(w, http.StatusMethodNotAllowed)
-	}
-}
-
-// handleGet calls handlers for GET endpoints.
-func (s *Server) handleGet(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
-	case "/", "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html":
-		s.handleFile(w, r, s.serveTemplate(r.URL.Path[1:]))
-	case "/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/LICENSE":
-		s.handleFile(w, r, s.serveStatic)
-	case "/lobby":
-		s.handleUserLobby(w, r)
-	case "/monitor":
-		s.monitor.ServeHTTP(w, r)
-	default:
-		httpError(w, http.StatusNotFound)
-	}
-}
-
-// handlePost checks authentication and calls handlers for POST endpoints.
-func (s *Server) handlePost(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
-	case "/user_create", "/user_login":
-		// [unauthenticated]
-	default:
-		if err := s.checkTokenUsername(r); err != nil {
-			s.log.Print(err)
-			httpError(w, http.StatusForbidden)
-			return
+// httpsHandler creates a handler for HTTPS endpoints.
+// Non-TLS requests are redirected to HTTPS.  GET and POST requests are handled by more specific handlers.
+func (s *Server) httpsHandler() http.HandlerFunc {
+	getHandler := s.getHandler()
+	postHandler := s.postHandler()
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.TLS == nil && !s.NoTLSRedirect:
+			s.httpServer.Handler.ServeHTTP(w, r)
+		case r.TLS == nil && s.NoTLSRedirect && !hasSecHeader(r):
+			s.redirectToHTTPS(w, r)
+		case r.Method == "GET":
+			getHandler.ServeHTTP(w, r)
+		case r.Method == "POST":
+			postHandler.ServeHTTP(w, r)
+		default:
+			httpError(w, http.StatusMethodNotAllowed)
 		}
 	}
-	switch r.URL.Path {
-	case "/user_create":
-		s.handleUserCreate(w, r)
-	case "/user_login":
-		s.handleUserLogin(w, r)
-	case "/user_update_password":
-		s.handleUserUpdatePassword(w, r)
-	case "/user_delete":
-		s.handleUserDelete(w, r)
-	case "/ping":
+}
+
+// getHandler forwards calls to various endpoints.
+func (s *Server) getHandler() http.Handler {
+	getMux := new(http.ServeMux)
+	templatePatterns := []string{rootTemplatePath, "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html"}
+	staticPatterns := []string{"/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/LICENSE"}
+	templateHandler := s.fileHandler(http.HandlerFunc(s.serveTemplate))
+	staticHandler := s.fileHandler(s.serveStatic)
+	for _, p := range templatePatterns {
+		getMux.Handle(p, templateHandler)
+	}
+	for _, p := range staticPatterns {
+		getMux.Handle(p, staticHandler)
+	}
+	getMux.Handle("/lobby", http.HandlerFunc(s.handleUserLobby))
+	getMux.Handle("/monitor", s.monitor)
+	return s.rootHandler(getMux)
+}
+
+// postHandler checks authentication and calls handlers for POST endpoints.
+func (s *Server) postHandler() http.Handler {
+	postMux := new(http.ServeMux)
+	noopHandler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// NOOP
-	default:
-		httpError(w, http.StatusNotFound)
+	})
+	postMux.Handle("/user_create", http.HandlerFunc(s.handleUserCreate))
+	postMux.Handle("/user_login", http.HandlerFunc(s.handleUserLogin))
+	postMux.Handle("/user_update_password", http.HandlerFunc(s.handleUserUpdatePassword))
+	postMux.Handle("/user_delete", http.HandlerFunc(s.handleUserDelete))
+	postMux.Handle("/ping", noopHandler) // NOOP
+	return s.authHandler(postMux)
+}
+
+// rootHandler maps requests for / to /index.html.
+func (*Server) rootHandler(h http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			r.URL.Path = rootTemplatePath
+		}
+		h.ServeHTTP(w, r)
+	}
+}
+
+// authHandler checks the token username of the request before running the child handler
+func (s *Server) authHandler(h http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/user_create", "/user_login":
+			// [unauthenticated]
+		default:
+			if err := s.checkTokenUsername(r); err != nil {
+				s.log.Print(err)
+				httpError(w, http.StatusForbidden)
+				return
+			}
+		}
+		h.ServeHTTP(w, r)
 	}
 }
 
@@ -384,50 +402,50 @@ func (s *Server) handleAcmeChallenge(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(data))
 }
 
-// handleFile wraps the handling of the file, add cache-control header and gzip compression, if possible.
-func (s *Server) handleFile(w http.ResponseWriter, r *http.Request, h http.Handler) {
-	switch r.URL.Path {
-	default:
-		if r.URL.Query().Get("v") != s.Version {
-			url := r.URL
-			q := url.Query()
-			q.Set("v", s.Version)
-			url.RawQuery = q.Encode()
-			w.Header().Set(HeaderLocation, url.String())
-			w.WriteHeader(http.StatusMovedPermanently)
-			return
+// fileHandler wraps the handling of the file, add cache-control header and gzip compression, if possible.
+func (s *Server) fileHandler(h http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		default:
+			if r.URL.Query().Get("v") != s.Version {
+				url := r.URL
+				q := url.Query()
+				q.Set("v", s.Version)
+				url.RawQuery = q.Encode()
+				w.Header().Set(HeaderLocation, url.String())
+				w.WriteHeader(http.StatusMovedPermanently)
+				return
+			}
+			fallthrough
+		case "/favicon.svg", "/favicon.png":
+			w.Header().Set(HeaderCacheControl, s.cacheMaxAge)
+		case rootTemplatePath:
+			w.Header().Set(HeaderCacheControl, "no-store")
 		}
-		fallthrough
-	case "/favicon.svg", "/favicon.png":
-		w.Header().Set(HeaderCacheControl, s.cacheMaxAge)
-	case "/":
-		w.Header().Set(HeaderCacheControl, "no-store")
-	}
-	if strings.Contains(r.Header.Get(HeaderAcceptEncoding), "gzip") {
-		w2 := gzip.NewWriter(w)
-		defer w2.Close()
-		w = wrappedResponseWriter{
-			Writer:         w2,
-			ResponseWriter: w,
+		if strings.Contains(r.Header.Get(HeaderAcceptEncoding), "gzip") {
+			w2 := gzip.NewWriter(w)
+			defer w2.Close()
+			w = wrappedResponseWriter{
+				Writer:         w2,
+				ResponseWriter: w,
+			}
+			w.Header().Add(HeaderContentEncoding, "gzip")
 		}
-		w.Header().Add(HeaderContentEncoding, "gzip")
+		addMimeType(r.URL.Path, w)
+		h.ServeHTTP(w, r)
 	}
-	addMimeType(r.URL.Path, w)
-	h.ServeHTTP(w, r)
 }
 
 // serveTemplate servers the file from the data-driven template.  The name is assumed to have a leading slash that is ignored.
-func (s *Server) serveTemplate(name string) http.HandlerFunc {
+func (s *Server) serveTemplate(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Path[1:]
 	if len(name) == 0 {
-		name = rootTemplateName
+		name = rootTemplatePath
 	}
-	return func(w http.ResponseWriter, r *http.Request) {
-		addMimeType(name, w)
-		if err := s.template.ExecuteTemplate(w, name, s.data); err != nil {
-			err = fmt.Errorf("rendering template: %v", err)
-			s.writeInternalError(w, err)
-			return
-		}
+	addMimeType(name, w)
+	if err := s.template.ExecuteTemplate(w, name, s.data); err != nil {
+		err = fmt.Errorf("rendering template: %v", err)
+		s.writeInternalError(w, err)
 	}
 }
 
@@ -491,12 +509,9 @@ func hasSecHeader(r *http.Request) bool {
 	return false
 }
 
-// addMimeType adds the applicable mime type to the response.
+// addMimeType adds the applicable mime type to the response.  Files without extensions are assumed to be text
 func addMimeType(fileName string, w http.ResponseWriter) {
-	switch {
-	case fileName == "/":
-		fileName = ".html" // assume html for page root
-	case !strings.Contains(fileName, "."):
+	if !strings.Contains(fileName, ".") {
 		fileName = ".txt"
 	}
 	extension := filepath.Ext(fileName)

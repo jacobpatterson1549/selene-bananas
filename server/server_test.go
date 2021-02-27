@@ -26,7 +26,7 @@ func TestNewServer(t *testing.T) {
 	var userDao mockUserDao
 	var lobby mockLobby
 	templateFS := fstest.MapFS{ // tests parseTemplate
-		rootTemplateName: &fstest.MapFile{Data: []byte{}},
+		"any-file": &fstest.MapFile{Data: []byte{}},
 	}
 	var staticFS fstest.MapFS
 	newServerTests := []struct {
@@ -278,10 +278,9 @@ func TestHandleFileVersion(t *testing.T) {
 			wantLocation: "http://example.com/main.wasm?v=abc",
 		},
 	}
-	h := func(w http.ResponseWriter, r *http.Request) {
+	noopHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// NOOP - the version is handled before the handler is called
-	}
-	hf := http.HandlerFunc(h)
+	})
 	for i, test := range handleFileVersionTests {
 		s := Server{
 			Config: Config{
@@ -290,7 +289,8 @@ func TestHandleFileVersion(t *testing.T) {
 		}
 		r := httptest.NewRequest("", test.url, nil)
 		w := httptest.NewRecorder()
-		s.handleFile(w, r, hf)
+		fh := s.fileHandler(noopHandler)
+		fh.ServeHTTP(w, r)
 		gotCode := w.Code
 		gotHeader := w.Header()
 		delete(gotHeader, "Cache-Control")
@@ -311,14 +311,14 @@ func TestHandleFile(t *testing.T) {
 		requestHeader http.Header
 	}{
 		{
-			path: "/",
+			path: "/index.html",
 			wantHeader: http.Header{
 				"Cache-Control": {"no-store"},
 				"Content-Type":  {"text/html; charset=utf-8"},
 			},
 		},
 		{
-			path: "/",
+			path: "/index.html",
 			requestHeader: http.Header{
 				"Accept-Encoding": {"gzip"},
 				"Content-Type":    {"text/html; charset=utf-8"},
@@ -345,11 +345,11 @@ func TestHandleFile(t *testing.T) {
 		r := httptest.NewRequest("", test.path, nil)
 		r.Header = test.requestHeader
 		handlerCalled := false
-		h := func(w http.ResponseWriter, r *http.Request) {
+		h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			handlerCalled = true
-		}
-		hf := http.HandlerFunc(h)
-		s.handleFile(w, r, hf)
+		})
+		fh := s.fileHandler(h)
+		fh.ServeHTTP(w, r)
 		gotHeader := w.Header()
 		switch {
 		case !handlerCalled:
@@ -422,7 +422,7 @@ func TestHandleHTTP(t *testing.T) {
 		}
 		r := httptest.NewRequest("", test.httpURI, nil)
 		w := httptest.NewRecorder()
-		h := s.handleHTTP()
+		h := s.httpHandler()
 		h.ServeHTTP(w, r)
 		gotCode := w.Code
 		switch {
@@ -451,6 +451,9 @@ func TestHandleHTTPS(t *testing.T) {
 		r.Form = url.Values{"username": {username}}
 		return r
 	}
+	noopMonitor := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		// NOOP
+	})
 	handleHTTPSTests := []struct {
 		*http.Request
 		*Server
@@ -493,6 +496,13 @@ func TestHandleHTTPS(t *testing.T) {
 			wantCode: 404,
 		},
 		{
+			Request: withTLS(httptest.NewRequest("GET", "/", nil)),
+			Server: &Server{
+				template: template.Must(template.New("index.html").Parse("")),
+			},
+			wantCode: 200,
+		},
+		{
 			Request: withTLS(withAuthorization(httptest.NewRequest("POST", "/unknown", nil))),
 			Server: &Server{
 				tokenizer: mockTokenizer{
@@ -510,8 +520,10 @@ func TestHandleHTTPS(t *testing.T) {
 		},
 	}
 	for i, test := range handleHTTPSTests {
+		test.Server.monitor = noopMonitor
 		w := httptest.NewRecorder()
-		test.Server.handleHTTPS(w, test.Request)
+		h := test.Server.httpsHandler()
+		h.ServeHTTP(w, test.Request)
 		gotCode := w.Code
 		if test.wantCode != gotCode {
 			t.Errorf("Test %v: status codes not equal: wanted: %v, got %v", i, test.wantCode, gotCode)
@@ -644,7 +656,7 @@ func TestAddMimeType(t *testing.T) {
 		"main.wasm":     "application/wasm",
 		"LICENSE":       "text/plain; charset=utf-8",
 		"any.html":      "text/html; charset=utf-8",
-		"/":             "text/html; charset=utf-8",
+		"/index.html":   "text/html; charset=utf-8",
 	}
 	for fileName, want := range addMimeTypeTests {
 		w := httptest.NewRecorder()
@@ -671,9 +683,9 @@ func TestServeTemplate(t *testing.T) {
 			wantStatusCode:  500,
 			wantContentType: "text/plain; charset=utf-8",
 		},
-		{ // empty path should go to root template
-			path:            "/",
-			templateName:    rootTemplateName,
+		{
+			templateName:    "index.html",
+			path:            "/index.html",
 			templateText:    "stuff",
 			wantStatusCode:  200,
 			wantContentType: "text/html; charset=utf-8",
@@ -701,14 +713,9 @@ func TestServeTemplate(t *testing.T) {
 			template: template.Must(template.New(test.templateName).Parse(test.templateText)),
 			data:     test.data,
 		}
+		r := httptest.NewRequest("", test.path, nil)
 		w := httptest.NewRecorder()
-		r := http.Request{
-			URL: &url.URL{
-				Path: test.path,
-			},
-		}
-		h := s.serveTemplate(test.path[1:])
-		h.ServeHTTP(w, &r)
+		s.serveTemplate(w, r)
 		switch {
 		case test.wantStatusCode != w.Code:
 			t.Errorf("Test %v: status codes not equal: wanted: %v, got:    %v", i, test.wantStatusCode, w.Code)
@@ -775,7 +782,7 @@ func TestHandleGet(t *testing.T) {
 		)
 	}
 	validGetEndpoints := []string{
-		"/",
+		"/index.html",
 		"/manifest.json",
 		"/serviceWorker.js",
 		"/favicon.svg",
@@ -797,9 +804,6 @@ func TestHandleGet(t *testing.T) {
 		r := httptest.NewRequest("", test.path+"?v=1", nil)
 		w := httptest.NewRecorder()
 		tmplName := test.path[1:]
-		if len(tmplName) == 0 {
-			tmplName = rootTemplateName
-		}
 		tmpl := template.Must(template.New(tmplName).Parse(""))
 		s := Server{
 			log: log.New(io.Discard, "", 0),
@@ -824,7 +828,8 @@ func TestHandleGet(t *testing.T) {
 				Version: "1",
 			},
 		}
-		s.handleGet(w, r)
+		h := s.getHandler()
+		h.ServeHTTP(w, r)
 		gotCode := w.Code
 		if test.wantCode != gotCode {
 			t.Errorf("Test %v:\nGET to %v: status codes not equal: wanted: %v, got: %v", i, test.path, test.wantCode, gotCode)
@@ -900,7 +905,8 @@ func TestHandlePost(t *testing.T) {
 			lobby:     lobby,
 			userDao:   userDao,
 		}
-		s.handlePost(w, r)
+		h := s.postHandler()
+		h.ServeHTTP(w, r)
 		gotCode := w.Code
 		if test.wantCode != gotCode {
 			t.Errorf("Test %v:\nPOST to %v, authorization='%v': status codes not equal: wanted: %v, got: %v", i, test.path, test.authorization, test.wantCode, gotCode)
