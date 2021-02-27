@@ -17,7 +17,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/word"
 	"github.com/jacobpatterson1549/selene-bananas/server"
 	"github.com/jacobpatterson1549/selene-bananas/server/auth"
-	"github.com/jacobpatterson1549/selene-bananas/server/certificate"
 	gameController "github.com/jacobpatterson1549/selene-bananas/server/game"
 	"github.com/jacobpatterson1549/selene-bananas/server/game/lobby"
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
@@ -79,7 +78,7 @@ func (m mainFlags) createServer(ctx context.Context, log *log.Logger, db db.Data
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby: %w", err)
 	}
-	challenge := certificate.Challenge{
+	challenge := server.Challenge{
 		Token: m.challengeToken,
 		Key:   m.challengeKey,
 	}
@@ -92,6 +91,7 @@ func (m mainFlags) createServer(ctx context.Context, log *log.Logger, db db.Data
 		Version:       e.Version,
 		TLSCertFile:   m.tlsCertFile,
 		TLSKeyFile:    m.tlsKeyFile,
+		Challenge:     challenge,
 		ColorConfig:   colorConfig,
 		NoTLSRedirect: m.noTLSRedirect,
 	}
@@ -100,7 +100,6 @@ func (m mainFlags) createServer(ctx context.Context, log *log.Logger, db db.Data
 		Tokenizer:  tokenizer,
 		UserDao:    userDao,
 		Lobby:      lobby,
-		Challenge:  challenge,
 		StaticFS:   e.StaticFS,
 		TemplateFS: e.TemplateFS,
 	}

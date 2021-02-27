@@ -30,7 +30,6 @@ type (
 		tokenizer   Tokenizer
 		userDao     UserDao
 		lobby       Lobby
-		challenge   Challenge
 		httpServer  *http.Server
 		httpsServer *http.Server
 		cacheMaxAge string
@@ -56,6 +55,8 @@ type (
 		TLSCertFile string
 		// The private HTTPS key file.
 		TLSKeyFile string
+		// Challenge is used to create ACME certificate.
+		Challenge
 		// ColorConfig contains the colors to use on the site.
 		ColorConfig ColorConfig
 		// NoTLSRedirect disables redirection to https from http when true.
@@ -94,10 +95,10 @@ type (
 		ReadUsername(tokenString string) (string, error)
 	}
 
-	// Challenge is used to fulfill authentication checks to get a certificate.
-	Challenge interface {
-		IsFor(path string) bool
-		Handle(w io.Writer, path string) error
+	// Challenge token and key used to get a TLS certificate using the ACME HTTP-01.
+	Challenge struct {
+		Token string
+		Key   string
 	}
 
 	// Parameters contains the interfaces needed to create a new server
@@ -106,7 +107,6 @@ type (
 		Tokenizer
 		UserDao
 		Lobby
-		Challenge
 		StaticFS   fs.FS
 		TemplateFS fs.FS
 		sqlFiles   []fs.File
@@ -126,6 +126,8 @@ const (
 	HeaderContentEncoding = "Content-Encoding"
 	// rootTemplateName is the name of the template for the root of the site
 	rootTemplateName = "index.html"
+	// acmeHeader is the path of the endpoint to serve the challenge at.
+	acmeHeader = "/.well-known/acme-challenge/"
 )
 
 // NewServer creates a Server from the Config
@@ -159,10 +161,8 @@ func (cfg Config) NewServer(p Parameters) (*Server, error) {
 		httpAddr = ""
 	}
 	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
-	httpServeMux := new(http.ServeMux)
 	httpServer := &http.Server{
 		Addr:    httpAddr,
-		Handler: httpServeMux,
 	}
 	httpsServeMux := new(http.ServeMux)
 	httpsServer := &http.Server{
@@ -178,7 +178,6 @@ func (cfg Config) NewServer(p Parameters) (*Server, error) {
 		tokenizer:   p.Tokenizer,
 		userDao:     p.UserDao,
 		lobby:       p.Lobby,
-		challenge:   p.Challenge,
 		httpServer:  httpServer,
 		httpsServer: httpsServer,
 		cacheMaxAge: cacheMaxAge,
@@ -189,7 +188,7 @@ func (cfg Config) NewServer(p Parameters) (*Server, error) {
 	s.monitor = runtimeMonitor{
 		hasTLS: s.validHTTPAddr(),
 	}
-	httpServeMux.HandleFunc("/", s.handleHTTP)
+	s.httpServer.Handler = s.handleHTTP()
 	httpsServeMux.HandleFunc("/", s.handleHTTPS)
 	return &s, nil
 }
@@ -228,8 +227,6 @@ func (p Parameters) validate() error {
 		return fmt.Errorf("user dao required")
 	case p.Lobby == nil:
 		return fmt.Errorf("lobby required")
-	case p.Challenge == nil:
-		return fmt.Errorf("challenge required")
 	case p.StaticFS == nil:
 		return fmt.Errorf("static file system required")
 	case p.TemplateFS == nil:
@@ -307,24 +304,19 @@ func (s *Server) Stop(ctx context.Context) error {
 	return nil
 }
 
-// handleHTTPS handles http endpoints.
-func (s *Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
-	switch {
-	case s.challenge.IsFor(r.URL.Path):
-		if err := s.challenge.Handle(w, r.URL.Path); err != nil {
-			err2 := fmt.Errorf("serving acme challenge: %v", err)
-			s.writeInternalError(w, err2)
-		}
-	default:
-		s.redirectToHTTPS(w, r)
-	}
+// handleHTTPS creates a handler for http endpoints.
+func (s *Server) handleHTTP() http.Handler {
+	httpMux := new(http.ServeMux)
+	httpMux.HandleFunc(acmeHeader, http.HandlerFunc(s.handleAcmeChallenge))
+	httpMux.Handle("/", http.HandlerFunc(s.redirectToHTTPS))
+	return httpMux
 }
 
 // handleHTTPS handles https endpoints.
 func (s *Server) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.TLS == nil && !s.NoTLSRedirect:
-		s.handleHTTP(w, r)
+		s.httpServer.Handler.ServeHTTP(w, r)
 	case r.TLS == nil && s.NoTLSRedirect && !hasSecHeader(r):
 		s.redirectToHTTPS(w, r)
 	case r.Method == "GET":
@@ -378,6 +370,18 @@ func (s *Server) handlePost(w http.ResponseWriter, r *http.Request) {
 	default:
 		httpError(w, http.StatusNotFound)
 	}
+}
+
+// handleAcmeChallenge writes the challenge to the response.
+// Writes the concatenation of the token, a period, and the key.
+func (s *Server) handleAcmeChallenge(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	if path[len(acmeHeader):] != s.Challenge.Token {
+		err := fmt.Errorf("path '%v' is not for challenge", path)
+		s.writeInternalError(w, err)
+	}
+	data := s.Challenge.Token + "." + s.Challenge.Key
+	w.Write([]byte(data))
 }
 
 // handleFile wraps the handling of the file, add cache-control header and gzip compression, if possible.
