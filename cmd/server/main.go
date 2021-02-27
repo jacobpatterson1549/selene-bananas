@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,34 +10,36 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/jacobpatterson1549/selene-bananas/db"
 	"github.com/jacobpatterson1549/selene-bananas/server"
-	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
 )
 
 // main configures and runs the server.
 func main() {
+	ctx := context.Background()
+	logFlags := log.Ldate | log.Ltime | log.LUTC | log.Lshortfile | log.Lmsgprefix
+	log := log.New(os.Stdout, "", logFlags)
 	e, err := newEmbedParameters(embedVersion, embeddedWords, embeddedStaticFS, embeddedTemplateFS, embeddedSQLFS)
 	if err != nil {
 		log.Fatalf("reading embedded files: %v", err)
 	}
 	m := newMainFlags(os.Args, os.LookupEnv)
-	ctx := context.Background()
-	db, err := database(ctx, m, *e)
+	db, err := m.createDatabase(ctx, *e)
 	if err != nil {
 		log.Fatalf("setting up database: %v", err)
 	}
-	logFlags := log.Ldate | log.Ltime | log.LUTC | log.Lshortfile | log.Lmsgprefix
-	log := log.New(os.Stdout, "", logFlags)
-	server, err := m.newServer(ctx, log, db, *e)
+	server, err := m.createServer(ctx, log, db, *e)
 	if err != nil {
 		log.Fatalf("creating server: %v", err)
 	}
-	runServer(ctx, server, log)
+	err = runServer(ctx, server, log)
+	if err != nil {
+		log.Fatalf("running server: %v", err)
+	}
+	log.Println("server run stopped successfully")
 }
 
 // runServer runs the server until it is interrupted or terminated.
-func runServer(ctx context.Context, server *server.Server, log *log.Logger) {
+func runServer(ctx context.Context, server *server.Server, log *log.Logger) error {
 	done := make(chan os.Signal, 2)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 	errC := server.Run(ctx)
@@ -54,28 +55,7 @@ func runServer(ctx context.Context, server *server.Server, log *log.Logger) {
 		log.Printf("handled signal: %v", signal)
 	}
 	if err := server.Stop(ctx); err != nil {
-		log.Fatalf("stopping server: %v", err)
+		return fmt.Errorf("stopping server: %v", err)
 	}
-	log.Println("server stopped successfully")
-}
-
-// database creates and sets up the database.
-func database(ctx context.Context, m mainFlags, e embeddedData) (db.Database, error) {
-	cfg := m.sqlDatabaseConfig()
-	db, err := sql.Open("postgres", m.databaseURL)
-	if err != nil {
-		return nil, fmt.Errorf("opening database %w", err)
-	}
-	sqlDB, err := cfg.NewDatabase(db)
-	if err != nil {
-		return nil, fmt.Errorf("creating SQL database: %w", err)
-	}
-	setupSQL, err := e.sqlFiles()
-	if err != nil {
-		return nil, err
-	}
-	if err := sqlDB.Setup(ctx, setupSQL); err != nil {
-		return nil, fmt.Errorf("setting up SQL database: %w", err)
-	}
-	return sqlDB, nil
+	return nil
 }

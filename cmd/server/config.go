@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	crypto_rand "crypto/rand"
+	"database/sql"
 	"fmt"
 	"log"
 	"math/rand"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
-	"github.com/jacobpatterson1549/selene-bananas/db/sql"
+	databaseController "github.com/jacobpatterson1549/selene-bananas/db/sql"
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
@@ -21,10 +22,32 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/server/game/lobby"
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/server/game/socket"
+	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
 )
 
-// newServer creates the server.
-func (m mainFlags) newServer(ctx context.Context, log *log.Logger, db db.Database, e embeddedData) (*server.Server, error) {
+// createDatabase creates and sets up the database.
+func (m mainFlags) createDatabase(ctx context.Context, e embeddedData) (db.Database, error) {
+	cfg := m.sqlDatabaseConfig()
+	db, err := sql.Open("postgres", m.databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("opening database %w", err)
+	}
+	sqlDB, err := cfg.NewDatabase(db)
+	if err != nil {
+		return nil, fmt.Errorf("creating SQL database: %w", err)
+	}
+	setupSQL, err := e.sqlFiles()
+	if err != nil {
+		return nil, err
+	}
+	if err := sqlDB.Setup(ctx, setupSQL); err != nil {
+		return nil, fmt.Errorf("setting up SQL database: %w", err)
+	}
+	return sqlDB, nil
+}
+
+// createServer creates the server.
+func (m mainFlags) createServer(ctx context.Context, log *log.Logger, db db.Database, e embeddedData) (*server.Server, error) {
 	timeFunc := func() int64 {
 		return time.Now().UTC().Unix()
 	}
@@ -114,8 +137,8 @@ func (mainFlags) tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
 }
 
 // sqlDatabase creates the configuration for a SQL database to persist user information.
-func (m mainFlags) sqlDatabaseConfig() sql.Config {
-	cfg := sql.Config{
+func (m mainFlags) sqlDatabaseConfig() databaseController.Config {
+	cfg := databaseController.Config{
 		QueryPeriod: 5 * time.Second,
 	}
 	return cfg
