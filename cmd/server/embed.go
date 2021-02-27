@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"path/filepath"
 	"strings"
-	"unicode"
 )
 
 //go:embed embed/version.txt
@@ -48,10 +47,9 @@ type embeddedData struct {
 
 // newEmbedParameters validates, unembeds, and returns the parameters in a structure.
 func newEmbedParameters(version, words string, staticFS, templateFS, sqlFS fs.FS) (*embeddedData, error) {
-	cleanVersion, err := cleanVersion(version)
 	switch {
-	case err != nil:
-		return nil, err
+	case len(version) == 0:
+		return nil, fmt.Errorf("version required")
 	case len(words) == 0:
 		return nil, fmt.Errorf("empty words file provided")
 	case staticFS == nil:
@@ -61,6 +59,7 @@ func newEmbedParameters(version, words string, staticFS, templateFS, sqlFS fs.FS
 	case sqlFS == nil:
 		return nil, fmt.Errorf("embedded sql file system required")
 	}
+	var err error
 	staticFS, err = unembedFS(staticFS, "static")
 	if err != nil {
 		return nil, fmt.Errorf("unembedding static file system: %w", err)
@@ -75,30 +74,13 @@ func newEmbedParameters(version, words string, staticFS, templateFS, sqlFS fs.FS
 	}
 	wordsReader := strings.NewReader(words)
 	e := embeddedData{
-		Version:     cleanVersion,
+		Version:     version,
 		WordsReader: wordsReader,
 		StaticFS:    staticFS,
 		TemplateFS:  templateFS,
 		SQLFS:       sqlFS,
 	}
 	return &e, nil
-}
-
-// cleanVersion returns the version, but cleaned up to only be letters and numbers.
-// Spaces on each end are trimmed, but spaces in the middle of the version or special characters cause an error to be returned.
-func cleanVersion(v string) (string, error) {
-	cleanV := strings.TrimSpace(v)
-	switch {
-	case len(cleanV) == 0:
-		return "", fmt.Errorf("empty version")
-	default:
-		for i, r := range cleanV {
-			if !unicode.In(r, unicode.Letter, unicode.Digit) {
-				return "", fmt.Errorf("only letters and digits are allowed: invalid rune at index %v of '%v': '%v'", i, cleanV, string(r))
-			}
-		}
-	}
-	return cleanV, nil
 }
 
 // sqlFiles opens the SQL files needed to manage user data.

@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/jacobpatterson1549/selene-bananas/server/game"
 )
@@ -129,10 +130,11 @@ const (
 
 // NewServer creates a Server from the Config
 func (cfg Config) NewServer(p Parameters) (*Server, error) {
+	cfg.Version = strings.TrimSpace(cfg.Version) // TODO: test this
 	if err := cfg.validate(p); err != nil {
 		return nil, fmt.Errorf("creating server: validation: %w", err)
 	}
-	template, err := parseTemplate(p.TemplateFS)
+	template, err := p.parseTemplate()
 	if err != nil {
 		return nil, err
 	}
@@ -204,6 +206,13 @@ func (cfg Config) validate(p Parameters) error {
 		return fmt.Errorf("nonnegative cache seconds required")
 	case cfg.HTTPSPort <= 0:
 		return fmt.Errorf("positive https port required")
+	case len(cfg.Version) == 0:
+		return fmt.Errorf("version required")
+	}
+	for i, r := range cfg.Version {
+		if !unicode.In(r, unicode.Letter, unicode.Digit) {
+			return fmt.Errorf("only letters and digits are allowed in version: invalid rune at index %v of '%v': '%v'", i, cfg.Version, string(r))
+		}
 	}
 	return nil
 }
@@ -230,8 +239,8 @@ func (p Parameters) validate() error {
 }
 
 // parseTemplate parses the whole template file system to create a template.
-func parseTemplate(templateFS fs.FS) (*template.Template, error) {
-	t, err := template.ParseFS(templateFS, "*")
+func (p Parameters) parseTemplate() (*template.Template, error) {
+	t, err := template.ParseFS(p.TemplateFS, "*")
 	if err != nil {
 		return nil, fmt.Errorf("parsing template file system: %v", err)
 	}

@@ -63,7 +63,7 @@ func TestNewServer(t *testing.T) {
 				Lobby:     lobby,
 			},
 		},
-		{ // no templateFS
+		{ // no staticFS
 			Parameters: Parameters{
 				Log:       testLog,
 				Tokenizer: tokenizer,
@@ -72,14 +72,14 @@ func TestNewServer(t *testing.T) {
 				Challenge: challenge,
 			},
 		},
-		{ // no staticFS
+		{ // no templateFS
 			Parameters: Parameters{
-				Log:        testLog,
-				Tokenizer:  tokenizer,
-				UserDao:    userDao,
-				Lobby:      lobby,
-				Challenge:  challenge,
-				TemplateFS: templateFS,
+				Log:       testLog,
+				Tokenizer: tokenizer,
+				UserDao:   userDao,
+				Lobby:     lobby,
+				Challenge: challenge,
+				StaticFS:  staticFS,
 			},
 		},
 		{ // no stopDur
@@ -89,8 +89,8 @@ func TestNewServer(t *testing.T) {
 				UserDao:    userDao,
 				Lobby:      lobby,
 				Challenge:  challenge,
-				TemplateFS: templateFS,
 				StaticFS:   staticFS,
+				TemplateFS: templateFS,
 			},
 		},
 		{ // bad cacheSec
@@ -100,8 +100,8 @@ func TestNewServer(t *testing.T) {
 				UserDao:    userDao,
 				Lobby:      lobby,
 				Challenge:  challenge,
-				TemplateFS: templateFS,
 				StaticFS:   staticFS,
+				TemplateFS: templateFS,
 			},
 			Config: Config{
 				StopDur:  1 * time.Hour,
@@ -115,11 +115,42 @@ func TestNewServer(t *testing.T) {
 				UserDao:    userDao,
 				Lobby:      lobby,
 				Challenge:  challenge,
-				TemplateFS: templateFS,
 				StaticFS:   staticFS,
+				TemplateFS: templateFS,
 			},
 			Config: Config{
 				StopDur: 1 * time.Hour,
+			},
+		},
+		{ // missing version
+			Parameters: Parameters{
+				Log:        testLog,
+				Tokenizer:  tokenizer,
+				UserDao:    userDao,
+				Lobby:      lobby,
+				Challenge:  challenge,
+				StaticFS:   staticFS,
+				TemplateFS: templateFS,
+			},
+			Config: Config{
+				StopDur:   1 * time.Hour,
+				HTTPSPort: 443,
+			},
+		},
+		{ // bad version
+			Parameters: Parameters{
+				Log:        testLog,
+				Tokenizer:  tokenizer,
+				UserDao:    userDao,
+				Lobby:      lobby,
+				Challenge:  challenge,
+				StaticFS:   staticFS,
+				TemplateFS: templateFS,
+			},
+			Config: Config{
+				StopDur:   1 * time.Hour,
+				HTTPSPort: 443,
+				Version:   "almost correct :)",
 			},
 		},
 		{ // bad templateFS
@@ -129,12 +160,13 @@ func TestNewServer(t *testing.T) {
 				UserDao:    userDao,
 				Lobby:      lobby,
 				Challenge:  challenge,
-				TemplateFS: make(fstest.MapFS),
 				StaticFS:   staticFS,
+				TemplateFS: make(fstest.MapFS),
 			},
 			Config: Config{
 				StopDur:   1 * time.Hour,
 				HTTPSPort: 443,
+				Version:   "ok",
 			},
 		},
 		{ // minimum happy path
@@ -144,13 +176,14 @@ func TestNewServer(t *testing.T) {
 				UserDao:    userDao,
 				Lobby:      lobby,
 				Challenge:  challenge,
-				TemplateFS: templateFS,
 				StaticFS:   staticFS,
+				TemplateFS: templateFS,
 			},
 			Config: Config{
 				StopDur:   1 * time.Hour,
 				CacheSec:  86400,
 				HTTPSPort: 443,
+				Version:   "9d2ffad8e5e5383569d37ec381147f2d\n",
 				ColorConfig: ColorConfig{
 					CanvasPrimary: "blue",
 				},
@@ -166,6 +199,7 @@ func TestNewServer(t *testing.T) {
 					StopDur:   1 * time.Hour,
 					CacheSec:  86400,
 					HTTPSPort: 443,
+					Version:   "9d2ffad8e5e5383569d37ec381147f2d",
 					ColorConfig: ColorConfig{
 						CanvasPrimary: "blue",
 					},
