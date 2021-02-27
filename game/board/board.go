@@ -360,19 +360,19 @@ func (b Board) keyedUsedWords(tiles map[int]map[int]tile.Tile, ord func(tp tile.
 		sort.Slice(tilePositions, func(i, j int) bool {
 			return ord(tilePositions[i]) < ord(tilePositions[j])
 		})
-		buffer := new(bytes.Buffer)
+		var b bytes.Buffer
 		var zWords []string
 		for i, tp := range tilePositions {
 			if i > 0 && ord(tilePositions[i-1]) < ord(tp)-1 {
-				if buffer.Len() > 1 {
-					zWords = append(zWords, buffer.String())
+				if b.Len() > 1 {
+					zWords = append(zWords, b.String())
 				}
-				buffer = new(bytes.Buffer)
+				b.Reset()
 			}
-			buffer.WriteString(string(tp.Tile.Ch))
+			b.WriteString(string(tp.Tile.Ch))
 		}
-		if buffer.Len() > 1 {
-			zWords = append(zWords, buffer.String())
+		if b.Len() > 1 {
+			zWords = append(zWords, b.String())
 		}
 		keyedUsedWords[z] = zWords
 		wordCount += len(zWords)
