@@ -240,124 +240,125 @@ func TestNewServer(t *testing.T) {
 	}
 }
 
-func TestHandleFileVersion(t *testing.T) {
-	handleFileVersionTests := []struct {
-		version      string
-		url          string
-		wantCode     int
-		wantLocation string
-	}{
-		{
-			url:      "http://example.com/",
-			wantCode: 200,
-		},
-		{
-			url:      "http://example.com/main.wasm?v=",
-			wantCode: 200,
-		},
-		{
-			version:  "abc",
-			url:      "http://example.com/main.wasm?v=abc",
-			wantCode: 200,
-		},
-		{
-			version:  "abc",
-			url:      "http://example.com/favicon.svg",
-			wantCode: 200,
-		},
-		{
-			version:      "abc",
-			url:          "http://example.com/main.wasm",
-			wantCode:     301,
-			wantLocation: "http://example.com/main.wasm?v=abc",
-		},
-		{
-			version:      "abc",
-			url:          "http://example.com/main.wasm?v=defg",
-			wantCode:     301,
-			wantLocation: "http://example.com/main.wasm?v=abc",
-		},
-	}
-	noopHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// NOOP - the version is handled before the handler is called
-	})
-	for i, test := range handleFileVersionTests {
-		s := Server{
-			Config: Config{
-				Version: test.version,
-			},
-		}
-		r := httptest.NewRequest("", test.url, nil)
-		w := httptest.NewRecorder()
-		fh := s.fileHandler(noopHandler)
-		fh.ServeHTTP(w, r)
-		gotCode := w.Code
-		gotHeader := w.Header()
-		delete(gotHeader, "Cache-Control")
-		switch {
-		case test.wantCode != gotCode:
-			t.Errorf("Test %v: wanted %v status code, got %v", i, test.wantCode, gotCode)
-		case test.wantCode == 301 && test.wantLocation != w.Header().Get("Location"):
-			t.Errorf("Test %v: wanted Location header %v, got %v", i, test.wantLocation, w.Header().Get("Location"))
-		}
-	}
-}
-
 func TestHandleFile(t *testing.T) {
-	cacheMaxAge := "max-age=???"
-	handleFileTests := []struct {
-		path          string
-		wantHeader    http.Header
-		requestHeader http.Header
-	}{
-		{
-			path: "/index.html",
-			wantHeader: http.Header{
-				"Cache-Control": {"no-store"},
-				"Content-Type":  {"text/html; charset=utf-8"},
+	t.Run("TestHandleVileVersion", func(t *testing.T) {
+		handleFileVersionTests := []struct {
+			version      string
+			url          string
+			wantCode     int
+			wantLocation string
+		}{
+			{
+				url:      "http://example.com/",
+				wantCode: 200,
 			},
-		},
-		{
-			path: "/index.html",
-			requestHeader: http.Header{
-				"Accept-Encoding": {"gzip"},
-				"Content-Type":    {"text/html; charset=utf-8"},
+			{
+				url:      "http://example.com/main.wasm?v=",
+				wantCode: 200,
 			},
-			wantHeader: http.Header{
-				"Cache-Control":    {"no-store"},
-				"Content-Encoding": {"gzip"},
-				"Content-Type":     {"text/html; charset=utf-8"},
+			{
+				version:  "abc",
+				url:      "http://example.com/main.wasm?v=abc",
+				wantCode: 200,
 			},
-		},
-		{
-			path: "/file.html",
-			wantHeader: http.Header{
-				"Cache-Control": {cacheMaxAge},
-				"Content-Type":  {"text/html; charset=utf-8"},
+			{
+				version:  "abc",
+				url:      "http://example.com/favicon.svg",
+				wantCode: 200,
 			},
-		},
-	}
-	for i, test := range handleFileTests {
-		s := Server{
-			cacheMaxAge: cacheMaxAge,
+			{
+				version:      "abc",
+				url:          "http://example.com/main.wasm",
+				wantCode:     301,
+				wantLocation: "http://example.com/main.wasm?v=abc",
+			},
+			{
+				version:      "abc",
+				url:          "http://example.com/main.wasm?v=defg",
+				wantCode:     301,
+				wantLocation: "http://example.com/main.wasm?v=abc",
+			},
 		}
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("", test.path, nil)
-		r.Header = test.requestHeader
-		handlerCalled := false
-		h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			handlerCalled = true
+		noopHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// NOOP - the version is handled before the handler is called
 		})
-		fh := s.fileHandler(h)
-		fh.ServeHTTP(w, r)
-		gotHeader := w.Header()
-		switch {
-		case !handlerCalled:
-			t.Errorf("Test %v: wanted handler to be called", i)
-		case !reflect.DeepEqual(test.wantHeader, gotHeader):
-			t.Errorf("Test %v headers not equal\nwanted: %v\ngot:    %v", i, test.wantHeader, gotHeader)
+		for i, test := range handleFileVersionTests {
+			s := Server{
+				Config: Config{
+					Version: test.version,
+				},
+			}
+			r := httptest.NewRequest("", test.url, nil)
+			w := httptest.NewRecorder()
+			fh := s.fileHandler(noopHandler)
+			fh.ServeHTTP(w, r)
+			gotCode := w.Code
+			gotHeader := w.Header()
+			delete(gotHeader, "Cache-Control")
+			switch {
+			case test.wantCode != gotCode:
+				t.Errorf("Test %v: wanted %v status code, got %v", i, test.wantCode, gotCode)
+			case test.wantCode == 301 && test.wantLocation != w.Header().Get("Location"):
+				t.Errorf("Test %v: wanted Location header %v, got %v", i, test.wantLocation, w.Header().Get("Location"))
+			}
 		}
-	}
+	})
+	t.Run("TestHandleFileHeaders", func(t *testing.T) {
+		cacheMaxAge := "max-age=???"
+		handleFileHeadersTests := []struct {
+			path          string
+			wantHeader    http.Header
+			requestHeader http.Header
+		}{
+			{
+				path: "/index.html",
+				wantHeader: http.Header{
+					"Cache-Control": {"no-store"},
+					"Content-Type":  {"text/html; charset=utf-8"},
+				},
+			},
+			{
+				path: "/index.html",
+				requestHeader: http.Header{
+					"Accept-Encoding": {"gzip"},
+					"Content-Type":    {"text/html; charset=utf-8"},
+				},
+				wantHeader: http.Header{
+					"Cache-Control":    {"no-store"},
+					"Content-Encoding": {"gzip"},
+					"Content-Type":     {"text/html; charset=utf-8"},
+				},
+			},
+			{
+				path: "/file.html",
+				wantHeader: http.Header{
+					"Cache-Control": {cacheMaxAge},
+					"Content-Type":  {"text/html; charset=utf-8"},
+				},
+			},
+		}
+		for i, test := range handleFileHeadersTests {
+			s := Server{
+				cacheMaxAge: cacheMaxAge,
+			}
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest("", test.path, nil)
+			r.Header = test.requestHeader
+			handlerCalled := false
+			h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				handlerCalled = true
+			})
+			fh := s.fileHandler(h)
+			fh.ServeHTTP(w, r)
+			gotHeader := w.Header()
+			switch {
+			case !handlerCalled:
+				t.Errorf("Test %v: wanted handler to be called", i)
+			case !reflect.DeepEqual(test.wantHeader, gotHeader):
+				t.Errorf("Test %v headers not equal\nwanted: %v\ngot:    %v", i, test.wantHeader, gotHeader)
+			}
+		}
+	})
 }
 
 func TestHandleHTTP(t *testing.T) {
