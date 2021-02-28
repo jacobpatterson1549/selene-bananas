@@ -7,6 +7,7 @@ import (
 	"log"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -547,6 +548,135 @@ func TestHandleInfoChanged(t *testing.T) {
 	}
 }
 
+func TestHandleGameTilesMoved(t *testing.T) {
+	handleGameTilesMovedTests := []struct {
+		game.Status
+		message.Message
+		*board.Board
+		wantOk bool
+		want   *board.Board
+	}{
+		{}, // game not in progress
+		{
+			Status: game.InProgress,
+			Message: message.Message{
+				PlayerName: "selene",
+				Game: &game.Info{
+					Board: board.New(nil, []tile.Position{
+						{Tile: tile.Tile{ID: 8, Ch: "D"}, X: 7, Y: 4},
+					}),
+				},
+			},
+			Board: &board.Board{
+				Config:       board.Config{NumRows: 10, NumCols: 10},
+				UsedTiles:    map[tile.ID]tile.Position{8: {Tile: tile.Tile{ID: 8, Ch: "D"}, X: 17, Y: 3}},
+				UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{17: {3: {ID: 8, Ch: "D"}}},
+			},
+			wantOk: true,
+			want: &board.Board{
+				Config:       board.Config{NumRows: 10, NumCols: 10},
+				UsedTiles:    map[tile.ID]tile.Position{8: {Tile: tile.Tile{ID: 8, Ch: "D"}, X: 7, Y: 4}},
+				UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{7: {4: {ID: 8, Ch: "D"}}},
+			},
+		},
+	}
+	for i, test := range handleGameTilesMovedTests {
+		g := Game{
+			status: test.Status,
+			players: map[player.Name]*playerController.Player{
+				test.Message.PlayerName: {
+					Board: test.Board,
+				},
+			},
+		}
+		ctx := context.Background()
+		send := func(m message.Message) {
+			t.Errorf("Test %v: unwanted message sent: %v", i, m)
+		}
+		err := g.handleGameTilesMoved(ctx, test.Message, send)
+		got := g.players[test.Message.PlayerName].Board
+		switch {
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case !reflect.DeepEqual(test.want, got):
+			t.Errorf("Test %v: boards not equal:\nwanted: %v\ngot:    %v", i, test.want, got)
+		}
+	}
+}
+
+func TestHandleBoardRefresh(t *testing.T) {
+	wantType := message.JoinGame // messages with types other than message.RefreshGameBoard may call this
+	g := Game{
+		players: map[player.Name]*playerController.Player{
+			"fred": {
+				Board: &board.Board{},
+			},
+		},
+	}
+	ctx := context.Background()
+	m := message.Message{
+		Type:       wantType,
+		PlayerName: "fred",
+		Game: &game.Info{
+			Board: &board.Board{},
+		},
+	}
+	var got message.Message
+	send := func(m message.Message) {
+		got = m
+	}
+	err := g.handleBoardRefresh(ctx, m, send)
+	switch {
+	case err != nil:
+		t.Errorf("unwanted error: %v", err)
+	case wantType != got.Type:
+		t.Errorf("types not equal: wanted %v, got %v", wantType, got.Type)
+	}
+}
+
+func TestHandleGameChat(t *testing.T) {
+	from := "scooby"
+	secret := "he's wearing a mask!"
+	playerNames := []player.Name{"shaggy", "velma", "fred", "daphine"}
+	players := make(map[player.Name]*playerController.Player, len(playerNames))
+	playersAwaitingChat := make(map[player.Name]struct{}, len(playerNames))
+	for _, pn := range playerNames {
+		players[pn] = nil
+		playersAwaitingChat[pn] = struct{}{}
+	}
+	g := Game{
+		players: players,
+	}
+	ctx := context.Background()
+	m := message.Message{
+		PlayerName: player.Name(from),
+		Info:       secret,
+	}
+	send := func(m message.Message) {
+		_, ok := playersAwaitingChat[m.PlayerName]
+		switch {
+		case !ok:
+			t.Errorf("message sent to unknown player or to player more than once: %v", m)
+		case m.Type != message.GameChat:
+			t.Errorf("wanted chat message, got %v", m.Type)
+		case !strings.Contains(m.Info, from):
+			t.Errorf("wanted message info to contain who the chat is from (%v), got %v", from, m.Info)
+		case !strings.Contains(m.Info, secret):
+			t.Errorf("wanted message info to contain the chat message (%v), got %v", secret, m.Info)
+		default:
+			delete(playersAwaitingChat, m.PlayerName)
+		}
+	}
+	g.handleGameChat(ctx, m, send)
+	if len(playersAwaitingChat) != 0 {
+		t.Errorf("wanted chat message sent to all players, %v didn't receive it", len(playersAwaitingChat))
+	}
+}
+
 func TestResizeBoard(t *testing.T) {
 	barneyBoard := &board.Board{
 		UnusedTileIDs: []tile.ID{2},
@@ -592,7 +722,7 @@ func TestResizeBoard(t *testing.T) {
 				},
 			},
 		},
-		{ // board much smaller // TODO
+		{ // board much smaller
 			Message: message.Message{
 				PlayerName: "fred",
 				Game: &game.Info{
@@ -676,7 +806,7 @@ func TestResizeBoard(t *testing.T) {
 	}
 }
 
-func TestPlayerFinalBourds(t *testing.T) {
+func TestPlayerFinalBoards(t *testing.T) {
 	b1 := board.Board{
 		UnusedTileIDs: []tile.ID{1},
 	}
