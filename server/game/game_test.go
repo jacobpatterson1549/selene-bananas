@@ -278,6 +278,113 @@ func TestRun(t *testing.T) {
 	}
 }
 
+func TestRunSync(t *testing.T) {
+	testLog := log.New(io.Discard, "", 0)
+	t.Run("TestRunSyncMessageHandlers", func(t *testing.T) {
+		t.Skip() // TODO: add tests for all expected message types, expect gameWarning for game not being started for most
+	})
+	t.Run("TestRunSyncStop", func(t *testing.T) {
+		testRunSyncTickerTests := []struct {
+			ctxCancelled      bool
+			inClosed          bool
+			idleTick          bool
+			gameDeleteMessage bool
+		}{
+			{ctxCancelled: true},
+			{inClosed: true},
+			{idleTick: true},
+			{gameDeleteMessage: true},
+		}
+		for i, test := range testRunSyncTickerTests {
+			ctx := context.Background()
+			ctx, cancelFunc := context.WithCancel(ctx)
+			var wg sync.WaitGroup
+			in := make(chan message.Message, 1)
+			out := make(chan message.Message, 2)
+			idleC := make(chan time.Time, 1)
+			idleTicker := &time.Ticker{
+				C: idleC,
+			}
+			pn := player.Name("selene")
+			g := Game{
+				log: testLog,
+				players: map[player.Name]*playerController.Player{
+					pn: nil,
+				},
+			}
+			switch {
+			case test.ctxCancelled:
+				cancelFunc()
+			case test.inClosed:
+				close(in)
+			case test.idleTick:
+				idleC <- time.Time{}
+			case test.gameDeleteMessage:
+				m := message.Message{
+					Type:       message.DeleteGame,
+					PlayerName: pn,
+				}
+				in <- m
+			}
+			wg.Add(1)
+			g.runSync(ctx, &wg, in, out, idleTicker)
+			cancelFunc()
+			wg.Wait()
+			numWaiting := len(out)
+			wantGameDelete := test.idleTick || test.gameDeleteMessage
+			switch {
+			case !wantGameDelete:
+				if numWaiting != 0 {
+					t.Errorf("Test %v: wanted no messages left on out channel, got %v", i, numWaiting)
+				}
+			case numWaiting != 2:
+				t.Errorf("Test %v: wanted two messages left on out channel, got %v", i, numWaiting)
+			default:
+				gotM1 := <-out
+				gotM2 := <-out
+				switch {
+				case gotM1.Type != message.LeaveGame, gotM1.PlayerName != pn:
+					t.Errorf("Test %v: wanted leave message sent to %v, got %v", i, pn, gotM1)
+				case gotM2.Type != message.GameInfos:
+					t.Errorf("Test %v: wanted final message sent by inactive game to be GameInfos, got %v", i, gotM2)
+				}
+			}
+		}
+	})
+	t.Run("TestRunSyncIdleTickAfterMessage", func(t *testing.T) {
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		var wg sync.WaitGroup
+		in := make(chan message.Message)
+		out := make(chan message.Message, 2)
+		idleC := make(chan time.Time)
+		idleTicker := &time.Ticker{
+			C: idleC,
+		}
+		pn := player.Name("selene")
+		g := Game{
+			log: testLog,
+			players: map[player.Name]*playerController.Player{
+				pn: nil,
+			},
+		}
+		wg.Add(1)
+		go g.runSync(ctx, &wg, in, out, idleTicker)
+		in <- message.Message{
+			Type:       message.GameChat,
+			PlayerName: pn,
+		}
+		<-out // error for unknown message type
+		idleC <- time.Time{}
+		cancelFunc()
+		wg.Wait()
+		numWaiting := len(out)
+		if numWaiting != 0 {
+			t.Errorf("wanted no messages left on out channel, got %v", numWaiting)
+		}
+	})
+}
+
 func TestSendMessage(t *testing.T) {
 	sendMessageTests := []struct {
 		Game

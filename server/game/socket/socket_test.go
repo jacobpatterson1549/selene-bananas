@@ -493,9 +493,9 @@ func TestWriteMessagesSync(t *testing.T) {
 		case test.inClosed:
 			close(in)
 		case test.pingTick:
-			pingC <- time.Now()
+			pingC <- time.Time{}
 		case test.httpPingTick:
-			httpPingC <- time.Now()
+			httpPingC <- time.Time{}
 		case test.wantOk, test.writeErr != nil, test.setWriteDeadlineErr != nil:
 			in <- test.m
 		}

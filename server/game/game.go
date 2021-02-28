@@ -148,11 +148,13 @@ func (g *Game) initializeUnusedTiles() error {
 // Run runs the game asynchronously until the context is closed.
 func (g *Game) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, out chan<- message.Message) {
 	idleTicker := time.NewTicker(g.IdlePeriod)
+	wg.Add(1)
 	go g.runSync(ctx, wg, in, out, idleTicker)
 }
 
 // runSync runs the game until the conteixt is close or the input channel closes.
 func (g *Game) runSync(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, out chan<- message.Message, idleTicker *time.Ticker) {
+	defer wg.Done()
 	active := false
 	send := g.sendMessage(out)
 	messageHandlers := map[message.Type]messageHandler{
@@ -165,8 +167,6 @@ func (g *Game) runSync(ctx context.Context, wg *sync.WaitGroup, in <-chan messag
 		message.GameChat:         g.handleGameChat,
 		message.RefreshGameBoard: g.handleBoardRefresh,
 	}
-	wg.Add(1)
-	defer wg.Done()
 	for { // BLOCKING
 		select {
 		case <-ctx.Done():
