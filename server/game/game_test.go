@@ -546,3 +546,155 @@ func TestHandleInfoChanged(t *testing.T) {
 		t.Errorf("messages not equal for game %v:\nwanted: %v\ngot:    %v", g, want, got)
 	}
 }
+
+func TestResizeBoard(t *testing.T) {
+	barneyBoard := &board.Board{
+		UnusedTileIDs: []tile.ID{2},
+	}
+	resizeBoardTests := []struct {
+		message.Message
+		playerBoard     board.Board
+		gameConfig      game.Config
+		gameID          game.ID
+		gameStatus      game.Status
+		gameUnusedTiles []tile.Tile
+		want            message.Message
+		wantInfo        bool
+	}{
+		{ // no board change, check message
+			Message: message.Message{
+				Type:       message.RefreshGameBoard,
+				Info:       "x",
+				PlayerName: "fred",
+				Game: &game.Info{
+					Board: board.New(nil, nil),
+				},
+			},
+			gameConfig: game.Config{
+				Penalize: true,
+			},
+			gameID:          7,
+			gameStatus:      game.InProgress,
+			gameUnusedTiles: []tile.Tile{{}, {}, {}},
+			want: message.Message{
+				Type:       message.RefreshGameBoard,
+				Info:       "",
+				PlayerName: "fred",
+				Game: &game.Info{
+					Board:     board.New(nil, nil),
+					TilesLeft: 3,
+					Status:    game.InProgress,
+					Players:   []string{"barney", "fred"},
+					ID:        7,
+					Config: &game.Config{
+						Penalize: true,
+					},
+				},
+			},
+		},
+		{ // board much smaller // TODO
+			Message: message.Message{
+				PlayerName: "fred",
+				Game: &game.Info{
+					Board: &board.Board{
+						Config: board.Config{
+							NumRows: 5,
+							NumCols: 5,
+						},
+					},
+				},
+			},
+			playerBoard: *board.New(nil, []tile.Position{
+				{
+					Tile: tile.Tile{ID: 1, Ch: "A"},
+					X:    100,
+					Y:    100,
+				},
+			}),
+			want: message.Message{
+				PlayerName: "fred",
+				Game: &game.Info{
+					Board:   board.New([]tile.Tile{{ID: 1, Ch: "A"}}, nil),
+					Players: []string{"barney", "fred"},
+					Config:  &game.Config{},
+				},
+			},
+			wantInfo: true,
+		},
+		{ // finished game
+			Message: message.Message{
+				PlayerName: "fred",
+				Game: &game.Info{
+					Board: board.New(nil, nil),
+				},
+			},
+			gameStatus: game.Finished,
+			want: message.Message{
+				PlayerName: "fred",
+				Game: &game.Info{
+					Board:   board.New(nil, nil),
+					Status:  game.Finished,
+					Players: []string{"barney", "fred"},
+					Config:  &game.Config{},
+					FinalBoards: map[string]board.Board{
+						"fred":   {},
+						"barney": *barneyBoard,
+					},
+				},
+			},
+		},
+	}
+	for i, test := range resizeBoardTests {
+		g := Game{
+			id: test.gameID,
+			Config: Config{
+				Config: test.gameConfig,
+			},
+			players: map[player.Name]*playerController.Player{
+				"fred": {
+					Board: &test.playerBoard,
+				},
+				"barney": {
+					Board: barneyBoard,
+				},
+			},
+			status:      test.gameStatus,
+			unusedTiles: test.gameUnusedTiles,
+		}
+		got, err := g.resizeBoard(test.Message)
+		switch {
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case test.wantInfo != (len(got.Info) > 0):
+			t.Errorf("Test %v: wanted info (%v), got: '%v", i, test.wantInfo, got.Info)
+		default:
+			got.Info = ""
+			if !reflect.DeepEqual(test.want, *got) {
+				t.Errorf("Test %v: resize board messages not equal:\nwanted: %v\ngot:    %v", i, test.want, *got)
+			}
+		}
+	}
+}
+
+func TestPlayerFinalBourds(t *testing.T) {
+	b1 := board.Board{
+		UnusedTileIDs: []tile.ID{1},
+	}
+	b2 := board.Board{
+		UnusedTileIDs: []tile.ID{2},
+	}
+	g := Game{
+		players: map[player.Name]*playerController.Player{
+			"fred":   {Board: &b1},
+			"barney": {Board: &b2},
+		},
+	}
+	want := map[string]board.Board{
+		"fred":   b1,
+		"barney": b2,
+	}
+	got := g.playerFinalBoards()
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("final boards not equal:\nwanted: %v\ngot:    %v", want, got)
+	}
+}
