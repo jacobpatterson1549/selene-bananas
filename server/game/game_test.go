@@ -7,6 +7,7 @@ import (
 	"log"
 	"reflect"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -246,6 +247,81 @@ func TestValidateConfig(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestRun(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancelFunc := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	in := make(chan message.Message)
+	out := make(chan message.Message, 1)
+	g := Game{
+		players: map[player.Name]*playerController.Player{
+			"selene": nil,
+		},
+		Config: Config{
+			IdlePeriod: 1 * time.Hour,
+		},
+	}
+	g.Run(ctx, &wg, in, out)
+	m := message.Message{
+		Type:       message.GameChat,
+		PlayerName: "selene",
+	}
+	in <- m
+	m2 := <-out
+	cancelFunc()
+	wg.Wait()
+	if m2.Type != message.GameChat {
+		t.Errorf("wanted game to relay simple chat message back to player")
+	}
+}
+
+func TestSendMessage(t *testing.T) {
+	sendMessageTests := []struct {
+		Game
+		message.Message
+		wantGameID game.ID
+	}{
+		{ // no game on message
+			Game: Game{
+				id: 1,
+			},
+			wantGameID: 1,
+		},
+		{
+			Game: Game{
+				id: 2,
+			},
+			Message: message.Message{
+				Game: &game.Info{
+					ID: 2,
+				},
+			},
+			wantGameID: 2,
+		},
+		{ // should be overwritten because it is coming from game 2
+			Game: Game{
+				id: 3,
+			},
+			Message: message.Message{
+				Game: &game.Info{
+					ID: 4,
+				},
+			},
+			wantGameID: 3,
+		},
+	}
+	for i, test := range sendMessageTests {
+		out := make(chan message.Message, 1)
+		send := test.Game.sendMessage(out)
+		send(test.Message)
+		got := <-out
+		gotGameID := got.Game.ID
+		if test.wantGameID != gotGameID {
+			t.Errorf("Test %v: game ids not equal: wanted %v, got %v", i, test.wantGameID, got.Game.ID)
+		}
+	}
 }
 
 func TestInitializeUnusedTilesShuffled(t *testing.T) {

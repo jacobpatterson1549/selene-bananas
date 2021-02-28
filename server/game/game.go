@@ -161,31 +161,34 @@ func (g *Game) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Me
 		message.RefreshGameBoard: g.handleBoardRefresh,
 	}
 	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for { // BLOCKING
-			select {
-			case <-ctx.Done():
+	go g.runSync(ctx, wg, in, send, &active, messageHandlers, idleTicker)
+}
+
+// runSync runs the game until the conteixt is close or the input channel closes.
+func (g *Game) runSync(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, send messageSender, active *bool, messageHandlers map[message.Type]messageHandler, idleTicker *time.Ticker) {
+	defer wg.Done()
+	for { // BLOCKING
+		select {
+		case <-ctx.Done():
+			return
+		case m, ok := <-in:
+			if !ok {
 				return
-			case m, ok := <-in:
-				if !ok {
-					return
-				}
-				g.handleMessage(ctx, m, send, &active, messageHandlers)
-				if m.Type == message.DeleteGame {
-					return
-				}
-			case <-idleTicker.C:
-				var m message.Message
-				if !active {
-					g.log.Printf("deleted game %v due to inactivity", g.id)
-					g.handleGameDelete(ctx, m, send)
-					return
-				}
-				active = false
 			}
+			g.handleMessage(ctx, m, send, active, messageHandlers)
+			if m.Type == message.DeleteGame {
+				return
+			}
+		case <-idleTicker.C:
+			var m message.Message
+			if !*active {
+				g.log.Printf("deleted game %v due to inactivity", g.id)
+				g.handleGameDelete(ctx, m, send)
+				return
+			}
+			*active = false
 		}
-	}()
+	}
 }
 
 // sendMessage creates a messageSender that adds the gameId to the message before sending it on the out channel.
