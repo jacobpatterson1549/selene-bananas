@@ -571,6 +571,127 @@ func TestPlayerNames(t *testing.T) {
 	}
 }
 
+func TestCheckPlayerBoard(t *testing.T) {
+	checkPlayerBoardTests := []struct {
+		playerController.Player
+		WordChecker
+		game.Config
+		checkWords    bool
+		wantWinPoints int
+		penalize      bool
+		wantOk        bool
+		wantUsedWords []string
+	}{
+		{ // not all tiles used
+			Player: playerController.Player{
+				WinPoints: 6,
+				Board:     board.New([]tile.Tile{{}}, nil),
+			},
+			wantWinPoints: 6,
+		},
+		{ // multiple letter groups
+			Player: playerController.Player{
+				Board: board.New(nil, []tile.Position{
+					{Tile: tile.Tile{ID: 2}, X: 3, Y: 4},
+					{Tile: tile.Tile{ID: 3}, X: 8, Y: 4},
+				}),
+			},
+		},
+		{ // check words error
+			Player: playerController.Player{
+				Board: board.New(nil, []tile.Position{
+					{Tile: tile.Tile{ID: 2, Ch: "Q"}, X: 3, Y: 4},
+					{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 4, Y: 4},
+				}),
+			},
+			WordChecker: mockWordChecker{
+				CheckFunc: func(word string) bool {
+					return false
+				},
+			},
+			checkWords: true,
+		},
+		{ // win points decremented from 10,
+			Player: playerController.Player{
+				WinPoints: 10,
+				Board:     board.New([]tile.Tile{{}}, nil),
+			},
+			wantWinPoints: 9,
+			WordChecker: mockWordChecker{
+				CheckFunc: func(word string) bool {
+					return false
+				},
+			},
+			Config: game.Config{
+				Penalize: true,
+			},
+		},
+		{ // ok, check used words
+			Player: playerController.Player{
+				WinPoints: 3,
+				Board: board.New(nil, []tile.Position{
+					{Tile: tile.Tile{ID: 2, Ch: "Q"}, X: 3, Y: 4},
+					{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 4, Y: 4},
+				}),
+			},
+			checkWords: true,
+			WordChecker: mockWordChecker{
+				CheckFunc: func(word string) bool {
+					return true
+				},
+			},
+			wantOk:        true,
+			wantUsedWords: []string{"QX"},
+			wantWinPoints: 3,
+		},
+		{ // ok, would-be check words error
+			Player: playerController.Player{
+				WinPoints: 8,
+				Board: board.New(nil, []tile.Position{
+					{Tile: tile.Tile{ID: 2, Ch: "Q"}, X: 3, Y: 4},
+					{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 4, Y: 4},
+				}),
+			},
+			WordChecker: mockWordChecker{
+				CheckFunc: func(word string) bool {
+					return false
+				},
+			},
+			Config: game.Config{
+				CheckOnSnag: true, // this is overridden
+			},
+			checkWords:    false, // this is being tested
+			wantOk:        true,
+			wantWinPoints: 8,
+		},
+	}
+	pn := player.Name("selene")
+	for i, test := range checkPlayerBoardTests {
+		g := Game{
+			players: map[player.Name]*playerController.Player{
+				pn: &test.Player,
+			},
+			wordChecker: test.WordChecker,
+			Config: Config{
+				Config: test.Config,
+			},
+		}
+		gotUsedWords, err := g.checkPlayerBoard(pn, test.checkWords)
+		switch {
+		case test.wantWinPoints != g.players[pn].WinPoints:
+			t.Errorf("Test %v: wanted player win points to be %v after check, got %v", i, test.wantWinPoints, g.players[pn].WinPoints)
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case !reflect.DeepEqual(test.wantUsedWords, gotUsedWords):
+			t.Errorf("Test % v: used words not equal:\nwanted: %v\ngot:    %v", i, test.wantUsedWords, gotUsedWords)
+		}
+	}
+}
+
 func TestCheckPlayerBoardPenalize(t *testing.T) {
 	checkPlayerBoardPenalizeTests := []struct {
 		penalize       bool
@@ -619,6 +740,91 @@ func TestCheckPlayerBoardPenalize(t *testing.T) {
 		got := g.players[pn].WinPoints
 		if test.wantWinPoints != got {
 			t.Errorf("Test %v: wanted player to have %v winPoints, got %v", i, test.wantWinPoints, got)
+		}
+	}
+}
+
+func TestCheckWords(t *testing.T) {
+	checkWordsTests := []struct {
+		game.Config
+		*board.Board
+		WordChecker
+		wantOk        bool
+		wantUsedWords []string
+	}{
+		{ // duplicate words (XQ)
+			Board: board.New(nil, []tile.Position{
+				{Tile: tile.Tile{ID: 1, Ch: "Q"}, X: 2, Y: 2},
+				{Tile: tile.Tile{ID: 2, Ch: "X"}, X: 1, Y: 2},
+				{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 2, Y: 1}, // y coordinates are inverted (upperleft-> down)
+			}),
+			WordChecker: mockWordChecker{
+				CheckFunc: func(word string) bool {
+					return true
+				},
+			},
+		},
+		{ // short word
+			Config: game.Config{
+				MinLength: 3,
+			},
+			Board: board.New(nil, []tile.Position{
+				{Tile: tile.Tile{ID: 1, Ch: "Q"}, X: 2, Y: 2},
+				{Tile: tile.Tile{ID: 2, Ch: "X"}, X: 1, Y: 2},
+			}),
+		},
+		{ // checker error
+			Board: board.New(nil, []tile.Position{
+				{Tile: tile.Tile{ID: 1, Ch: "Q"}, X: 2, Y: 2},
+				{Tile: tile.Tile{ID: 2, Ch: "X"}, X: 1, Y: 2},
+			}),
+			WordChecker: mockWordChecker{
+				CheckFunc: func(word string) bool {
+					return false
+				},
+			},
+		},
+		{ // TODO: ok (with duplicate and short words, but config is loose)
+			Config: game.Config{
+				AllowDuplicates: true,
+			},
+			Board: board.New(nil, []tile.Position{
+				{Tile: tile.Tile{ID: 1, Ch: "Q"}, X: 2, Y: 2},
+				{Tile: tile.Tile{ID: 2, Ch: "X"}, X: 1, Y: 2},
+				{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 2, Y: 1}, // y coordinates are inverted (upperleft-> down)
+			}),
+			WordChecker: mockWordChecker{
+				CheckFunc: func(word string) bool {
+					return true
+				},
+			},
+			wantOk:        true,
+			wantUsedWords: []string{"XQ", "XQ"},
+		},
+	}
+	for i, test := range checkWordsTests {
+		pn := player.Name("selene")
+		g := Game{
+			Config: Config{
+				Config: test.Config,
+			},
+			players: map[player.Name]*playerController.Player{
+				pn: {
+					Board: test.Board,
+				},
+			},
+			wordChecker: test.WordChecker,
+		}
+		gotUsedWords, err := g.checkWords(pn)
+		switch {
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case !reflect.DeepEqual(test.wantUsedWords, gotUsedWords):
+			t.Errorf("Test % v: used words not equal:\nwanted: %v\ngot:    %v", i, test.wantUsedWords, gotUsedWords)
 		}
 	}
 }
