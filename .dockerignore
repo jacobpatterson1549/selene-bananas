@@ -8,7 +8,9 @@
 !resources
 !server
 !ui
+!Dockerfile
+!.dockerignore
 !go.mod
 !go.sum
-!Makefile
 !LICENSE
+!Makefile

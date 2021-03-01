@@ -1,6 +1,7 @@
 package word
 
 import (
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -38,6 +39,23 @@ func TestNewChecker(t *testing.T) {
 		if !reflect.DeepEqual(want, got) {
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, want, got)
 		}
+	}
+}
+
+// BenchmarkNewChecker loads the words which are expected to be from /usr/share/dict/american-english-large, version 2018.04.16-1.
+func BenchmarkNewChecker(b *testing.B) {
+	wordsFile := "/usr/share/dict/american-english-large"
+	f, err := os.Open(wordsFile)
+	if err != nil {
+		b.Fatalf("could not open wordsFile: %v", err)
+	}
+	b.ResetTimer()
+	c := NewChecker(f)
+	want := 114064
+	got := len(*c)
+	if want != got {
+		note := "NOTE: this might be flaky, but it ensures that a large number of words can be loaded."
+		b.Errorf("wanted %v words, got %v\n%v", want, got, note)
 	}
 }
 
