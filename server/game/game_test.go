@@ -1,6 +1,7 @@
 package game
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -618,6 +619,125 @@ func TestCheckPlayerBoardPenalize(t *testing.T) {
 		got := g.players[pn].WinPoints
 		if test.wantWinPoints != got {
 			t.Errorf("Test %v: wanted player to have %v winPoints, got %v", i, test.wantWinPoints, got)
+		}
+	}
+}
+
+func TestHandleGameFinish(t *testing.T) {
+	handleGameFinishTests := []struct {
+		message.Message
+		Game
+		wantOk     bool
+		userDaoErr error
+	}{
+
+		{}, // game not in progress
+		{ // game has used tiles left
+			Game: Game{
+				status:      game.InProgress,
+				unusedTiles: []tile.Tile{{}},
+			},
+		},
+		{ // player board has multiple used groups
+			Message: message.Message{
+				PlayerName: "selene",
+			},
+			Game: Game{
+				status: game.InProgress,
+				players: map[player.Name]*playerController.Player{
+					"selene": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 2}, X: 3, Y: 4},
+							{Tile: tile.Tile{ID: 3}, X: 8, Y: 4},
+						}),
+					},
+				},
+			},
+		},
+		{ // happy path
+			Message: message.Message{
+				PlayerName: "fred",
+			},
+			Game: Game{
+				status: game.InProgress,
+				players: map[player.Name]*playerController.Player{
+					"fred": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 2}, X: 3, Y: 4},
+							{Tile: tile.Tile{ID: 3}, X: 4, Y: 4},
+						}),
+					},
+					"barney": {
+						Board: &board.Board{},
+					},
+				},
+			},
+			wantOk: true,
+		},
+		{ // user dao error: still want ok, but expect message to be logged
+			Message: message.Message{
+				PlayerName: "fred",
+			},
+			Game: Game{
+				status: game.InProgress,
+				players: map[player.Name]*playerController.Player{
+					"fred": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 2}, X: 3, Y: 4},
+							{Tile: tile.Tile{ID: 3}, X: 4, Y: 4},
+						}),
+					},
+					"barney": {
+						Board: &board.Board{},
+					},
+				},
+			},
+			wantOk:     true,
+			userDaoErr: fmt.Errorf("user dao error"),
+		},
+	}
+	for i, test := range handleGameFinishTests {
+		ctx := context.Background()
+		gotMessages := make(map[player.Name]struct{}, len(test.Game.players))
+		send := func(m message.Message) {
+			pn := m.PlayerName
+			if _, ok := test.Game.players[pn]; !ok {
+				t.Errorf("Test %v: message sent to unknown player: %v", i, m)
+			}
+			if _, ok := gotMessages[pn]; ok {
+				t.Errorf("Test %v: extra message sent to %v: %v", i, pn, m)
+			}
+			gotMessages[pn] = struct{}{}
+			switch {
+			case m.Type != message.ChangeGameStatus, m.Game.Status != game.Finished, len(m.Game.FinalBoards) != len(test.players):
+				t.Errorf("Test %v: wanted finish message with all final boards sent to %v, got %v", i, pn, m)
+			}
+		}
+		userDaoCalled := false
+		var buf bytes.Buffer
+		test.Game.log = log.New(&buf, "", 0)
+		test.Game.userDao = mockUserDao{
+			UpdatePointsIncrementFunc: func(ctx context.Context, userPoints map[string]int) error {
+				userDaoCalled = true
+				return test.userDaoErr
+			},
+		}
+		err := test.Game.handleGameFinish(ctx, test.Message, send)
+		switch {
+		case test.wantOk != userDaoCalled:
+			t.Errorf("Test %v: wanted user dao to be called to increment points of users", i)
+		case (buf.Len() != 0) != (test.userDaoErr != nil):
+			t.Errorf("Test %v: wanted log message (%v) if and only if user dao fails (%v)", i, buf.Len() != 0, test.userDaoErr != nil)
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case len(test.Game.players) != len(gotMessages):
+			t.Errorf("Test %v: wanted messages sent to all players (%v), got %v", i, len(test.Game.players), len(gotMessages))
+		case test.Game.status != game.Finished:
+			t.Errorf("Test %v: wanted game to be finished, got %v", i, test.Game.status)
 		}
 	}
 }

@@ -423,8 +423,8 @@ func (g Game) checkWords(pn player.Name) ([]string, error) {
 func (g *Game) handleGameFinish(ctx context.Context, m message.Message, send messageSender) error {
 	p := g.players[m.PlayerName]
 	switch {
-	case m.Game.Status != game.Finished:
-		return gameWarning("can only attempt to set game that is in progress to finished")
+	case g.status != game.InProgress:
+		return gameWarningNotInProgress
 	case len(g.unusedTiles) != 0:
 		return gameWarning("snag first")
 	}
@@ -441,9 +441,9 @@ func (g *Game) handleGameFinish(ctx context.Context, m message.Message, send mes
 	)
 	err := g.updateUserPoints(ctx, m.PlayerName)
 	if err != nil {
+		g.log.Printf("updating user points: %v", err)
 		info = err.Error()
 	}
-	messageStatus := game.Finished
 	finalBoards := g.playerFinalBoards()
 	for n := range g.players {
 		m := message.Message{
@@ -451,7 +451,7 @@ func (g *Game) handleGameFinish(ctx context.Context, m message.Message, send mes
 			PlayerName: n,
 			Info:       info,
 			Game: &game.Info{
-				Status:      messageStatus,
+				Status:      game.Finished,
 				FinalBoards: finalBoards,
 			},
 		}
