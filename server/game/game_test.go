@@ -571,6 +571,64 @@ func TestPlayerNames(t *testing.T) {
 	}
 }
 
+func TestHandleGameStart(t *testing.T) {
+	handleGameStartTests := []struct {
+		message.Message
+		Game
+		wantOk        bool
+		wantTilesLeft int
+	}{
+		{}, // game not started
+		{
+			Message: message.Message{
+				PlayerName: "curly",
+			},
+			Game: Game{
+				status: game.NotStarted,
+				players: map[player.Name]*playerController.Player{
+					"moe":   nil,
+					"larry": nil,
+					"curly": nil,
+				},
+				unusedTiles: []tile.Tile{{}, {}, {}, {}},
+			},
+			wantOk:        true,
+			wantTilesLeft: 4,
+		},
+	}
+	for i, test := range handleGameStartTests {
+		ctx := context.Background()
+		gotMessages := make(map[player.Name]struct{}, len(test.Game.players))
+		send := func(m message.Message) {
+			pn := m.PlayerName
+			if _, ok := test.Game.players[pn]; !ok {
+				t.Errorf("Test %v: message sent to unknown player: %v", i, m)
+			}
+			if _, ok := gotMessages[pn]; ok {
+				t.Errorf("Test %v: extra message sent to %v: %v", i, pn, m)
+			}
+			gotMessages[pn] = struct{}{}
+			switch {
+			case m.Type != message.ChangeGameStatus,
+				!strings.Contains(m.Info, string(test.Message.PlayerName)),
+				m.Game.TilesLeft != test.wantTilesLeft:
+				t.Errorf("Test %v: wanted change game status message from %v, got %v", i, test.Message.PlayerName, m)
+			}
+		}
+		err := test.Game.handleGameStart(ctx, test.Message, send)
+		switch {
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case len(test.Game.players) != len(gotMessages):
+			t.Errorf("Test %v: wanted messages sent to all players (%v), got %v", i, len(test.Game.players), len(gotMessages))
+		}
+	}
+}
+
 func TestCheckPlayerBoard(t *testing.T) {
 	checkPlayerBoardTests := []struct {
 		playerController.Player
@@ -784,7 +842,7 @@ func TestCheckWords(t *testing.T) {
 				},
 			},
 		},
-		{ // TODO: ok (with duplicate and short words, but config is loose)
+		{ // ok (with duplicate and short words, but config is loose)
 			Config: game.Config{
 				AllowDuplicates: true,
 			},

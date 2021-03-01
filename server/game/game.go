@@ -320,7 +320,7 @@ func (g *Game) handleGameDelete(ctx context.Context, m message.Message, send mes
 
 // handleGameStatusChange changes the status of the game.
 func (g *Game) handleGameStatusChange(ctx context.Context, m message.Message, send messageSender) error {
-	switch g.status {
+	switch m.Game.Status {
 	case game.NotStarted:
 		if err := g.handleGameStart(ctx, m, send); err != nil {
 			return err
@@ -338,7 +338,7 @@ func (g *Game) handleGameStatusChange(ctx context.Context, m message.Message, se
 
 // handleGameStart starts the game.
 func (g *Game) handleGameStart(ctx context.Context, m message.Message, send messageSender) error {
-	if m.Game.Status != game.InProgress {
+	if g.status != game.NotStarted {
 		return gameWarning("can only set game status to started")
 	}
 	g.status = game.InProgress
