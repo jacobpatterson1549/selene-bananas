@@ -198,16 +198,18 @@ func TestNewEmbedParameters(t *testing.T) {
 // TestSQLFiles ensures the files are en order before being sent to the database.
 // The table creation scripts must be run before other scripts reference the tables.
 func TestSQLFiles(t *testing.T) {
-	sqlFilesTests := []struct {
-		sqlFS  fs.FS
-		wantOk bool
-		want   string
-	}{
-		{
-			sqlFS: fstest.MapFS{},
-		},
-		{
-			sqlFS: fstest.MapFS{
+	t.Run("BadFS", func(t *testing.T) {
+		e := embeddedData{
+			SQLFS: fstest.MapFS{},
+		}
+		_, err := e.sqlFiles()
+		if err == nil {
+			t.Error("wanted error with file system without desired sql files")
+		}
+	})
+	t.Run("OkFS", func(t *testing.T) {
+		e := embeddedData{
+			SQLFS: fstest.MapFS{
 				"user_create.sql":                  &fstest.MapFile{Data: []byte("2")},
 				"user_delete.sql":                  &fstest.MapFile{Data: []byte("6")},
 				"user_read.sql":                    &fstest.MapFile{Data: []byte("3")},
@@ -215,34 +217,24 @@ func TestSQLFiles(t *testing.T) {
 				"user_update_password.sql":         &fstest.MapFile{Data: []byte("4")},
 				"user_update_points_increment.sql": &fstest.MapFile{Data: []byte("5")},
 			},
-			wantOk: true,
-			want:   "123456",
-		},
-	}
-	for i, test := range sqlFilesTests {
-		e := embeddedData{
-			SQLFS: test.sqlFS,
 		}
 		gotFiles, err := e.sqlFiles()
 		switch {
-		case !test.wantOk:
-			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
-			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("unwanted error: %v", err)
 		default:
 			got := ""
 			for j, f := range gotFiles {
 				b, err := io.ReadAll(f)
 				if err != nil {
-					t.Errorf("Test %v: could not read file %v: %v", i, j, err)
+					t.Errorf("could not read file %v: %v", j, err)
 				}
 				got += string(b)
 			}
-			if test.want != got {
-				t.Errorf("Test %v: concatenation of files not equal: wanted %v, got %v", i, test.want, got)
+			want := "123456"
+			if want != got {
+				t.Errorf("concatenation of files not equal: wanted %v, got %v", want, got)
 			}
 		}
-	}
+	})
 }
