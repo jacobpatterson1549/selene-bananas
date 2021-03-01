@@ -571,6 +571,138 @@ func TestPlayerNames(t *testing.T) {
 	}
 }
 
+func TestHandleAddPlayer(t *testing.T) {
+	withConfig := func(b *board.Board, cfg board.Config) *board.Board {
+		b.Config = cfg
+		return b
+	}
+	hasPlayer := func(players []string, player string) bool {
+		for _, p := range players {
+			if p == player {
+				return true
+			}
+		}
+		return false
+	}
+	handleAddPlayerTests := []struct {
+		message.Message
+		Game
+		wantOk          bool
+		wantUnusedTiles []tile.Tile
+		wantPlayer      *playerController.Player
+	}{
+		{ // board config error
+			Message: message.Message{
+				Game: &game.Info{
+					Board: &board.Board{},
+				},
+			},
+		},
+		{ // player config error
+			Message: message.Message{
+				Game: &game.Info{
+					Board: &board.Board{
+						Config: board.Config{
+							NumRows: 79,
+							NumCols: 28,
+						},
+					},
+				},
+			},
+			Game: Game{
+				Config: Config{
+					PlayerCfg: playerController.Config{
+						WinPoints: -1,
+					},
+				},
+			},
+		},
+		{ // happy path
+			Message: message.Message{
+				PlayerName: "young",
+				Game: &game.Info{
+					Board: &board.Board{
+						Config: board.Config{
+							NumRows: 79,
+							NumCols: 28,
+						},
+					},
+				},
+			},
+			Game: Game{
+				Config: Config{
+					NumNewTiles: 2,
+					PlayerCfg: playerController.Config{
+						WinPoints: 7,
+					},
+				},
+				players: map[player.Name]*playerController.Player{
+					"crosby": {},
+					"stills": {},
+					"nash":   {},
+				},
+				unusedTiles: []tile.Tile{{ID: 11}, {ID: 22}, {ID: 3}, {ID: 6}, {ID: 2}},
+			},
+			wantOk:          true,
+			wantUnusedTiles: []tile.Tile{{ID: 3}, {ID: 6}, {ID: 2}},
+			wantPlayer: &playerController.Player{
+				WinPoints: 7,
+				Board: withConfig(
+					board.New([]tile.Tile{{ID: 11}, {ID: 22}}, nil),
+					board.Config{
+						NumRows: 79,
+						NumCols: 28,
+					}),
+			},
+		},
+	}
+	for i, test := range handleAddPlayerTests {
+		ctx := context.Background()
+		gotInfoChanged := false
+		gotMessages := make(map[player.Name]struct{}, len(test.Game.players))
+		wantTilesLeft := len(test.wantUnusedTiles)
+		send := func(m message.Message) {
+			if m.Type == message.GameInfos {
+				gotInfoChanged = true
+				return
+			}
+			pn := m.PlayerName
+			if _, ok := test.Game.players[pn]; !ok {
+				t.Errorf("message sent to unknown player: %v", m)
+			}
+			if _, ok := gotMessages[pn]; ok {
+				t.Errorf("extra message sent to %v: %v", pn, m)
+			}
+			gotMessages[pn] = struct{}{}
+			switch {
+			case wantTilesLeft != m.Game.TilesLeft:
+				t.Errorf("Test %v: tilesLeft in message sent to %v not equal: wanted %v, got: %v", i, pn, wantTilesLeft, m.Game.TilesLeft)
+			case !hasPlayer(m.Game.Players, string(test.Message.PlayerName)):
+				t.Errorf("Test %v: wanted new player %v to be in players slice, got %v", i, test.Message.PlayerName, m.Game.Players)
+			case pn == test.Message.PlayerName && m.Game.Board == nil:
+				t.Errorf("Test %v: wanted board resize info sent to new player (%v), got %v", i, test.Message.PlayerName, m)
+			}
+		}
+		err := test.Game.handleAddPlayer(ctx, test.Message, send)
+		switch {
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case len(test.Game.players) != len(gotMessages):
+			t.Errorf("Test %v: wanted messages sent to all players but the new one (%v total), got %v", i, len(test.Game.players), len(gotMessages))
+		case !gotInfoChanged:
+			t.Errorf("Test %v: wanted to get message to change game info", i)
+		case !reflect.DeepEqual(test.wantUnusedTiles, test.Game.unusedTiles):
+			t.Errorf("Test %v: game unused tiles not equal after adding new player:\nwanted: %v\ngot:    %v", i, test.wantUnusedTiles, test.Game.unusedTiles)
+		case !reflect.DeepEqual(test.wantPlayer, test.Game.players[test.Message.PlayerName]):
+			t.Errorf("Test %v: new player not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayer, test.Game.players[test.Message.PlayerName])
+		}
+	}
+}
+
 func TestHandleGameDelete(t *testing.T) {
 	g := Game{
 		players: map[player.Name]*playerController.Player{
