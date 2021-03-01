@@ -571,6 +571,45 @@ func TestPlayerNames(t *testing.T) {
 	}
 }
 
+func TestHandleGameDelete(t *testing.T) {
+	g := Game{
+		players: map[player.Name]*playerController.Player{
+			"larry": {},
+			"curly": {},
+			"moe":   {},
+		},
+	}
+	ctx := context.Background()
+	var m message.Message
+	gotMessages := make(map[player.Name]struct{}, len(g.players))
+	gotInfoChanged := false
+	send := func(m message.Message) {
+		if m.Type == message.GameInfos {
+			gotInfoChanged = true
+			return
+		}
+		pn := m.PlayerName
+		if _, ok := g.players[pn]; !ok {
+			t.Errorf("message sent to unknown player: %v", m)
+		}
+		if _, ok := gotMessages[pn]; ok {
+			t.Errorf("extra message sent to %v: %v", pn, m)
+		}
+		gotMessages[pn] = struct{}{}
+	}
+	err := g.handleGameDelete(ctx, m, send)
+	switch {
+	case err != nil:
+		t.Errorf("unwanted error: %v", err)
+	case len(gotMessages) != 3:
+		t.Errorf("wanted messages sent to all players (%v), got %v", len(g.players), len(gotMessages))
+	case g.status != game.Deleted:
+		t.Errorf("wanted game status to be deleted, got %v", g.status)
+	case !gotInfoChanged:
+		t.Errorf("wanted to get message to change game info")
+	}
+}
+
 func TestHandleGameStatusChange(t *testing.T) {
 	handleGameStatusChangeTests := []struct {
 		message.Message
