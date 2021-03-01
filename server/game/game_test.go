@@ -571,6 +571,127 @@ func TestPlayerNames(t *testing.T) {
 	}
 }
 
+func TestHandleGameJoin(t *testing.T) {
+	handleGameJoinTests := []struct {
+		message.Message
+		Game
+		wantOk         bool
+		wantNumPlayers int
+	}{
+		{ // rejoin
+			Message: message.Message{
+				PlayerName: "selene",
+				Game: &game.Info{
+					Board: &board.Board{},
+				},
+			},
+			Game: Game{
+				players: map[player.Name]*playerController.Player{
+					"selene": {
+						Board: &board.Board{},
+					},
+				},
+			},
+			wantOk:         true,
+			wantNumPlayers: 1,
+		},
+		{}, // game not started
+		{ // no room for new player
+			Game: Game{
+				status: game.NotStarted,
+			},
+		},
+		{ // not enough tiles for new player
+			Game: Game{
+				status: game.NotStarted,
+				Config: Config{
+					MaxPlayers:  4,
+					NumNewTiles: 12,
+				},
+			},
+		},
+		{ // add player, error
+			Message: message.Message{
+				PlayerName: "young",
+				Game: &game.Info{
+					Board: &board.Board{
+						Config: board.Config{
+							NumRows: 79,
+							NumCols: 28,
+						},
+					},
+				},
+			},
+			Game: Game{
+				status: game.NotStarted,
+				Config: Config{
+					MaxPlayers: 3,
+					PlayerCfg: playerController.Config{
+						WinPoints: 7,
+					},
+				},
+				players: map[player.Name]*playerController.Player{
+					"crosby": {},
+					"stills": {},
+					"nash":   {},
+				},
+			},
+		},
+		{ // add player
+			Message: message.Message{
+				PlayerName: "young",
+				Game: &game.Info{
+					Board: &board.Board{
+						Config: board.Config{
+							NumRows: 79,
+							NumCols: 28,
+						},
+					},
+				},
+			},
+			Game: Game{
+				status: game.NotStarted,
+				Config: Config{
+					MaxPlayers: 4,
+					PlayerCfg: playerController.Config{
+						WinPoints: 7,
+					},
+				},
+				players: map[player.Name]*playerController.Player{
+					"crosby": {},
+					"stills": {},
+					"nash":   {},
+				},
+			},
+			wantOk:         true,
+			wantNumPlayers: 4,
+		},
+	}
+	for i, test := range handleGameJoinTests {
+		ctx := context.Background()
+		messageSent := false
+		send := func(m message.Message) {
+			messageSent = true
+			if !test.wantOk && (m.Type != message.LeaveGame || m.PlayerName != test.Message.PlayerName) {
+				t.Errorf("Test %v: wanted leavegame message sent to %v if an error occurred, got %v", i, test.Message.PlayerName, m)
+			}
+		}
+		err := test.Game.handleGameJoin(ctx, test.Message, send)
+		switch {
+		case !messageSent:
+			t.Errorf("Test %v: wanted at least one message sent after a join-game attempt", i)
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case test.wantNumPlayers != len(test.Game.players):
+			t.Errorf("Test %v: wanted %v players in game after join/rejoin, got %v", i, test.wantNumPlayers, len(test.Game.players))
+		}
+	}
+}
+
 func TestHandleAddPlayer(t *testing.T) {
 	withConfig := func(b *board.Board, cfg board.Config) *board.Board {
 		b.Config = cfg
@@ -716,9 +837,14 @@ func TestHandleGameDelete(t *testing.T) {
 	gotMessages := make(map[player.Name]struct{}, len(g.players))
 	gotInfoChanged := false
 	send := func(m message.Message) {
-		if m.Type == message.GameInfos {
+		switch m.Type {
+		case message.GameInfos:
 			gotInfoChanged = true
 			return
+		case message.LeaveGame:
+			// NOOP falthrough
+		default:
+			t.Errorf("wanted leave game message, got %v", m.Type)
 		}
 		pn := m.PlayerName
 		if _, ok := g.players[pn]; !ok {
