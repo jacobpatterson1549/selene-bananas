@@ -69,10 +69,10 @@ $(GENERATE_SRC): | $(SERVER_EMBED_DIR)
 
 $(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(BUILD_DIR) $(SERVER_EMBED_DIR)
 	grep "^!" .dockerignore \
-			| cut -c 2- \
-			| xargs -I{} find {} -type f -print \
-			| sort \
-			| grep -v $(SERVER_EMBED_DIR) \
+		| cut -c 2- \
+		| xargs -I{} find {} -type f -print \
+		| sort \
+		| grep -v $(SERVER_EMBED_DIR) \
 		| xargs tar -c --mtime=0 --owner=0 --group=0 \
 		| md5sum \
 		| cut -c -32 \
