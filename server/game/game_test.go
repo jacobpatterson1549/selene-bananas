@@ -571,6 +571,113 @@ func TestPlayerNames(t *testing.T) {
 	}
 }
 
+func TestHandleGameStatusChange(t *testing.T) {
+	handleGameStatusChangeTests := []struct {
+		message.Message
+		Game
+		wantOk     bool
+		wantStatus game.Status
+		wantInfos  bool
+	}{
+		{ // do not update the game status
+			Message: message.Message{
+				Game: &game.Info{
+					Status: game.NotStarted,
+				},
+			},
+		},
+		{ // bad start
+			Message: message.Message{
+				Game: &game.Info{
+					Status: game.InProgress,
+				},
+			},
+			Game: Game{
+				status: game.InProgress,
+			},
+		},
+		{ // bad finish
+			Message: message.Message{
+				PlayerName: "selene",
+				Game: &game.Info{
+					Status: game.Finished,
+				},
+			},
+			Game: Game{
+				status: game.InProgress,
+				players: map[player.Name]*playerController.Player{
+					"selene": {
+						Board: board.New(nil, []tile.Position{ // multiple groups
+							{Tile: tile.Tile{ID: 2}, X: 3, Y: 4},
+							{Tile: tile.Tile{ID: 3}, X: 8, Y: 4},
+						}),
+					},
+				},
+			},
+		},
+		{ // ok start game
+			Message: message.Message{
+				Game: &game.Info{
+					Status: game.InProgress,
+				},
+			},
+			Game: Game{
+				status: game.NotStarted,
+			},
+			wantOk:     true,
+			wantStatus: game.InProgress,
+		},
+		{ // ok finish game
+			Message: message.Message{
+				PlayerName: "selene",
+				Game: &game.Info{
+					Status: game.Finished,
+				},
+			},
+			Game: Game{
+				status: game.InProgress,
+				players: map[player.Name]*playerController.Player{
+					"selene": {
+						Board: board.New(nil, []tile.Position{{}}),
+					},
+				},
+				userDao: mockUserDao{
+					UpdatePointsIncrementFunc: func(ctx context.Context, userPoints map[string]int) error {
+						return nil
+					},
+				},
+			},
+			wantOk:     true,
+			wantStatus: game.Finished,
+		},
+	}
+	for i, test := range handleGameStatusChangeTests {
+		ctx := context.Background()
+		gotInfoChanged := false
+		send := func(m message.Message) {
+			if m.Type == message.GameInfos {
+				gotInfoChanged = true
+			}
+		}
+		err := test.Game.handleGameStatusChange(ctx, test.Message, send)
+		switch {
+		case !test.wantOk:
+			switch {
+			case err == nil:
+				t.Errorf("Test %v: wanted error", i)
+			case !test.wantInfos && gotInfoChanged:
+				t.Errorf("Test %v: did not want infos changed", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case !gotInfoChanged:
+			t.Errorf("Test %v: wanted to get message to change game info", i)
+		case test.wantStatus != test.Game.status:
+			t.Errorf("Test %v: game statuses not equal: wanted %v, got %v", i, test.wantStatus, test.Game.status)
+		}
+	}
+}
+
 func TestHandleGameStart(t *testing.T) {
 	handleGameStartTests := []struct {
 		message.Message
