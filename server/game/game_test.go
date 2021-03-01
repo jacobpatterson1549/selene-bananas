@@ -622,6 +622,258 @@ func TestCheckPlayerBoardPenalize(t *testing.T) {
 	}
 }
 
+func TestHandleGameSnag(t *testing.T) {
+	handleGameSnagTests := []struct {
+		message.Message
+		Game
+		wantOk        bool
+		wantTilesLeft int
+		wantBoards    map[player.Name]*board.Board
+	}{
+		{}, // game not in progress
+		{ // no game unused tiles
+			Game: Game{
+				status: game.InProgress,
+			},
+		},
+		{ // player board not valid (not all tiles used)
+			Message: message.Message{
+				PlayerName: "selene",
+			},
+			Game: Game{
+				status:      game.InProgress,
+				unusedTiles: []tile.Tile{{ID: 2}},
+				players: map[player.Name]*playerController.Player{
+					"selene": {
+						Board: board.New([]tile.Tile{{ID: 1}}, nil),
+					},
+				},
+			},
+		},
+		{ // player board not valid (not one group)
+			Message: message.Message{
+				PlayerName: "selene",
+			},
+			Game: Game{
+				status:      game.InProgress,
+				unusedTiles: []tile.Tile{{ID: 1}},
+				players: map[player.Name]*playerController.Player{
+					"selene": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 2}, X: 3, Y: 4},
+							{Tile: tile.Tile{ID: 3}, X: 8, Y: 4},
+						}),
+					},
+				},
+			},
+		},
+		{ // player board not valid (word not valid) and CheckOnSnag == true
+			Message: message.Message{
+				PlayerName: "selene",
+			},
+			Game: Game{
+				status:      game.InProgress,
+				unusedTiles: []tile.Tile{{ID: 1}},
+				players: map[player.Name]*playerController.Player{
+					"selene": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 2, Ch: "Q"}, X: 3, Y: 4},
+							{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 4, Y: 4},
+						}),
+					},
+				},
+				wordChecker: mockWordChecker{
+					CheckFunc: func(word string) bool {
+						return false
+					},
+				},
+				Config: Config{
+					Config: game.Config{
+						CheckOnSnag: true,
+					},
+				},
+			},
+		},
+		{ // player already has tile - this should never happen
+			Message: message.Message{
+				PlayerName: "selene",
+			},
+			Game: Game{
+				status:      game.InProgress,
+				unusedTiles: []tile.Tile{{ID: 1}},
+				players: map[player.Name]*playerController.Player{
+					"selene": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 1}, X: 3, Y: 4}, // game also has this tile
+						}),
+					},
+				},
+				Config: Config{
+					ShufflePlayersFunc: func(playerNames []player.Name) {
+						// NOOP
+					},
+				},
+			},
+		},
+		{ // other player already has tile - this should never happen
+			Message: message.Message{
+				PlayerName: "fred",
+			},
+			Game: Game{
+				status:      game.InProgress,
+				unusedTiles: []tile.Tile{{ID: 2}, {ID: 3}},
+				players: map[player.Name]*playerController.Player{
+					"fred": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 1}, X: 3, Y: 4},
+						}),
+					},
+					"barney": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 3}, X: 3, Y: 4}, // game also has this tile
+						}),
+					},
+				},
+				Config: Config{
+					ShufflePlayersFunc: func(playerNames []player.Name) {
+						// NOOP
+					},
+				},
+			},
+		},
+		{ // all 3 players get tiles
+			Message: message.Message{
+				PlayerName: "larry",
+			},
+			Game: Game{
+				status:      game.InProgress,
+				unusedTiles: []tile.Tile{{ID: 4}, {ID: 5}, {ID: 6}, {ID: 7}, {ID: 8}},
+				players: map[player.Name]*playerController.Player{
+					"larry": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 1}, X: 3, Y: 4},
+						}),
+					},
+					"curly": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 2}, X: 3, Y: 4},
+						}),
+					},
+					"moe": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 3}, X: 3, Y: 4},
+						}),
+					},
+				},
+				Config: Config{
+					ShufflePlayersFunc: func(playerNames []player.Name) {
+						sort.Slice(playerNames, func(i, j int) bool {
+							return playerNames[i] > playerNames[j] // order moe before curly
+						})
+					},
+				},
+			},
+			wantOk:        true,
+			wantTilesLeft: 2,
+			wantBoards: map[player.Name]*board.Board{
+				"larry": board.New([]tile.Tile{{ID: 4}}, nil),
+				"curly": board.New([]tile.Tile{{ID: 6}}, nil),
+				"moe":   board.New([]tile.Tile{{ID: 5}}, nil),
+			},
+		},
+		{ // 3 players, only 2 get tiles
+			Message: message.Message{
+				PlayerName: "larry",
+			},
+			Game: Game{
+				status:      game.InProgress,
+				unusedTiles: []tile.Tile{{ID: 4}, {ID: 5}},
+				players: map[player.Name]*playerController.Player{
+					"larry": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 1}, X: 3, Y: 4},
+						}),
+					},
+					"curly": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 2}, X: 3, Y: 4},
+						}),
+					},
+					"moe": {
+						Board: board.New(nil, []tile.Position{
+							{Tile: tile.Tile{ID: 3}, X: 3, Y: 4},
+						}),
+					},
+				},
+				Config: Config{
+					ShufflePlayersFunc: func(playerNames []player.Name) {
+						sort.Slice(playerNames, func(i, j int) bool {
+							return playerNames[i] > playerNames[j] // order moe before curly
+						})
+					},
+				},
+			},
+			wantOk:        true,
+			wantTilesLeft: 0,
+			wantBoards: map[player.Name]*board.Board{
+				"larry": board.New([]tile.Tile{{ID: 4}}, nil),
+				"moe":   board.New([]tile.Tile{{ID: 5}}, nil),
+			},
+		},
+	}
+	hasTile := func(tiles []tile.Tile, tID tile.ID) bool {
+		for _, tile := range tiles {
+			if tile.ID == tID {
+				return true
+			}
+		}
+		return false
+	}
+	for i, test := range handleGameSnagTests {
+		ctx := context.Background()
+		gotMessages := make(map[player.Name]struct{}, len(test.Game.players))
+		send := func(m message.Message) {
+			pn := m.PlayerName
+			if _, ok := test.Game.players[pn]; !ok {
+				t.Errorf("Test %v: message sent to unknown player: %v", i, m)
+			}
+			if _, ok := gotMessages[pn]; ok {
+				t.Errorf("Test %v: extra message sent to %v: %v", i, pn, m)
+			}
+			gotMessages[pn] = struct{}{}
+			switch {
+			case test.wantTilesLeft != m.Game.TilesLeft:
+				t.Errorf("Test %v: message sent to %v did not have correct tilesLeft: wanted %v, got %v", i, pn, test.wantTilesLeft, m.Game.TilesLeft)
+			case test.wantBoards[pn] != nil:
+				if !reflect.DeepEqual(test.wantBoards[pn], m.Game.Board) {
+					t.Errorf("Test %v: snag board sent to %v not equal:\nwanted: %v\ngot:    %v", i, pn, test.wantBoards[pn], m.Game.Board)
+				}
+				for tID, tile := range m.Game.Board.UnusedTiles {
+					if _, ok := test.Game.players[pn].Board.UnusedTiles[tID]; !ok {
+						t.Errorf("Test %v: wanted tile %v added to player's board in game", i, tile)
+					}
+					if hasTile(test.Game.unusedTiles, tID) {
+						t.Errorf("Test %v: player recieved tileId=%v, but game still has it: %v", i, tID, test.Game.unusedTiles)
+					}
+				}
+			case m.Game.Board != nil && test.wantBoards[pn] != nil:
+				t.Errorf("Test %v: wanted no board/tile information sent to player who did not make snag and should not get a tile because none are left: got %v", i, m)
+			}
+		}
+		err := test.Game.handleGameSnag(ctx, test.Message, send)
+		switch {
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case len(test.Game.players) != len(gotMessages):
+			t.Errorf("Test %v: wanted messages sent to all players (%v), got %v", i, len(test.Game.players), len(gotMessages))
+		}
+	}
+}
+
 func TestHandleGameSwap(t *testing.T) {
 	handleGameSwapTests := []struct {
 		message.Message
@@ -783,15 +1035,34 @@ func TestHandleGameSwap(t *testing.T) {
 	}
 	for i, test := range handleGameSwapTests {
 		ctx := context.Background()
-		gotMessages := make(map[player.Name]message.Message, len(test.Game.players))
+		gotMessages := make(map[player.Name]struct{}, len(test.Game.players))
 		send := func(m message.Message) {
-			if _, ok := test.Game.players[m.PlayerName]; !ok {
+			pn := m.PlayerName
+			if _, ok := test.Game.players[pn]; !ok {
 				t.Errorf("Test %v: message sent to unknown player: %v", i, m)
 			}
-			if _, ok := gotMessages[m.PlayerName]; ok {
-				t.Errorf("Test %v: extra message sent to %v: %v", i, m.PlayerName, m)
+			if _, ok := gotMessages[pn]; ok {
+				t.Errorf("Test %v: extra message sent to %v: %v", i, pn, m)
 			}
-			gotMessages[m.PlayerName] = m
+			gotMessages[pn] = struct{}{}
+			switch {
+			case test.wantTilesLeft != m.Game.TilesLeft:
+				t.Errorf("Test %v: message sent to %v did not have correct tilesLeft: wanted %v, got %v", i, pn, test.wantTilesLeft, m.Game.TilesLeft)
+			case pn == test.Message.PlayerName: // the player making the swap
+				if !reflect.DeepEqual(test.wantBoard, m.Game.Board) {
+					t.Errorf("Test %v: newly swapped tile not equal:\nwanted: %v\ngot:    %v", i, test.wantBoard, m.Game.Board)
+				}
+				for tID, tile := range m.Game.Board.UnusedTiles {
+					if _, ok := test.Game.players[pn].Board.UnusedTiles[tID]; !ok {
+						t.Errorf("Test %v: wanted tile %v added to player's board in game", i, tile)
+					}
+					if hasTile(test.Game.unusedTiles, tID) {
+						t.Errorf("Test %v: player recieved tileId=%v, but game still has it: %v", i, tID, test.Game.unusedTiles)
+					}
+				}
+			case m.Game.Board != nil:
+				t.Errorf("Test %v: wanted no board/tile information sent to player who did not make swap: got %v", i, m)
+			}
 		}
 		err := test.Game.handleGameSwap(ctx, test.Message, send)
 		switch {
@@ -803,28 +1074,6 @@ func TestHandleGameSwap(t *testing.T) {
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case len(test.Game.players) != len(gotMessages):
 			t.Errorf("Test %v: wanted messages sent to all players (%v), got %v", i, len(test.Game.players), len(gotMessages))
-		default:
-			for pn, p := range test.Game.players {
-				pM := gotMessages[pn]
-				switch {
-				case test.wantTilesLeft != pM.Game.TilesLeft:
-					t.Errorf("Test %v: message sent to %v did not have correct tilesLeft: wanted %v, got %v", i, pn, test.wantTilesLeft, pM.Game.TilesLeft)
-				case pn == test.Message.PlayerName: // the player making the swap
-					if !reflect.DeepEqual(test.wantBoard, pM.Game.Board) {
-						t.Errorf("Test %v: newly swapped tile not equal:\nwanted: %v\ngot:    %v", i, test.wantBoard, pM.Game.Board)
-					}
-					for tID, tile := range pM.Game.Board.UnusedTiles {
-						if _, ok := p.Board.UnusedTiles[tID]; !ok {
-							t.Errorf("Test %v: wanted tile %v added to player's board in game", i, tile)
-						}
-						if hasTile(test.Game.unusedTiles, tID) {
-							t.Errorf("Test %v: player recieved tileId=%v, but game still has it: %v", i, tID, test.Game.unusedTiles)
-						}
-					}
-				case pM.Game.Board != nil:
-					t.Errorf("Test %v: wanted no board/tile information sent to player who did not make swap: got %v", i, pM)
-				}
-			}
 		}
 	}
 }
