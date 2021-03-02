@@ -120,5 +120,5 @@ Launching the application with [Docker](https://www.docker.com) requires minimal
     POSTGRES_PORT=54320
     ```
 1. Ensure the files for the `TLS_CERT_FILE` and `TLS_KEY_FILE` environment variables are located in the project folder and are **NOT** aliased relative to the build folder.  The variables should look like `TLS_CERT_FILE=127.0.0.1.pem`.
-1. Run `docker-compose up` to launch the application.
+1. Run `docker-compose up --build` to launch the application, rebuilding the parts of it that are stale.
 1. Access application by opening <http://localhost:8000>.

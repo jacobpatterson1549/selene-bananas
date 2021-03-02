@@ -15,11 +15,11 @@ RUN go mod download \
             nodejs=10.24.0~dfsg-1~deb10u1 \
             wamerican-large=2018.04.16-1
 
-# build the application without static libraries
+# build the server with embedded resources
 COPY \
     . \
     ./
-RUN make \
+RUN make build/main \
     GO_ARGS="CGO_ENABLED=0"
 
 # copy files to a minimal build image
