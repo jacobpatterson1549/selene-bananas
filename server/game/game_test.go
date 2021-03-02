@@ -571,6 +571,184 @@ func TestPlayerNames(t *testing.T) {
 	}
 }
 
+func TestHandleMessage(t *testing.T) {
+	handleMessageTests := []struct {
+		message.Message
+		Game
+		messageHandlers map[message.Type]messageHandler
+		wantSendType    message.Type
+		wantActive      bool
+		wantLog         bool
+	}{
+		{ // unknown message type #1
+			wantSendType: message.SocketError,
+		},
+		{ // unknown message type #2
+			Message: message.Message{
+				Type: message.CreateGame,
+			},
+			messageHandlers: map[message.Type]messageHandler{
+				message.JoinGame: func(ctx context.Context, m message.Message, send messageSender) error {
+					return nil
+				},
+			},
+			wantSendType: message.SocketError,
+		},
+		{ // unknown message type #3 with debug
+			Game: Game{
+				Config: Config{
+					Debug: true,
+				},
+			},
+			wantSendType: message.SocketError,
+			wantLog:      true,
+		},
+		{ // unknown player
+			Message: message.Message{
+				Type:       message.SnagGameTile,
+				PlayerName: "ghost",
+			},
+			Game: Game{
+				players: map[player.Name]*playerController.Player{
+					"selene": nil,
+				},
+			},
+			messageHandlers: map[message.Type]messageHandler{
+				message.SnagGameTile: func(ctx context.Context, m message.Message, send messageSender) error {
+					return nil
+				},
+			},
+			wantSendType: message.SocketError,
+		},
+		{ // message handler error
+			Message: message.Message{
+				Type:       message.SnagGameTile,
+				PlayerName: "selene",
+			},
+			Game: Game{
+				players: map[player.Name]*playerController.Player{
+					"selene": nil,
+				},
+			},
+			messageHandlers: map[message.Type]messageHandler{
+				message.SnagGameTile: func(ctx context.Context, m message.Message, send messageSender) error {
+					return fmt.Errorf("snag tile error")
+				},
+			},
+			wantSendType: message.SocketError,
+			wantActive:   true,
+		},
+		{ // message handler error game warning
+			Message: message.Message{
+				Type:       message.SnagGameTile,
+				PlayerName: "selene",
+			},
+			Game: Game{
+				players: map[player.Name]*playerController.Player{
+					"selene": nil,
+				},
+			},
+			messageHandlers: map[message.Type]messageHandler{
+				message.SnagGameTile: func(ctx context.Context, m message.Message, send messageSender) error {
+					return gameWarning("snag tile warning")
+				},
+			},
+			wantSendType: message.SocketWarning,
+			wantActive:   true,
+		},
+		{ // message ok
+			Message: message.Message{
+				Type:       message.SwapGameTile,
+				PlayerName: "selene",
+			},
+			Game: Game{
+				players: map[player.Name]*playerController.Player{
+					"selene": nil,
+				},
+			},
+			messageHandlers: map[message.Type]messageHandler{
+				message.SnagGameTile: func(ctx context.Context, m message.Message, send messageSender) error {
+					return fmt.Errorf("wrong handler")
+				},
+				message.SwapGameTile: func(ctx context.Context, m message.Message, send messageSender) error {
+					m2 := message.Message{
+						Type: message.ChangeGameTiles,
+					}
+					send(m2)
+					return nil
+				},
+			},
+			wantSendType: message.ChangeGameTiles,
+			wantActive:   true,
+		},
+		{ // message ok with no want send type (normal snag sends no message)
+			Message: message.Message{
+				Type:       message.SnagGameTile,
+				PlayerName: "selene",
+			},
+			Game: Game{
+				players: map[player.Name]*playerController.Player{
+					"selene": nil,
+				},
+			},
+			messageHandlers: map[message.Type]messageHandler{
+				message.SnagGameTile: func(ctx context.Context, m message.Message, send messageSender) error {
+					return nil
+				},
+			},
+			wantActive: true,
+		},
+		{ // message ok with debug
+			Message: message.Message{
+				Type:       message.SnagGameTile,
+				PlayerName: "selene",
+			},
+			Game: Game{
+				players: map[player.Name]*playerController.Player{
+					"selene": nil,
+				},
+				Config: Config{
+					Debug: true,
+				},
+			},
+			messageHandlers: map[message.Type]messageHandler{
+				message.SnagGameTile: func(ctx context.Context, m message.Message, send messageSender) error {
+					return nil
+				},
+			},
+			wantActive: true,
+			wantLog:    true,
+		},
+	}
+	for i, test := range handleMessageTests {
+		ctx := context.Background()
+		var buf bytes.Buffer
+		test.Game.log = log.New(&buf, "", 0)
+		gotSend := false
+		send := func(m message.Message) {
+			gotSend = true
+			switch {
+			case m.Type != test.wantSendType:
+				t.Errorf("Test %v: wanted message sent with type %v, got %v", i, m.Type, test.wantSendType)
+			case m.Type == message.SocketError, m.Type == message.SocketWarning:
+				if m.PlayerName != test.Message.PlayerName || !reflect.DeepEqual(test.Message.Game, m.Game) || len(m.Info) == 0 {
+					t.Errorf("Test: %v wanted message for %v with game and error info, got %v", i, test.Message.PlayerName, m)
+				}
+			}
+		}
+		active := false
+		test.Game.handleMessage(ctx, test.Message, send, &active, test.messageHandlers)
+		switch {
+		case active != test.wantActive:
+			t.Errorf("Test %v: wanted active flag to be %v after handler was run, got %v", i, active, test.wantActive)
+		case test.wantLog != (buf.Len() > 0):
+			t.Errorf("Test %v: wanted message logged (%v), got %v", i, test.wantLog, buf.Len() > 0)
+		case test.wantSendType != 0 && !gotSend:
+			t.Errorf("Test %v: wanted message to be sent", i)
+		}
+	}
+}
+
 func TestHandleGameJoin(t *testing.T) {
 	handleGameJoinTests := []struct {
 		message.Message
