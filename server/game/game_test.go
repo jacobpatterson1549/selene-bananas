@@ -281,8 +281,74 @@ func TestRun(t *testing.T) {
 
 func TestRunSync(t *testing.T) {
 	testLog := log.New(io.Discard, "", 0)
-	t.Run("TestRunSyncMessageHandlers", func(t *testing.T) {
-		t.Skip() // TODO: add tests for all expected message types, expect gameWarning for game not being started for most
+	t.Run("TestValidMessageHandler", func(t *testing.T) {
+		validMessageHandlerTests := []struct {
+			message.Type
+			wantError bool // most tests should return a gameWarning, indicating the a messageHandler exists for the message Type
+		}{
+			{
+				Type:      message.SocketHTTPPing,
+				wantError: true,
+			},
+			{
+				Type: message.JoinGame,
+			},
+			{
+				Type: message.DeleteGame,
+			},
+			{
+				Type: message.ChangeGameStatus,
+			},
+			{
+				Type: message.SnagGameTile,
+			},
+			{
+				Type: message.SwapGameTile,
+			},
+			{
+				Type: message.MoveGameTile,
+			},
+			{
+				Type: message.GameChat,
+			},
+			{
+				Type: message.RefreshGameBoard,
+			},
+		}
+		for i, test := range validMessageHandlerTests {
+			m := message.Message{
+				Type:       test.Type,
+				PlayerName: "selene",
+				Game: &game.Info{
+					Status: game.Finished,
+					Board:  &board.Board{},
+				},
+			}
+			g := Game{
+				status: 0, // this should casue a gameWarning error
+				players: map[player.Name]*playerController.Player{
+					"selene": {
+						Board: &board.Board{},
+					},
+				},
+			}
+			ctx := context.Background()
+			ctx, cancelFunc := context.WithCancel(ctx)
+			var wg sync.WaitGroup
+			in := make(chan message.Message, 1)  // deleteGame will cause the run to stop before the second message is passed
+			out := make(chan message.Message, 2) // the second message might be handled, for an unknown message type
+			idleTicker := &time.Ticker{}
+			wg.Add(1)
+			go g.runSync(ctx, &wg, in, out, idleTicker)
+			in <- m
+			in <- message.Message{} // force the game to handle the first Message, this will cause a socketError message to be sent
+			cancelFunc()
+			wg.Wait()
+			got := <-out
+			if test.wantError != (got.Type == message.SocketError) {
+				t.Errorf("Test %v: when test is %v, got %v", i, test, got.Type)
+			}
+		}
 	})
 	t.Run("TestRunSyncStop", func(t *testing.T) {
 		testRunSyncTickerTests := []struct {
