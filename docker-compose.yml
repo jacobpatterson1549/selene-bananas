@@ -28,9 +28,6 @@ services:
       - HTTPS_PORT=8000
       - HTTP_PORT=8001
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
-    volumes:
-      - ${PWD}/${TLS_CERT_FILE}:/app/${TLS_CERT_FILE}
-      - ${PWD}/${TLS_KEY_FILE}:/app/${TLS_KEY_FILE}
     depends_on:
       db:
         condition: service_healthy

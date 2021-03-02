@@ -32,20 +32,18 @@ The [Makefile](Makefile) builds and runs the application. Run `make` without any
 
 Run `make serve` to build and run the application.
 
-### Environment configuration
+### Environment Configuration
 
 Environment variables are needed to customize the server.  Sample config:
 ```
 DATABASE_URL=postgres://selene:selene123@127.0.0.1:54320/selene_bananas_db?sslmode=disable
 HTTP_PORT=8001
 HTTPS_PORT=8000
-TLS_CERT_FILE=/home/ants280/dev/127.0.0.1.pem
-TLS_KEY_FILE=/home/ants280/dev/127.0.0.1-key.pem
 ```
 
 It is recommended to install the [wamerican-large](https://packages.debian.org/buster/wamerican-large) package.  This package provides /usr/share/dict/american-english-large to be used as a words list in games.  Lowercase words are read from the word list for checking valid words in the game.  This can be overridden by providing the `WORDS_FILE` variable when running make: `make WORDS_FILE=/path/to/words/file.txt`.
 
-For development, set `CACHE_SECONDS` to `0` to not cache files.
+For development, set `CACHE_SECONDS` to `0` to not cache static and template resources.
 
 ### Database
 
@@ -70,13 +68,17 @@ sudo -u postgres psql \
 
 ### HTTPS
 
-The app requires HTTP TLS (HTTPS) to run. Insecure http requests are redirected to https.
+The app can be run on HTTP over TLS (HTTPS). If running on TLS, HTTP requests are redirected to HTTPS.
 
 #### ACME
 
-The server can verify its identity over http to pass a Automatic Certificate Management Environment (ACME) HTTP-01 challenge.  Add the `-acme-challenge-token` and `-acme-challenge-key` parameters with necessary values when running the server to return correct responses when the server's identity is challenged to create TLS certificates.  After the certificates are created, remove the acme-* flags, and specify the certificate and key with the `-tls-cert-file` and `-tls-key-file` flags. See [letsencrypt.org](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) for more information about challenges.
+The server can verify its identity over HTTP to pass a Automatic Certificate Management Environment (ACME) HTTP-01 challenge.  Add the `--acme-challenge-token` and `--acme-challenge-key` parameters with necessary values when running the server to return correct responses when the server's identity is challenged to create TLS certificates.  After the certificates are created, remove the acme-* flags, and replace the [resources/tls-cert.pem](resources/tls-cert.pem) and [resources/tls-key.pem](resources/tls-key.pem) files with the certificates. See [letsencrypt.org](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) for more information about challenges.
 
-#### localhost
+### Server Ports
+
+if the PORT parameter is specified in the `.env` file, the server will only run HTTPS without a certificate.  See TLS section below for how to run on HTTP and HTTPS
+
+#### TLS
 
 Use [mkcert](https://github.com/FiloSottile/mkcert) to configure a development machine to accept local certificates.
 ```bash
@@ -87,23 +89,19 @@ Generate certificates for localhost at 127.0.0.1
 ```bash
 mkcert 127.0.0.1
 ```
-Then, add the certificate files to the run environment configuration in `.env`.  The certificate files should be in the root of the application.
+Then, replace the [resources/tls-cert.pem](resources/tls-cert.pem) and [resources/tls-key.pem](resources/tls-key.pem) files with the certificates.  Update the `.env` file with the parateters below. Make sure to remove the `PORT` variable, if present.
 ```
-TLS_CERT_FILE=127.0.0.1.pem
-TLS_KEY_FILE=127.0.0.1-key.pem
+HTTP_PORT=8001
+HTTPS_PORT=8000
 ```
 
 ### Server Ports
 
-By default, the server will run on ports 80 and 443 for http and https traffic.  All http traffic is redirected to https.  To override the ports, use the HTTP_PORT and HTTPS_PORT flags.
+By default, the server will run on ports 80 and 443 for http and https traffic.  All http traffic is redirected to HTTPS.
 
-If the server handles HTTPS by providing its own certificate, use the `PORT` variable to specify the https port.  When POST is defined, no HTTP server will be started from `HTTP_PORT` and certificates are not read from the `TLS_CERT_FILE` and `TLS_KEY_FILE`.
+If the server handles HTTPS by providing its own certificate, use the PORT variable to specify the HTTPS port. When POST is defined, no HTTP server will be started from HTTP_PORT and certificates are not read.
 
-## Run the server
-
-Rune `make serve` to serve the application with flags specified in `.env`.
-
-### Serve on Default TCP HTTP Ports
+##### Serve on Default TCP HTTP Ports
 
 Run `make serve-tcp` to run on port 80 for HTTP and port 443 for HTTPS (default TCP ports).  Using these ports requires `sudo` (root) access.
 
@@ -119,6 +117,5 @@ Launching the application with [Docker](https://www.docker.com) requires minimal
     POSTGRES_PASSWORD=selene123
     POSTGRES_PORT=54320
     ```
-1. Ensure the files for the `TLS_CERT_FILE` and `TLS_KEY_FILE` environment variables are located in the project folder and are **NOT** aliased relative to the build folder.  The variables should look like `TLS_CERT_FILE=127.0.0.1.pem`.
 1. Run `docker-compose up --build` to launch the application, rebuilding the parts of it that are stale.
-1. Access application by opening <http://localhost:8000>.
+1. Access application by opening <https://localhost:8000>.  TLS certificates will be copied to Docker.  Environment variables are used from the `.env` file.

@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"log"
 	"mime"
+	"net"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -51,10 +52,10 @@ type (
 		CacheSec int
 		// Version is used to bust caches of files from older server version
 		Version string
-		// The public HTTPS certificate file.
-		TLSCertFile string
-		// The private HTTPS key file.
-		TLSKeyFile string
+		// TLSCertPEM is the public HTTPS TLS certificate file data.
+		TLSCertPEM string
+		// TLSKeyPEM is the private HTTPS TLS key file data.
+		TLSKeyPEM string
 		// Challenge is used to create ACME certificate.
 		Challenge
 		// ColorConfig contains the colors to use on the site.
@@ -132,7 +133,6 @@ const (
 
 // NewServer creates a Server from the Config
 func (cfg Config) NewServer(p Parameters) (*Server, error) {
-	cfg.Version = strings.TrimSpace(cfg.Version)
 	if err := cfg.validate(p); err != nil {
 		return nil, fmt.Errorf("creating server: validation: %w", err)
 	}
@@ -269,20 +269,49 @@ func (s *Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
 	s.httpsServer.RegisterOnShutdown(cancelFunc)
 	s.log.Printf("starting https server at at https://127.0.0.1%v", s.httpsServer.Addr)
 	go func() {
-		switch {
-		case s.validHTTPAddr():
-			if _, err := tls.LoadX509KeyPair(s.TLSCertFile, s.TLSKeyFile); err != nil {
-				errC <- fmt.Errorf("problem loading tls certificate: %v", err)
-				return
-			}
-			errC <- s.httpsServer.ListenAndServeTLS(s.TLSCertFile, s.TLSKeyFile)
-		default:
-			if len(s.TLSCertFile) != 0 || len(s.TLSKeyFile) != 0 {
-				s.log.Printf("Ignoring TLS_CERT_FILE/TLS_KEY_FILE variables since PORT was specified, using automated certificate management.")
-			}
-			errC <- s.httpsServer.ListenAndServe()
-		}
+		errC <- s.serveHTTPS()
 	}()
+}
+
+// serveHTTPS is closely derived from https://golang.org/src/net/http/server.go to allow key bytes rather than files
+func (s *Server) serveHTTPS() error {
+	ln, err := net.Listen("tcp", s.httpsServer.Addr)
+	defer ln.Close()
+	if err != nil {
+		return err
+	}
+	switch {
+	case s.validHTTPAddr():
+		ln, err = s.tlsListener(ln)
+		if err != nil {
+			return err
+		}
+	default:
+		if len(s.TLSCertPEM) != 0 || len(s.TLSKeyPEM) != 0 {
+			s.log.Printf("Ignoring certificate since PORT was specified, using automated certificate management.")
+		}
+	}
+	return s.httpsServer.Serve(ln) // BLOCKING
+}
+
+// tlsListener is derived from https://golang.org/src/net/http/server.go to allow key bytes rather than files
+func (s *Server) tlsListener(l net.Listener) (net.Listener, error) {
+	tlsConfig := s.httpServer.TLSConfig
+	switch {
+	case tlsConfig == nil:
+		tlsConfig = &tls.Config{}
+	default:
+		tlsConfig = tlsConfig.Clone()
+	}
+	tlsConfig.NextProtos = append(tlsConfig.NextProtos, "http/1.1")
+	var err error
+	tlsConfig.Certificates = make([]tls.Certificate, 1)
+	tlsConfig.Certificates[0], err = tls.X509KeyPair([]byte(s.TLSCertPEM), []byte(s.TLSKeyPEM))
+	if err != nil {
+		return nil, err
+	}
+	tlsListener := tls.NewListener(l, tlsConfig)
+	return tlsListener, nil
 }
 
 // Stop asks the server to shutdown and waits for the shutdown to complete.

@@ -17,8 +17,6 @@ const (
 	environmentVariableCacheSec       = "CACHE_SECONDS"
 	environmentVariableChallengeToken = "ACME_CHALLENGE_TOKEN"
 	environmentVariableChallengeKey   = "ACME_CHALLENGE_KEY"
-	environmentVariableTLSCertFile    = "TLS_CERT_FILE"
-	environmentVariableTLSKeyFile     = "TLS_KEY_FILE"
 )
 
 // mainFlags are the configuration options which can be easly configured at run startup for different environments.
@@ -50,8 +48,6 @@ func usage(fs *flag.FlagSet) {
 		environmentVariableCacheSec,
 		environmentVariableChallengeToken,
 		environmentVariableChallengeKey,
-		environmentVariableTLSCertFile,
-		environmentVariableTLSKeyFile,
 	}
 	fmt.Fprintf(fs.Output(), "Runs the server\n")
 	fmt.Fprintf(fs.Output(), "Reads environment variables when possible: [%s]\n", strings.Join(envVars, ","))
@@ -89,8 +85,6 @@ func (m *mainFlags) newFlagSet(osLookupEnvFunc func(string) (string, bool), port
 	fs.IntVar(portOverride, "port", envValueInt(environmentVariablePort, 0), "The single port to run the server on.  Overrides the -https-port flag.  Causes the server to not handle http requests, ignoring -http-port.")
 	fs.StringVar(&m.challengeToken, "acme-challenge-token", envValue(environmentVariableChallengeToken), "The ACME HTTP-01 Challenge token used to get a certificate.")
 	fs.StringVar(&m.challengeKey, "acme-challenge-key", envValue(environmentVariableChallengeKey), "The ACME HTTP-01 Challenge key used to get a certificate.")
-	fs.StringVar(&m.tlsCertFile, "tls-cert-file", envValue(environmentVariableTLSCertFile), "The absolute path of the certificate file to use for TLS.")
-	fs.StringVar(&m.tlsKeyFile, "tls-key-file", envValue(environmentVariableTLSKeyFile), "The absolute path of the key file to use for TLS.")
 	fs.BoolVar(&m.debugGame, "debug-game", envPresent(environmentVariableDebugGame), "Logs message types in the console when messages are passed between components.")
 	fs.BoolVar(&m.noTLSRedirect, "no-tls-redirect", envPresent(environmentVariableNoTLSRedirect), "Disables HTTPS redirection from http if present.")
 	fs.IntVar(&m.cacheSec, "cache-sec", envValueInt(environmentVariableCacheSec, defaultCacheSec), "The number of seconds static assets are cached, such as javascript files.")

@@ -15,6 +15,12 @@ var embedVersion string
 //go:embed embed/words.txt
 var embeddedWords string
 
+//go:embed embed/tls-cert.pem
+var embeddedTLSCertPEM string
+
+//go:embed embed/tls-key.pem
+var embeddedTLSKeyPEM string
+
 //go:embed embed/sql
 var embeddedSQLFS embed.FS
 
@@ -38,49 +44,53 @@ func unembedFS(fsys fs.FS, subdirectory string) (fs.FS, error) {
 
 // embeddedData is used to retrieve files embedded in the server.
 type embeddedData struct {
-	Version     string
-	WordsReader io.Reader
-	StaticFS    fs.FS
-	TemplateFS  fs.FS
-	SQLFS       fs.FS
+	Version    string
+	Words      string
+	TLSCertPEM string
+	TLSKeyPEM  string
+	StaticFS   fs.FS
+	TemplateFS fs.FS
+	SQLFS      fs.FS
 }
 
-// newEmbedParameters validates, unembeds, and returns the parameters in a structure.
-func newEmbedParameters(version, words string, staticFS, templateFS, sqlFS fs.FS) (*embeddedData, error) {
+// unEmbed validates, unembeds, and returns the parameters in a structure.
+// Version and words are required, file systems are unembedded
+func (e embeddedData) unEmbed() (*embeddedData, error) {
 	switch {
-	case len(version) == 0:
+	case len(e.Version) == 0:
 		return nil, fmt.Errorf("version required")
-	case len(words) == 0:
+	case len(e.Words) == 0:
 		return nil, fmt.Errorf("empty words file provided")
-	case staticFS == nil:
+	case e.StaticFS == nil:
 		return nil, fmt.Errorf("embedded static file system required")
-	case templateFS == nil:
+	case e.TemplateFS == nil:
 		return nil, fmt.Errorf("embedded template file system required")
-	case sqlFS == nil:
+	case e.SQLFS == nil:
 		return nil, fmt.Errorf("embedded sql file system required")
 	}
-	var err error
-	staticFS, err = unembedFS(staticFS, "static")
+	trimmedVersion := strings.TrimSpace(e.Version)
+	staticFS, err := unembedFS(e.StaticFS, "static")
 	if err != nil {
 		return nil, fmt.Errorf("unembedding static file system: %w", err)
 	}
-	templateFS, err = unembedFS(templateFS, "template")
+	templateFS, err := unembedFS(e.TemplateFS, "template")
 	if err != nil {
 		return nil, fmt.Errorf("unembedding template file system: %w", err)
 	}
-	sqlFS, err = unembedFS(sqlFS, "sql")
+	sqlFS, err := unembedFS(e.SQLFS, "sql")
 	if err != nil {
 		return nil, fmt.Errorf("unembedding sql file system: %w", err)
 	}
-	wordsReader := strings.NewReader(words)
-	e := embeddedData{
-		Version:     version,
-		WordsReader: wordsReader,
-		StaticFS:    staticFS,
-		TemplateFS:  templateFS,
-		SQLFS:       sqlFS,
+	e2 := embeddedData{
+		Version:    trimmedVersion,
+		Words:      e.Words,
+		TLSCertPEM: e.TLSCertPEM,
+		TLSKeyPEM:  e.TLSKeyPEM,
+		StaticFS:   staticFS,
+		TemplateFS: templateFS,
+		SQLFS:      sqlFS,
 	}
-	return &e, nil
+	return &e2, nil
 }
 
 // sqlFiles opens the SQL files needed to manage user data.

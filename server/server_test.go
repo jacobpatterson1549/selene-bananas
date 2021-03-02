@@ -173,7 +173,7 @@ func TestNewServer(t *testing.T) {
 				StopDur:   1 * time.Hour,
 				CacheSec:  86400,
 				HTTPSPort: 443,
-				Version:   "9d2ffad8e5e5383569d37ec381147f2d\n",
+				Version:   "9d2ffad8e5e5383569d37ec381147f2d",
 				Challenge: Challenge{
 					Token: "a",
 					Key:   "b",

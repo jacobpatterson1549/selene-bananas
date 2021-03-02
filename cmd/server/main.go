@@ -19,7 +19,7 @@ func main() {
 	ctx := context.Background()
 	logFlags := log.Ldate | log.Ltime | log.LUTC | log.Lshortfile | log.Lmsgprefix
 	log := log.New(os.Stdout, "", logFlags)
-	e, err := newEmbedParameters(embedVersion, embeddedWords, embeddedStaticFS, embeddedTemplateFS, embeddedSQLFS)
+	e, err := unembedData()
 	if err != nil {
 		log.Fatalf("reading embedded files: %v", err)
 	}
@@ -59,4 +59,18 @@ func runServer(ctx context.Context, server *server.Server, log *log.Logger) erro
 		return fmt.Errorf("stopping server: %v", err)
 	}
 	return nil
+}
+
+// unembedData returns the unembedded data that was embedded in the server.
+func unembedData() (*embeddedData, error) {
+	e := embeddedData{
+		Version:    embedVersion,
+		Words:      embeddedWords,
+		TLSCertPEM: embeddedTLSCertPEM,
+		TLSKeyPEM:  embeddedTLSKeyPEM,
+		StaticFS:   embeddedStaticFS,
+		TemplateFS: embeddedTemplateFS,
+		SQLFS:      embeddedSQLFS,
+	}
+	return e.unEmbed()
 }

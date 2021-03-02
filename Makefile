@@ -7,6 +7,8 @@ STATIC_DIR       := static
 TEMPLATE_DIR     := template
 SQL_DIR          := sql
 LICENSE_FILE     := LICENSE
+TLS_CERT_FILE    := tls-cert.pem
+TLS_KEY_FILE    := tls-key.pem
 WORDS_FILE       := /usr/share/dict/american-english-large # the list of lower-case words used to check player boards
 COPY := cp -f
 LINK := $(COPY) -l
@@ -92,9 +94,11 @@ $(SERVER_EMBED_DIR): $(RESOURCES_SRC)
 	touch \
 		$@/$(VERSION_OBJ) \
 		$@/$(STATIC_DIR)/$(CLIENT_OBJ)
-	$(COPY) $(WORDS_FILE)                $@/$(WORDS_OBJ)
-	$(LINK) $(LICENSE_FILE)              $@/$(STATIC_DIR)
-	$(COPY) $(GO_WASM_PATH)/wasm_exec.js $@/$(STATIC_DIR)
+	$(LINK) $(RESOURCES_DIR)/$(TLS_CERT_FILE) $@/$(TLS_CERT_FILE)
+	$(LINK) $(RESOURCES_DIR)/$(TLS_KEY_FILE)  $@/$(TLS_KEY_FILE)
+	$(COPY) $(WORDS_FILE)                     $@/$(WORDS_OBJ)
+	$(LINK) $(LICENSE_FILE)                   $@/$(STATIC_DIR)/
+	$(COPY) $(GO_WASM_PATH)/wasm_exec.js      $@/$(STATIC_DIR)/
 	$(call EMBED_RESOURCES_FN,$(STATIC_DIR))
 	$(call EMBED_RESOURCES_FN,$(TEMPLATE_DIR))
 	$(call EMBED_RESOURCES_FN,$(SQL_DIR))

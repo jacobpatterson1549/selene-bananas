@@ -6,7 +6,6 @@ import (
 	"database/sql/driver"
 	"io"
 	"log"
-	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -75,12 +74,10 @@ func TestNewServer(t *testing.T) {
 	log := log.New(io.Discard, "", 0)
 	db := databaseController.Database{}
 	e := embeddedData{
-		Version:     "1",
-		WordsReader: strings.NewReader("apple\nbanana\ncarrot"),
-		StaticFS:    fstest.MapFS{},
-		TemplateFS: fstest.MapFS{
-			"file": &fstest.MapFile{},
-		},
+		Version:    "1",
+		Words:      "apple\nbanana\ncarrot",
+		StaticFS:   fstest.MapFS{},
+		TemplateFS: fstest.MapFS{"file": &fstest.MapFile{}},
 	}
 	s, err := m.createServer(ctx, log, db, e)
 	switch {

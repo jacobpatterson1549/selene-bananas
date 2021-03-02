@@ -11,9 +11,6 @@ cmd/server/embed
 /.vscode
 __debug_bin
 
-# https certificates
-/*.pem
-
 # SonarQube static analysis
 /.scannerwork
 /.coverage*.out

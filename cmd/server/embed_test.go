@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"io/fs"
+	"reflect"
 	"testing"
 	"testing/fstest"
 )
@@ -98,14 +99,20 @@ func TestNewEmbedParameters(t *testing.T) {
 	sqlFS := fstest.MapFS{
 		"embed/sql": &fstest.MapFile{},
 	}
-	okVersion := "ok"
+	okVersion := "9d2ffad8e5e5383569d37ec381147f2d"
 	words := "apple\nbanana\ncarrot"
-	wantVersion := okVersion
-	wantWords := words
+	unembedOrFail := func(fs fs.FS, subdirectory string) fs.FS {
+		fs, err := unembedFS(fs, subdirectory)
+		if err != nil {
+			t.Errorf("unwanted error unembedding %v file system: %v", subdirectory, err)
+			return &fstest.MapFS{}
+		}
+		return fs
+	}
 	newEmbedParametersTests := []struct {
 		embeddedData
-		words  string
 		wantOk bool
+		want   *embeddedData
 	}{
 		{}, // bad version
 		{ // missing words
@@ -116,64 +123,75 @@ func TestNewEmbedParameters(t *testing.T) {
 		{ // missing static fs
 			embeddedData: embeddedData{
 				Version: okVersion,
+				Words:   words,
 			},
-			words: words,
 		},
 		{ // missing template fs
 			embeddedData: embeddedData{
 				Version:  okVersion,
+				Words:    words,
 				StaticFS: emptyFS,
 			},
-			words: words,
 		},
 		{ // missing SQL fs
 			embeddedData: embeddedData{
 				Version:    okVersion,
+				Words:      words,
 				StaticFS:   emptyFS,
 				TemplateFS: emptyFS,
 			},
-			words: words,
 		},
 		{ // bad static fs
 			embeddedData: embeddedData{
 				Version:    okVersion,
+				Words:      words,
 				StaticFS:   emptyFS,
 				TemplateFS: emptyFS,
 				SQLFS:      emptyFS,
 			},
-			words: words,
 		},
 		{ // bad template fs
 			embeddedData: embeddedData{
 				Version:    okVersion,
+				Words:      words,
 				StaticFS:   staticFS,
 				TemplateFS: emptyFS,
 				SQLFS:      emptyFS,
 			},
-			words: words,
 		},
 		{ // bad SQL fs
 			embeddedData: embeddedData{
 				Version:    okVersion,
+				Words:      words,
 				StaticFS:   staticFS,
 				TemplateFS: templateFS,
 				SQLFS:      emptyFS,
 			},
-			words: words,
 		},
 		{ // happy path
 			embeddedData: embeddedData{
-				Version:    okVersion,
+				Version:    okVersion + "\n",
+				Words:      words,
+				TLSCertPEM: "tls cert",
+				TLSKeyPEM:  "tls key",
 				StaticFS:   staticFS,
 				TemplateFS: templateFS,
 				SQLFS:      sqlFS,
 			},
-			words:  words,
 			wantOk: true,
+			want: &embeddedData{
+				Version:    "9d2ffad8e5e5383569d37ec381147f2d", // trimmed
+				Words:      words,
+				TLSCertPEM: "tls cert",
+				TLSKeyPEM:  "tls key",
+				StaticFS:   unembedOrFail(staticFS, "static"),
+				TemplateFS: unembedOrFail(templateFS, "template"),
+				SQLFS:      unembedOrFail(sqlFS, "sql"),
+			},
 		},
 	}
 	for i, test := range newEmbedParametersTests {
-		got, err := newEmbedParameters(test.Version, test.words, test.StaticFS, test.TemplateFS, test.SQLFS)
+		got, err := test.embeddedData.unEmbed()
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -181,16 +199,8 @@ func TestNewEmbedParameters(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
-		case wantVersion != got.Version:
-			t.Errorf("Test %v: not equal:\nwanted: %v\ngot:    %v", i, wantVersion, got.Version)
-		default:
-			gotWords, err := io.ReadAll(got.WordsReader)
-			switch {
-			case err != nil:
-				t.Errorf("Test %v: unwanted error reading embedded words: %v", i, err)
-			case wantWords != string(gotWords):
-				t.Errorf("Test %v: words from WordsReader not equal:\nwanted: %v\ngot:    %v", i, wantWords, string(gotWords))
-			}
+		case !reflect.DeepEqual(test.want, got):
+			t.Errorf("Test %v: not equal:\nwanted: %v\ngot:    %v", i, test.want, got)
 		}
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
@@ -67,7 +68,8 @@ func (m mainFlags) createServer(ctx context.Context, log *log.Logger, db db.Data
 	if err != nil {
 		return nil, fmt.Errorf("creating socket runner: %w", err)
 	}
-	wordChecker := word.NewChecker(e.WordsReader)
+	wordsReader := strings.NewReader(e.Words)
+	wordChecker := word.NewChecker(wordsReader)
 	gameRunnerCfg := m.gameRunnerConfig(timeFunc)
 	gameRunner, err := gameRunnerCfg.NewRunner(log, wordChecker, userDao)
 	if err != nil {
@@ -89,8 +91,8 @@ func (m mainFlags) createServer(ctx context.Context, log *log.Logger, db db.Data
 		StopDur:       20 * time.Second, // should be longer than the PingPeriod of sockets so they can close gracefully
 		CacheSec:      m.cacheSec,
 		Version:       e.Version,
-		TLSCertFile:   m.tlsCertFile,
-		TLSKeyFile:    m.tlsKeyFile,
+		TLSCertPEM:    e.TLSCertPEM,
+		TLSKeyPEM:     e.TLSKeyPEM,
 		Challenge:     challenge,
 		ColorConfig:   colorConfig,
 		NoTLSRedirect: m.noTLSRedirect,
