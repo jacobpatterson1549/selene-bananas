@@ -257,9 +257,7 @@ func (s *Server) runHTTPServer(ctx context.Context, errC chan<- error) {
 	if !s.validHTTPAddr() {
 		return
 	}
-	go func() {
-		errC <- s.httpServer.ListenAndServe()
-	}()
+	go s.serveTCP(s.httpServer, errC, false)
 }
 
 // runHTTPSServer runs the https server in regards to the conviguration, adding the return error to the channel when done.
@@ -268,19 +266,20 @@ func (s *Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
 	s.lobby.Run(ctx, &s.wg)
 	s.httpsServer.RegisterOnShutdown(cancelFunc)
 	s.log.Printf("starting https server at at https://127.0.0.1%v", s.httpsServer.Addr)
-	go func() {
-		errC <- s.serveHTTPS()
-	}()
+	go s.serveTCP(s.httpsServer, errC, true)
 }
 
-// serveHTTPS is closely derived from https://golang.org/src/net/http/server.go to allow key bytes rather than files
-func (s *Server) serveHTTPS() error {
-	ln, err := net.Listen("tcp", s.httpsServer.Addr)
-	defer ln.Close()
+// serveTCP is closely derived from https://golang.org/src/net/http/server.go to allow key bytes rather than files
+func (s *Server) serveTCP(svr *http.Server, errC chan<- error, tls bool) (err error) {
+	defer func() { errC <- err }()
+	ln, err := net.Listen("tcp", svr.Addr)
 	if err != nil {
 		return err
 	}
+	defer ln.Close()
 	switch {
+	case !tls:
+		// NOOP
 	case s.validHTTPAddr():
 		ln, err = s.tlsListener(ln)
 		if err != nil {
@@ -291,7 +290,8 @@ func (s *Server) serveHTTPS() error {
 			s.log.Printf("Ignoring certificate since PORT was specified, using automated certificate management.")
 		}
 	}
-	return s.httpsServer.Serve(ln) // BLOCKING
+	err = svr.Serve(ln) // BLOCKING
+	return
 }
 
 // tlsListener is derived from https://golang.org/src/net/http/server.go to allow key bytes rather than files
