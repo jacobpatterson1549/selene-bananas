@@ -110,11 +110,9 @@ func TestDaoRead(t *testing.T) {
 				},
 			},
 		}
-		s := mockScanner{
-			scanFunc: func(dest ...interface{}) error {
-				return test.rowScanErr
-			},
-		}
+		s := mockScanner(func(dest ...interface{}) error {
+			return test.rowScanErr
+		})
 		d := Dao{
 			db: mockDatabase{
 				queryFunc: func(ctx context.Context, q db.Query) db.Scanner {
@@ -194,12 +192,10 @@ func TestDaoUpdatePassword(t *testing.T) {
 				},
 			},
 		}
-		s := mockScanner{
-			scanFunc: func(dest ...interface{}) error {
-				*dest[1].(*string) = test.dbP
-				return nil
-			},
-		}
+		s := mockScanner(func(dest ...interface{}) error {
+			*dest[1].(*string) = test.dbP
+			return nil
+		})
 		db := mockDatabase{
 			queryFunc: func(ctx context.Context, q db.Query) db.Scanner {
 				return s
@@ -300,11 +296,9 @@ func TestDaoDelete(t *testing.T) {
 				},
 			},
 		}
-		s := mockScanner{
-			scanFunc: func(dest ...interface{}) error {
-				return test.readErr
-			},
-		}
+		s := mockScanner(func(dest ...interface{}) error {
+			return test.readErr
+		})
 		d := Dao{
 			db: mockDatabase{
 				queryFunc: func(ctx context.Context, q db.Query) db.Scanner {

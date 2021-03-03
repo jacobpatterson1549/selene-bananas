@@ -7,34 +7,34 @@ import (
 
 type mockUser string
 
-func (u mockUser) JWT() string {
-	return string(u)
+func (m mockUser) JWT() string {
+	return string(m)
 }
 
-func (u mockUser) Username() string {
+func (mockUser) Username() string {
 	return ""
 }
 
-func (u *mockUser) Logout() {
+func (mockUser) Logout() {
 	// NOOP
 }
 
 type mockGame game.ID
 
-func (g mockGame) ID() game.ID {
-	return game.ID(g)
+func (m mockGame) ID() game.ID {
+	return game.ID(m)
 }
 
-func (g mockGame) Leave() {
+func (mockGame) Leave() {
 	// NOOP
 }
 
-func (g mockGame) UpdateInfo(m message.Message) {
+func (mockGame) UpdateInfo(m message.Message) {
 	// NOOP
 }
 
 type mockLobby struct{}
 
-func (l mockLobby) SetGameInfos(gameInfos []game.Info, username string) {
+func (mockLobby) SetGameInfos(gameInfos []game.Info, username string) {
 	// NOOP
 }

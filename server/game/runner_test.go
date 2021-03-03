@@ -18,8 +18,8 @@ import (
 )
 
 func TestNewRunner(t *testing.T) {
-	wc := mockWordValidator{}
-	ud := mockUserDao{}
+	var wc mockWordValidator
+	userDao := mockUserDao{}
 	testLog := log.New(io.Discard, "", 0)
 	newRunnerTests := []struct {
 		log *log.Logger
@@ -40,17 +40,17 @@ func TestNewRunner(t *testing.T) {
 		{ // low MaxGames
 			log:           testLog,
 			WordValidator: wc,
-			UserDao:       ud,
+			UserDao:       userDao,
 		},
 		{ // low MaxGames
 			log:           testLog,
 			WordValidator: wc,
-			UserDao:       ud,
+			UserDao:       userDao,
 		},
 		{ // ok
 			log:           testLog,
 			WordValidator: wc,
-			UserDao:       ud,
+			UserDao:       userDao,
 			RunnerConfig: RunnerConfig{
 				MaxGames: 10,
 			},
@@ -59,7 +59,7 @@ func TestNewRunner(t *testing.T) {
 				log:           testLog,
 				games:         map[game.ID]chan<- message.Message{},
 				WordValidator: wc,
-				userDao:       ud,
+				userDao:       userDao,
 				RunnerConfig: RunnerConfig{
 					MaxGames: 10,
 				},
@@ -68,7 +68,7 @@ func TestNewRunner(t *testing.T) {
 		{ // ok debug
 			log:           testLog,
 			WordValidator: wc,
-			UserDao:       ud,
+			UserDao:       userDao,
 			RunnerConfig: RunnerConfig{
 				Debug:    true,
 				MaxGames: 10,
@@ -78,7 +78,7 @@ func TestNewRunner(t *testing.T) {
 				log:           testLog,
 				games:         map[game.ID]chan<- message.Message{},
 				WordValidator: wc,
-				userDao:       ud,
+				userDao:       userDao,
 				RunnerConfig: RunnerConfig{
 					Debug:    true,
 					MaxGames: 10,
@@ -235,12 +235,14 @@ func TestGameCreate(t *testing.T) {
 		},
 	}
 	for i, test := range gameCreateTests {
+		var wordValidator mockWordValidator
+		var userDao mockUserDao
 		r := Runner{
 			log:           testLog,
 			games:         make(map[game.ID]chan<- message.Message),
 			lastID:        3,
-			WordValidator: mockWordValidator{},
-			userDao:       mockUserDao{},
+			WordValidator: wordValidator,
+			userDao:       userDao,
 			RunnerConfig:  test.RunnerConfig,
 		}
 		ctx := context.Background()

@@ -13,12 +13,12 @@ type mockPasswordHandler struct {
 	isCorrectFunc func(hashedPassword []byte, password string) (bool, error)
 }
 
-func (ph mockPasswordHandler) Hash(password string) ([]byte, error) {
-	return ph.hashFunc(password)
+func (m mockPasswordHandler) Hash(password string) ([]byte, error) {
+	return m.hashFunc(password)
 }
 
-func (ph mockPasswordHandler) IsCorrect(hashedPassword []byte, password string) (bool, error) {
-	return ph.isCorrectFunc(hashedPassword, password)
+func (m mockPasswordHandler) IsCorrect(hashedPassword []byte, password string) (bool, error) {
+	return m.isCorrectFunc(hashedPassword, password)
 }
 
 type mockDatabase struct {
@@ -26,22 +26,20 @@ type mockDatabase struct {
 	execFunc  func(ctx context.Context, queries ...db.Query) error
 }
 
-func (d mockDatabase) Setup(ctx context.Context, files []io.Reader) error {
+func (m mockDatabase) Setup(ctx context.Context, files []io.Reader) error {
 	return fmt.Errorf("Setup should not be called by the server")
 }
 
-func (d mockDatabase) Query(ctx context.Context, q db.Query) db.Scanner {
-	return d.queryFunc(ctx, q)
+func (m mockDatabase) Query(ctx context.Context, q db.Query) db.Scanner {
+	return m.queryFunc(ctx, q)
 }
 
-func (d mockDatabase) Exec(ctx context.Context, queries ...db.Query) error {
-	return d.execFunc(ctx, queries...)
+func (m mockDatabase) Exec(ctx context.Context, queries ...db.Query) error {
+	return m.execFunc(ctx, queries...)
 }
 
-type mockScanner struct {
-	scanFunc func(dest ...interface{}) error
-}
+type mockScanner func(dest ...interface{}) error
 
-func (s mockScanner) Scan(dest ...interface{}) error {
-	return s.scanFunc(dest...)
+func (m mockScanner) Scan(dest ...interface{}) error {
+	return m(dest...)
 }

@@ -9,6 +9,6 @@ import (
 
 type mockRunner func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message
 
-func (r mockRunner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
-	return r(ctx, wg, in)
+func (m mockRunner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+	return m(ctx, wg, in)
 }

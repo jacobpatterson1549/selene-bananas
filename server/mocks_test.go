@@ -13,12 +13,12 @@ type mockTokenizer struct {
 	ReadUsernameFunc func(tokenString string) (string, error)
 }
 
-func (t mockTokenizer) Create(username string, points int) (string, error) {
-	return t.CreateFunc(username, points)
+func (m mockTokenizer) Create(username string, points int) (string, error) {
+	return m.CreateFunc(username, points)
 }
 
-func (t mockTokenizer) ReadUsername(tokenString string) (string, error) {
-	return t.ReadUsernameFunc(tokenString)
+func (m mockTokenizer) ReadUsername(tokenString string) (string, error) {
+	return m.ReadUsernameFunc(tokenString)
 }
 
 type mockUserDao struct {
@@ -28,20 +28,20 @@ type mockUserDao struct {
 	deleteFunc         func(ctx context.Context, u user.User) error
 }
 
-func (ud mockUserDao) Create(ctx context.Context, u user.User) error {
-	return ud.createFunc(ctx, u)
+func (m mockUserDao) Create(ctx context.Context, u user.User) error {
+	return m.createFunc(ctx, u)
 }
 
-func (ud mockUserDao) Read(ctx context.Context, u user.User) (*user.User, error) {
-	return ud.readFunc(ctx, u)
+func (m mockUserDao) Read(ctx context.Context, u user.User) (*user.User, error) {
+	return m.readFunc(ctx, u)
 }
 
-func (ud mockUserDao) UpdatePassword(ctx context.Context, u user.User, newP string) error {
-	return ud.updatePasswordFunc(ctx, u, newP)
+func (m mockUserDao) UpdatePassword(ctx context.Context, u user.User, newP string) error {
+	return m.updatePasswordFunc(ctx, u, newP)
 }
 
-func (ud mockUserDao) Delete(ctx context.Context, u user.User) error {
-	return ud.deleteFunc(ctx, u)
+func (m mockUserDao) Delete(ctx context.Context, u user.User) error {
+	return m.deleteFunc(ctx, u)
 }
 
 type mockLobby struct {
@@ -50,14 +50,14 @@ type mockLobby struct {
 	removeUserFunc func(username string)
 }
 
-func (l mockLobby) Run(ctx context.Context, wg *sync.WaitGroup) {
-	l.runFunc(ctx, wg)
+func (m mockLobby) Run(ctx context.Context, wg *sync.WaitGroup) {
+	m.runFunc(ctx, wg)
 }
 
-func (l mockLobby) AddUser(username string, w http.ResponseWriter, r *http.Request) error {
-	return l.addUserFunc(username, w, r)
+func (m mockLobby) AddUser(username string, w http.ResponseWriter, r *http.Request) error {
+	return m.addUserFunc(username, w, r)
 }
 
-func (l mockLobby) RemoveUser(username string) {
-	l.removeUserFunc(username)
+func (m mockLobby) RemoveUser(username string) {
+	m.removeUserFunc(username)
 }

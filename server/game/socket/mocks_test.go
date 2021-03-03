@@ -19,12 +19,12 @@ import (
 
 type mockAddr string
 
-func (a mockAddr) Network() string {
-	return string(a) + "_NETWORK"
+func (m mockAddr) Network() string {
+	return string(m) + "_NETWORK"
 }
 
-func (a mockAddr) String() string {
-	return string(a)
+func (m mockAddr) String() string {
+	return string(m)
 }
 
 type mockConn struct {
@@ -40,50 +40,50 @@ type mockConn struct {
 	RemoteAddrFunc       func() net.Addr
 }
 
-func (c *mockConn) ReadMessage(m *message.Message) error {
-	return c.ReadMessageFunc(m)
+func (m *mockConn) ReadMessage(msg *message.Message) error {
+	return m.ReadMessageFunc(msg)
 }
 
-func (c *mockConn) WriteMessage(m message.Message) error {
-	return c.WriteMessageFunc(m)
+func (m *mockConn) WriteMessage(msg message.Message) error {
+	return m.WriteMessageFunc(msg)
 }
 
-func (c *mockConn) SetReadDeadline(t time.Time) error {
-	return c.SetReadDeadlineFunc(t)
+func (m *mockConn) SetReadDeadline(t time.Time) error {
+	return m.SetReadDeadlineFunc(t)
 }
 
-func (c *mockConn) SetWriteDeadline(t time.Time) error {
-	return c.SetWriteDeadlineFunc(t)
+func (m *mockConn) SetWriteDeadline(t time.Time) error {
+	return m.SetWriteDeadlineFunc(t)
 }
 
-func (c *mockConn) SetPongHandler(h func(appData string) error) {
-	c.SetPongHandlerFunc(h)
+func (m *mockConn) SetPongHandler(h func(appData string) error) {
+	m.SetPongHandlerFunc(h)
 }
 
-func (c *mockConn) Close() error {
-	return c.CloseFunc()
+func (m *mockConn) Close() error {
+	return m.CloseFunc()
 }
 
-func (c *mockConn) WritePing() error {
-	return c.WritePingFunc()
+func (m *mockConn) WritePing() error {
+	return m.WritePingFunc()
 }
 
-func (c *mockConn) WriteClose(reason string) error {
-	return c.WriteCloseFunc(reason)
+func (m *mockConn) WriteClose(reason string) error {
+	return m.WriteCloseFunc(reason)
 }
 
-func (c *mockConn) IsNormalClose(err error) bool {
-	return c.IsNormalCloseFunc(err)
+func (m *mockConn) IsNormalClose(err error) bool {
+	return m.IsNormalCloseFunc(err)
 }
 
-func (c *mockConn) RemoteAddr() net.Addr {
-	return c.RemoteAddrFunc()
+func (m *mockConn) RemoteAddr() net.Addr {
+	return m.RemoteAddrFunc()
 }
 
 type mockUpgrader func(w http.ResponseWriter, r *http.Request) (Conn, error)
 
-func (u mockUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn, error) {
-	return u(w, r)
+func (m mockUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn, error) {
+	return m(w, r)
 }
 
 func mockAddUserRequest(playerName string) (player.Name, http.ResponseWriter, *http.Request) {
@@ -99,20 +99,20 @@ type MockHijacker struct {
 	*bufio.ReadWriter
 }
 
-func (h MockHijacker) Header() http.Header {
-	return h.ResponseWriter.Header()
+func (m MockHijacker) Header() http.Header {
+	return m.ResponseWriter.Header()
 }
 
-func (h MockHijacker) Write(p []byte) (int, error) {
-	return h.ReadWriter.Write(p)
+func (m MockHijacker) Write(p []byte) (int, error) {
+	return m.ReadWriter.Write(p)
 }
 
-func (h MockHijacker) WriteHeader(statusCode int) {
-	h.ResponseWriter.WriteHeader(statusCode)
+func (m MockHijacker) WriteHeader(statusCode int) {
+	m.ResponseWriter.WriteHeader(statusCode)
 }
 
-func (h MockHijacker) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return h.Conn, h.ReadWriter, nil
+func (m MockHijacker) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return m.Conn, m.ReadWriter, nil
 }
 
 type RedirectConn struct {
@@ -120,8 +120,8 @@ type RedirectConn struct {
 	io.Writer
 }
 
-func (w RedirectConn) Write(p []byte) (int, error) {
-	return w.Writer.Write(p)
+func (c RedirectConn) Write(p []byte) (int, error) {
+	return c.Writer.Write(p)
 }
 
 func newMockSocketWebSocketResponse() http.ResponseWriter {

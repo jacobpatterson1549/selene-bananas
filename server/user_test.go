@@ -253,7 +253,7 @@ func TestHandleUserUpdatePassword(t *testing.T) {
 		},
 	}
 	for i, test := range handleUserUpdatePasswordTests {
-		ud := mockUserDao{
+		userDao := mockUserDao{
 			updatePasswordFunc: func(ctx context.Context, u user.User, newP string) error {
 				switch {
 				case test.username != u.Username:
@@ -275,7 +275,7 @@ func TestHandleUserUpdatePassword(t *testing.T) {
 		}
 		s := Server{
 			log:     log.New(io.Discard, "", 0),
-			userDao: ud,
+			userDao: userDao,
 			lobby:   l,
 		}
 		r := httptest.NewRequest("", "/", nil)
@@ -321,7 +321,7 @@ func TestHandleUserDelete(t *testing.T) {
 		},
 	}
 	for i, test := range handleUserDeleteTests {
-		ud := mockUserDao{
+		userDao := mockUserDao{
 			deleteFunc: func(ctx context.Context, u user.User) error {
 				if test.username != u.Username {
 					t.Errorf("Test %v: wanted user %v to be deleted, got %v", i, test.username, u.Username)
@@ -340,7 +340,7 @@ func TestHandleUserDelete(t *testing.T) {
 		}
 		s := Server{
 			log:     log.New(io.Discard, "", 0),
-			userDao: ud,
+			userDao: userDao,
 			lobby:   l,
 		}
 		r := httptest.NewRequest("", "/", nil)

@@ -2,18 +2,16 @@ package game
 
 import "context"
 
-type mockWordValidator struct {
-	ValidateFunc func(word string) bool
-}
+type mockWordValidator func(word string) bool
 
-func (wc mockWordValidator) Validate(word string) bool {
-	return wc.ValidateFunc(word)
+func (m mockWordValidator) Validate(word string) bool {
+	return m(word)
 }
 
 type mockUserDao struct {
 	UpdatePointsIncrementFunc func(ctx context.Context, userPoints map[string]int) error
 }
 
-func (ud mockUserDao) UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error {
-	return ud.UpdatePointsIncrementFunc(ctx, userPoints)
+func (m mockUserDao) UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error {
+	return m.UpdatePointsIncrementFunc(ctx, userPoints)
 }

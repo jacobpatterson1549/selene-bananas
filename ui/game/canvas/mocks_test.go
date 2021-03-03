@@ -12,34 +12,34 @@ type mockContext struct {
 	StrokeRectFunc     func(x, y, width, height int)
 }
 
-func (ctx *mockContext) SetFont(name string) {
-	ctx.SetFontFunc(name)
+func (m *mockContext) SetFont(name string) {
+	m.SetFontFunc(name)
 }
 
-func (ctx *mockContext) SetLineWidth(width float64) {
-	ctx.SetLineWidthFunc(width)
+func (m *mockContext) SetLineWidth(width float64) {
+	m.SetLineWidthFunc(width)
 }
 
-func (ctx *mockContext) SetFillColor(name string) {
-	ctx.SetFillColorFunc(name)
+func (m *mockContext) SetFillColor(name string) {
+	m.SetFillColorFunc(name)
 }
 
-func (ctx *mockContext) SetStrokeColor(name string) {
-	ctx.SetStrokeColorFunc(name)
+func (m *mockContext) SetStrokeColor(name string) {
+	m.SetStrokeColorFunc(name)
 }
 
-func (ctx *mockContext) FillText(text string, x, y int) {
-	ctx.FillTextFunc(text, x, y)
+func (m *mockContext) FillText(text string, x, y int) {
+	m.FillTextFunc(text, x, y)
 }
 
-func (ctx *mockContext) ClearRect(x, y, width, height int) {
-	ctx.ClearRectFunc(x, y, width, height)
+func (m *mockContext) ClearRect(x, y, width, height int) {
+	m.ClearRectFunc(x, y, width, height)
 }
 
-func (ctx *mockContext) FillRect(x, y, width, height int) {
-	ctx.FillRectFunc(x, y, width, height)
+func (m *mockContext) FillRect(x, y, width, height int) {
+	m.FillRectFunc(x, y, width, height)
 }
 
-func (ctx *mockContext) StrokeRect(x, y, width, height int) {
-	ctx.StrokeRectFunc(x, y, width, height)
+func (m *mockContext) StrokeRect(x, y, width, height int) {
+	m.StrokeRectFunc(x, y, width, height)
 }
