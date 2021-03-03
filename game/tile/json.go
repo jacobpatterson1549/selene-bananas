@@ -5,7 +5,13 @@ import (
 	"errors"
 )
 
-// UnmarshalJSON has special handling to unmarshalling tiles from strings.
+// MarshalJSON implements the encoding/json.Marshaler interface to marshal letters into strings.
+func (l Letter) MarshalJSON() ([]byte, error) {
+	letterString := string(l)
+	return json.Marshal(letterString)
+}
+
+// UnmarshalJSON implements the encoding/json.UnMarshaler interface to unmarshal letters from strings.
 func (l *Letter) UnmarshalJSON(b []byte) error {
 	var s string
 	err := json.Unmarshal(b, &s)

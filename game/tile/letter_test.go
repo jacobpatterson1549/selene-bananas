@@ -19,17 +19,17 @@ func TestNewLetter(t *testing.T) {
 		},
 		{
 			ch:     'A',
-			want:   "A",
+			want:   'A',
 			wantOk: true,
 		},
 		{
 			ch:     'Z',
-			want:   "Z",
+			want:   'Z',
 			wantOk: true,
 		},
 		{
 			ch:     'L',
-			want:   "L",
+			want:   'L',
 			wantOk: true,
 		},
 	}

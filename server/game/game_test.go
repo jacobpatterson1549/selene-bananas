@@ -504,8 +504,8 @@ func TestInitializeUnusedTilesShuffled(t *testing.T) {
 		want      tile.Letter
 		inReverse string
 	}{
-		{"A", ""},
-		{"Z", " IN REVERSE"},
+		{'A', ""},
+		{'Z', " IN REVERSE"},
 	}
 	for _, test := range createTilesShuffledTests {
 		g := Game{
@@ -545,12 +545,12 @@ func TestInitializeUnusedTiles(t *testing.T) {
 		{
 			tileLetters: "AAABAC",
 			want: []tile.Tile{
-				{ID: 6, Ch: "C"},
-				{ID: 4, Ch: "B"},
-				{ID: 1, Ch: "A"},
-				{ID: 2, Ch: "A"},
-				{ID: 3, Ch: "A"},
-				{ID: 5, Ch: "A"},
+				{ID: 6, Ch: 'C'},
+				{ID: 4, Ch: 'B'},
+				{ID: 1, Ch: 'A'},
+				{ID: 2, Ch: 'A'},
+				{ID: 3, Ch: 'A'},
+				{ID: 5, Ch: 'A'},
 			},
 		},
 	}
@@ -1306,8 +1306,8 @@ func TestCheckPlayerBoard(t *testing.T) {
 		{ // check words error
 			Player: playerController.Player{
 				Board: board.New(nil, []tile.Position{
-					{Tile: tile.Tile{ID: 2, Ch: "Q"}, X: 3, Y: 4},
-					{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 4, Y: 4},
+					{Tile: tile.Tile{ID: 2}, X: 3, Y: 4},
+					{Tile: tile.Tile{ID: 3}, X: 4, Y: 4},
 				}),
 			},
 			WordValidator: mockWordValidator{
@@ -1336,8 +1336,8 @@ func TestCheckPlayerBoard(t *testing.T) {
 			Player: playerController.Player{
 				WinPoints: 3,
 				Board: board.New(nil, []tile.Position{
-					{Tile: tile.Tile{ID: 2, Ch: "Q"}, X: 3, Y: 4},
-					{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 4, Y: 4},
+					{Tile: tile.Tile{ID: 2, Ch: 'Q'}, X: 3, Y: 4},
+					{Tile: tile.Tile{ID: 3, Ch: 'X'}, X: 4, Y: 4},
 				}),
 			},
 			checkWords: true,
@@ -1354,8 +1354,8 @@ func TestCheckPlayerBoard(t *testing.T) {
 			Player: playerController.Player{
 				WinPoints: 8,
 				Board: board.New(nil, []tile.Position{
-					{Tile: tile.Tile{ID: 2, Ch: "Q"}, X: 3, Y: 4},
-					{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 4, Y: 4},
+					{Tile: tile.Tile{ID: 2, Ch: 'Q'}, X: 3, Y: 4},
+					{Tile: tile.Tile{ID: 3, Ch: 'X'}, X: 4, Y: 4},
 				}),
 			},
 			WordValidator: mockWordValidator{
@@ -1458,11 +1458,11 @@ func TestCheckWords(t *testing.T) {
 		wantOk        bool
 		wantUsedWords []string
 	}{
-		{ // duplicate words (XQ)
+		{
 			Board: board.New(nil, []tile.Position{
-				{Tile: tile.Tile{ID: 1, Ch: "Q"}, X: 2, Y: 2},
-				{Tile: tile.Tile{ID: 2, Ch: "X"}, X: 1, Y: 2},
-				{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 2, Y: 1}, // y coordinates are inverted (upperleft-> down)
+				{X: 2, Y: 2},
+				{X: 1, Y: 2},
+				{X: 2, Y: 1}, // y coordinates are inverted (upperleft-> down)
 			}),
 			WordValidator: mockWordValidator{
 				ValidateFunc: func(word string) bool {
@@ -1475,14 +1475,14 @@ func TestCheckWords(t *testing.T) {
 				MinLength: 3,
 			},
 			Board: board.New(nil, []tile.Position{
-				{Tile: tile.Tile{ID: 1, Ch: "Q"}, X: 2, Y: 2},
-				{Tile: tile.Tile{ID: 2, Ch: "X"}, X: 1, Y: 2},
+				{X: 2, Y: 2},
+				{X: 1, Y: 2},
 			}),
 		},
 		{ // word validator error
 			Board: board.New(nil, []tile.Position{
-				{Tile: tile.Tile{ID: 1, Ch: "Q"}, X: 2, Y: 2},
-				{Tile: tile.Tile{ID: 2, Ch: "X"}, X: 1, Y: 2},
+				{X: 2, Y: 2},
+				{X: 1, Y: 2},
 			}),
 			WordValidator: mockWordValidator{
 				ValidateFunc: func(word string) bool {
@@ -1495,9 +1495,9 @@ func TestCheckWords(t *testing.T) {
 				AllowDuplicates: true,
 			},
 			Board: board.New(nil, []tile.Position{
-				{Tile: tile.Tile{ID: 1, Ch: "Q"}, X: 2, Y: 2},
-				{Tile: tile.Tile{ID: 2, Ch: "X"}, X: 1, Y: 2},
-				{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 2, Y: 1}, // y coordinates are inverted (upperleft-> down)
+				{Tile: tile.Tile{ID: 1, Ch: 'Q'}, X: 2, Y: 2},
+				{Tile: tile.Tile{ID: 2, Ch: 'X'}, X: 1, Y: 2},
+				{Tile: tile.Tile{ID: 3, Ch: 'X'}, X: 2, Y: 1}, // y coordinates are inverted (upperleft-> down)
 			}),
 			WordValidator: mockWordValidator{
 				ValidateFunc: func(word string) bool {
@@ -1583,6 +1583,11 @@ func TestHandleGameFinish(t *testing.T) {
 						Board: &board.Board{},
 					},
 				},
+				WordValidator: mockWordValidator{
+					ValidateFunc: func(word string) bool {
+						return true
+					},
+				},
 			},
 			wantOk: true,
 		},
@@ -1601,6 +1606,11 @@ func TestHandleGameFinish(t *testing.T) {
 					},
 					"barney": {
 						Board: &board.Board{},
+					},
+				},
+				WordValidator: mockWordValidator{
+					ValidateFunc: func(word string) bool {
+						return true
 					},
 				},
 			},
@@ -1709,8 +1719,8 @@ func TestHandleGameSnag(t *testing.T) {
 				players: map[player.Name]*playerController.Player{
 					"selene": {
 						Board: board.New(nil, []tile.Position{
-							{Tile: tile.Tile{ID: 2, Ch: "Q"}, X: 3, Y: 4},
-							{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 4, Y: 4},
+							{X: 3, Y: 4},
+							{X: 4, Y: 4},
 						}),
 					},
 				},
@@ -1978,15 +1988,15 @@ func TestHandleGameSwap(t *testing.T) {
 			Message: message.Message{
 				PlayerName: "shaggy",
 				Game: &game.Info{
-					Board: board.New([]tile.Tile{{ID: 13, Ch: "D"}}, nil),
+					Board: board.New([]tile.Tile{{ID: 13, Ch: 'D'}}, nil),
 				},
 			},
 			Game: Game{
 				status:      game.InProgress,
-				unusedTiles: []tile.Tile{{ID: 6, Ch: "E"}, {ID: 17, Ch: "B"}, {ID: 8, Ch: "A"}, {ID: 4, Ch: "F"}},
+				unusedTiles: []tile.Tile{{ID: 6, Ch: 'E'}, {ID: 17, Ch: 'B'}, {ID: 8, Ch: 'A'}, {ID: 4, Ch: 'F'}},
 				players: map[player.Name]*playerController.Player{
 					"shaggy": {
-						Board: board.New([]tile.Tile{{ID: 13, Ch: "D"}}, nil),
+						Board: board.New([]tile.Tile{{ID: 13, Ch: 'D'}}, nil),
 					},
 					"daphine": nil,
 					"fred":    nil,
@@ -2002,21 +2012,21 @@ func TestHandleGameSwap(t *testing.T) {
 			},
 			wantOk:        true,
 			wantTilesLeft: 2,
-			wantBoard:     board.New([]tile.Tile{{ID: 4, Ch: "F"}, {ID: 6, Ch: "E"}, {ID: 8, Ch: "A"}}, nil),
+			wantBoard:     board.New([]tile.Tile{{ID: 4, Ch: 'F'}, {ID: 6, Ch: 'E'}, {ID: 8, Ch: 'A'}}, nil),
 		},
 		{ // 2 tiles left, 1 player, shuffle alphabetically
 			Message: message.Message{
 				PlayerName: "selene",
 				Game: &game.Info{
-					Board: board.New([]tile.Tile{{ID: 3, Ch: "D"}}, nil),
+					Board: board.New([]tile.Tile{{ID: 3, Ch: 'D'}}, nil),
 				},
 			},
 			Game: Game{
 				status:      game.InProgress,
-				unusedTiles: []tile.Tile{{ID: 6, Ch: "E"}, {ID: 8, Ch: "A"}},
+				unusedTiles: []tile.Tile{{ID: 6, Ch: 'E'}, {ID: 8, Ch: 'A'}},
 				players: map[player.Name]*playerController.Player{
 					"selene": {
-						Board: board.New([]tile.Tile{{ID: 3, Ch: "D"}}, nil),
+						Board: board.New([]tile.Tile{{ID: 3, Ch: 'D'}}, nil),
 					},
 				},
 				Config: Config{
@@ -2028,7 +2038,7 @@ func TestHandleGameSwap(t *testing.T) {
 				},
 			},
 			wantOk:    true,
-			wantBoard: board.New([]tile.Tile{{ID: 8, Ch: "A"}, {ID: 3, Ch: "D"}, {ID: 6, Ch: "E"}}, nil),
+			wantBoard: board.New([]tile.Tile{{ID: 8, Ch: 'A'}, {ID: 3, Ch: 'D'}, {ID: 6, Ch: 'E'}}, nil),
 		},
 		{ // 1 tile left, 1 player.  Because there is only one tile left, the player will get back the tile they swapped because they always get up to three tiles
 			Message: message.Message{
@@ -2158,20 +2168,20 @@ func TestHandleGameTilesMoved(t *testing.T) {
 				PlayerName: "selene",
 				Game: &game.Info{
 					Board: board.New(nil, []tile.Position{
-						{Tile: tile.Tile{ID: 8, Ch: "D"}, X: 7, Y: 4},
+						{Tile: tile.Tile{ID: 8}, X: 7, Y: 4},
 					}),
 				},
 			},
 			Board: &board.Board{
 				Config:       board.Config{NumRows: 10, NumCols: 10},
-				UsedTiles:    map[tile.ID]tile.Position{8: {Tile: tile.Tile{ID: 8, Ch: "D"}, X: 17, Y: 3}},
-				UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{17: {3: {ID: 8, Ch: "D"}}},
+				UsedTiles:    map[tile.ID]tile.Position{8: {Tile: tile.Tile{ID: 8}, X: 17, Y: 3}},
+				UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{17: {3: {ID: 8}}},
 			},
 			wantOk: true,
 			want: &board.Board{
 				Config:       board.Config{NumRows: 10, NumCols: 10},
-				UsedTiles:    map[tile.ID]tile.Position{8: {Tile: tile.Tile{ID: 8, Ch: "D"}, X: 7, Y: 4}},
-				UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{7: {4: {ID: 8, Ch: "D"}}},
+				UsedTiles:    map[tile.ID]tile.Position{8: {Tile: tile.Tile{ID: 8}, X: 7, Y: 4}},
+				UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{7: {4: {ID: 8}}},
 			},
 		},
 	}
@@ -2331,7 +2341,7 @@ func TestResizeBoard(t *testing.T) {
 			},
 			playerBoard: *board.New(nil, []tile.Position{
 				{
-					Tile: tile.Tile{ID: 1, Ch: "A"},
+					Tile: tile.Tile{ID: 1},
 					X:    100,
 					Y:    100,
 				},
@@ -2339,7 +2349,7 @@ func TestResizeBoard(t *testing.T) {
 			want: message.Message{
 				PlayerName: "fred",
 				Game: &game.Info{
-					Board:   board.New([]tile.Tile{{ID: 1, Ch: "A"}}, nil),
+					Board:   board.New([]tile.Tile{{ID: 1}}, nil),
 					Players: []string{"barney", "fred"},
 					Config:  &game.Config{},
 				},

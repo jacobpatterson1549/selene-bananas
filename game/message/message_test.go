@@ -37,19 +37,19 @@ func TestMessageJSON(t *testing.T) {
 			j: `{"type":5,"info":"Selene started the game."}`,
 		},
 		{
-			m: Message{Type: 7, Info: "Selene snagged a tile.  You got a 'X'.", Game: &game.Info{Board: newBoard([]tile.Tile{{ID: 7, Ch: "X"}}, nil, nil)}},
+			m: Message{Type: 7, Info: "Selene snagged a tile.  You got a 'X'.", Game: &game.Info{Board: newBoard([]tile.Tile{{ID: 7, Ch: 'X'}}, nil, nil)}},
 			j: `{"type":7,"info":"Selene snagged a tile.  You got a 'X'.","game":{"board":{"tiles":[{"id":7,"ch":"X"}]}}}`,
 		},
 		{
-			m: Message{Type: 7, Game: &game.Info{Board: newBoard([]tile.Tile{{ID: 9, Ch: "Q"}}, nil, nil)}},
+			m: Message{Type: 7, Game: &game.Info{Board: newBoard([]tile.Tile{{ID: 9, Ch: 'Q'}}, nil, nil)}},
 			j: `{"type":7,"game":{"board":{"tiles":[{"id":9,"ch":"Q"}]}}}`,
 		},
 		{
-			m: Message{Type: 8, Info: "Selene swapped a 'Q' for ['A','B','C'].", Game: &game.Info{Board: newBoard([]tile.Tile{{ID: 3, Ch: "A"}, {ID: 1, Ch: "B"}, {ID: 7, Ch: "C"}}, nil, nil)}},
+			m: Message{Type: 8, Info: "Selene swapped a 'Q' for ['A','B','C'].", Game: &game.Info{Board: newBoard([]tile.Tile{{ID: 3, Ch: 'A'}, {ID: 1, Ch: 'B'}, {ID: 7, Ch: 'C'}}, nil, nil)}},
 			j: `{"type":8,"info":"Selene swapped a 'Q' for ['A','B','C'].","game":{"board":{"tiles":[{"id":3,"ch":"A"},{"id":1,"ch":"B"},{"id":7,"ch":"C"}]}}}`,
 		},
 		{
-			m: Message{Type: 9, Game: &game.Info{Board: newBoard(nil, []tile.Position{{Tile: tile.Tile{ID: 8, Ch: "R"}, X: 4, Y: 46}}, nil)}},
+			m: Message{Type: 9, Game: &game.Info{Board: newBoard(nil, []tile.Position{{Tile: tile.Tile{ID: 8, Ch: 'R'}, X: 4, Y: 46}}, nil)}},
 			j: `{"type":9,"game":{"board":{"tilePositions":[{"t":{"id":8,"ch":"R"},"x":4,"y":46}]}}}`,
 		},
 		{

@@ -3,7 +3,7 @@ package tile
 import "errors"
 
 // Letter is the value of a tile.
-type Letter string
+type Letter rune
 
 // newLetter creates a letter from the rune.
 func newLetter(r rune) (*Letter, error) {

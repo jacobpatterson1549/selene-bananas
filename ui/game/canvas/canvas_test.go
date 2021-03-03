@@ -90,15 +90,15 @@ func TestDrawTile(t *testing.T) {
 func TestCalculateSelectedUnusedTiles(t *testing.T) {
 	ta := tile.Tile{
 		ID: 11,
-		Ch: "A",
+		Ch: 'A',
 	}
 	tb := tile.Tile{
 		ID: 22,
-		Ch: "B",
+		Ch: 'B',
 	}
 	tc := tile.Tile{
 		ID: 33,
-		Ch: "C",
+		Ch: 'C',
 	}
 	c := Canvas{
 		draw: drawMetrics{

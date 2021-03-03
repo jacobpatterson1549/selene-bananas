@@ -6,14 +6,26 @@ import (
 )
 
 func TestMarshalLetter(t *testing.T) {
-	l := Letter('X')
-	want := `"X"`
-	got, err := json.Marshal(l)
-	switch {
-	case err != nil:
-		t.Errorf("unwanted error: %v", err)
-	case want != string(got):
-		t.Errorf("wanted %v, got %v", want, string(got))
+	marshalLetterTests := []struct {
+		Letter
+		want string
+	}{
+		{
+			want: `"\u0000"`,
+		},
+		{
+			Letter: 'X',
+			want:   `"X"`,
+		},
+	}
+	for i, test := range marshalLetterTests {
+		got, err := json.Marshal(test.Letter)
+		switch {
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case test.want != string(got):
+			t.Errorf("Test %v: wanted %v, got %v", i, test.want, string(got))
+		}
 	}
 }
 
@@ -37,17 +49,17 @@ func TestUnmarshalLetter(t *testing.T) {
 		},
 		{
 			json:   `"A"`,
-			want:   "A",
+			want:   'A',
 			wantOk: true,
 		},
 		{
 			json:   `"Z"`,
-			want:   "Z",
+			want:   'Z',
 			wantOk: true,
 		},
 		{
 			json:   `"X"`,
-			want:   "X",
+			want:   'X',
 			wantOk: true,
 		},
 	}
