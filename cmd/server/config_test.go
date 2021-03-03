@@ -9,7 +9,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	databaseController "github.com/jacobpatterson1549/selene-bananas/db/sql"
+	"github.com/jacobpatterson1549/selene-bananas/db"
 )
 
 // init registers a mock driver that does nothing when executing transactions
@@ -72,14 +72,14 @@ func TestNewServer(t *testing.T) {
 	}
 	ctx := context.Background()
 	log := log.New(io.Discard, "", 0)
-	db := databaseController.Database{}
+	db := db.Database{}
 	e := embeddedData{
 		Version:    "1",
 		Words:      "apple\nbanana\ncarrot",
 		StaticFS:   fstest.MapFS{},
 		TemplateFS: fstest.MapFS{"file": &fstest.MapFile{}},
 	}
-	s, err := m.createServer(ctx, log, db, e)
+	s, err := m.createServer(ctx, log, &db, e)
 	switch {
 	case err != nil:
 		t.Errorf("unwanted error: %v", err)

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
-	databaseController "github.com/jacobpatterson1549/selene-bananas/db/sql"
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
@@ -25,13 +24,13 @@ import (
 )
 
 // createDatabase creates and sets up the database.
-func (m mainFlags) createDatabase(ctx context.Context, driverName string, e embeddedData) (db.Database, error) {
+func (m mainFlags) createDatabase(ctx context.Context, driverName string, e embeddedData) (*db.Database, error) {
 	cfg := m.sqlDatabaseConfig()
-	db, err := sql.Open(driverName, m.databaseURL)
+	sqlDB, err := sql.Open(driverName, m.databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("opening database %w", err)
 	}
-	sqlDB, err := cfg.NewDatabase(db)
+	db, err := cfg.NewDatabase(sqlDB)
 	if err != nil {
 		return nil, fmt.Errorf("creating SQL database: %w", err)
 	}
@@ -39,14 +38,14 @@ func (m mainFlags) createDatabase(ctx context.Context, driverName string, e embe
 	if err != nil {
 		return nil, err
 	}
-	if err := sqlDB.Setup(ctx, setupSQL); err != nil {
+	if err := db.Setup(ctx, setupSQL); err != nil {
 		return nil, fmt.Errorf("setting up SQL database: %w", err)
 	}
-	return sqlDB, nil
+	return db, nil
 }
 
 // createServer creates the server.
-func (m mainFlags) createServer(ctx context.Context, log *log.Logger, db db.Database, e embeddedData) (*server.Server, error) {
+func (m mainFlags) createServer(ctx context.Context, log *log.Logger, db *db.Database, e embeddedData) (*server.Server, error) {
 	timeFunc := func() int64 {
 		return time.Now().UTC().Unix()
 	}
@@ -137,8 +136,8 @@ func (mainFlags) tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
 }
 
 // sqlDatabase creates the configuration for a SQL database to persist user information.
-func (m mainFlags) sqlDatabaseConfig() databaseController.Config {
-	cfg := databaseController.Config{
+func (m mainFlags) sqlDatabaseConfig() db.Config {
+	cfg := db.Config{
 		QueryPeriod: 5 * time.Second,
 	}
 	return cfg

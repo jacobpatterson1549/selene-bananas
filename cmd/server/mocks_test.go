@@ -1,6 +1,12 @@
 package main
 
-import "database/sql/driver"
+import (
+	"context"
+	"database/sql/driver"
+	"io"
+
+	"github.com/jacobpatterson1549/selene-bananas/db"
+)
 
 // mockDriver implements the sql/driver.Driver interface.
 type mockDriver struct {
@@ -66,4 +72,22 @@ func (m mockStmt) Exec(args []driver.Value) (driver.Result, error) {
 
 func (m mockStmt) Query(args []driver.Value) (driver.Rows, error) {
 	return m.QueryFunc(args)
+}
+
+type mockDatabase struct {
+	SetupFunc func(ctx context.Context, files []io.Reader) error
+	QueryFunc func(ctx context.Context, q db.Query) db.Scanner
+	ExecFunc  func(ctx context.Context, queries ...db.Query) error
+}
+
+func (m mockDatabase) Setup(ctx context.Context, files []io.Reader) error {
+	return m.SetupFunc(ctx, files)
+}
+
+func (m mockDatabase) Query(ctx context.Context, q db.Query) db.Scanner {
+	return m.QueryFunc(ctx, q)
+}
+
+func (m mockDatabase) Exec(ctx context.Context, queries ...db.Query) error {
+	return m.ExecFunc(ctx, queries...)
 }

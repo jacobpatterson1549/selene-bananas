@@ -1,4 +1,4 @@
-package sql
+package db
 
 import (
 	"fmt"
@@ -6,6 +6,14 @@ import (
 )
 
 type (
+	// Query is a message that is sent to the database.
+	Query interface {
+		// cmd is the injection-safe message to send to the database.
+		Cmd() string
+		// args are the user-provided properties of the messages which shuld be escaped.
+		Args() []interface{}
+	}
+
 	// QueryFunction is a db Query that reads data.
 	QueryFunction struct {
 		name      string

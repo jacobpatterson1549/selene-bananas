@@ -11,7 +11,7 @@ import (
 
 func TestNewDao(t *testing.T) {
 	newDaoTests := []struct {
-		db     db.Database
+		db     Database
 		wantOk bool
 	}{
 		{},

@@ -3,31 +3,43 @@ package user
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
-	"github.com/jacobpatterson1549/selene-bananas/db/sql"
 )
 
-// Dao contains CRUD operations for user-related information.
-type Dao struct {
-	db db.Database
-}
+type (
+	// Dao contains CRUD operations for user-related information.
+	Dao struct {
+		db Database
+	}
+
+	// Database contains methods to create, read, update, and delete data.
+	Database interface {
+		// Setup initializes the database by reading the files.
+		Setup(ctx context.Context, files []io.Reader) error
+		// Query reads from the database without updating it.
+		Query(ctx context.Context, q db.Query) db.Scanner
+		// Exec makes a change to existing data, creating/modifying/removing it.
+		Exec(ctx context.Context, queries ...db.Query) error
+	}
+)
 
 // NewDao creates a Dao on the specified database.
-func NewDao(database db.Database) (*Dao, error) {
-	if err := validate(database); err != nil {
+func NewDao(db Database) (*Dao, error) {
+	if err := validate(db); err != nil {
 		return nil, fmt.Errorf("creating user dao: validation: %w", err)
 	}
 	d := Dao{
-		db: database,
+		db: db,
 	}
 	return &d, nil
 }
 
 // validate checks fields to set up the dao.
-func validate(database db.Database) error {
+func validate(db Database) error {
 	switch {
-	case database == nil:
+	case db == nil:
 		return fmt.Errorf("database required")
 	}
 	return nil
@@ -39,7 +51,7 @@ func (d Dao) Create(ctx context.Context, u User) error {
 	if err != nil {
 		return err
 	}
-	q := sql.NewExecFunction("user_create", u.Username, hashedPassword)
+	q := db.NewExecFunction("user_create", u.Username, hashedPassword)
 	if err := d.db.Exec(ctx, q); err != nil {
 		return fmt.Errorf("creating user: %w", err)
 	}
@@ -53,7 +65,7 @@ func (d Dao) Read(ctx context.Context, u User) (*User, error) {
 		"password",
 		"points",
 	}
-	q := sql.NewQueryFunction("user_read", cols, u.Username)
+	q := db.NewQueryFunction("user_read", cols, u.Username)
 	row := d.db.Query(ctx, q)
 	var u2 User
 	if err := row.Scan(&u2.Username, &u2.password, &u2.Points); err != nil {
@@ -83,7 +95,7 @@ func (d Dao) UpdatePassword(ctx context.Context, u User, newP string) error {
 	if err != nil {
 		return err
 	}
-	q := sql.NewExecFunction("user_update_password", u.Username, hashedPassword)
+	q := db.NewExecFunction("user_update_password", u.Username, hashedPassword)
 	if err := d.db.Exec(ctx, q); err != nil {
 		return fmt.Errorf("updating user password: %w", err)
 	}
@@ -94,7 +106,7 @@ func (d Dao) UpdatePassword(ctx context.Context, u User, newP string) error {
 func (d Dao) UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error {
 	queries := make([]db.Query, 0, len(userPoints))
 	for username, points := range userPoints {
-		queries = append(queries, sql.NewExecFunction("user_update_points_increment", username, points))
+		queries = append(queries, db.NewExecFunction("user_update_points_increment", username, points))
 	}
 	if err := d.db.Exec(ctx, queries...); err != nil {
 		return fmt.Errorf("incrementing user points: %w", err)
@@ -107,7 +119,7 @@ func (d Dao) Delete(ctx context.Context, u User) error {
 	if _, err := d.Read(ctx, u); err != nil {
 		return fmt.Errorf("checking password: %w", err)
 	}
-	q := sql.NewExecFunction("user_delete", u.Username)
+	q := db.NewExecFunction("user_delete", u.Username)
 	if err := d.db.Exec(ctx, q); err != nil {
 		return fmt.Errorf("deleting user: %w", err)
 	}

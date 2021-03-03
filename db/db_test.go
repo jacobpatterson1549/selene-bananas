@@ -1,4 +1,4 @@
-package sql
+package db
 
 import (
 	"context"
@@ -10,8 +10,6 @@ import (
 	"testing"
 	"testing/iotest"
 	"time"
-
-	"github.com/jacobpatterson1549/selene-bananas/db"
 )
 
 var mockDriver *MockDriver
@@ -329,7 +327,7 @@ func TestDatabaseExec(t *testing.T) {
 		mockDriver.OpenFunc = func(name string) (driver.Conn, error) {
 			return mockConn, nil
 		}
-		var q db.Query
+		var q Query
 		switch {
 		case test.rawQuery:
 			q = RawQuery("CREATE TABLE hobbits ( full_name VARCHAR(64) );")
