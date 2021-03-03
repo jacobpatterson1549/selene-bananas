@@ -284,12 +284,14 @@ func (b Board) canLeaveUsedTiles(movedTileIDs map[tile.ID]struct{}, movedTilePos
 	return true
 }
 
-// HasSingleUsedGroup determines if the player's tiles form a single group,
-// with all tiles connected via immediate horizontal and vertical neighbors
-func (b *Board) HasSingleUsedGroup() bool {
-	if len(b.UsedTiles) == 0 {
-		return false
-	}
+// CanBeFinished determines if all the bord's tiles are used and form a single group.
+func (b *Board) CanBeFinished() bool {
+	return len(b.UnusedTiles) == 0 && b.hasSingleUsedGroup()
+}
+
+// hasSingleUsedGroup determines if the player's tiles form a single group (or none),
+// with all tiles connected via immediate horizontal and vertical neighbors.
+func (b *Board) hasSingleUsedGroup() bool {
 	seenTileIds := make(map[tile.ID]struct{})
 	for x, yTiles := range b.UsedTileLocs {
 		for y, t := range yTiles {

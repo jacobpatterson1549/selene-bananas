@@ -368,7 +368,7 @@ func (g *Game) checkPlayerBoard(pn player.Name, checkWords bool) ([]string, erro
 	switch {
 	case len(p.Board.UnusedTiles) != 0:
 		errText = "not all tiles used"
-	case !p.Board.HasSingleUsedGroup():
+	case !p.Board.CanBeFinished():
 		errText = "not all used tiles form a single group"
 	case checkWords:
 		var err error

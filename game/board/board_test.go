@@ -242,13 +242,21 @@ func TestUsedWords(t *testing.T) {
 	}
 }
 
-func TestSingleUsedGroup(t *testing.T) {
-	singleUsedGroupTests := []struct {
+func TestCanBeFinished(t *testing.T) {
+	canBeFinishedTests := []struct {
+		unusedTiles  map[tile.ID]tile.Tile
 		usedTiles    map[tile.ID]tile.Position
 		usedTileLocs map[tile.X]map[tile.Y]tile.Tile
 		want         bool
 	}{
-		{
+		{ // no groups
+			want: true,
+		},
+		{ // no groups, but not all tiles used
+			unusedTiles: map[tile.ID]tile.Tile{1: {}},
+			want:        false,
+		},
+		{ // one group
 			usedTiles: map[tile.ID]tile.Position{
 				5: {Tile: tile.Tile{ID: 5, Ch: "A"}, X: 7, Y: 2},
 				4: {Tile: tile.Tile{ID: 4, Ch: "B"}, X: 7, Y: 3},
@@ -261,7 +269,7 @@ func TestSingleUsedGroup(t *testing.T) {
 			},
 			want: true,
 		},
-		{
+		{ // two groups of one tile
 			usedTiles: map[tile.ID]tile.Position{
 				5: {Tile: tile.Tile{ID: 5, Ch: "A"}, X: 7, Y: 2},
 				4: {Tile: tile.Tile{ID: 4, Ch: "B"}, X: 7, Y: 4},
@@ -274,7 +282,7 @@ func TestSingleUsedGroup(t *testing.T) {
 			},
 			want: false,
 		},
-		{
+		{ // one larger group
 			usedTiles: map[tile.ID]tile.Position{
 				1: {Tile: tile.Tile{ID: 1, Ch: "C"}, X: 1, Y: 1},
 				2: {Tile: tile.Tile{ID: 2, Ch: "O"}, X: 2, Y: 1},
@@ -301,10 +309,10 @@ func TestSingleUsedGroup(t *testing.T) {
 			},
 			want: true,
 		},
-		{},
 	}
-	for i, test := range singleUsedGroupTests {
+	for i, test := range canBeFinishedTests {
 		b := Board{
+			UnusedTiles:  test.unusedTiles,
 			UsedTiles:    test.usedTiles,
 			UsedTileLocs: test.usedTileLocs,
 			Config: Config{
@@ -312,7 +320,7 @@ func TestSingleUsedGroup(t *testing.T) {
 				NumRows: 5,
 			},
 		}
-		got := b.HasSingleUsedGroup()
+		got := b.CanBeFinished()
 		if test.want != got {
 			t.Errorf("Test %v: wanted: %v, got: %v", i, test.want, got)
 		}
