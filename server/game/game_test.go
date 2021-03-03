@@ -325,7 +325,7 @@ func TestRunSync(t *testing.T) {
 				},
 			}
 			g := Game{
-				status: 0, // this should casue a gameWarning error
+				status: 0, // this should cause a gameWarning error
 				players: map[player.Name]*playerController.Player{
 					"selene": {
 						Board: &board.Board{},
@@ -1895,7 +1895,7 @@ func TestHandleGameSnag(t *testing.T) {
 						t.Errorf("Test %v: wanted tile %v added to player's board in game", i, tile)
 					}
 					if hasTile(test.Game.unusedTiles, tID) {
-						t.Errorf("Test %v: player recieved tileId=%v, but game still has it: %v", i, tID, test.Game.unusedTiles)
+						t.Errorf("Test %v: player received tileId=%v, but game still has it: %v", i, tID, test.Game.unusedTiles)
 					}
 				}
 			case m.Game.Board != nil && test.wantBoards[pn] != nil:
@@ -2099,7 +2099,7 @@ func TestHandleGameSwap(t *testing.T) {
 						t.Errorf("Test %v: wanted tile %v added to player's board in game", i, tile)
 					}
 					if hasTile(test.Game.unusedTiles, tID) {
-						t.Errorf("Test %v: player recieved tileId=%v, but game still has it: %v", i, tID, test.Game.unusedTiles)
+						t.Errorf("Test %v: player received tileId=%v, but game still has it: %v", i, tID, test.Game.unusedTiles)
 					}
 				}
 			case m.Game.Board != nil:
