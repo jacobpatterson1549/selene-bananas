@@ -6,13 +6,12 @@ COPY \
     go.mod \
     go.sum \
     ./
-RUN go mod download \
-    && apt-get update \
-    && apt-get install \
+RUN apt-get update && apt-get install -y \
         --no-install-recommends \
-        -y \
-            nodejs=10.24.0~dfsg-1~deb10u1 \
-            wamerican-large=2018.04.16-1
+        nodejs=10.24.0~dfsg-1~deb10u1 \
+        wamerican-large=2018.04.16-1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && go mod download
 
 # build the server with embedded resources
 COPY \
