@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"sync"
 
@@ -60,4 +61,32 @@ func (m mockLobby) AddUser(username string, w http.ResponseWriter, r *http.Reque
 
 func (m mockLobby) RemoveUser(username string) {
 	m.removeUserFunc(username)
+}
+
+// mockAddr implements the net.Addr interface
+type mockAddr string
+
+func (m mockAddr) Network() string {
+	return string(m) + "_NETWORK"
+}
+
+func (m mockAddr) String() string {
+	return string(m)
+}
+
+// mockListener implements the net.Listener interface
+type mockListener struct {
+	AcceptFunc func() (net.Conn, error)
+	CloseFunc  func() error
+	AddrFunc   func() net.Addr
+}
+
+func (m mockListener) Accept() (net.Conn, error) {
+	return m.AcceptFunc()
+}
+func (m mockListener) Close() error {
+	return m.CloseFunc()
+}
+func (m mockListener) Addr() net.Addr {
+	return m.AddrFunc()
 }

@@ -296,21 +296,15 @@ func (s *Server) serveTCP(svr *http.Server, errC chan<- error, tls bool) (err er
 
 // tlsListener is derived from https://golang.org/src/net/http/server.go to allow key bytes rather than files
 func (s *Server) tlsListener(l net.Listener) (net.Listener, error) {
-	tlsConfig := s.httpServer.TLSConfig
-	switch {
-	case tlsConfig == nil:
-		tlsConfig = &tls.Config{}
-	default:
-		tlsConfig = tlsConfig.Clone()
-	}
-	tlsConfig.NextProtos = append(tlsConfig.NextProtos, "http/1.1")
-	var err error
-	tlsConfig.Certificates = make([]tls.Certificate, 1)
-	tlsConfig.Certificates[0], err = tls.X509KeyPair([]byte(s.TLSCertPEM), []byte(s.TLSKeyPEM))
+	certificate, err := tls.X509KeyPair([]byte(s.TLSCertPEM), []byte(s.TLSKeyPEM))
 	if err != nil {
 		return nil, err
 	}
+	tlsConfig := &tls.Config{}
+	tlsConfig.NextProtos = []string{"http/1.1"}
+	tlsConfig.Certificates = []tls.Certificate{certificate}
 	tlsListener := tls.NewListener(l, tlsConfig)
+	s.httpsServer.TLSConfig = tlsConfig
 	return tlsListener, nil
 }
 
