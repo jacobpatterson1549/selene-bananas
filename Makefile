@@ -1,4 +1,5 @@
 .PHONY: serve serve-tcp clean
+SHELL = /bin/bash -eo pipefail
 
 BUILD_DIR        := build
 RESOURCES_DIR    := resources
