@@ -47,23 +47,23 @@ $(BUILD_DIR)/$(CLIENT_OBJ): $(BUILD_DIR)/$(CLIENT_TEST) | $(BUILD_DIR) $(SERVER_
 	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep cmd/ui \
 		| $(GO_WASM_ARGS) xargs $(GO_BUILD) \
 			-o $(SERVER_EMBED_DIR)/$(STATIC_DIR)/$(@F)
-	touch $@
+		$(LINK) $(SERVER_EMBED_DIR)/$(STATIC_DIR)/$(@F) $@
 
 $(BUILD_DIR)/$(SERVER_TEST): $(SERVER_SRC) $(GENERATE_SRC) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
-		| $(GO_ARGS) xargs $(GO_TEST)
-	touch $@
+		| $(GO_ARGS) xargs $(GO_TEST) \
+		| tee $@
 
 $(BUILD_DIR)/$(CLIENT_TEST): $(CLIENT_SRC) $(GENERATE_SRC) | $(BUILD_DIR)
 	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep ui \
 		| $(GO_WASM_ARGS) xargs $(GO_TEST) \
-			-exec=$(GO_WASM_PATH)/go_js_wasm_exec
-	touch $@
+			-exec=$(GO_WASM_PATH)/go_js_wasm_exec \
+		| tee $@
 
 $(BUILD_DIR)/$(SERVER_BENCHMARK): $(SERVER_SRC) $(GENERATE_SRC) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
 		| $(GO_ARGS) xargs $(GO_BENCH)
-	touch $@
+		| tee $@
 
 $(GENERATE_SRC): | $(SERVER_EMBED_DIR)
 	$(GO_INSTALL)  $(GO_PACKAGES)
@@ -80,7 +80,7 @@ $(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(BU
 		| cut -c -32 \
 		| tee $(SERVER_EMBED_DIR)/$(@F) \
 		| xargs echo $(SERVER_EMBED_DIR)/$(@F) is
-	touch $@
+	$(LINK) $(SERVER_EMBED_DIR)/$(@F) $@
 
 $(BUILD_DIR):
 	mkdir -p $@
