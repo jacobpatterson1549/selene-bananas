@@ -21,8 +21,8 @@ type (
 		games map[game.ID]chan<- message.Message
 		// lastID is the ID of themost recently created game.  The next new game should get a larger ID.
 		lastID game.ID
-		// WordChecker is used to validate players' words when they try to finish the game.
-		wordChecker WordChecker
+		// WordValidator is used to validate players' words when they try to finish the game.
+		WordValidator WordValidator
 		// UserDao increments user points when a game is finished.
 		userDao UserDao
 		// RunnerConfig contains configuration properties of the Runner.
@@ -39,9 +39,9 @@ type (
 		GameConfig Config
 	}
 
-	// WordChecker checks if words are valid.
-	WordChecker interface {
-		Check(word string) bool
+	// WordValidator checks if words are valid.
+	WordValidator interface {
+		Validate(word string) bool
 	}
 
 	// UserDao makes changes to the stored state of users in the game
@@ -52,16 +52,16 @@ type (
 )
 
 // NewRunner creates a new game runner from the config.
-func (cfg RunnerConfig) NewRunner(log *log.Logger, wordChecker WordChecker, userDao UserDao) (*Runner, error) {
-	if err := cfg.validate(log, wordChecker, userDao); err != nil {
+func (cfg RunnerConfig) NewRunner(log *log.Logger, WordValidator WordValidator, userDao UserDao) (*Runner, error) {
+	if err := cfg.validate(log, WordValidator, userDao); err != nil {
 		return nil, fmt.Errorf("creating game runner: validation: %w", err)
 	}
 	m := Runner{
-		log:          log,
-		games:        make(map[game.ID]chan<- message.Message, cfg.MaxGames),
-		RunnerConfig: cfg,
-		wordChecker:  wordChecker,
-		userDao:      userDao,
+		log:           log,
+		games:         make(map[game.ID]chan<- message.Message, cfg.MaxGames),
+		RunnerConfig:  cfg,
+		WordValidator: WordValidator,
+		userDao:       userDao,
 	}
 	return &m, nil
 }
@@ -93,12 +93,12 @@ func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 }
 
 // validate ensures the configuration has no errors.
-func (cfg RunnerConfig) validate(log *log.Logger, wordChecker WordChecker, userDao UserDao) error {
+func (cfg RunnerConfig) validate(log *log.Logger, WordValidator WordValidator, userDao UserDao) error {
 	switch {
 	case log == nil:
 		return fmt.Errorf("log required")
-	case wordChecker == nil:
-		return fmt.Errorf("word checker required")
+	case WordValidator == nil:
+		return fmt.Errorf("word validator required")
 	case userDao == nil:
 		return fmt.Errorf("user dao required")
 	case cfg.MaxGames < 1:
@@ -128,7 +128,7 @@ func (r *Runner) createGame(ctx context.Context, wg *sync.WaitGroup, m message.M
 	id := r.lastID + 1
 	gameCfg := r.GameConfig
 	gameCfg.Config = *m.Game.Config
-	g, err := gameCfg.NewGame(r.log, id, r.wordChecker, r.userDao)
+	g, err := gameCfg.NewGame(r.log, id, r.WordValidator, r.userDao)
 	if err != nil {
 		r.sendError(err, m.PlayerName, out)
 		return

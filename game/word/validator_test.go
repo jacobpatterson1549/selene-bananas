@@ -7,34 +7,34 @@ import (
 	"testing"
 )
 
-func TestNewChecker(t *testing.T) {
-	wordsTests := []struct {
-		wordsToRead string
+func TestNewValidator(t *testing.T) {
+	newValidatorTests := []struct {
+		words string
 		wantWords   []string
 	}{
 		{},
 		{
-			wordsToRead: "   ",
+			words: "   ",
 		},
 		{
-			wordsToRead: "a bad cat",
+			words: "a bad cat",
 			wantWords:   []string{"a", "bad", "cat"},
 		},
 		{
-			wordsToRead: "A man, a plan, a canal, panama!",
+			words: "A man, a plan, a canal, panama!",
 			wantWords:   []string{"a"},
 		},
 		{
-			wordsToRead: "Abc 'words' they're top-secret not.",
+			words: "Abc 'words' they're top-secret not.",
 		},
 	}
-	for i, test := range wordsTests {
-		want := Checker(make(map[string]struct{}, len(test.wantWords)))
+	for i, test := range newValidatorTests {
+		want := Validator(make(map[string]struct{}, len(test.wantWords)))
 		for _, w := range test.wantWords {
 			want[w] = struct{}{}
 		}
-		r := strings.NewReader(test.wordsToRead)
-		c := NewChecker(r)
+		r := strings.NewReader(test.words)
+		c := NewValidator(r)
 		got := *c
 		if !reflect.DeepEqual(want, got) {
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, want, got)
@@ -42,15 +42,15 @@ func TestNewChecker(t *testing.T) {
 	}
 }
 
-// BenchmarkNewChecker loads the words which are expected to be from /usr/share/dict/american-english-large, version 2018.04.16-1.
-func BenchmarkNewChecker(b *testing.B) {
+// BenchmarkNewValidator loads the words which are expected to be from /usr/share/dict/american-english-large, version 2018.04.16-1.
+func BenchmarkNewValidator(b *testing.B) {
 	wordsFile := "/usr/share/dict/american-english-large"
 	f, err := os.Open(wordsFile)
 	if err != nil {
 		b.Fatalf("could not open wordsFile: %v", err)
 	}
 	b.ResetTimer()
-	c := NewChecker(f)
+	c := NewValidator(f)
 	want := 114064
 	got := len(*c)
 	if want != got {
@@ -59,8 +59,8 @@ func BenchmarkNewChecker(b *testing.B) {
 	}
 }
 
-func TestCheck(t *testing.T) {
-	checkTests := []struct {
+func TestValidate(t *testing.T) {
+	validateTests := []struct {
 		word string
 		want bool
 	}{
@@ -84,9 +84,9 @@ func TestCheck(t *testing.T) {
 		},
 	}
 	r := strings.NewReader("apple bat car")
-	c := NewChecker(r)
-	for i, test := range checkTests {
-		got := c.Check(test.word)
+	c := NewValidator(r)
+	for i, test := range validateTests {
+		got := c.Validate(test.word)
 		if test.want != got {
 			t.Errorf("Test %v: wanted %v, but got %v for word %v - valid words are %v", i, test.want, got, test.word, c)
 		}

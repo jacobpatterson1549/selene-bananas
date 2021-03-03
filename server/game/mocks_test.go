@@ -2,12 +2,12 @@ package game
 
 import "context"
 
-type mockWordChecker struct {
-	CheckFunc func(word string) bool
+type mockWordValidator struct {
+	ValidateFunc func(word string) bool
 }
 
-func (wc mockWordChecker) Check(word string) bool {
-	return wc.CheckFunc(word)
+func (wc mockWordValidator) Validate(word string) bool {
+	return wc.ValidateFunc(word)
 }
 
 type mockUserDao struct {

@@ -69,9 +69,9 @@ func (m mainFlags) createServer(ctx context.Context, log *log.Logger, db db.Data
 		return nil, fmt.Errorf("creating socket runner: %w", err)
 	}
 	wordsReader := strings.NewReader(e.Words)
-	wordChecker := word.NewChecker(wordsReader)
+	wordValidator := word.NewValidator(wordsReader)
 	gameRunnerCfg := m.gameRunnerConfig(timeFunc)
-	gameRunner, err := gameRunnerCfg.NewRunner(log, wordChecker, userDao)
+	gameRunner, err := gameRunnerCfg.NewRunner(log, wordValidator, userDao)
 	if err != nil {
 		return nil, fmt.Errorf("creating game runner: %w", err)
 	}

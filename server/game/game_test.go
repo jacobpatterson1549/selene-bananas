@@ -64,9 +64,9 @@ func TestNewGame(t *testing.T) {
 	}
 	for i, test := range newGameTests {
 		id := game.ID(7)
-		var wordChecker mockWordChecker
+		var WordValidator mockWordValidator
 		var userDao mockUserDao
-		got, err := test.Config.NewGame(testLog, id, wordChecker, userDao)
+		got, err := test.Config.NewGame(testLog, id, WordValidator, userDao)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -79,7 +79,7 @@ func TestNewGame(t *testing.T) {
 			got.createdAt != 47,
 			got.status != game.NotStarted,
 			len(got.players) != 0,
-			!reflect.DeepEqual(wordChecker, got.wordChecker),
+			!reflect.DeepEqual(WordValidator, got.WordValidator),
 			!reflect.DeepEqual(userDao, got.userDao),
 			!reflect.DeepEqual(test.Config.TileLetters, got.Config.TileLetters):
 			t.Errorf("Test %v: fields not set", i)
@@ -103,7 +103,7 @@ func TestValidateConfig(t *testing.T) {
 			Config
 			*log.Logger
 			game.ID
-			WordChecker
+			WordValidator
 			UserDao
 			wantOk bool
 		}{
@@ -111,39 +111,39 @@ func TestValidateConfig(t *testing.T) {
 			{ // id  not positive
 				Logger: testLog,
 			},
-			{ // no word checker
+			{ // no word validator
 				Logger: testLog,
 				ID:     1,
 			},
 			{ // no user dao
-				Logger:      testLog,
-				ID:          1,
-				WordChecker: mockWordChecker{},
+				Logger:        testLog,
+				ID:            1,
+				WordValidator: mockWordValidator{},
 			},
 			{ // no time func
-				Logger:      testLog,
-				ID:          1,
-				WordChecker: mockWordChecker{},
-				UserDao:     mockUserDao{},
+				Logger:        testLog,
+				ID:            1,
+				WordValidator: mockWordValidator{},
+				UserDao:       mockUserDao{},
 			},
 			{ // low maxPlayers
 				Config: Config{
 					TimeFunc: timeFunc,
 				},
-				Logger:      testLog,
-				ID:          1,
-				WordChecker: mockWordChecker{},
-				UserDao:     mockUserDao{},
+				Logger:        testLog,
+				ID:            1,
+				WordValidator: mockWordValidator{},
+				UserDao:       mockUserDao{},
 			},
 			{ // low num newTiles
 				Config: Config{
 					TimeFunc:   timeFunc,
 					MaxPlayers: 4,
 				},
-				Logger:      testLog,
-				ID:          1,
-				WordChecker: mockWordChecker{},
-				UserDao:     mockUserDao{},
+				Logger:        testLog,
+				ID:            1,
+				WordValidator: mockWordValidator{},
+				UserDao:       mockUserDao{},
 			},
 			{ // low idle period
 				Config: Config{
@@ -151,10 +151,10 @@ func TestValidateConfig(t *testing.T) {
 					MaxPlayers:  4,
 					NumNewTiles: 16,
 				},
-				Logger:      testLog,
-				ID:          1,
-				WordChecker: mockWordChecker{},
-				UserDao:     mockUserDao{},
+				Logger:        testLog,
+				ID:            1,
+				WordValidator: mockWordValidator{},
+				UserDao:       mockUserDao{},
 			},
 			{ // missing shuffle tiles func
 				Config: Config{
@@ -163,10 +163,10 @@ func TestValidateConfig(t *testing.T) {
 					NumNewTiles: 16,
 					IdlePeriod:  1 * time.Hour,
 				},
-				Logger:      testLog,
-				ID:          1,
-				WordChecker: mockWordChecker{},
-				UserDao:     mockUserDao{},
+				Logger:        testLog,
+				ID:            1,
+				WordValidator: mockWordValidator{},
+				UserDao:       mockUserDao{},
 			},
 			{ // missing shuffle players func
 				Config: Config{
@@ -176,10 +176,10 @@ func TestValidateConfig(t *testing.T) {
 					IdlePeriod:             1 * time.Hour,
 					ShuffleUnusedTilesFunc: shuffleUnusedTilesFunc,
 				},
-				Logger:      testLog,
-				ID:          1,
-				WordChecker: mockWordChecker{},
-				UserDao:     mockUserDao{},
+				Logger:        testLog,
+				ID:            1,
+				WordValidator: mockWordValidator{},
+				UserDao:       mockUserDao{},
 			},
 			{ // too few tiles for one player to start
 				Config: Config{
@@ -191,10 +191,10 @@ func TestValidateConfig(t *testing.T) {
 					ShuffleUnusedTilesFunc: shuffleUnusedTilesFunc,
 					ShufflePlayersFunc:     shufflePlayersFunc,
 				},
-				Logger:      testLog,
-				ID:          1,
-				WordChecker: mockWordChecker{},
-				UserDao:     mockUserDao{},
+				Logger:        testLog,
+				ID:            1,
+				WordValidator: mockWordValidator{},
+				UserDao:       mockUserDao{},
 			},
 			{
 				Config: Config{
@@ -206,15 +206,15 @@ func TestValidateConfig(t *testing.T) {
 					ShuffleUnusedTilesFunc: shuffleUnusedTilesFunc,
 					ShufflePlayersFunc:     shufflePlayersFunc,
 				},
-				Logger:      testLog,
-				ID:          1,
-				WordChecker: mockWordChecker{},
-				UserDao:     mockUserDao{},
-				wantOk:      true,
+				Logger:        testLog,
+				ID:            1,
+				WordValidator: mockWordValidator{},
+				UserDao:       mockUserDao{},
+				wantOk:        true,
 			},
 		}
 		for i, test := range errCheckTests {
-			err := test.Config.validate(test.Logger, test.ID, test.WordChecker, test.UserDao)
+			err := test.Config.validate(test.Logger, test.ID, test.WordValidator, test.UserDao)
 			switch {
 			case !test.wantOk:
 				if err == nil {
@@ -242,7 +242,7 @@ func TestValidateConfig(t *testing.T) {
 		}
 		for i, test := range setTileLettersTests {
 			log := log.New(io.Discard, "", 0)
-			test.Config.validate(log, 1, mockWordChecker{}, mockUserDao{}) // Ignore the error.  This test doesn't care about it.
+			test.Config.validate(log, 1, mockWordValidator{}, mockUserDao{}) // Ignore the error.  This test doesn't care about it.
 			got := test.Config
 			if test.wantTileLetters != got.TileLetters {
 				t.Errorf("Test %v: not equal:\nwanted: %v\ngot:    %v", i, test.wantTileLetters, got.TileLetters)
@@ -1280,7 +1280,7 @@ func TestHandleGameStart(t *testing.T) {
 func TestCheckPlayerBoard(t *testing.T) {
 	checkPlayerBoardTests := []struct {
 		playerController.Player
-		WordChecker
+		WordValidator
 		game.Config
 		checkWords    bool
 		wantWinPoints int
@@ -1310,8 +1310,8 @@ func TestCheckPlayerBoard(t *testing.T) {
 					{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 4, Y: 4},
 				}),
 			},
-			WordChecker: mockWordChecker{
-				CheckFunc: func(word string) bool {
+			WordValidator: mockWordValidator{
+				ValidateFunc: func(word string) bool {
 					return false
 				},
 			},
@@ -1323,8 +1323,8 @@ func TestCheckPlayerBoard(t *testing.T) {
 				Board:     board.New([]tile.Tile{{}}, nil),
 			},
 			wantWinPoints: 9,
-			WordChecker: mockWordChecker{
-				CheckFunc: func(word string) bool {
+			WordValidator: mockWordValidator{
+				ValidateFunc: func(word string) bool {
 					return false
 				},
 			},
@@ -1341,8 +1341,8 @@ func TestCheckPlayerBoard(t *testing.T) {
 				}),
 			},
 			checkWords: true,
-			WordChecker: mockWordChecker{
-				CheckFunc: func(word string) bool {
+			WordValidator: mockWordValidator{
+				ValidateFunc: func(word string) bool {
 					return true
 				},
 			},
@@ -1358,8 +1358,8 @@ func TestCheckPlayerBoard(t *testing.T) {
 					{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 4, Y: 4},
 				}),
 			},
-			WordChecker: mockWordChecker{
-				CheckFunc: func(word string) bool {
+			WordValidator: mockWordValidator{
+				ValidateFunc: func(word string) bool {
 					return false
 				},
 			},
@@ -1377,7 +1377,7 @@ func TestCheckPlayerBoard(t *testing.T) {
 			players: map[player.Name]*playerController.Player{
 				pn: &test.Player,
 			},
-			wordChecker: test.WordChecker,
+			WordValidator: test.WordValidator,
 			Config: Config{
 				Config: test.Config,
 			},
@@ -1454,7 +1454,7 @@ func TestCheckWords(t *testing.T) {
 	checkWordsTests := []struct {
 		game.Config
 		*board.Board
-		WordChecker
+		WordValidator
 		wantOk        bool
 		wantUsedWords []string
 	}{
@@ -1464,8 +1464,8 @@ func TestCheckWords(t *testing.T) {
 				{Tile: tile.Tile{ID: 2, Ch: "X"}, X: 1, Y: 2},
 				{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 2, Y: 1}, // y coordinates are inverted (upperleft-> down)
 			}),
-			WordChecker: mockWordChecker{
-				CheckFunc: func(word string) bool {
+			WordValidator: mockWordValidator{
+				ValidateFunc: func(word string) bool {
 					return true
 				},
 			},
@@ -1479,13 +1479,13 @@ func TestCheckWords(t *testing.T) {
 				{Tile: tile.Tile{ID: 2, Ch: "X"}, X: 1, Y: 2},
 			}),
 		},
-		{ // checker error
+		{ // word validator error
 			Board: board.New(nil, []tile.Position{
 				{Tile: tile.Tile{ID: 1, Ch: "Q"}, X: 2, Y: 2},
 				{Tile: tile.Tile{ID: 2, Ch: "X"}, X: 1, Y: 2},
 			}),
-			WordChecker: mockWordChecker{
-				CheckFunc: func(word string) bool {
+			WordValidator: mockWordValidator{
+				ValidateFunc: func(word string) bool {
 					return false
 				},
 			},
@@ -1499,8 +1499,8 @@ func TestCheckWords(t *testing.T) {
 				{Tile: tile.Tile{ID: 2, Ch: "X"}, X: 1, Y: 2},
 				{Tile: tile.Tile{ID: 3, Ch: "X"}, X: 2, Y: 1}, // y coordinates are inverted (upperleft-> down)
 			}),
-			WordChecker: mockWordChecker{
-				CheckFunc: func(word string) bool {
+			WordValidator: mockWordValidator{
+				ValidateFunc: func(word string) bool {
 					return true
 				},
 			},
@@ -1519,7 +1519,7 @@ func TestCheckWords(t *testing.T) {
 					Board: test.Board,
 				},
 			},
-			wordChecker: test.WordChecker,
+			WordValidator: test.WordValidator,
 		}
 		gotUsedWords, err := g.checkWords(pn)
 		switch {
@@ -1714,8 +1714,8 @@ func TestHandleGameSnag(t *testing.T) {
 						}),
 					},
 				},
-				wordChecker: mockWordChecker{
-					CheckFunc: func(word string) bool {
+				WordValidator: mockWordValidator{
+					ValidateFunc: func(word string) bool {
 						return false
 					},
 				},

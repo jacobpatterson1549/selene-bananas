@@ -18,67 +18,67 @@ import (
 )
 
 func TestNewRunner(t *testing.T) {
-	wc := mockWordChecker{}
+	wc := mockWordValidator{}
 	ud := mockUserDao{}
 	testLog := log.New(io.Discard, "", 0)
 	newRunnerTests := []struct {
 		log *log.Logger
 		RunnerConfig
-		WordChecker
+		WordValidator
 		UserDao
 		wantOk bool
 		want   *Runner
 	}{
 		{}, // no log
-		{ // no word checker
+		{ // no word validater
 			log: testLog,
 		},
 		{ // no user dao
-			log:         testLog,
-			WordChecker: wc,
+			log:           testLog,
+			WordValidator: wc,
 		},
 		{ // low MaxGames
-			log:         testLog,
-			WordChecker: wc,
-			UserDao:     ud,
+			log:           testLog,
+			WordValidator: wc,
+			UserDao:       ud,
 		},
 		{ // low MaxGames
-			log:         testLog,
-			WordChecker: wc,
-			UserDao:     ud,
+			log:           testLog,
+			WordValidator: wc,
+			UserDao:       ud,
 		},
 		{ // ok
-			log:         testLog,
-			WordChecker: wc,
-			UserDao:     ud,
+			log:           testLog,
+			WordValidator: wc,
+			UserDao:       ud,
 			RunnerConfig: RunnerConfig{
 				MaxGames: 10,
 			},
 			wantOk: true,
 			want: &Runner{
-				log:         testLog,
-				games:       map[game.ID]chan<- message.Message{},
-				wordChecker: wc,
-				userDao:     ud,
+				log:           testLog,
+				games:         map[game.ID]chan<- message.Message{},
+				WordValidator: wc,
+				userDao:       ud,
 				RunnerConfig: RunnerConfig{
 					MaxGames: 10,
 				},
 			},
 		},
 		{ // ok debug
-			log:         testLog,
-			WordChecker: wc,
-			UserDao:     ud,
+			log:           testLog,
+			WordValidator: wc,
+			UserDao:       ud,
 			RunnerConfig: RunnerConfig{
 				Debug:    true,
 				MaxGames: 10,
 			},
 			wantOk: true,
 			want: &Runner{
-				log:         testLog,
-				games:       map[game.ID]chan<- message.Message{},
-				wordChecker: wc,
-				userDao:     ud,
+				log:           testLog,
+				games:         map[game.ID]chan<- message.Message{},
+				WordValidator: wc,
+				userDao:       ud,
 				RunnerConfig: RunnerConfig{
 					Debug:    true,
 					MaxGames: 10,
@@ -87,7 +87,7 @@ func TestNewRunner(t *testing.T) {
 		},
 	}
 	for i, test := range newRunnerTests {
-		got, err := test.RunnerConfig.NewRunner(test.log, test.WordChecker, test.UserDao)
+		got, err := test.RunnerConfig.NewRunner(test.log, test.WordValidator, test.UserDao)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -236,12 +236,12 @@ func TestGameCreate(t *testing.T) {
 	}
 	for i, test := range gameCreateTests {
 		r := Runner{
-			log:          testLog,
-			games:        make(map[game.ID]chan<- message.Message),
-			lastID:       3,
-			wordChecker:  mockWordChecker{},
-			userDao:      mockUserDao{},
-			RunnerConfig: test.RunnerConfig,
+			log:           testLog,
+			games:         make(map[game.ID]chan<- message.Message),
+			lastID:        3,
+			WordValidator: mockWordValidator{},
+			userDao:       mockUserDao{},
+			RunnerConfig:  test.RunnerConfig,
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)

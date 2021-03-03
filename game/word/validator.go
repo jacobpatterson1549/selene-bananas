@@ -8,12 +8,12 @@ import (
 	"unicode"
 )
 
-// Checker determines if words are valid
-type Checker map[string]struct{}
+// Validator determines if words are valid.
+type Validator map[string]struct{}
 
-// NewChecker consumes the lower case words in the reader to use for checking and creates a new Checker.
-func NewChecker(r io.Reader) *Checker {
-	c := make(Checker)
+// NewValidator consumes the lower case words in the reader to use for validating.
+func NewValidator(r io.Reader) *Validator {
+	c := make(Validator)
 	scanner := bufio.NewScanner(r)
 	scanner.Split(scanLowerWords)
 	for scanner.Scan() {
@@ -23,9 +23,9 @@ func NewChecker(r io.Reader) *Checker {
 	return &c
 }
 
-// Check determines whether or not the word is valid.
+// Validate determines whether or not the word is valid.
 // Words are converted to lowercase before checking.
-func (c Checker) Check(word string) bool {
+func (c Validator) Validate(word string) bool {
 	lowerWord := strings.ToLower(word)
 	_, ok := c[lowerWord]
 	return ok

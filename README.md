@@ -41,7 +41,7 @@ HTTP_PORT=8001
 HTTPS_PORT=8000
 ```
 
-It is recommended to install the [wamerican-large](https://packages.debian.org/buster/wamerican-large) package.  This package provides /usr/share/dict/american-english-large to be used as a words list in games.  Lowercase words are read from the word list for checking valid words in the game.  This can be overridden by providing the `WORDS_FILE` variable when running make: `make WORDS_FILE=/path/to/words/file.txt`.
+It is recommended to install the [wamerican-large](https://packages.debian.org/buster/wamerican-large) package.  This package provides /usr/share/dict/american-english-large to be used as a words list in games.  Lowercase words are read from the word list te validate words on player boards in the game.  This can be overridden by providing the `WORDS_FILE` variable when running make: `make WORDS_FILE=/path/to/words/file.txt`.
 
 For development, set `CACHE_SECONDS` to `0` to not cache static and template resources.
 

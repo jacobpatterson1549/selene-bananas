@@ -21,14 +21,14 @@ import (
 type (
 	// Game contains the logic to play a tile-base word-forming game between users.
 	Game struct {
-		log         *log.Logger
-		id          game.ID
-		createdAt   int64
-		status      game.Status
-		players     map[player.Name]*playerController.Player
-		unusedTiles []tile.Tile
-		wordChecker WordChecker
-		userDao     UserDao
+		log           *log.Logger
+		id            game.ID
+		createdAt     int64
+		status        game.Status
+		players       map[player.Name]*playerController.Player
+		unusedTiles   []tile.Tile
+		WordValidator WordValidator
+		userDao       UserDao
 		Config
 	}
 
@@ -77,19 +77,19 @@ const (
 )
 
 // NewGame creates a new game and runs it.
-func (cfg Config) NewGame(log *log.Logger, id game.ID, wordChecker WordChecker, userDao UserDao) (*Game, error) {
-	if err := cfg.validate(log, id, wordChecker, userDao); err != nil {
+func (cfg Config) NewGame(log *log.Logger, id game.ID, WordValidator WordValidator, userDao UserDao) (*Game, error) {
+	if err := cfg.validate(log, id, WordValidator, userDao); err != nil {
 		return nil, fmt.Errorf("creating game: validation: %w", err)
 	}
 	g := Game{
-		log:         log,
-		id:          id,
-		createdAt:   cfg.TimeFunc(),
-		status:      game.NotStarted,
-		players:     make(map[player.Name]*playerController.Player),
-		wordChecker: wordChecker,
-		userDao:     userDao,
-		Config:      cfg,
+		log:           log,
+		id:            id,
+		createdAt:     cfg.TimeFunc(),
+		status:        game.NotStarted,
+		players:       make(map[player.Name]*playerController.Player),
+		WordValidator: WordValidator,
+		userDao:       userDao,
+		Config:        cfg,
 	}
 	if err := g.initializeUnusedTiles(); err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (cfg Config) NewGame(log *log.Logger, id game.ID, wordChecker WordChecker, 
 
 // validate ensures the configuration has no errors.
 // the config is modified to use the default tile letters if the tile letters are empty.
-func (cfg *Config) validate(log *log.Logger, id game.ID, wordChecker WordChecker, userDao UserDao) error {
+func (cfg *Config) validate(log *log.Logger, id game.ID, wordValidator WordValidator, userDao UserDao) error {
 	if len(cfg.TileLetters) == 0 {
 		cfg.TileLetters = defaultTileLetters
 	}
@@ -108,8 +108,8 @@ func (cfg *Config) validate(log *log.Logger, id game.ID, wordChecker WordChecker
 		return fmt.Errorf("log required")
 	case id <= 0:
 		return fmt.Errorf("positive id required")
-	case wordChecker == nil:
-		return fmt.Errorf("word checker required")
+	case wordValidator == nil:
+		return fmt.Errorf("word validator required")
 	case userDao == nil:
 		return fmt.Errorf("user dao required")
 	case cfg.TimeFunc == nil:
@@ -405,7 +405,7 @@ func (g Game) checkWords(pn player.Name) ([]string, error) {
 			errText = fmt.Sprintf("short word detected, all must be at least %v characters", g.Config.MinLength)
 			break
 		}
-		if !g.wordChecker.Check(w) {
+		if !g.WordValidator.Validate(w) {
 			invalidWords = append(invalidWords, w)
 		}
 	}
