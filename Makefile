@@ -10,7 +10,6 @@ SQL_DIR          := sql
 LICENSE_FILE     := LICENSE
 TLS_CERT_FILE    := tls-cert.pem
 TLS_KEY_FILE    := tls-key.pem
-WORDS_FILE       := /usr/share/dict/american-english-large # the list of lower-case words used to validate player boards
 COPY := cp -f
 LINK := $(COPY) -l
 GO := go
@@ -36,7 +35,7 @@ GENERATE_SRC  := game/message/type_string.go
 GO_SRC_FN      = find $(1) $(foreach g,$(GENERATE_SRC),-path $g -prune -o) -name *.go -print # exclude the generated source from go sources because it is created after the version, which depends on normal source
 SERVER_SRC    := $(shell $(call GO_SRC_FN,cmd/server/ game/ server/ db/))
 CLIENT_SRC    := $(shell $(call GO_SRC_FN,cmd/ui/     game/ ui/))
-RESOURCES_SRC := $(shell find $(RESOURCES_DIR) -type f) $(LICENSE) $(WORDS_FILE)
+RESOURCES_SRC := $(shell find $(RESOURCES_DIR) -type f) $(LICENSE)
 EMBED_RESOURCES_FN = find $(PWD)/$(RESOURCES_DIR)/$(1) -type f | xargs $(LINK) -t $(SERVER_EMBED_DIR)/$(1)
 
 $(BUILD_DIR)/$(SERVER_OBJ): $(BUILD_DIR)/$(CLIENT_OBJ) $(BUILD_DIR)/$(SERVER_TEST) $(BUILD_DIR)/$(VERSION_OBJ) $(RESOURCES_SRC) | $(BUILD_DIR)
@@ -76,23 +75,20 @@ $(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(BU
 		| xargs -I{} find {} -type f -print \
 		| sort \
 		| grep -v $(SERVER_EMBED_DIR) \
-		| xargs tar -c --mtime=0 --owner=0 --group=0 \
+		| xargs cat \
 		| md5sum \
 		| cut -c -32 \
 		| tee $(SERVER_EMBED_DIR)/$(@F) \
 		| xargs echo $(SERVER_EMBED_DIR)/$(@F) is
 	$(LINK) $(SERVER_EMBED_DIR)/$(@F) $@
 
-$(RESOURCES_DIR)/$(TLS_CERT_FILE):
-	touch $@
-
-$(RESOURCES_DIR)/$(TLS_KEY_FILE):
-	touch $@
+$(BUILD_DIR)/$(WORDS_OBJ): | $(BUILD_DIR)
+	aspell -d en_US dump master | sort > $@
 
 $(BUILD_DIR):
 	mkdir -p $@
 
-$(SERVER_EMBED_DIR): $(RESOURCES_SRC) $(RESOURCES_DIR)/$(TLS_CERT_FILE) $(RESOURCES_DIR)/$(TLS_KEY_FILE)
+$(SERVER_EMBED_DIR): | $(RESOURCES_SRC) $(RESOURCES_DIR)/$(TLS_CERT_FILE) $(RESOURCES_DIR)/$(TLS_KEY_FILE) $(BUILD_DIR)/$(WORDS_OBJ)
 	mkdir -p \
 		$@/$(STATIC_DIR) \
 		$@/$(TEMPLATE_DIR) \
@@ -103,12 +99,15 @@ $(SERVER_EMBED_DIR): $(RESOURCES_SRC) $(RESOURCES_DIR)/$(TLS_CERT_FILE) $(RESOUR
 		$@/$(STATIC_DIR)/$(CLIENT_OBJ)
 	$(LINK) $(RESOURCES_DIR)/$(TLS_CERT_FILE) $@/$(TLS_CERT_FILE)
 	$(LINK) $(RESOURCES_DIR)/$(TLS_KEY_FILE)  $@/$(TLS_KEY_FILE)
-	$(COPY) $(WORDS_FILE)                     $@/$(WORDS_OBJ)
+	$(LINK) $(BUILD_DIR)/$(WORDS_OBJ)         $@/$(WORDS_OBJ)
 	$(LINK) $(LICENSE_FILE)                   $@/$(STATIC_DIR)/
 	$(COPY) $(GO_WASM_PATH)/wasm_exec.js      $@/$(STATIC_DIR)/
 	$(call EMBED_RESOURCES_FN,$(STATIC_DIR))
 	$(call EMBED_RESOURCES_FN,$(TEMPLATE_DIR))
 	$(call EMBED_RESOURCES_FN,$(SQL_DIR))
+
+$(RESOURCES_DIR)/$(TLS_CERT_FILE) $(RESOURCES_DIR)/$(TLS_KEY_FILE):
+	touch $@
 
 serve: $(BUILD_DIR)/$(SERVER_OBJ)
 	$(SERVE_ARGS) $(BUILD_DIR)/$(SERVER_OBJ)

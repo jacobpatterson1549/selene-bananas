@@ -1,16 +1,18 @@
-# download golang dependencies, add node to run wasm tests, american-english-large word list
-FROM golang:1.16-buster \
+# download dependencies
+FROM golang:1.16-alpine3.13 \
     AS BUILDER
 WORKDIR /app
 COPY \
     go.mod \
     go.sum \
     ./
-RUN apt-get update && apt-get install -y \
-        --no-install-recommends \
-        nodejs=10.24.0~dfsg-1~deb10u1 \
-        wamerican-large=2018.04.16-1 \
-    && rm -rf /var/lib/apt/lists/* \
+RUN apk add --no-cache \
+        make=4.3-r0 \
+        bash=5.1.0-r0 \
+        mailcap=2.1.49-r0 \
+        nodejs=14.16.0-r0 \
+        aspell=0.60.8-r0 \
+        aspell-en=2020.12.07-r0 \
     && go mod download
 
 # build the server with embedded resources

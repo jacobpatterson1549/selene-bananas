@@ -24,9 +24,11 @@ New dependencies are automatically added to [go.mod](go.mod) when the project is
 
 ## Build
 
-Building the application requires [Go 1.16](https://golang.org/dl/).
+[Go 1.16](https://golang.org/dl/) is used to build the application.
 
-The [Makefile](Makefile) builds and runs the application. Run `make` without any arguments to build the server with the client and other resources embedded in it.  This will likely need to be done before using an IDE in order to generate some files and prepropulate the embedded filesystem used by the the server.
+[Make](https://www.gnu.org/software/make/) is used to by [Makefile](Makefile) to build and runs the application. Run `make` without any arguments to build the server with the client and other resources embedded in it.  This will likely need to be done before using an IDE in order to generate some files and prepropulate the embedded filesystem used by the the server.
+
+[Aspell](https://github.com/GNUAspell/aspell) is used to generate the en_US dictionary to validate words on player boards.
 
 [Node](https://github.com/nodejs) is needed to run WebAssembly tests.
 
@@ -40,8 +42,6 @@ DATABASE_URL=postgres://selene:selene123@127.0.0.1:54320/selene_bananas_db?sslmo
 HTTP_PORT=8001
 HTTPS_PORT=8000
 ```
-
-It is recommended to install the [wamerican-large](https://packages.debian.org/buster/wamerican-large) package.  This package provides /usr/share/dict/american-english-large to be used as a words list in games.  Lowercase words are read from the word list te validate words on player boards in the game.  This can be overridden by providing the `WORDS_FILE` variable when running make: `make WORDS_FILE=/path/to/words/file.txt`.
 
 For development, set `CACHE_SECONDS` to `0` to not cache static and template resources.
 
