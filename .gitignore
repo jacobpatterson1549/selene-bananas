@@ -7,10 +7,6 @@ cmd/server/embed
 # environment variables
 /.env
 
-# TLS certificates
-/resources/tls-cert.pem
-/resources/tls-key.pem
-
 # Visual Studio Code files
 /.vscode
 __debug_bin
