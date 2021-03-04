@@ -9,20 +9,20 @@ import (
 
 func TestNewValidator(t *testing.T) {
 	newValidatorTests := []struct {
-		words string
-		wantWords   []string
+		words     string
+		wantWords []string
 	}{
 		{},
 		{
 			words: "   ",
 		},
 		{
-			words: "a bad cat",
-			wantWords:   []string{"a", "bad", "cat"},
+			words:     "a bad cat",
+			wantWords: []string{"a", "bad", "cat"},
 		},
 		{
-			words: "A man, a plan, a canal, panama!",
-			wantWords:   []string{"a"},
+			words:     "A man, a plan, a canal, panama!",
+			wantWords: []string{"a"},
 		},
 		{
 			words: "Abc 'words' they're top-secret not.",
