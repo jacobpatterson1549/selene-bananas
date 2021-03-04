@@ -36,7 +36,7 @@ GO_SRC_FN      = find $(1) $(foreach g,$(GENERATE_SRC),-path $g -prune -o) -name
 SERVER_SRC    := $(shell $(call GO_SRC_FN,cmd/server/ game/ server/ db/))
 CLIENT_SRC    := $(shell $(call GO_SRC_FN,cmd/ui/     game/ ui/))
 RESOURCES_SRC := $(shell find $(RESOURCES_DIR) -type f) $(LICENSE)
-EMBED_RESOURCES_FN = find $(PWD)/$(RESOURCES_DIR)/$(1) -type f | xargs $(LINK) $(SERVER_EMBED_DIR)/$(1)
+EMBED_RESOURCES_FN = find $(PWD)/$(RESOURCES_DIR)/$(1) -type f | xargs -i{} $(LINK) {} $(SERVER_EMBED_DIR)/$(1)
 
 $(BUILD_DIR)/$(SERVER_OBJ): $(BUILD_DIR)/$(CLIENT_OBJ) $(BUILD_DIR)/$(SERVER_TEST) $(BUILD_DIR)/$(VERSION_OBJ) $(RESOURCES_SRC) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep cmd/server \
