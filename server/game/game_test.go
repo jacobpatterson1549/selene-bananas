@@ -288,12 +288,8 @@ func TestRunSync(t *testing.T) {
 	t.Run("TestValidMessageHandler", func(t *testing.T) {
 		validMessageHandlerTests := []struct {
 			message.Type
-			wantError bool // most tests should return a gameWarning, indicating the a messageHandler exists for the message Type
+			wantSocketError bool
 		}{
-			{
-				Type:      message.SocketHTTPPing,
-				wantError: true,
-			},
 			{
 				Type: message.JoinGame,
 			},
@@ -317,6 +313,10 @@ func TestRunSync(t *testing.T) {
 			},
 			{
 				Type: message.RefreshGameBoard,
+			},
+			{
+				Type:            message.SocketHTTPPing,
+				wantSocketError: true,
 			},
 		}
 		for i, test := range validMessageHandlerTests {
@@ -349,7 +349,7 @@ func TestRunSync(t *testing.T) {
 			cancelFunc()
 			wg.Wait()
 			got := <-out
-			if test.wantError != (got.Type == message.SocketError) {
+			if test.wantSocketError != (got.Type == message.SocketError) {
 				t.Errorf("Test %v: when test is %v, got %v", i, test, got.Type)
 			}
 		}
