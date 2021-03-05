@@ -76,7 +76,7 @@ func (s *Server) handleUserLobby(w http.ResponseWriter, r *http.Request) {
 	username, err := s.tokenizer.ReadUsername(tokenString)
 	if err != nil {
 		s.log.Printf("reading username from token: %v", err)
-		httpError(w, http.StatusUnauthorized)
+		http.Error(w, "unauthorized to join lobby, try logging out and in", http.StatusUnauthorized)
 		return
 	}
 	if err := s.lobby.AddUser(username, w, r); err != nil {

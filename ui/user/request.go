@@ -128,6 +128,8 @@ func (u *User) handleResponseError(resp *http.Response) {
 	switch {
 	case err != nil:
 		u.log.Error("reading error response body: " + err.Error())
+	case resp.Code == 401: // Unauthorized
+		u.log.Warning(string(message))
 	case len(message) > 0:
 		u.log.Error("HTTP error: status " + strconv.Itoa(resp.Code) + ": " + string(message))
 	}
