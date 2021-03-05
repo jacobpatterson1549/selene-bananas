@@ -14,3 +14,7 @@
 !go.sum
 !LICENSE
 !Makefile
+
+# embedded/generated files
+cmd/server/embed
+game/message/type_string.go
