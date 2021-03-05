@@ -72,12 +72,12 @@ func TestParse(t *testing.T) {
 	for i, test := range parseTests {
 		got, err := Parse(test.text)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case !reflect.DeepEqual(test.want, *got):
 			t.Errorf("Test %v:\nwanted: %#v\ngot:    %#v", i, test.want, *got)
 		case test.text != got.String(): // TestString

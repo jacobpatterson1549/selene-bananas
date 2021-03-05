@@ -73,23 +73,23 @@ func TestDatabaseSetup(t *testing.T) {
 	setupTests := []struct {
 		files   []io.Reader
 		execErr error
-		wantErr bool
+		wantOk  bool
 	}{
-		{},
+		{
+			wantOk: true,
+		},
 		{
 			files: []io.Reader{
 				strings.NewReader("1"),
 				iotest.ErrReader(fmt.Errorf("error reading file 2")),
 				strings.NewReader("3"),
 			},
-			wantErr: true,
 		},
 		{
 			files: []io.Reader{
 				strings.NewReader("1"),
 			},
 			execErr: fmt.Errorf("error executing files"),
-			wantErr: true,
 		},
 		{
 			files: []io.Reader{
@@ -97,6 +97,7 @@ func TestDatabaseSetup(t *testing.T) {
 				strings.NewReader("2"),
 				strings.NewReader("3"),
 			},
+			wantOk: true,
 		},
 	}
 	for i, test := range setupTests {
@@ -144,7 +145,7 @@ func TestDatabaseSetup(t *testing.T) {
 		ctx := context.Background()
 		err = db.Setup(ctx, test.files)
 		switch {
-		case test.wantErr:
+		case !test.wantOk:
 			if err == nil {
 				t.Errorf("Test %v: wanted error", i)
 			}

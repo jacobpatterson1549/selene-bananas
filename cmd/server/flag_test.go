@@ -105,18 +105,18 @@ func TestUsage(t *testing.T) {
 	var m mainFlags
 	var portOverride int
 	fs := m.newFlagSet(osLookupEnvFunc, &portOverride)
-	var b bytes.Buffer
-	fs.SetOutput(&b)
+	var buf bytes.Buffer
+	fs.SetOutput(&buf)
 	fs.Init("", flag.ContinueOnError) // override ErrorHandling
 	err := fs.Parse([]string{"-h"})
 	if err != flag.ErrHelp {
 		t.Errorf("wanted ErrHelp, got %v", err)
 	}
-	got := b.String()
+	got := buf.String()
 	totalCommas := strings.Count(got, ",")
-	b.Reset()
+	buf.Reset()
 	fs.PrintDefaults()
-	defaults := b.String()
+	defaults := buf.String()
 	descriptionCommas := strings.Count(defaults, ",")
 	envCommas := totalCommas - descriptionCommas
 	wantEnvVarCount := envCommas + 2       // n+1 vars are joined with n commas, add an extra 1 for the PORT variable

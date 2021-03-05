@@ -327,10 +327,10 @@ func TestReadMessagesSync(t *testing.T) {
 				setPongHandlerFuncCalled = true
 			},
 		}
-		var bb bytes.Buffer
+		var buf bytes.Buffer
 		s := Socket{
 			Conn: &conn,
-			log:  log.New(&bb, "", 0),
+			log:  log.New(&buf, "", 0),
 			Config: Config{
 				Debug:    test.debug,
 				TimeFunc: func() int64 { return 0 },
@@ -370,10 +370,10 @@ func TestReadMessagesSync(t *testing.T) {
 			t.Errorf("Test %v: wanted last message to be socket close, got %v", i, gotMessages[len(gotMessages)-1])
 		case test.setReadDeadlineErr == nil && !setPongHandlerFuncCalled:
 			t.Errorf("Test %v: wanted pong handler to be set", i)
-		case !test.wantOk && bb.Len() == 0 && !test.isNormalCloseErr:
+		case !test.wantOk && buf.Len() == 0 && !test.isNormalCloseErr:
 			t.Errorf("Test %v: wanted message to be logged", i)
-		case test.wantOk && (bb.Len() != 0) != test.debug:
-			t.Errorf("Test %v: wanted message to be logged (%v), got '%v'", i, test.debug, bb.String())
+		case test.wantOk && (buf.Len() != 0) != test.debug:
+			t.Errorf("Test %v: wanted message to be logged (%v), got '%v'", i, test.debug, buf.String())
 		case test.wantOk && gotMessages[0].Info != normalMessageInfo:
 			t.Errorf("Test %v: wanted first message to be normal message, got %v", i, gotMessages[0])
 		}
@@ -479,10 +479,10 @@ func TestWriteMessagesSync(t *testing.T) {
 				return test.pingErr
 			},
 		}
-		var bb bytes.Buffer
+		var buf bytes.Buffer
 		s := Socket{
 			Conn: &conn,
-			log:  log.New(&bb, "", 0),
+			log:  log.New(&buf, "", 0),
 			Config: Config{
 				TimeFunc: func() int64 { return 0 },
 			},
@@ -525,29 +525,28 @@ func TestWriteMessage(t *testing.T) {
 		m            message.Message
 		debug        bool
 		connWriteErr error
-		wantErr      bool
-		wantLog      bool
+		wantOk       bool
 	}{
-		{},
 		{
-			debug:   true,
-			wantLog: true,
+			wantOk: true,
+		},
+		{
+			debug:  true,
+			wantOk: true,
 		},
 		{
 			connWriteErr: errors.New("cannot write message to connection"),
-			wantErr:      true,
 		},
 		{
 			m: message.Message{
 				Type: message.PlayerRemove,
 			},
-			wantErr: true, // stop sending to the player
 		},
 	}
 	for i, test := range writeMessageTests {
-		var bb bytes.Buffer
+		var buf bytes.Buffer
 		s := Socket{
-			log: log.New(&bb, "", 0),
+			log: log.New(&buf, "", 0),
 			Config: Config{
 				Debug: test.debug,
 			},
@@ -557,16 +556,16 @@ func TestWriteMessage(t *testing.T) {
 				},
 			},
 		}
-		got := s.writeMessage(test.m)
+		err := s.writeMessage(test.m)
 		switch {
-		case test.wantLog != (bb.Len() != 0):
-			t.Errorf("Test %v: wanted debug only when debug is on, got %v", i, bb.String())
-		case test.wantErr:
-			if got == nil {
+		case test.debug != (buf.Len() != 0):
+			t.Errorf("Test %v: wanted debug only when debug is on, got %v", i, buf.String())
+		case !test.wantOk:
+			if err == nil {
 				t.Errorf("Test %v: wanted error", i)
 			}
-		case got != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, got)
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		}
 	}
 }
@@ -591,9 +590,9 @@ func TestWriteClose(t *testing.T) {
 		},
 	}
 	for i, test := range writeCloseTests {
-		var bb bytes.Buffer
+		var buf bytes.Buffer
 		s := Socket{
-			log: log.New(&bb, "", 0),
+			log: log.New(&buf, "", 0),
 			Conn: &mockConn{
 				WriteCloseFunc: func(reason string) error {
 					return test.connCloseErr
@@ -601,8 +600,8 @@ func TestWriteClose(t *testing.T) {
 			},
 		}
 		s.writeClose(test.reason)
-		if test.wantLog != (bb.Len() > 0) {
-			t.Errorf("Test %v: wanted log (%v), got '%v'", i, test.wantLog, bb.String())
+		if test.wantLog != (buf.Len() > 0) {
+			t.Errorf("Test %v: wanted log (%v), got '%v'", i, test.wantLog, buf.String())
 		}
 	}
 }

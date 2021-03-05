@@ -539,15 +539,15 @@ func TestInitializeUnusedTilesShuffled(t *testing.T) {
 func TestInitializeUnusedTiles(t *testing.T) {
 	initializeUnusedTilesTests := []struct {
 		tileLetters string
-		wantErr     bool
+		wantOk      bool
 		want        []tile.Tile
 	}{
 		{
 			tileLetters: ":(",
-			wantErr:     true,
 		},
 		{
 			tileLetters: "AAABAC",
+			wantOk:      true,
 			want: []tile.Tile{
 				{ID: 6, Ch: 'C'},
 				{ID: 4, Ch: 'B'},
@@ -575,10 +575,12 @@ func TestInitializeUnusedTiles(t *testing.T) {
 		}
 		err := g.initializeUnusedTiles()
 		switch {
-		case test.wantErr:
+		case !test.wantOk:
 			if err == nil {
 				t.Errorf("Test %v: wanted error", i)
 			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case !reflect.DeepEqual(test.want, g.unusedTiles):
 			t.Errorf("Test %v: unusedTiles not equal:\nwanted: %v\ngot:    %v", i, test.want, g.unusedTiles)
 		}

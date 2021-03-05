@@ -79,12 +79,12 @@ func TestReadUsername(t *testing.T) {
 		}
 		got, err := readTokenizer.ReadUsername(tokenString)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case test.want != got:
 			t.Errorf("Test %v: wanted %v, got %v", i, test.want, got)
 		}
@@ -159,12 +159,12 @@ func TestCreateReadWithTime(t *testing.T) {
 		}
 		got, err := tokenizer.ReadUsername(tokenString)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case want != got:
 			t.Errorf("Test %v: wanted %v, got %v", i, want, got)
 		}

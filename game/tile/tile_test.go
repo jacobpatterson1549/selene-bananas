@@ -26,12 +26,12 @@ func TestNew(t *testing.T) {
 	for i, test := range newTests {
 		got, err := New(test.id, test.r)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case test.want != *got:
 			t.Errorf("Test %v:\nwanted %v\ngot    %v", i, test.want, *got)
 		}

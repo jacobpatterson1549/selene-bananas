@@ -129,8 +129,8 @@ func newMockSocketWebSocketResponse() http.ResponseWriter {
 	client, _ := net.Pipe()
 	sr := strings.NewReader("reader")
 	br := bufio.NewReader(sr)
-	var bb bytes.Buffer
-	bw := bufio.NewWriter(&bb)
+	var buf bytes.Buffer
+	bw := bufio.NewWriter(&buf)
 	rw := bufio.NewReadWriter(br, bw)
 	rc := RedirectConn{
 		Conn:   client,

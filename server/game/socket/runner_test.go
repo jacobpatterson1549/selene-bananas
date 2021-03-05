@@ -130,8 +130,8 @@ func TestRunRunnerHandleLobbyMessage(t *testing.T) {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	var wg sync.WaitGroup
 	in := make(chan message.Message)
-	var bb bytes.Buffer
-	log := log.New(&bb, "", 0)
+	var buf bytes.Buffer
+	log := log.New(&buf, "", 0)
 	r := Runner{
 		log: log,
 	}
@@ -140,7 +140,7 @@ func TestRunRunnerHandleLobbyMessage(t *testing.T) {
 	in <- m
 	cancelFunc()
 	wg.Wait()
-	if bb.Len() == 0 {
+	if buf.Len() == 0 {
 		t.Errorf("wanted error to be logged when loby sent socket runner invalid message")
 	}
 }
@@ -151,8 +151,8 @@ func TestRunRunnerHandleSocketMessage(t *testing.T) {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	var wg sync.WaitGroup
 	in := make(chan message.Message)
-	var bb bytes.Buffer
-	log := log.New(&bb, "", 0)
+	var buf bytes.Buffer
+	log := log.New(&buf, "", 0)
 	r := Runner{
 		log: log,
 	}
@@ -161,7 +161,7 @@ func TestRunRunnerHandleSocketMessage(t *testing.T) {
 	r.socketOut <- m
 	cancelFunc()
 	wg.Wait()
-	if bb.Len() == 0 {
+	if buf.Len() == 0 {
 		t.Errorf("wanted error to be logged when loby sent socket runner invalid message")
 	}
 }
@@ -336,6 +336,8 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		s, err := r.handleAddSocket(ctx, &wg, pn, w, req)
+		cancelFunc()
+		wg.Wait()
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -349,10 +351,7 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			t.Errorf("Test %v: wanted 1 player to have a socket, got %v", i, len(r.playerSockets))
 		case len(r.playerSockets[pn]) != 1:
 			t.Errorf("Test %v: wanted 1 socket for %v, got %v", i, pn, len(r.playerSockets[pn]))
-		}
-		cancelFunc()
-		wg.Wait()
-		if test.wantOk && !socketRun {
+		case !socketRun:
 			t.Errorf("Test %v: wanted socket to be run", i)
 		}
 	}
@@ -494,14 +493,17 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 		playerSockets   map[player.Name]map[net.Addr]chan<- message.Message
 		playerGames     map[player.Name]map[game.ID]net.Addr
 		m               message.Message
+		wantOk          bool
 		wantPlayerGames map[player.Name]map[game.ID]net.Addr
-		wantErr         bool
 	}{
-		{}, // no game on message
+		{ // no game on message
+			wantOk: true,
+		},
 		{ // no game id on normal message
 			m: message.Message{
 				Type: message.ChangeGameTiles,
 			},
+			wantOk: true,
 		},
 		{ // normal message
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
@@ -527,6 +529,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 					ID: 2,
 				},
 			},
+			wantOk: true,
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
 				"fred": {
 					2: addr1,
@@ -557,6 +560,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				Type:  message.GameInfos,
 				Games: []game.Info{},
 			},
+			wantOk: true,
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
 				"fred": {
 					2: addr1,
@@ -587,6 +591,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				PlayerName: "fred",
 				Addr:       addr1,
 			},
+			wantOk: true,
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
 				"fred": {
 					2: addr2,
@@ -600,7 +605,6 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				PlayerName: "fred",
 				Addr:       addr1,
 			},
-			wantErr: true,
 		},
 		{ // game infos, with addr: only send to player for the socket, but no socket exists
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
@@ -611,7 +615,6 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				PlayerName: "fred",
 				Addr:       addr1,
 			},
-			wantErr: true,
 		},
 		{ // socketErr message from game
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
@@ -633,6 +636,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 					ID: 2,
 				},
 			},
+			wantOk: true,
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
 				"fred": {
 					1: addr1,
@@ -660,6 +664,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				PlayerName: "fred",
 				Type:       message.SocketError,
 			},
+			wantOk: true,
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
 				"fred": {
 					1: addr1,
@@ -686,6 +691,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 					ID: 2,
 				},
 			},
+			wantOk:          true,
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
 		},
 		{ // player not active in game, don't send message #1
@@ -698,6 +704,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 					ID: 2,
 				},
 			},
+			wantOk:          true,
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
 		},
 		{ // player not active in game, don't send message #2
@@ -714,6 +721,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 					ID: 2,
 				},
 			},
+			wantOk:          true,
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
 		},
 		{ // player not active in game, don't send message #3
@@ -739,19 +747,18 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 					1: addr1,
 				},
 			},
+			wantOk: true,
 		},
 		{ // AddSocket no AddSocketRequest
 			m: message.Message{
 				Type: message.SocketAdd,
 			},
-			wantErr: true,
 		},
 		{ // AddSocket no AddSocketRquest.Result
 			m: message.Message{
 				Type:             message.SocketAdd,
 				AddSocketRequest: &message.AddSocketRequest{},
 			},
-			wantErr: true,
 		},
 		{ // player join game.  The lobby sends this when a player creates a game.
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
@@ -768,6 +775,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 				Addr: addr1,
 			},
+			wantOk: true,
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
 				"barney": {
 					3: addr1,
@@ -793,6 +801,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 					ID: 9,
 				},
 			},
+			wantOk: true,
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
 				"fred": {
 					9: addr1,
@@ -819,6 +828,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 					ID: 9,
 				},
 			},
+			wantOk: true,
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
 				"fred": {
 					9: addr1,
@@ -844,6 +854,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 					ID: 8,
 				},
 			},
+			wantOk: true,
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
 				"fred": {
 					8: addr1,
@@ -865,12 +876,13 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 					ID: 1,
 				},
 			},
+			wantOk:          true,
 			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
 		},
 	}
 	for i, test := range handleLobbyMessageTests {
-		var bb bytes.Buffer
-		log := log.New(&bb, "", 0)
+		var buf bytes.Buffer
+		log := log.New(&buf, "", 0)
 		r := Runner{
 			log:           log,
 			playerSockets: test.playerSockets,
@@ -880,11 +892,13 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 		var wg sync.WaitGroup
 		r.handleLobbyMessage(ctx, &wg, test.m)
 		switch {
-		case test.wantErr && bb.Len() == 0:
-			t.Errorf("Test %v: wanted error logged for bad message", i)
-		case !test.wantErr && !reflect.DeepEqual(test.wantPlayerGames, r.playerGames):
+		case !test.wantOk:
+			if buf.Len() == 0 {
+				t.Errorf("Test %v: wanted error logged for bad message", i)
+			}
+		case !reflect.DeepEqual(test.wantPlayerGames, r.playerGames):
 			t.Errorf("Test %v: player games not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerGames, r.playerGames)
-		case !test.wantErr:
+		default:
 			verifyAllSocketsSentOneMessage(t, r, i)
 		}
 	}
@@ -1122,8 +1136,8 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 		},
 	}
 	for i, test := range handleSocketMessageTests {
-		var bb bytes.Buffer
-		log := log.New(&bb, "", 0)
+		var buf bytes.Buffer
+		log := log.New(&buf, "", 0)
 		r := Runner{
 			log:           log,
 			playerSockets: test.playerSockets,
@@ -1135,7 +1149,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 		gameOut := make(chan message.Message, 1)
 		r.handleSocketMessage(ctx, test.m, gameOut)
 		switch {
-		case !test.wantOk && bb.Len() == 0:
+		case !test.wantOk && buf.Len() == 0:
 			t.Errorf("Test %v: wanted error logged for bad message", i)
 		case test.wantOk && !reflect.DeepEqual(test.wantPlayerSockets, r.playerSockets):
 			t.Errorf("Test %v: player sockets not equal:\nwanted: %v\ngot:    %v", i, test.wantPlayerSockets, r.playerSockets)
@@ -1238,8 +1252,8 @@ func TestSendMessageForGameBadRunnerState(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		var bb bytes.Buffer
-		log := log.New(&bb, "", 0)
+		var buf bytes.Buffer
+		log := log.New(&buf, "", 0)
 		r := Runner{
 			log:           log,
 			playerSockets: test.playerSockets,
@@ -1253,7 +1267,7 @@ func TestSendMessageForGameBadRunnerState(t *testing.T) {
 			PlayerName: "fred",
 		}
 		r.sendMessageForGame(ctx, m)
-		if bb.Len() == 0 {
+		if buf.Len() == 0 {
 			t.Errorf("Test %v: wanted error logged for bad runner state", i)
 		}
 	}

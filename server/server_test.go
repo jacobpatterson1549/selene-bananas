@@ -642,12 +642,12 @@ func TestCheckTokenUsername(t *testing.T) {
 		r.Form.Add("username", test.formUsername)
 		err := s.checkTokenUsername(r)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		}
 	}
 }
@@ -814,14 +814,14 @@ func TestValidHTTPAddr(t *testing.T) {
 
 func TestWrappedResponseWriter(t *testing.T) {
 	w := httptest.NewRecorder()
-	var bb bytes.Buffer
+	var buf bytes.Buffer
 	w2 := wrappedResponseWriter{
-		Writer:         &bb,
+		Writer:         &buf,
 		ResponseWriter: w,
 	}
 	want := "sent to bb"
 	w2.Write([]byte(want))
-	got := bb.String()
+	got := buf.String()
 	if want != got {
 		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
 	}

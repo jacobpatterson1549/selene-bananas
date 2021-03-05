@@ -23,12 +23,12 @@ func TestNewDao(t *testing.T) {
 	for i, test := range newDaoTests {
 		d, err := NewDao(test.db)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case d.db == nil:
 			t.Errorf("Test %v: db not set", i)
 		}
@@ -70,12 +70,12 @@ func TestDaoCreate(t *testing.T) {
 		ctx := context.Background()
 		err := d.Create(ctx, u)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		}
 	}
 }
@@ -212,12 +212,12 @@ func TestDaoUpdatePassword(t *testing.T) {
 		ctx := context.Background()
 		err := d.UpdatePassword(ctx, u, test.newP)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		}
 	}
 }
@@ -264,12 +264,12 @@ func TestDaoUpdatePointsIncrement(t *testing.T) {
 		ctx := context.Background()
 		err := d.UpdatePointsIncrement(ctx, test.usernamePoints)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		}
 	}
 }
@@ -314,12 +314,12 @@ func TestDaoDelete(t *testing.T) {
 		ctx := context.Background()
 		err := d.Delete(ctx, u)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		}
 	}
 }

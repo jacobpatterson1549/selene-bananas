@@ -11,37 +11,32 @@ import (
 
 func TestGorillaUpgraderUpgrade(t *testing.T) {
 	upgradeTests := []struct {
-		w       http.ResponseWriter
-		r       *http.Request
-		wantErr bool
+		w      http.ResponseWriter
+		r      *http.Request
+		wantOk bool
 	}{
 		{
-			w:       &httptest.ResponseRecorder{},
-			r:       httptest.NewRequest("", "/", nil),
-			wantErr: true,
+			w: &httptest.ResponseRecorder{},
+			r: httptest.NewRequest("", "/", nil),
 		},
 		{
-			w: newMockSocketWebSocketResponse(),
-			r: newMockWebSocketRequest(),
+			w:      newMockSocketWebSocketResponse(),
+			r:      newMockWebSocketRequest(),
+			wantOk: true,
 		},
 	}
 	for i, test := range upgradeTests {
 		u := newGorillaUpgrader()
 		conn, err := u.Upgrade(test.w, test.r)
 		switch {
-		case test.wantErr:
+		case !test.wantOk:
 			if err == nil {
 				t.Errorf("Test %v: wanted error", i)
 			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		default:
-			switch conn.(type) {
-			case *gorillaConn:
-				if err != nil {
-					t.Errorf("Test %v: unwanted error: %v", i, err)
-				}
-			default:
-				t.Errorf("Test %v: wanted Conn to be %T, but was %T", i, gorillaConn{}, conn)
-			}
+			_ = conn.(*gorillaConn)
 		}
 	}
 }

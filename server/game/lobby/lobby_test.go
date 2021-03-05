@@ -147,22 +147,20 @@ func TestRun(t *testing.T) {
 
 func TestAddUser(t *testing.T) {
 	addUserTests := []struct {
-		socketRunnerResult      message.Message
-		wantSecondSocketMessage bool
-		wantErr                 bool
+		socketRunnerResult message.Message
+		wantOk             bool
 	}{
-		{
-			socketRunnerResult: message.Message{
-				Info: "user cerated",
-			},
-			wantSecondSocketMessage: true,
-		},
 		{
 			socketRunnerResult: message.Message{
 				Type: message.SocketError,
 				Info: "error adding socket for user",
 			},
-			wantErr: true,
+		},
+		{
+			socketRunnerResult: message.Message{
+				Info: "user cerated",
+			},
+			wantOk: true,
 		},
 	}
 	for i, test := range addUserTests {
@@ -203,9 +201,11 @@ func TestAddUser(t *testing.T) {
 		l.Run(ctx, &wg)
 		err := l.AddUser(u, w, r)
 		switch {
-		case test.wantErr && err == nil:
-			t.Errorf("Test %v: wanted error", i)
-		case !test.wantErr && err != nil:
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
 			t.Errorf("Test %v: wanted error", i)
 			// other testing done above in mock socket runner
 		}

@@ -455,12 +455,12 @@ func TestMoveTiles(t *testing.T) {
 		}
 		err := test.board.MoveTiles(tilePositionsM)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		}
 	}
 }
@@ -514,12 +514,12 @@ func TestRemoveTile(t *testing.T) {
 		}
 		err := test.board.RemoveTile(tile)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case !(reflect.DeepEqual(test.want.UnusedTiles, test.board.UnusedTiles) || (test.want.UnusedTiles == nil && len(test.board.UnusedTiles) == 0)),
 			!(reflect.DeepEqual(test.want.UnusedTileIDs, test.board.UnusedTileIDs) || (test.want.UnusedTileIDs == nil && len(test.board.UnusedTileIDs) == 0)),
 			!(reflect.DeepEqual(test.want.UsedTiles, test.board.UsedTiles) || (test.want.UsedTiles == nil && len(test.board.UsedTiles) == 0)),

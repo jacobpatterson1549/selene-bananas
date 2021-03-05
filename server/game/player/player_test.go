@@ -31,12 +31,12 @@ func TestNewPlayer(t *testing.T) {
 		}
 		p, err := cfg.New(&b)
 		switch {
-		case err != nil:
-			if test.wantOk {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
-			}
 		case !test.wantOk:
-			t.Errorf("Test %v: wanted error", i)
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		default:
 			if test.winPoints != p.WinPoints {
 				t.Errorf("wanted %v winPoints, got %v", test.winPoints, p.WinPoints)
