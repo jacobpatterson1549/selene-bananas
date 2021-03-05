@@ -1,4 +1,9 @@
-# download dependencies
+# download dependencies:
+# make and bash to run the Makefile
+# mailcap to populate http mime types
+# nodejs to run client wasm tests
+# aspell and aspell-en for game word list
+# download go dependencies for source code
 FROM golang:1.16-alpine3.13 \
     AS BUILDER
 WORKDIR /app
@@ -15,14 +20,14 @@ RUN apk add --no-cache \
         aspell-en=2020.12.07-r0 \
     && go mod download
 
-# build the server with embedded resources
+# build the server
 COPY \
     . \
     ./
 RUN make build/main \
     GO_ARGS="CGO_ENABLED=0"
 
-# copy files to a minimal build image
+# copy the server to a minimal build image
 FROM scratch
 WORKDIR /app
 COPY --from=BUILDER \
