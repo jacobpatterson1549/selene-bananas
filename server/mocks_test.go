@@ -24,7 +24,7 @@ func (m mockTokenizer) ReadUsername(tokenString string) (string, error) {
 
 type mockUserDao struct {
 	createFunc         func(ctx context.Context, u user.User) error
-	readFunc           func(ctx context.Context, u user.User) (*user.User, error)
+	loginFunc          func(ctx context.Context, u user.User) (*user.User, error)
 	updatePasswordFunc func(ctx context.Context, u user.User, newP string) error
 	deleteFunc         func(ctx context.Context, u user.User) error
 }
@@ -33,8 +33,8 @@ func (m mockUserDao) Create(ctx context.Context, u user.User) error {
 	return m.createFunc(ctx, u)
 }
 
-func (m mockUserDao) Read(ctx context.Context, u user.User) (*user.User, error) {
-	return m.readFunc(ctx, u)
+func (m mockUserDao) Login(ctx context.Context, u user.User) (*user.User, error) {
+	return m.loginFunc(ctx, u)
 }
 
 func (m mockUserDao) UpdatePassword(ctx context.Context, u user.User, newP string) error {

@@ -80,8 +80,8 @@ func TestDaoCreate(t *testing.T) {
 	}
 }
 
-func TestDaoRead(t *testing.T) {
-	readTests := []struct {
+func TestDaoLogin(t *testing.T) {
+	loginTests := []struct {
 		rowScanErr           error
 		incorrectPassword    bool
 		isCorrectPasswordErr error
@@ -104,7 +104,7 @@ func TestDaoRead(t *testing.T) {
 			wantOk: true,
 		},
 	}
-	for i, test := range readTests {
+	for i, test := range loginTests {
 		u := User{
 			ph: mockPasswordHandler{
 				isCorrectFunc: func(hashedPassword []byte, password string) (bool, error) {
@@ -123,7 +123,7 @@ func TestDaoRead(t *testing.T) {
 			},
 		}
 		ctx := context.Background()
-		got, err := d.Read(ctx, u)
+		got, err := d.Login(ctx, u)
 		switch {
 		case !test.wantOk:
 			if err == nil {

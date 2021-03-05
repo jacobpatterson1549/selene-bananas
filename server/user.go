@@ -13,7 +13,7 @@ type (
 	// UserDao contains CRUD operations for user-related information.
 	UserDao interface {
 		Create(ctx context.Context, u user.User) error
-		Read(ctx context.Context, u user.User) (*user.User, error)
+		Login(ctx context.Context, u user.User) (*user.User, error)
 		UpdatePassword(ctx context.Context, u user.User, newP string) error
 		Delete(ctx context.Context, u user.User) error
 	}
@@ -52,7 +52,7 @@ func (s *Server) handleUserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	u2, err := s.userDao.Read(ctx, *u)
+	u2, err := s.userDao.Login(ctx, *u)
 	if err != nil {
 		if err != user.ErrIncorrectLogin {
 			s.log.Printf("login failure: %v", err)

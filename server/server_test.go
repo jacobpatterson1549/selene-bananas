@@ -941,7 +941,7 @@ func TestHandlePost(t *testing.T) {
 		createFunc: func(ctx context.Context, u user.User) error {
 			return nil
 		},
-		readFunc: func(ctx context.Context, u user.User) (*user.User, error) {
+		loginFunc: func(ctx context.Context, u user.User) (*user.User, error) {
 			return &user.User{}, nil
 		},
 		updatePasswordFunc: func(ctx context.Context, u user.User, newP string) error {

@@ -122,7 +122,7 @@ func TestHandleUserLogin(t *testing.T) {
 		s := Server{
 			log: log.New(&buf, "", 0),
 			userDao: mockUserDao{
-				readFunc: func(ctx context.Context, u user.User) (*user.User, error) {
+				loginFunc: func(ctx context.Context, u user.User) (*user.User, error) {
 					switch {
 					case test.username != u.Username:
 						t.Errorf("Test %v wanted username to update to be %v, got %v", i, test.username, u.Username)
