@@ -43,41 +43,36 @@ func TestGorillaUpgraderUpgrade(t *testing.T) {
 
 func TestGorillaConnIsNormalClose(t *testing.T) {
 	isNormalCloseTests := []struct {
-		err     error
-		wantErr bool
+		err  error
+		want bool
 	}{
 		{},
 		{
 			err: errors.New("unexpectedCloseError"),
 		},
 		{
-			err: errSocketClosed,
-		},
-		{
 			err: &websocket.CloseError{
 				Code: websocket.CloseGoingAway,
-				Text: "[desired closure]",
 			},
+			want: true,
 		},
 		{
 			err: &websocket.CloseError{
 				Code: websocket.CloseNoStatusReceived,
-				Text: "[normal closure]",
 			},
+			want: true,
 		},
 		{
 			err: &websocket.CloseError{
 				Code: websocket.CloseAbnormalClosure,
-				Text: "[an abnormal closure is unexpected]",
 			},
-			wantErr: true,
 		},
 	}
 	for i, test := range isNormalCloseTests {
 		var conn gorillaConn
 		got := conn.IsNormalClose(test.err)
-		if test.wantErr == got {
-			t.Errorf("Test %v: wanted isNormalClose to be %v for '%v'", i, test.wantErr, test.err)
+		if test.want != got {
+			t.Errorf("Test %v: wanted isNormalClose to be %v for '%v'", i, test.want, test.err)
 		}
 	}
 }

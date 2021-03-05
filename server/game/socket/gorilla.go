@@ -57,5 +57,6 @@ func (c *gorillaConn) WriteClose(reason string) (err error) {
 
 // IsNormalClose determines if the error message is not an unexpected close error.
 func (*gorillaConn) IsNormalClose(err error) bool {
-	return !websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived)
+	_, ok := err.(*websocket.CloseError) // only errors from gorilla can be normal close errors
+	return ok && !websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived)
 }
