@@ -83,7 +83,6 @@ func TestDaoCreate(t *testing.T) {
 func TestDaoRead(t *testing.T) {
 	readTests := []struct {
 		rowScanErr           error
-		dbExecErr            error
 		incorrectPassword    bool
 		isCorrectPasswordErr error
 		want                 User
@@ -91,6 +90,9 @@ func TestDaoRead(t *testing.T) {
 	}{
 		{
 			rowScanErr: fmt.Errorf("problem reading user row"),
+		},
+		{
+			rowScanErr: db.ErrNoRows,
 		},
 		{
 			isCorrectPasswordErr: fmt.Errorf("problem checking password"),
@@ -118,19 +120,19 @@ func TestDaoRead(t *testing.T) {
 				queryFunc: func(ctx context.Context, q db.Query) db.Scanner {
 					return s
 				},
-				execFunc: func(ctx context.Context, queries ...db.Query) error {
-					return test.dbExecErr
-				},
 			},
 		}
 		ctx := context.Background()
 		got, err := d.Read(ctx, u)
 		switch {
-		case err != nil:
-			if test.wantOk {
+		case !test.wantOk:
+			if err == nil {
 				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
-		case !test.wantOk:
+			if test.rowScanErr == db.ErrNoRows && err != ErrIncorrectLogin {
+				t.Errorf("Test %v: errs not equal when the db has no rows: wanted %v, got: %v", i, ErrIncorrectLogin, err)
+			}
+		case err != nil:
 			t.Errorf("Test %v: wanted error", i)
 		case test.want != *got:
 			t.Errorf("Test %v:\nwanted: %v\ngot:    : %v", i, test.want, got)

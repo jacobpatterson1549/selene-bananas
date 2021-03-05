@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -81,21 +82,25 @@ func TestHandleUserCreate(t *testing.T) {
 
 func TestHandleUserLogin(t *testing.T) {
 	handleUserLoginTests := []struct {
-		username        string
-		password        string
-		wantHandleError bool
-		daoErr          error
-		tokenizerErr    error
-		wantCode        int
+		username     string
+		password     string
+		daoErr       error
+		tokenizerErr error
+		wantCode     int
 	}{
 		{
-			wantHandleError: true,
-			wantCode:        500,
+			wantCode: 500,
 		},
 		{
 			username: "selene",
 			password: "password123",
 			daoErr:   fmt.Errorf("problem signing user in"),
+			wantCode: 500,
+		},
+		{
+			username: "eve",
+			password: "l3tMeIn!",
+			daoErr:   user.ErrIncorrectLogin,
 			wantCode: 401,
 		},
 		{
@@ -113,8 +118,9 @@ func TestHandleUserLogin(t *testing.T) {
 	wantPoints := 8
 	wantToken := "created token for logged-in user"
 	for i, test := range handleUserLoginTests {
+		var buf bytes.Buffer
 		s := Server{
-			log: log.New(io.Discard, "", 0),
+			log: log.New(&buf, "", 0),
 			userDao: mockUserDao{
 				readFunc: func(ctx context.Context, u user.User) (*user.User, error) {
 					switch {
@@ -154,6 +160,10 @@ func TestHandleUserLogin(t *testing.T) {
 		switch {
 		case test.wantCode != gotCode:
 			t.Errorf("Test %v: wanted response code to be %v, but was %v", i, test.wantCode, gotCode)
+		case test.daoErr == user.ErrIncorrectLogin:
+			if buf.Len() != 0 {
+				t.Errorf("Test %v: no error should be logged when the dao reads an incorrect login, got %v", i, w.Body)
+			}
 		case test.tokenizerErr != nil:
 			want := test.tokenizerErr.Error()
 			got := w.Body.String()

@@ -29,6 +29,9 @@ type (
 	}
 )
 
+// ErrNoRows is returned by the Scanner when there are no rows to scan.
+var ErrNoRows = sql.ErrNoRows
+
 // NewDatabase creates a SQL database from the database.
 func (cfg Config) NewDatabase(sqlDB *sql.DB) (*Database, error) {
 	if err := cfg.validate(sqlDB); err != nil {

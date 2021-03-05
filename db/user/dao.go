@@ -25,6 +25,9 @@ type (
 	}
 )
 
+// ErrIncorrectLogin should be returned if a login attempt fails because the credentials are invalid.
+var ErrIncorrectLogin error = fmt.Errorf("incorrect username/password")
+
 // NewDao creates a Dao on the specified database.
 func NewDao(db Database) (*Dao, error) {
 	if err := validate(db); err != nil {
@@ -69,6 +72,9 @@ func (d Dao) Read(ctx context.Context, u User) (*User, error) {
 	row := d.db.Query(ctx, q)
 	var u2 User
 	if err := row.Scan(&u2.Username, &u2.password, &u2.Points); err != nil {
+		if err == db.ErrNoRows {
+			return nil, ErrIncorrectLogin
+		}
 		return nil, fmt.Errorf("reading user: %w", err)
 	}
 	hashedPassword := []byte(u2.password)
