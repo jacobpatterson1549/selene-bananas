@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,7 +23,7 @@ type (
 	User struct {
 		log        *log.Log
 		httpClient http.Client
-		escapeRE   regexp.Regexp
+		escapeR    *strings.Replacer
 		Socket     Socket
 	}
 
@@ -42,11 +41,18 @@ type (
 
 // New creates a http/login helper struct.
 func New(log *log.Log, httpClient http.Client) *User {
-	escapeRE := regexp.MustCompile("([" + regexp.QuoteMeta(`\^$*+?.()|[]{}`) + "])")
+	quoteLetters := `\^$*+?.()|[]{}`
+	escapePairs := make([]string, len(quoteLetters)*2)
+	for i := range quoteLetters {
+		letter := quoteLetters[i : i+1]
+		escapePairs[i*2] = letter
+		escapePairs[i*2+1] = `\` + letter
+	}
+	escapeR := strings.NewReplacer(escapePairs...)
 	u := User{
 		log:        log,
 		httpClient: httpClient,
-		escapeRE:   *escapeRE,
+		escapeR:    escapeR,
 	}
 	return &u
 }
@@ -137,7 +143,7 @@ func (u *User) updateConfirmPassword(event js.Value) {
 
 // escapePassword escapes the password for html dom input pattern matching using Regexp.
 func (u User) escapePassword(p string) string {
-	return string(u.escapeRE.ReplaceAll([]byte(p), []byte(`\$1`)))
+	return u.escapeR.Replace(p)
 }
 
 // setUsernamesReadOnly sets all of the username inputs to readonly with the specified username if it is not empty, otherwise, it removes the readonly attribute.
