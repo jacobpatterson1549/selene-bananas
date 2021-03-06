@@ -44,7 +44,7 @@ func init() {
 
 // TestCreateDatabase only checks the happy path, making sure defaults defined in config.go are valid.
 func TestCreateDatabase(t *testing.T) {
-	var m mainFlags
+	var f flags
 	e := embeddedData{
 		SQLFS: fstest.MapFS{
 			"user_create.sql":                  &fstest.MapFile{Data: []byte("2")},
@@ -56,7 +56,7 @@ func TestCreateDatabase(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
-	got, err := m.createDatabase(ctx, "TestCreateDatabaseDB", e)
+	got, err := f.createDatabase(ctx, "TestCreateDatabaseDB", e)
 	switch {
 	case err != nil:
 		t.Errorf("unwanted error: %v", err)
@@ -67,7 +67,7 @@ func TestCreateDatabase(t *testing.T) {
 
 // TestNewServer only checks the happy path, making sure defaults defined in config.go are valid.
 func TestNewServer(t *testing.T) {
-	m := mainFlags{
+	f := flags{
 		httpsPort: 443,
 	}
 	ctx := context.Background()
@@ -79,7 +79,7 @@ func TestNewServer(t *testing.T) {
 		StaticFS:   fstest.MapFS{},
 		TemplateFS: fstest.MapFS{"file": &fstest.MapFile{}},
 	}
-	s, err := m.createServer(ctx, log, &db, e)
+	s, err := f.createServer(ctx, log, &db, e)
 	switch {
 	case err != nil:
 		t.Errorf("unwanted error: %v", err)

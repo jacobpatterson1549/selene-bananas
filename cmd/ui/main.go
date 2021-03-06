@@ -15,14 +15,14 @@ import (
 // main initializes the wasm code for the web dom and runs as long as the browser is open.
 func main() {
 	defer dom.AlertOnPanic()
-	m := mainFlags{
+	f := flags{
 		httpTimeout: 10 * time.Second,
 		tileLength:  25, // also in game.html
 	}
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
 	var wg sync.WaitGroup
-	m.initDom(ctx, &wg)
+	f.initDom(ctx, &wg)
 	enableInteraction()
 	initBeforeUnloadFn(cancelFunc, &wg)
 	wg.Wait() // BLOCKING

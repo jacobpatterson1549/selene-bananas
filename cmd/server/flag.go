@@ -19,8 +19,8 @@ const (
 	environmentVariableChallengeKey   = "ACME_CHALLENGE_KEY"
 )
 
-// mainFlags are the configuration options which can be easly configured at run startup for different environments.
-type mainFlags struct {
+// flags are the configuration options which can be easly configured at run startup for different environments.
+type flags struct {
 	httpPort       int
 	httpsPort      int
 	databaseURL    string
@@ -55,8 +55,8 @@ func usage(fs *flag.FlagSet) {
 	fs.PrintDefaults()
 }
 
-// newFlagSet creates a flagSet that populates the specified mainFlags.
-func (m *mainFlags) newFlagSet(osLookupEnvFunc func(string) (string, bool), portOverride *int) *flag.FlagSet {
+// newFlagSet creates a flagSet that populates the flags.
+func (f *flags) newFlagSet(osLookupEnvFunc func(string) (string, bool), portOverride *int) *flag.FlagSet {
 	fs := flag.NewFlagSet("main", flag.ExitOnError)
 	fs.Usage = func() {
 		usage(fs) // [lazy evaluation]
@@ -79,33 +79,33 @@ func (m *mainFlags) newFlagSet(osLookupEnvFunc func(string) (string, bool), port
 		_, ok := osLookupEnvFunc(key)
 		return ok
 	}
-	fs.StringVar(&m.databaseURL, "data-source", envValue(environmentVariableDatabaseURL), "The data source to the PostgreSQL database (connection URI).")
-	fs.IntVar(&m.httpPort, "http-port", envValueInt(environmentVariableHTTPPort, 0), "The TCP port for server http requests.  All traffic is redirected to the https port.")
-	fs.IntVar(&m.httpsPort, "https-port", envValueInt(environmentVariableHTTPSPort, 0), "The TCP port for server https requests.")
+	fs.StringVar(&f.databaseURL, "data-source", envValue(environmentVariableDatabaseURL), "The data source to the PostgreSQL database (connection URI).")
+	fs.IntVar(&f.httpPort, "http-port", envValueInt(environmentVariableHTTPPort, 0), "The TCP port for server http requests.  All traffic is redirected to the https port.")
+	fs.IntVar(&f.httpsPort, "https-port", envValueInt(environmentVariableHTTPSPort, 0), "The TCP port for server https requests.")
 	fs.IntVar(portOverride, "port", envValueInt(environmentVariablePort, 0), "The single port to run the server on.  Overrides the -https-port flag.  Causes the server to not handle http requests, ignoring -http-port.")
-	fs.StringVar(&m.challengeToken, "acme-challenge-token", envValue(environmentVariableChallengeToken), "The ACME HTTP-01 Challenge token used to get a certificate.")
-	fs.StringVar(&m.challengeKey, "acme-challenge-key", envValue(environmentVariableChallengeKey), "The ACME HTTP-01 Challenge key used to get a certificate.")
-	fs.BoolVar(&m.debugGame, "debug-game", envPresent(environmentVariableDebugGame), "Logs message types in the console when messages are passed between components.")
-	fs.BoolVar(&m.noTLSRedirect, "no-tls-redirect", envPresent(environmentVariableNoTLSRedirect), "Disables HTTPS redirection from http if present.")
-	fs.IntVar(&m.cacheSec, "cache-sec", envValueInt(environmentVariableCacheSec, defaultCacheSec), "The number of seconds static assets are cached, such as javascript files.")
+	fs.StringVar(&f.challengeToken, "acme-challenge-token", envValue(environmentVariableChallengeToken), "The ACME HTTP-01 Challenge token used to get a certificate.")
+	fs.StringVar(&f.challengeKey, "acme-challenge-key", envValue(environmentVariableChallengeKey), "The ACME HTTP-01 Challenge key used to get a certificate.")
+	fs.BoolVar(&f.debugGame, "debug-game", envPresent(environmentVariableDebugGame), "Logs message types in the console when messages are passed between components.")
+	fs.BoolVar(&f.noTLSRedirect, "no-tls-redirect", envPresent(environmentVariableNoTLSRedirect), "Disables HTTPS redirection from http if present.")
+	fs.IntVar(&f.cacheSec, "cache-sec", envValueInt(environmentVariableCacheSec, defaultCacheSec), "The number of seconds static assets are cached, such as javascript files.")
 	return fs
 }
 
-// newMainFlags creates a new, populated mainFlags structure.
+// newFlags creates a new, populated flags structure.
 // Fields are populated from command line arguments.
 // If fields are not specified on the command line, environment variable values are used before defaulting to other defaults.
-func newMainFlags(osArgs []string, osLookupEnvFunc func(string) (string, bool)) mainFlags {
+func newFlags(osArgs []string, osLookupEnvFunc func(string) (string, bool)) *flags {
 	if len(osArgs) == 0 {
 		osArgs = []string{""}
 	}
 	programArgs := osArgs[1:]
-	var m mainFlags
+	f := new(flags)
 	var portOverride int
-	fs := m.newFlagSet(osLookupEnvFunc, &portOverride)
+	fs := f.newFlagSet(osLookupEnvFunc, &portOverride)
 	fs.Parse(programArgs)
 	if portOverride != 0 {
-		m.httpsPort = portOverride
-		m.httpPort = -1
+		f.httpsPort = portOverride
+		f.httpPort = -1
 	}
-	return m
+	return f
 }

@@ -3,14 +3,12 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/jacobpatterson1549/selene-bananas/server"
 	_ "github.com/lib/pq" // register "postgres" database driver from package init() function
 )
 
@@ -23,24 +21,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("reading embedded files: %v", err)
 	}
-	m := newMainFlags(os.Args, os.LookupEnv)
-	db, err := m.createDatabase(ctx, "postgres", *e)
+	f := newFlags(os.Args, os.LookupEnv)
+	db, err := f.createDatabase(ctx, "postgres", *e)
 	if err != nil {
-		log.Fatalf("setting up database: %v", err)
+		log.Fatalf("creating database: %v", err)
 	}
-	server, err := m.createServer(ctx, log, db, *e)
+	server, err := f.createServer(ctx, log, db, *e)
 	if err != nil {
 		log.Fatalf("creating server: %v", err)
 	}
-	err = runServer(ctx, server, log)
-	if err != nil {
-		log.Fatalf("running server: %v", err)
-	}
-	log.Println("server run stopped successfully")
-}
-
-// runServer runs the server until it is interrupted or terminated.
-func runServer(ctx context.Context, server *server.Server, log *log.Logger) error {
 	done := make(chan os.Signal, 2)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 	errC := server.Run(ctx)
@@ -56,9 +45,9 @@ func runServer(ctx context.Context, server *server.Server, log *log.Logger) erro
 		log.Printf("handled signal: %v", signal)
 	}
 	if err := server.Stop(ctx); err != nil {
-		return fmt.Errorf("stopping server: %v", err)
+		log.Fatalf("stopping server: %v", err)
 	}
-	return nil
+	log.Println("server stopped successfully")
 }
 
 // unembedData returns the unembedded data that was embedded in the server.

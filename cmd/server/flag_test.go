@@ -3,18 +3,19 @@ package main
 import (
 	"bytes"
 	"flag"
+	"reflect"
 	"strings"
 	"testing"
 )
 
-func TestNewMainFlags(t *testing.T) {
-	newMainFlagsTests := []struct {
+func TestNewFlags(t *testing.T) {
+	newFlagsTests := []struct {
 		osArgs  []string
 		envVars map[string]string
-		want    mainFlags
+		want    *flags
 	}{
 		{ // defaults
-			want: mainFlags{
+			want: &flags{
 				cacheSec: defaultCacheSec,
 			},
 		},
@@ -30,7 +31,7 @@ func TestNewMainFlags(t *testing.T) {
 				"-acme-challenge-key=8",
 				"-no-tls-redirect",
 			},
-			want: mainFlags{
+			want: &flags{
 				httpPort:       1,
 				httpsPort:      2,
 				databaseURL:    "3",
@@ -52,7 +53,7 @@ func TestNewMainFlags(t *testing.T) {
 				"ACME_CHALLENGE_KEY":   "8",
 				"NO_TLS_REDIRECT":      "",
 			},
-			want: mainFlags{
+			want: &flags{
 				httpPort:       1,
 				httpsPort:      2,
 				databaseURL:    "3",
@@ -64,19 +65,19 @@ func TestNewMainFlags(t *testing.T) {
 			},
 		},
 	}
-	for i, test := range newMainFlagsTests {
+	for i, test := range newFlagsTests {
 		osLookupEnvFunc := func(key string) (string, bool) {
 			v, ok := test.envVars[key]
 			return v, ok
 		}
-		got := newMainFlags(test.osArgs, osLookupEnvFunc)
-		if test.want != got {
+		got := newFlags(test.osArgs, osLookupEnvFunc)
+		if !reflect.DeepEqual(test.want, got) {
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
 		}
 	}
 }
 
-func TestNewMainFlagsPortOverride(t *testing.T) {
+func TestNewFlagsPortOverride(t *testing.T) {
 	envVars := map[string]string{
 		"HTTP_PORT":     "1",
 		"HTTPS_PORT":    "2",
@@ -88,12 +89,12 @@ func TestNewMainFlagsPortOverride(t *testing.T) {
 		return v, ok
 	}
 	var osArgs []string
-	want := mainFlags{
+	want := &flags{
 		httpPort:  -1,
 		httpsPort: 3,
 	}
-	got := newMainFlags(osArgs, osLookupEnvFunc)
-	if want != got {
+	got := newFlags(osArgs, osLookupEnvFunc)
+	if !reflect.DeepEqual(want, got) {
 		t.Errorf("port should override httpsPort and return -1 for http port\nwanted: %v\ngot:    %v", want, got)
 	}
 }
@@ -102,9 +103,9 @@ func TestUsage(t *testing.T) {
 	osLookupEnvFunc := func(key string) (string, bool) {
 		return "", false
 	}
-	var m mainFlags
+	var f flags
 	var portOverride int
-	fs := m.newFlagSet(osLookupEnvFunc, &portOverride)
+	fs := f.newFlagSet(osLookupEnvFunc, &portOverride)
 	var buf bytes.Buffer
 	fs.SetOutput(&buf)
 	fs.Init("", flag.ContinueOnError) // override ErrorHandling
