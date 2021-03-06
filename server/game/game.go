@@ -3,7 +3,6 @@ package game
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"sort"
@@ -413,7 +412,7 @@ func (g Game) checkWords(pn player.Name) ([]string, error) {
 		errText = fmt.Sprintf("invalid words: %v", invalidWords)
 	}
 	if len(errText) != 0 {
-		return usedWords, errors.New(errText)
+		return usedWords, fmt.Errorf(errText)
 	}
 	return usedWords, nil
 }
