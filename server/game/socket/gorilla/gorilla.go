@@ -9,7 +9,7 @@ import (
 )
 
 type (
-	// Upgrader implements the socket.Upgrader interface by wrapping a gorilla/websocket upgrader.
+	// Upgrader implements the socket.Upgrader interface by wrapping a gorilla/websocket Upgrader.
 	Upgrader struct {
 		*websocket.Upgrader
 	}
