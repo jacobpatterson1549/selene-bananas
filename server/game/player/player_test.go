@@ -37,10 +37,9 @@ func TestNewPlayer(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case test.winPoints != p.WinPoints:
+			t.Errorf("wanted %v winPoints, got %v", test.winPoints, p.WinPoints)
 		default:
-			if test.winPoints != p.WinPoints {
-				t.Errorf("wanted %v winPoints, got %v", test.winPoints, p.WinPoints)
-			}
 			b.Config.NumCols = 22
 			if p.Board.Config.NumCols != 22 {
 				t.Errorf("board reference not set correctly")

@@ -364,15 +364,13 @@ func TestHandleGameMessage(t *testing.T) {
 		gmOut := make(chan message.Message)
 		handleGameMessages := func(wg *sync.WaitGroup, in <-chan message.Message) {
 			gotM := <-in
-			switch test.wantM.Type {
-			case message.SocketError:
+			switch {
+			case test.wantM.Type == message.SocketError:
 				if gotM.Type != message.SocketError {
 					t.Errorf("Test %v: wanted type of socket error, got %v", i, gotM.Type)
 				}
-			default:
-				if !reflect.DeepEqual(test.wantM, gotM) {
-					t.Errorf("Test %v: messages not equal\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
-				}
+			case !reflect.DeepEqual(test.wantM, gotM):
+				t.Errorf("Test %v: messages not equal\nwanted: %v\ngot:    %v", i, test.wantM, gotM)
 			}
 			wg.Done()
 		}

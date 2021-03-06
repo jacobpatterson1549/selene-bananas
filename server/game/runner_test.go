@@ -407,10 +407,8 @@ func TestHandleGameMessage(t *testing.T) {
 			if m2.Type != message.SocketError {
 				t.Errorf("Test %v: wanted socket error message, got %v", i, m2.Type)
 			}
-		default:
-			if !messageHandled {
-				t.Errorf("Test %v: message not handled", i)
-			}
+		case !messageHandled:
+			t.Errorf("Test %v: message not handled", i)
 		}
 		cancelFunc()
 		wg.Wait()
