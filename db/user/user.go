@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"unicode"
 
-	"github.com/jacobpatterson1549/selene-bananas/db/bcrypt"
+	"github.com/jacobpatterson1549/selene-bananas/db/user/bcrypt"
 )
 
 type (
