@@ -11,6 +11,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/server/game/socket/gorilla"
 )
 
 type (
@@ -18,7 +19,7 @@ type (
 	// The runner allows for players to open multiple sockets, but multiple sockets cannot play in the same game before first leaving.
 	Runner struct {
 		log           *log.Logger
-		upgrader      Upgrader
+		upgradeFunc   upgradeFunc
 		playerSockets map[player.Name]map[net.Addr]chan<- message.Message
 		playerGames   map[player.Name]map[game.ID]net.Addr
 		socketOut     chan message.Message
@@ -37,11 +38,8 @@ type (
 		SocketConfig Config
 	}
 
-	// Upgrader turns a http request into a websocket.
-	Upgrader interface {
-		// Upgrade creates a Conn from the HTTP request.
-		Upgrade(w http.ResponseWriter, r *http.Request) (Conn, error)
-	}
+	// upgradeFunc turns a http request into a websocket.
+	upgradeFunc func(w http.ResponseWriter, r *http.Request) (Conn, error)
 )
 
 // NewRunner creates a new socket runner from the config.
@@ -49,10 +47,13 @@ func (cfg RunnerConfig) NewRunner(log *log.Logger) (*Runner, error) {
 	if err := cfg.validate(log); err != nil {
 		return nil, fmt.Errorf("creating socket runner: validation: %w", err)
 	}
-	u := newGorillaUpgrader()
+	u := gorilla.NewUpgrader()
+	uf := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
+		return u.Upgrade(w, r)
+	}
 	r := Runner{
 		log:           log,
-		upgrader:      u,
+		upgradeFunc:   uf,
 		playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message, cfg.MaxSockets),
 		playerGames:   make(map[player.Name]map[game.ID]net.Addr),
 		RunnerConfig:  cfg,
@@ -138,7 +139,7 @@ func (r *Runner) handleAddSocket(ctx context.Context, wg *sync.WaitGroup, pn pla
 	if len(r.playerSockets[pn]) >= r.MaxPlayerSockets {
 		return nil, fmt.Errorf("player has reached quota of sockets, close an existing one")
 	}
-	conn, err := r.upgrader.Upgrade(w, req)
+	conn, err := r.upgradeFunc(w, req)
 	if err != nil {
 		return nil, fmt.Errorf("upgrading to websocket connection: %w", err)
 	}

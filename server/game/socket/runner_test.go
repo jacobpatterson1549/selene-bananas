@@ -79,10 +79,10 @@ func TestNewRunner(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
-		case got.upgrader == nil:
-			t.Errorf("Test %v: upgrader nil", i)
+		case got.upgradeFunc == nil:
+			t.Errorf("Test %v: upgradeFunc nil", i)
 		default:
-			got.upgrader = nil
+			got.upgradeFunc = nil
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
 			}
@@ -213,7 +213,7 @@ func TestRunnerHandleAddSocketCheckResult(t *testing.T) {
 		}
 		r := Runner{
 			log:           log.New(io.Discard, "", 0),
-			upgrader:      mockUpgrader(upgradeFunc),
+			upgradeFunc:   upgradeFunc,
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
 			RunnerConfig:  runnerConfig,
 			socketOut:     make(chan message.Message, 1), // the socket will run and fail, posting a message here
@@ -251,7 +251,7 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 	runnerAddSocketTests := []struct {
 		maxSockets       int
 		maxPlayerSockets int
-		playerName       string
+		playerName       player.Name
 		wantOk           bool
 		upgradeErr       error
 		Config
@@ -326,13 +326,15 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 		}
 		r := Runner{
 			log:           log.New(io.Discard, "", 0),
-			upgrader:      mockUpgrader(upgradeFunc),
+			upgradeFunc:   upgradeFunc,
 			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
 			playerGames:   make(map[player.Name]map[game.ID]net.Addr),
 			RunnerConfig:  runnerConfig,
 			socketOut:     make(chan message.Message, 1), // the socket will run and fail, posting a message here
 		}
-		pn, w, req := mockAddUserRequest(test.playerName)
+		pn := test.playerName
+		var w http.ResponseWriter
+		var req *http.Request
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		s, err := r.handleAddSocket(ctx, &wg, pn, w, req)
@@ -451,7 +453,7 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 		}
 		r := Runner{
 			log:           log.New(io.Discard, "", 0),
-			upgrader:      mockUpgrader(upgradeFunc),
+			upgradeFunc:   upgradeFunc,
 			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
 			playerGames:   make(map[player.Name]map[game.ID]net.Addr),
 			RunnerConfig:  runnerConfig,
@@ -460,13 +462,17 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		var wg sync.WaitGroup
-		pn1, w1, r1 := mockAddUserRequest(name1)
+		pn1 := player.Name(name1)
+		var w1 http.ResponseWriter
+		var r1 *http.Request
 		_, err1 := r.handleAddSocket(ctx, &wg, pn1, w1, r1)
 		switch {
 		case err1 != nil:
 			t.Errorf("Test %v: unwanted error adding first socket: %v", i, err1)
 		default:
-			pn2, w2, r2 := mockAddUserRequest(test.name2)
+			pn2 := player.Name(test.name2)
+			var w2 http.ResponseWriter
+			var r2 *http.Request
 			_, err2 := r.handleAddSocket(ctx, &wg, pn2, w2, r2)
 			switch {
 			case !test.wantOk:

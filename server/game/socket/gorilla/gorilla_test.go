@@ -1,4 +1,4 @@
-package socket
+package gorilla
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func TestGorillaUpgraderUpgrade(t *testing.T) {
+func TestUpgraderUpgrade(t *testing.T) {
 	upgradeTests := []struct {
 		w      http.ResponseWriter
 		r      *http.Request
@@ -20,13 +20,13 @@ func TestGorillaUpgraderUpgrade(t *testing.T) {
 			r: httptest.NewRequest("", "/", nil),
 		},
 		{
-			w:      newMockSocketWebSocketResponse(),
-			r:      newMockWebSocketRequest(),
+			w:      newWebsocketResponseWriter(),
+			r:      newWebsocketRequest(),
 			wantOk: true,
 		},
 	}
 	for i, test := range upgradeTests {
-		u := newGorillaUpgrader()
+		u := NewUpgrader()
 		conn, err := u.Upgrade(test.w, test.r)
 		switch {
 		case !test.wantOk:
@@ -35,13 +35,13 @@ func TestGorillaUpgraderUpgrade(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
-		default:
-			_ = conn.(*gorillaConn)
+		case conn == nil:
+			t.Errorf("Test %v: wanted connection", i)
 		}
 	}
 }
 
-func TestGorillaConnIsNormalClose(t *testing.T) {
+func TestConnIsNormalClose(t *testing.T) {
 	isNormalCloseTests := []struct {
 		err  error
 		want bool
@@ -69,7 +69,7 @@ func TestGorillaConnIsNormalClose(t *testing.T) {
 		},
 	}
 	for i, test := range isNormalCloseTests {
-		var conn gorillaConn
+		var conn Conn
 		got := conn.IsNormalClose(test.err)
 		if test.want != got {
 			t.Errorf("Test %v: wanted isNormalClose to be %v for '%v'", i, test.want, test.err)
@@ -77,8 +77,8 @@ func TestGorillaConnIsNormalClose(t *testing.T) {
 	}
 }
 
-func TestGorillaConnRemoteAddr(t *testing.T) {
-	conn := newGorillaConnWithMocks(t)
+func TestConnRemoteAddr(t *testing.T) {
+	conn := newConnWithMocks(t)
 	got := conn.RemoteAddr() // net/pipeAddr
 	if got == nil {
 		t.Error("wanted non-nil remote address")

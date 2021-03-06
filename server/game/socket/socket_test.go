@@ -303,7 +303,7 @@ func TestReadMessagesSync(t *testing.T) {
 				if !test.gameMissing {
 					src.Game = &game.Info{}
 				}
-				mockConnReadMessage(m, src)
+				*m = src
 				j++
 				if test.wantOk && j > 1 {
 					test.isNormalCloseErr = true
