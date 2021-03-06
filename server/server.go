@@ -285,10 +285,8 @@ func (s *Server) serveTCP(svr *http.Server, errC chan<- error, tls bool) (err er
 		if err != nil {
 			return err
 		}
-	default:
-		if len(s.TLSCertPEM) != 0 || len(s.TLSKeyPEM) != 0 {
-			s.log.Printf("Ignoring certificate since PORT was specified, using automated certificate management.")
-		}
+	case len(s.TLSCertPEM) != 0, len(s.TLSKeyPEM) != 0:
+		s.log.Printf("Ignoring certificate since PORT was specified, using automated certificate management.")
 	}
 	err = svr.Serve(ln) // BLOCKING
 	return
