@@ -1,4 +1,5 @@
-package socket
+// Package gorilla implements a websocket connection by wrapping gorilla/websocket.
+package gorilla
 
 import (
 	"net/http"
@@ -8,55 +9,55 @@ import (
 )
 
 type (
-	// gorillaUpgrader implements the socket.Upgrader interface by wrapping a gorilla/websocket upgrader.
-	gorillaUpgrader struct {
+	// Upgrader implements the socket.Upgrader interface by wrapping a gorilla/websocket upgrader.
+	Upgrader struct {
 		*websocket.Upgrader
 	}
 
-	// gorillaConn implements the Conn interface by wrapping a gorilla/websocket GorillaConnection.
-	gorillaConn struct {
+	// Conn implements the Conn interface by wrapping a gorilla/websocket GorillaConnection.
+	Conn struct {
 		*websocket.Conn
 	}
 )
 
-// NewGorillaUpgrader returns a upgrader tha creates gorilla websocket connections.
-func newGorillaUpgrader() *gorillaUpgrader {
+// NewUpgrader returns a upgrader tha creates gorilla websocket connections.
+func NewUpgrader() *Upgrader {
 	u := new(websocket.Upgrader)
-	return &gorillaUpgrader{u}
+	return &Upgrader{u}
 }
 
 // Upgrade creates a Conn from the http request.
-func (u *gorillaUpgrader) Upgrade(w http.ResponseWriter, r *http.Request) (Conn, error) {
+func (u *Upgrader) Upgrade(w http.ResponseWriter, r *http.Request) (*Conn, error) {
 	c, err := u.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &gorillaConn{c}, nil
+	return &Conn{c}, nil
 }
 
 // ReadMessage reads the next message from the GorillaConnection.
-func (c *gorillaConn) ReadMessage(m *message.Message) error {
+func (c *Conn) ReadMessage(m *message.Message) error {
 	return c.Conn.ReadJSON(m)
 }
 
-// WriteJMessage writes the message as json to the GorillaConnection.
-func (c *gorillaConn) WriteMessage(m message.Message) error {
+// WriteMessage writes the message as json to the GorillaConnection.
+func (c *Conn) WriteMessage(m message.Message) error {
 	return c.Conn.WriteJSON(m)
 }
 
 // WritePing writes a ping message on the GorillaConnection.
-func (c *gorillaConn) WritePing() error {
+func (c *Conn) WritePing() error {
 	return c.Conn.WriteMessage(websocket.PingMessage, nil)
 }
 
 // WriteClose writes a close message on the connection.  The connestion is NOT closed.
-func (c *gorillaConn) WriteClose(reason string) (err error) {
+func (c *Conn) WriteClose(reason string) (err error) {
 	data := websocket.FormatCloseMessage(websocket.CloseNormalClosure, reason)
 	return c.Conn.WriteMessage(websocket.CloseMessage, data)
 }
 
 // IsNormalClose determines if the error message is not an unexpected close error.
-func (*gorillaConn) IsNormalClose(err error) bool {
+func (*Conn) IsNormalClose(err error) bool {
 	_, ok := err.(*websocket.CloseError) // only errors from gorilla can be normal close errors
 	return ok && !websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived)
 }
