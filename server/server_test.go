@@ -330,6 +330,11 @@ func TestHandleFile(t *testing.T) {
 				wantCode: 200,
 			},
 			{
+				version:  "abc",
+				url:      "http://example.com/robots.txt",
+				wantCode: 200,
+			},
+			{
 				version:      "abc",
 				url:          "http://example.com/main.wasm",
 				wantCode:     301,

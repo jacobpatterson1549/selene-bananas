@@ -438,7 +438,7 @@ func (s *Server) fileHandler(h http.Handler) http.HandlerFunc {
 				return
 			}
 			fallthrough
-		case "/favicon.svg", "/favicon.png":
+		case "/favicon.svg", "/favicon.png", "/robots.txt":
 			w.Header().Set(HeaderCacheControl, s.cacheMaxAge)
 		case rootTemplatePath:
 			w.Header().Set(HeaderCacheControl, "no-store")
