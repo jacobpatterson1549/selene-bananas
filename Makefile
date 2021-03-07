@@ -9,7 +9,7 @@ TEMPLATE_DIR     := template
 SQL_DIR          := sql
 LICENSE_FILE     := LICENSE
 TLS_CERT_FILE    := tls-cert.pem
-TLS_KEY_FILE    := tls-key.pem
+TLS_KEY_FILE     := tls-key.pem
 COPY := cp -f
 LINK := $(COPY) -l
 GO := go
@@ -110,11 +110,11 @@ $(RESOURCES_DIR)/$(TLS_CERT_FILE) $(RESOURCES_DIR)/$(TLS_KEY_FILE):
 	touch $@
 
 serve: $(BUILD_DIR)/$(SERVER_OBJ)
-	$(SERVE_ARGS) $(BUILD_DIR)/$(SERVER_OBJ)
+	$(SERVE_ARGS) $<
 
 serve-tcp: $(BUILD_DIR)/$(SERVER_OBJ)
-	sudo setcap cap_net_bind_service=+ep $(BUILD_DIR)/$(SERVER_OBJ)
-	$(SERVE_ARGS) HTTP_PORT=80 HTTPS_PORT=443 $(BUILD_DIR)/$(SERVER_OBJ)
+	sudo setcap cap_net_bind_service=+ep $<
+	$(SERVE_ARGS) HTTP_PORT=80 HTTPS_PORT=443 $<
 
 clean:
 	rm -rf $(BUILD_DIR) $(SERVER_EMBED_DIR) $(GENERATE_SRC)
