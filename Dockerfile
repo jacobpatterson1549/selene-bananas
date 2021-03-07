@@ -20,12 +20,13 @@ RUN apk add --no-cache \
         aspell-en=2020.12.07-r0 \
     && go mod download
 
-# build the server
+# build the server, delete build cache
 COPY \
     . \
     ./
 RUN make build/main \
-    GO_ARGS="CGO_ENABLED=0"
+        GO_ARGS="CGO_ENABLED=0" \
+    && go clean -cache
 
 # copy the server to a minimal build image
 FROM scratch
