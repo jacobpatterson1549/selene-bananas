@@ -113,7 +113,7 @@ serve: $(BUILD_DIR)/$(SERVER_OBJ)
 	$(SERVE_ARGS) $(BUILD_DIR)/$(SERVER_OBJ)
 
 serve-tcp: $(BUILD_DIR)/$(SERVER_OBJ)
-	sudo setcap cap_net_bind_service=+ep $(SERVER_OBJ)
+	sudo setcap cap_net_bind_service=+ep $(BUILD_DIR)/$(SERVER_OBJ)
 	$(SERVE_ARGS) HTTP_PORT=80 HTTPS_PORT=443 $(BUILD_DIR)/$(SERVER_OBJ)
 
 clean:
