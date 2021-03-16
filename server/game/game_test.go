@@ -2030,7 +2030,7 @@ func TestHandleGameSwap(t *testing.T) {
 			Message: message.Message{
 				PlayerName: "selene",
 				Game: &game.Info{
-					Board: board.New([]tile.Tile{{ID: 1}}, nil),
+					Board: board.New([]tile.Tile{{ID: 1, Ch: 'X'}}, nil),
 				},
 			},
 			Game: Game{
@@ -2050,7 +2050,7 @@ func TestHandleGameSwap(t *testing.T) {
 				},
 			},
 			wantOk:    true,
-			wantBoard: board.New([]tile.Tile{{ID: 2}, {ID: 1}}, nil),
+			wantBoard: board.New([]tile.Tile{{ID: 2}, {ID: 1, Ch: 'X'}}, nil),
 		},
 	}
 	hasTile := func(tiles []tile.Tile, tID tile.ID) bool {
@@ -2087,6 +2087,12 @@ func TestHandleGameSwap(t *testing.T) {
 					if hasTile(test.Game.unusedTiles, tID) {
 						t.Errorf("Test %v: player received tileId=%v, but game still has it: %v", i, tID, test.Game.unusedTiles)
 					}
+				}
+				wantTileID := test.Message.Game.Board.UnusedTileIDs[0]
+				wantTile := test.Message.Game.Board.UnusedTiles[wantTileID]
+				wantLetter := rune(wantTile.Ch)
+				if !strings.ContainsRune(m.Info, wantLetter) {
+					t.Errorf("Test %v: wanted message sent to player to inform them that tile with the letter %v was swapped, got: '%v'", i, string(wantLetter), m.Info)
 				}
 			case m.Game.Board != nil:
 				t.Errorf("Test %v: wanted no board/tile information sent to player who did not make swap: got %v", i, m)
