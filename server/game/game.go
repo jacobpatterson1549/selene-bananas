@@ -554,7 +554,7 @@ func (g *Game) handleGameSwap(ctx context.Context, m message.Message, send messa
 		}
 		switch {
 		case n == m.PlayerName:
-			m2.Info = fmt.Sprintf("swapping %v tile", t.Ch)
+			m2.Info = fmt.Sprintf("swapping %v tile", string(t.Ch))
 			m2.Game.Board = board.New(newTiles, nil)
 		default:
 			m2.Info = fmt.Sprintf("%v swapped a tile", m.PlayerName)
