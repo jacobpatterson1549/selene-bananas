@@ -2,6 +2,7 @@ package lobby
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net/http/httptest"
@@ -16,20 +17,20 @@ import (
 
 func TestNewLobby(t *testing.T) {
 	testLog := log.New(io.Discard, "", 0)
-	testSocketRunner := mockRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
-		t.Error("sm run called")
+	testSocketRunner := mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
+		t.Error("socker runner run called")
 		return nil
 	})
-	testGameManeger := mockRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
-		t.Error("gm run called")
+	testGameManeger := mockGameRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+		t.Error("game runner run called")
 		return nil
 	})
 	newLobbyTests := []struct {
 		log          *log.Logger
 		wantOk       bool
 		want         *Lobby
-		socketRunner Runner
-		gameRunner   Runner
+		socketRunner SocketRunner
+		gameRunner   GameRunner
 		Config
 	}{
 		{ // no log
@@ -79,10 +80,10 @@ func TestNewLobby(t *testing.T) {
 			if err == nil {
 				t.Errorf("Test %v: wanted error", i)
 			}
-		case got.socketRunnerIn == nil:
-			t.Errorf("Test %v: socketRunnerIn channel not created", i)
+		case got.socketMessages == nil:
+			t.Errorf("Test %v: socketModifyRequests channel not created", i)
 		default:
-			got.socketRunnerIn = nil
+			got.socketMessages = nil
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
 			}
@@ -117,15 +118,15 @@ func TestRun(t *testing.T) {
 		gameRunnerRun := false
 		l := Lobby{
 			log: log.New(io.Discard, "", 0),
-			socketRunner: mockRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+			socketRunner: mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
 				socketRunnerRun = true
 				return socketRunnerOut
 			}),
-			gameRunner: mockRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+			gameRunner: mockGameRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 				gameRunnerRun = true
 				return gameRunnerOut
 			}),
-			socketRunnerIn: make(chan message.Message),
+			socketMessages: make(chan message.Socket),
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
@@ -139,7 +140,6 @@ func TestRun(t *testing.T) {
 			t.Errorf("Test %v: wanted game runner to be run", i)
 		default:
 			test.stopFunc(cancelFunc, socketRunnerOut, gameRunnerOut)
-			<-l.socketRunnerIn // wait for it to be closed
 		}
 		wg.Wait()
 	}
@@ -147,19 +147,13 @@ func TestRun(t *testing.T) {
 
 func TestAddUser(t *testing.T) {
 	addUserTests := []struct {
-		socketRunnerResult message.Message
-		wantOk             bool
+		addSocketErr error
+		wantOk       bool
 	}{
 		{
-			socketRunnerResult: message.Message{
-				Type: message.SocketError,
-				Info: "error adding socket for user",
-			},
+			addSocketErr: fmt.Errorf("error adding socket for user"),
 		},
 		{
-			socketRunnerResult: message.Message{
-				Info: "user cerated",
-			},
 			wantOk: true,
 		},
 	}
@@ -167,33 +161,30 @@ func TestAddUser(t *testing.T) {
 		u := "selene"
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("GET", "/addUser", nil)
-		handleSocketMessages := func(wg *sync.WaitGroup, in <-chan message.Message) {
-			m := <-in
+		handleSocketMessage := func(wg *sync.WaitGroup, inSM <-chan message.Socket) {
+			sm := <-inSM
 			switch {
-			case m.Type != message.SocketAdd, string(m.PlayerName) != u, m.AddSocketRequest == nil, m.AddSocketRequest.ResponseWriter != w, m.AddSocketRequest.Request != r, m.AddSocketRequest.Result == nil:
-				t.Errorf("Test %v: wanted socket add message sent to socketRunner, got; %v", i, m)
+			case sm.Type != message.SocketAdd,
+				string(sm.PlayerName) != u,
+				sm.ResponseWriter != w,
+				sm.Request != r,
+				sm.Result == nil:
+				t.Errorf("Test %v: wanted socket add message sent to socketRunner, got: %v", i, sm)
 			}
-			m.AddSocketRequest.Result <- test.socketRunnerResult
-			if test.socketRunnerResult.Type != message.SocketError {
-				m2 := <-in
-				switch {
-				case m2.Type != message.GameInfos, m2.Games == nil, m2.Info != test.socketRunnerResult.Info:
-					t.Errorf("Test %v: wanted copied message with infos sent back to socket runner, got %v", i, m2)
-				}
-			}
+			sm.Result <- test.addSocketErr
 			wg.Done()
 		}
 		l := Lobby{
 			log: log.New(io.Discard, "", 0),
-			socketRunner: mockRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+			socketRunner: mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
 				wg.Add(1)
-				go handleSocketMessages(wg, in)
+				go handleSocketMessage(wg, inSM)
 				return nil
 			}),
-			gameRunner: mockRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+			gameRunner: mockGameRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 				return nil
 			}),
-			socketRunnerIn: make(chan message.Message, 1),
+			socketMessages: make(chan message.Socket, 1),
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
@@ -216,12 +207,12 @@ func TestAddUser(t *testing.T) {
 
 func TestRemoveUser(t *testing.T) {
 	username := "selene"
-	want := message.Message{
+	want := message.Socket{
 		Type:       message.PlayerRemove,
 		PlayerName: player.Name(username),
 	}
-	handleSocketMessage := func(wg *sync.WaitGroup, in <-chan message.Message) {
-		got := <-in
+	handleModifyRequest := func(wg *sync.WaitGroup, inSM <-chan message.Socket) {
+		got := <-inSM
 		if !reflect.DeepEqual(want, got) {
 			t.Errorf("messages not equal\nwanted: %v\ngot:    %v", want, got)
 		}
@@ -229,16 +220,16 @@ func TestRemoveUser(t *testing.T) {
 	}
 	l := &Lobby{
 		log: log.New(io.Discard, "", 0),
-		socketRunner: mockRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+		socketRunner: mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
 			wg.Add(1)
-			go handleSocketMessage(wg, in)
+			go handleModifyRequest(wg, inSM)
 			return nil
 		}),
-		gameRunner: mockRunner(
+		gameRunner: mockGameRunner(
 			func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 				return nil
 			}),
-		socketRunnerIn: make(chan message.Message),
+		socketMessages: make(chan message.Socket),
 	}
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
@@ -250,36 +241,72 @@ func TestRemoveUser(t *testing.T) {
 }
 
 func TestHandleSocketMessage(t *testing.T) {
-	socketRunnerOut := make(chan message.Message)
-	var wg sync.WaitGroup
-	want := message.Message{
-		Info: "test message",
+	type messageHandler func(wg *sync.WaitGroup, in <-chan message.Message)
+	handleSocketMessageTests := []struct {
+		message.Message
+		wantGameM   message.Message
+		wantSocketM message.Message
+	}{
+		{
+			Message: message.Message{
+				Info: "test message",
+			},
+			wantGameM: message.Message{
+				Info: "test message",
+			},
+		},
+		{
+			Message: message.Message{
+				Type: message.GameInfos,
+				Addr: mockAddr("test.two"),
+			},
+			wantSocketM: message.Message{
+				Type:  message.GameInfos,
+				Addr:  mockAddr("test.two"),
+				Games: []game.Info{{}, {}},
+			},
+		},
 	}
-	handleGameMessage := func(wg *sync.WaitGroup, in <-chan message.Message) {
-		got := <-in
-		if !reflect.DeepEqual(want, got) {
-			t.Errorf("messages not equal\nwanted: %v\ngot:    %v", want, got)
+	for i, test := range handleSocketMessageTests {
+		socketRunnerOut := make(chan message.Message)
+		var wg sync.WaitGroup
+		var gotGameM, gotSocketM message.Message
+		l := Lobby{
+			log: log.New(io.Discard, "", 0),
+			socketRunner: mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
+				wg.Add(1)
+				go func() {
+					gotSocketM = <-in
+					wg.Done()
+				}()
+				return socketRunnerOut
+			}),
+			gameRunner: mockGameRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+				wg.Add(1)
+				go func() {
+					gotGameM = <-in
+					wg.Done()
+				}()
+				return nil
+			}),
+			games: map[game.ID]game.Info{
+				1: {},
+				2: {},
+			},
 		}
-		wg.Done()
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		l.Run(ctx, &wg)
+		socketRunnerOut <- test.Message
+		cancelFunc()
+		wg.Wait()
+		switch {
+		case !reflect.DeepEqual(test.wantGameM, gotGameM):
+			t.Errorf("Test %v: game messages not equal\nwanted: %v\ngot:    %v", i, test.wantGameM, gotGameM)
+		case !reflect.DeepEqual(test.wantSocketM, gotSocketM):
+			t.Errorf("Test %v: socket messages not equal\nwanted: %v\ngot:    %v", i, test.wantSocketM, gotSocketM)
+		}
 	}
-	l := Lobby{
-		log: log.New(io.Discard, "", 0),
-		socketRunner: mockRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
-			return socketRunnerOut
-		}),
-		gameRunner: mockRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
-			wg.Add(1)
-			go handleGameMessage(wg, in)
-			return nil
-		}),
-		socketRunnerIn: make(chan message.Message),
-	}
-	ctx := context.Background()
-	ctx, cancelFunc := context.WithCancel(ctx)
-	l.Run(ctx, &wg)
-	socketRunnerOut <- want
-	cancelFunc()
-	wg.Wait() // let game runner handle message
 }
 
 func TestHandleGameMessage(t *testing.T) {
@@ -376,16 +403,15 @@ func TestHandleGameMessage(t *testing.T) {
 		}
 		l := Lobby{
 			log: log.New(io.Discard, "", 0),
-			socketRunner: mockRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+			socketRunner: mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
 				wg.Add(1)
 				go handleGameMessages(wg, in)
 				return nil
 			}),
-			gameRunner: mockRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+			gameRunner: mockGameRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 				return gmOut
 			}),
-			socketRunnerIn: make(chan message.Message),
-			games:          test.games,
+			games: test.games,
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)

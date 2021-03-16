@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -92,16 +93,21 @@ func TestNewRunner(t *testing.T) {
 
 func TestRunRunner(t *testing.T) {
 	runRunnerTests := []struct {
-		stopFunc func(cancelFunc context.CancelFunc, in chan message.Message)
+		stopFunc func(cancelFunc context.CancelFunc, in chan message.Message, inSM chan message.Socket)
 	}{
 		{
-			stopFunc: func(cancelFunc context.CancelFunc, in chan message.Message) {
+			stopFunc: func(cancelFunc context.CancelFunc, in chan message.Message, inSM chan message.Socket) {
 				cancelFunc()
 			},
 		},
 		{
-			stopFunc: func(cancelFunc context.CancelFunc, in chan message.Message) {
+			stopFunc: func(cancelFunc context.CancelFunc, in chan message.Message, inSM chan message.Socket) {
 				close(in)
+			},
+		},
+		{
+			stopFunc: func(cancelFunc context.CancelFunc, in chan message.Message, inSM chan message.Socket) {
+				close(inSM)
 			},
 		},
 	}
@@ -114,8 +120,9 @@ func TestRunRunner(t *testing.T) {
 		defer cancelFunc()
 		var wg sync.WaitGroup
 		in := make(chan message.Message)
-		runnerOut := r.Run(ctx, &wg, in)
-		test.stopFunc(cancelFunc, in)
+		inSM := make(chan message.Socket)
+		runnerOut := r.Run(ctx, &wg, in, inSM)
+		test.stopFunc(cancelFunc, in, inSM)
 		wg.Wait()
 		_, runnerOutOpen := <-runnerOut
 		if runnerOutOpen {
@@ -130,18 +137,40 @@ func TestRunRunnerHandleLobbyMessage(t *testing.T) {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	var wg sync.WaitGroup
 	in := make(chan message.Message)
+	inSM := make(chan message.Socket)
 	var buf bytes.Buffer
 	log := log.New(&buf, "", 0)
 	r := Runner{
 		log: log,
 	}
-	r.Run(ctx, &wg, in)
+	r.Run(ctx, &wg, in, inSM)
 	m := message.Message{}
 	in <- m
 	cancelFunc()
 	wg.Wait()
 	if buf.Len() == 0 {
-		t.Errorf("wanted error to be logged when loby sent socket runner invalid message")
+		t.Errorf("wanted error to be logged when lobby sent socket runner invalid message")
+	}
+}
+
+// TestRunRunnerHandleLobbyModifyRequest ensures a basic yet invalid lobby message passes throgh the runner correctly.
+func TestRunRunnerHandleLobbyModifyRequest(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancelFunc := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	in := make(chan message.Message)
+	inSM := make(chan message.Socket)
+	var buf bytes.Buffer
+	log := log.New(&buf, "", 0)
+	r := Runner{
+		log: log,
+	}
+	r.Run(ctx, &wg, in, inSM)
+	inSM <- message.Socket{}
+	cancelFunc()
+	wg.Wait()
+	if buf.Len() == 0 {
+		t.Errorf("wanted error to be logged when lobby sent socket runner invalid message")
 	}
 }
 
@@ -151,29 +180,103 @@ func TestRunRunnerHandleSocketMessage(t *testing.T) {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	var wg sync.WaitGroup
 	in := make(chan message.Message)
+	inSM := make(chan message.Socket)
+	result := make(chan error)
+	pn := player.Name("selene")
+	addSocketMr := message.Socket{
+		Type:       message.SocketAdd,
+		PlayerName: pn,
+		Result:     result,
+	}
 	var buf bytes.Buffer
 	log := log.New(&buf, "", 0)
-	r := Runner{
-		log: log,
+	addr := mockAddr("mock conn")
+	wantSocketMessage := message.Message{
+		Type:       message.CreateGame,
+		Game:       &game.Info{},
+		PlayerName: pn,
+		Addr:       addr,
 	}
-	r.Run(ctx, &wg, in)
-	m := message.Message{}
-	r.socketOut <- m
+	j := 0
+	var readWait sync.WaitGroup
+	conn := &mockConn{
+		RemoteAddrFunc: func() net.Addr {
+			return addr
+		},
+		SetReadDeadlineFunc: func(t time.Time) error {
+			return nil
+		},
+		SetPongHandlerFunc: func(h func(appDauta string) error) {
+			// NOOP
+		},
+		ReadMessageFunc: func(m *message.Message) error {
+			if j > 0 {
+				return fmt.Errorf("mock conn only sends one message")
+			}
+			readWait.Wait()
+			*m = wantSocketMessage
+			j++
+			return nil
+		},
+		IsNormalCloseFunc: func(err error) bool {
+			return true
+		},
+		WriteCloseFunc: func(reason string) error {
+			return nil
+		},
+		CloseFunc: func() error {
+			return nil
+		},
+	}
+	upgradeFunc := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
+		return conn, nil
+	}
+	runnerConfig := RunnerConfig{
+		MaxSockets:       1,
+		MaxPlayerSockets: 1,
+		SocketConfig: Config{
+			TimeFunc:       func() int64 { return 0 },
+			ReadWait:       2 * time.Hour,
+			WriteWait:      1 * time.Hour,
+			PingPeriod:     2 * time.Hour,
+			HTTPPingPeriod: 3 * time.Hour,
+		},
+	}
+	r := Runner{
+		upgradeFunc:   upgradeFunc,
+		RunnerConfig:  runnerConfig,
+		playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message, 1),
+		log:           log,
+	}
+	readWait.Add(1)
+	out := r.Run(ctx, &wg, in, inSM)
+	inSM <- addSocketMr
+	addSocketErr := <-result
+	got1 := <-out
+	readWait.Done()
+	got2 := <-out
 	cancelFunc()
 	wg.Wait()
-	if buf.Len() == 0 {
-		t.Errorf("wanted error to be logged when loby sent socket runner invalid message")
+	switch {
+	case addSocketErr != nil:
+		t.Errorf("wanted no error adding socket, got: %v", addSocketErr)
+	case got1.Type != message.GameInfos:
+		t.Errorf("wanted first message to lobby to be for game infos, got: %v", got1)
+	case !reflect.DeepEqual(wantSocketMessage, got2):
+		t.Errorf("messages from socket not equal:\nwanted: %v\ngot:    %v", wantSocketMessage, got2)
+	case buf.Len() == 0:
+		t.Errorf("wanted error to be logged when socket sent socket runner invalid message")
 	}
 }
 
 func TestRunnerHandleAddSocketCheckResult(t *testing.T) {
 	runnerAddSocketTests := []struct {
-		m      message.Message
+		message.Socket
 		wantOk bool
 	}{
 		{}, // no playerName in message
 		{
-			m: message.Message{
+			Socket: message.Socket{
 				PlayerName: "selene",
 			},
 			wantOk: true,
@@ -216,30 +319,32 @@ func TestRunnerHandleAddSocketCheckResult(t *testing.T) {
 			upgradeFunc:   upgradeFunc,
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
 			RunnerConfig:  runnerConfig,
-			socketOut:     make(chan message.Message, 1), // the socket will run and fail, posting a message here
 		}
+		socketOut := make(chan message.Message)
+		lobbyIn := make(chan message.Message)
 		ctx := context.Background()
-		result := make(chan message.Message, 1)
-		test.m.Type = message.SocketAdd
-		test.m.AddSocketRequest = &message.AddSocketRequest{
-			Result: result,
-		}
+		result := make(chan error, 1)
+		test.Socket.Type = message.SocketAdd
+		test.Socket.Result = result
 		var wg sync.WaitGroup
-		r.handleLobbyMessage(ctx, &wg, test.m)
-		got := <-result
+		r.handleLobbyModifyRequest(ctx, &wg, test.Socket, socketOut, lobbyIn)
+		err := <-result
 		switch {
 		case !test.wantOk:
-			if got.Type != message.SocketError {
-				t.Errorf("Test %v: wanted message to be socket error, got %v", i, got)
+			if err == nil {
+				t.Errorf("Test %v: wanted add socket error", i)
 			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
 		default:
+			got := <-lobbyIn
 			switch {
 			case got.Type != message.GameInfos:
 				t.Errorf("Test %v: wanted message to be for game infos, got %v", i, got)
 			case addr != got.Addr:
 				t.Errorf("Test %v: wanted message addr to be %v, got %v", i, addr, got.Addr)
-			case test.m.PlayerName != got.PlayerName:
-				t.Errorf("Test %v: wanted player name in message to be %v, got %v", i, test.m.PlayerName, got.PlayerName)
+			case test.Socket.PlayerName != got.PlayerName:
+				t.Errorf("Test %v: wanted player name in message to be %v, got %v", i, test.Socket.PlayerName, got.PlayerName)
 			case len(r.playerSockets) != 1:
 				t.Errorf("Test %v: wanted new socket to be added to runner", i)
 			}
@@ -330,14 +435,19 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
 			playerGames:   make(map[player.Name]map[game.ID]net.Addr),
 			RunnerConfig:  runnerConfig,
-			socketOut:     make(chan message.Message, 1), // the socket will run and fail, posting a message here
 		}
+		socketOut := make(chan message.Message, 1) // the socket will run and fail, posting a message here
 		pn := test.playerName
 		var w http.ResponseWriter
 		var req *http.Request
+		sm := message.Socket{
+			PlayerName:     pn,
+			ResponseWriter: w,
+			Request:        req,
+		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
-		s, err := r.handleAddSocket(ctx, &wg, pn, w, req)
+		s, err := r.handleAddSocket(ctx, &wg, sm, socketOut)
 		cancelFunc()
 		wg.Wait()
 		switch {
@@ -457,15 +567,20 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
 			playerGames:   make(map[player.Name]map[game.ID]net.Addr),
 			RunnerConfig:  runnerConfig,
-			socketOut:     make(chan message.Message, 2), // the sockets will run and fail, posting a message here
 		}
+		socketOut := make(chan message.Message, 2) // the sockets will run and fail, posting a message here
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		var wg sync.WaitGroup
 		pn1 := player.Name(name1)
 		var w1 http.ResponseWriter
 		var r1 *http.Request
-		_, err1 := r.handleAddSocket(ctx, &wg, pn1, w1, r1)
+		sm1 := message.Socket{
+			PlayerName:     pn1,
+			ResponseWriter: w1,
+			Request:        r1,
+		}
+		_, err1 := r.handleAddSocket(ctx, &wg, sm1, socketOut)
 		switch {
 		case err1 != nil:
 			t.Errorf("Test %v: unwanted error adding first socket: %v", i, err1)
@@ -473,7 +588,12 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 			pn2 := player.Name(test.name2)
 			var w2 http.ResponseWriter
 			var r2 *http.Request
-			_, err2 := r.handleAddSocket(ctx, &wg, pn2, w2, r2)
+			sm2 := message.Socket{
+				PlayerName:     pn2,
+				ResponseWriter: w2,
+				Request:        r2,
+			}
+			_, err2 := r.handleAddSocket(ctx, &wg, sm2, socketOut)
 			switch {
 			case !test.wantOk:
 				if err2 == nil {
@@ -754,17 +874,6 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			wantOk: true,
-		},
-		{ // AddSocket no AddSocketRequest
-			m: message.Message{
-				Type: message.SocketAdd,
-			},
-		},
-		{ // AddSocket no AddSocketRquest.Result
-			m: message.Message{
-				Type:             message.SocketAdd,
-				AddSocketRequest: &message.AddSocketRequest{},
-			},
 		},
 		{ // player join game.  The lobby sends this when a player creates a game.
 			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
@@ -1198,10 +1307,12 @@ func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 		playerSockets: playerSockets,
 		playerGames:   playerGames,
 	}
-	m := message.Message{
+	sm := message.Socket{
 		Type:       message.PlayerRemove,
 		PlayerName: "fred",
 	}
+	socketOut := make(chan message.Message)
+	lobbyIn := make(chan message.Message)
 	wantPlayerSockets := map[player.Name]map[net.Addr]chan<- message.Message{
 		"barney": {
 			addr2: c2,
@@ -1214,7 +1325,7 @@ func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 	}
 	ctx := context.Background()
 	var wg sync.WaitGroup
-	r.handleLobbyMessage(ctx, &wg, m)
+	r.handleLobbyModifyRequest(ctx, &wg, sm, socketOut, lobbyIn)
 	switch {
 	case !reflect.DeepEqual(wantPlayerSockets, r.playerSockets):
 		t.Errorf("player sockets not equal:\nwanted: %v\ngot:    %v", wantPlayerSockets, r.playerSockets)

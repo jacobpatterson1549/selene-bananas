@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/rand"
 	"net"
-	"net/http"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
@@ -29,15 +28,6 @@ type (
 		PlayerName player.Name `json:"-"`
 		// Addr is the socket remote address the message is from
 		Addr net.Addr `json:"-"`
-		// AddSocketRequest contains info about the socket to add for a player.
-		AddSocketRequest *AddSocketRequest `json:"-"`
-	}
-
-	// AddSocketRequest is used to add players from http requests.
-	AddSocketRequest struct {
-		http.ResponseWriter
-		*http.Request
-		Result chan<- Message
 	}
 )
 

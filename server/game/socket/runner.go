@@ -22,7 +22,6 @@ type (
 		upgradeFunc   upgradeFunc
 		playerSockets map[player.Name]map[net.Addr]chan<- message.Message
 		playerGames   map[player.Name]map[game.ID]net.Addr
-		socketOut     chan message.Message
 		RunnerConfig
 	}
 
@@ -76,9 +75,9 @@ func (cfg RunnerConfig) validate(log *log.Logger) error {
 
 // Run consumes messages from the message channel.  This channel is used to create sockets and send messages from games to them.
 // The messages received from sockets are sent on an "out" channel to be read by games.
-func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
+func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
 	ctx, cancelFunc := context.WithCancel(ctx)
-	r.socketOut = make(chan message.Message)
+	socketOut := make(chan message.Message)
 	out := make(chan message.Message)
 	wg.Add(1)
 	go func() {
@@ -95,7 +94,12 @@ func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 					return
 				}
 				r.handleLobbyMessage(ctx, wg, m)
-			case m := <-r.socketOut:
+			case sm, ok := <-inSM:
+				if !ok {
+					return
+				}
+				r.handleLobbyModifyRequest(ctx, wg, sm, socketOut, out)
+			case m := <-socketOut:
 				r.handleSocketMessage(ctx, m, out)
 			}
 		}
@@ -104,60 +108,51 @@ func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 }
 
 // handleAddSocket adds a socket and sends a response if on the result channel of the request.
-func (r *Runner) addSocket(ctx context.Context, wg *sync.WaitGroup, m message.Message) {
-	switch {
-	case m.AddSocketRequest == nil:
-		r.log.Printf("no AddSocketRequest on message: %v", m)
-		return
-	case m.AddSocketRequest.Result == nil:
-		r.log.Printf("no AddSocketRequest Result channel on message: %v", m)
-		return
+func (r *Runner) addSocket(ctx context.Context, wg *sync.WaitGroup, sm message.Socket, socketOut chan<- message.Message, lobbyIn chan<- message.Message) {
+	s, err := r.handleAddSocket(ctx, wg, sm, socketOut)
+	sm.Result <- err // signal that the socket is added
+	if err == nil {
+		// request game infos for the only the new socket
+		// make the request asynchronously because lobby might be processing other messages by now
+		m := message.Message{
+			Type:       message.GameInfos,
+			PlayerName: sm.PlayerName,
+			Addr:       s.Addr,
+		}
+		go message.Send(m, lobbyIn, r.Debug, r.log)
 	}
-	s, err := r.handleAddSocket(ctx, wg, m.PlayerName, m.AddSocketRequest.ResponseWriter, m.AddSocketRequest.Request)
-	m2 := message.Message{
-		PlayerName: m.PlayerName,
-	}
-	switch {
-	case err != nil:
-		m2.Type = message.SocketError
-		m2.Info = err.Error()
-	default:
-		m2.Type = message.GameInfos
-		m2.Addr = s.Addr
-	}
-	message.Send(m2, m.AddSocketRequest.Result, r.Debug, r.log)
 }
 
 // handleAddSocket runs and adds a socket for the player to the runner.
-func (r *Runner) handleAddSocket(ctx context.Context, wg *sync.WaitGroup, pn player.Name, w http.ResponseWriter, req *http.Request) (*Socket, error) {
+func (r *Runner) handleAddSocket(ctx context.Context, wg *sync.WaitGroup, sm message.Socket, socketOut chan<- message.Message) (*Socket, error) {
 	if r.numSockets() >= r.MaxSockets {
 		return nil, fmt.Errorf("no room for another socket")
 	}
-	if len(pn) == 0 {
+	if len(sm.PlayerName) == 0 {
 		return nil, fmt.Errorf("player name required")
 	}
-	if len(r.playerSockets[pn]) >= r.MaxPlayerSockets {
+	if len(r.playerSockets[sm.PlayerName]) >= r.MaxPlayerSockets {
 		return nil, fmt.Errorf("player has reached quota of sockets, close an existing one")
 	}
-	conn, err := r.upgradeFunc(w, req)
+	conn, err := r.upgradeFunc(sm.ResponseWriter, sm.Request)
 	if err != nil {
 		return nil, fmt.Errorf("upgrading to websocket connection: %w", err)
 	}
-	s, err := r.SocketConfig.NewSocket(r.log, pn, conn)
+	s, err := r.SocketConfig.NewSocket(r.log, sm.PlayerName, conn)
 	if err != nil {
 		return nil, fmt.Errorf("creating socket in runner: %v", err)
 	}
 	socketIn := make(chan message.Message)
-	s.Run(ctx, wg, socketIn, r.socketOut)
+	s.Run(ctx, wg, socketIn, socketOut)
 	if r.hasSocket(s.Addr) {
 		return nil, fmt.Errorf("socket already exists with address of %v", s.Addr)
 	}
-	playerSockets, ok := r.playerSockets[pn]
+	playerSockets, ok := r.playerSockets[sm.PlayerName]
 	switch {
 	case ok:
 		playerSockets[s.Addr] = socketIn
 	default:
-		r.playerSockets[pn] = map[net.Addr]chan<- message.Message{
+		r.playerSockets[sm.PlayerName] = map[net.Addr]chan<- message.Message{
 			s.Addr: socketIn,
 		}
 	}
@@ -192,12 +187,20 @@ func (r *Runner) handleLobbyMessage(ctx context.Context, wg *sync.WaitGroup, m m
 		r.sendGameInfos(ctx, m)
 	case message.SocketError:
 		r.sendSocketError(ctx, m)
-	case message.PlayerRemove:
-		r.removePlayer(ctx, m)
-	case message.SocketAdd:
-		r.addSocket(ctx, wg, m)
 	default:
 		r.sendMessageForGame(ctx, m)
+	}
+}
+
+// handleLobbyModifyRequest is used for the lobby to add and remove sockets via HTTP requests.
+func (r *Runner) handleLobbyModifyRequest(ctx context.Context, wg *sync.WaitGroup, sm message.Socket, socketOut chan<- message.Message, lobbyIn chan<- message.Message) {
+	switch sm.Type {
+	case message.PlayerRemove:
+		r.removePlayer(ctx, sm)
+	case message.SocketAdd:
+		r.addSocket(ctx, wg, sm, socketOut, lobbyIn)
+	default:
+		r.log.Printf("could not handle modify request: %v", sm)
 	}
 }
 
@@ -413,11 +416,11 @@ func (r *Runner) leaveGame(ctx context.Context, m message.Message) {
 }
 
 // removePlayer removes the player's sockets and games.
-func (r *Runner) removePlayer(ctx context.Context, m message.Message) {
-	if addrs, ok := r.playerSockets[m.PlayerName]; ok {
+func (r *Runner) removePlayer(ctx context.Context, sm message.Socket) {
+	if addrs, ok := r.playerSockets[sm.PlayerName]; ok {
 		for addr := range addrs {
 			m2 := message.Message{
-				PlayerName: m.PlayerName,
+				PlayerName: sm.PlayerName,
 				Addr:       addr,
 			}
 			r.removeSocket(ctx, m2)
