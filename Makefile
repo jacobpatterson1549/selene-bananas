@@ -7,9 +7,11 @@ SERVER_EMBED_DIR := cmd/server/embed
 STATIC_DIR       := static
 TEMPLATE_DIR     := template
 SQL_DIR          := sql
-LICENSE_FILE     := LICENSE
-TLS_CERT_FILE    := tls-cert.pem
-TLS_KEY_FILE     := tls-key.pem
+LICENSE_FILE      := LICENSE
+TLS_CERT_FILE     := tls-cert.pem
+TLS_KEY_FILE      := tls-key.pem
+GO_MOD_FILES      := go.mod go.sum
+DOCKERIGNORE_FILE := .dockerignore
 COPY := cp -f
 LINK := $(COPY) -l
 GO := go
@@ -65,12 +67,12 @@ $(BUILD_DIR)/$(SERVER_BENCHMARK): $(SERVER_SRC) $(GENERATE_SRC) | $(BUILD_DIR)
 		| $(GO_ARGS) xargs $(GO_BENCH)
 		| tee $@
 
-$(GENERATE_SRC): | $(SERVER_EMBED_DIR)
+$(GENERATE_SRC): $(GO_MOD_FILES) | $(SERVER_EMBED_DIR)
 	$(GO_INSTALL)  $(GO_PACKAGES)
 	$(GO_GENERATE) $(GO_PACKAGES)
 
 $(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(BUILD_DIR) $(SERVER_EMBED_DIR)
-	grep "^!" .dockerignore \
+	grep "^!" $(DOCKERIGNORE_FILE) \
 		| cut -c 2- \
 		| xargs -I{} find {} -type f -print \
 		| sort \
