@@ -26,8 +26,6 @@ type flags struct {
 	databaseURL    string
 	challengeToken string
 	challengeKey   string
-	tlsCertFile    string
-	tlsKeyFile     string
 	debugGame      bool
 	noTLSRedirect  bool
 	cacheSec       int

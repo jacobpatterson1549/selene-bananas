@@ -369,15 +369,6 @@ func TestMoveTilesSwap(t *testing.T) {
 	}
 }
 
-// boardsEqualForTesting is a test function that determines if boards are equal by allowing the nils in fields for the wanted board,
-// but only if the other board has that field with a zero length value
-func boardsEqualForTesting(want, got Board) bool {
-	return (reflect.DeepEqual(want.UnusedTiles, got.UnusedTiles) || (want.UnusedTiles == nil && len(got.UnusedTiles) == 0)) ||
-		(reflect.DeepEqual(want.UnusedTileIDs, got.UnusedTileIDs) || (want.UnusedTileIDs == nil && len(got.UnusedTileIDs) == 0)) ||
-		(reflect.DeepEqual(want.UsedTiles, got.UsedTiles) || (want.UsedTiles == nil && len(got.UsedTiles) == 0)) ||
-		(reflect.DeepEqual(want.UsedTileLocs, got.UsedTileLocs) || (want.UsedTileLocs == nil && len(got.UsedTileLocs) == 0))
-}
-
 func TestMoveTiles(t *testing.T) {
 	moveTilesErrTests := []struct {
 		tilePositions []tile.Position

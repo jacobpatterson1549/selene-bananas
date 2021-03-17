@@ -241,7 +241,6 @@ func TestRemoveUser(t *testing.T) {
 }
 
 func TestHandleSocketMessage(t *testing.T) {
-	type messageHandler func(wg *sync.WaitGroup, in <-chan message.Message)
 	handleSocketMessageTests := []struct {
 		message.Message
 		wantGameM   message.Message

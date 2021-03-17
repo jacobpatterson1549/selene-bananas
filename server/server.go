@@ -110,7 +110,6 @@ type (
 		Lobby
 		StaticFS   fs.FS
 		TemplateFS fs.FS
-		sqlFiles   []fs.File
 	}
 )
 
