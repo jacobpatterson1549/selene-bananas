@@ -16,12 +16,6 @@ type (
 		Config
 	}
 
-	// Scanner reads data from the database.
-	Scanner interface {
-		// Scan reads from the database into the destination array.
-		Scan(dest ...interface{}) error
-	}
-
 	// Config contains opnions for how the database should run.
 	Config struct {
 		// QueryPeriod is the amount of time that any database action can take before it should timeout.
@@ -73,11 +67,15 @@ func (db Database) Setup(ctx context.Context, files []io.Reader) error {
 	return nil
 }
 
-// Query returns the row referenced by the query.
-func (db Database) Query(ctx context.Context, q Query) Scanner {
+// Query queries a single row, scanning into the destination array.
+func (db Database) Query(ctx context.Context, q Query, dest ...interface{}) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, db.QueryPeriod)
 	defer cancelFunc()
-	return db.DB.QueryRowContext(ctx, q.Cmd(), q.Args()...)
+	row := db.DB.QueryRowContext(ctx, q.Cmd(), q.Args()...)
+	if err := row.Scan(dest...); err != nil {
+		return fmt.Errorf("quering into destination arguments: %w", err)
+	}
+	return nil
 }
 
 // Exec evaluates multiple queries in a transaction, ensuring each execSQLFunction one only updates one row.

@@ -224,9 +224,8 @@ func TestDatabaseQuery(t *testing.T) {
 		if test.cancelled {
 			cancelFunc()
 		}
-		r := db.Query(ctx, q)
 		var got int
-		err = r.Scan(&got)
+		err := db.Query(ctx, q, &got)
 		switch {
 		case !test.wantOk:
 			if err == nil {

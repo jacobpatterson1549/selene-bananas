@@ -22,7 +22,7 @@ func (m mockPasswordHandler) IsCorrect(hashedPassword []byte, password string) (
 }
 
 type mockDatabase struct {
-	queryFunc func(ctx context.Context, q db.Query) db.Scanner
+	queryFunc func(ctx context.Context, q db.Query, dest ...interface{}) error
 	execFunc  func(ctx context.Context, queries ...db.Query) error
 }
 
@@ -30,16 +30,10 @@ func (m mockDatabase) Setup(ctx context.Context, files []io.Reader) error {
 	return fmt.Errorf("Setup should not be called by the server")
 }
 
-func (m mockDatabase) Query(ctx context.Context, q db.Query) db.Scanner {
-	return m.queryFunc(ctx, q)
+func (m mockDatabase) Query(ctx context.Context, q db.Query, dest ...interface{}) error {
+	return m.queryFunc(ctx, q, dest...)
 }
 
 func (m mockDatabase) Exec(ctx context.Context, queries ...db.Query) error {
 	return m.execFunc(ctx, queries...)
-}
-
-type mockScanner func(dest ...interface{}) error
-
-func (m mockScanner) Scan(dest ...interface{}) error {
-	return m(dest...)
 }

@@ -19,7 +19,7 @@ type (
 		// Setup initializes the database by reading the files.
 		Setup(ctx context.Context, files []io.Reader) error
 		// Query reads from the database without updating it.
-		Query(ctx context.Context, q db.Query) db.Scanner
+		Query(ctx context.Context, q db.Query, dest ...interface{}) error
 		// Exec makes a change to existing data, creating/modifying/removing it.
 		Exec(ctx context.Context, queries ...db.Query) error
 	}
@@ -69,9 +69,9 @@ func (d Dao) Login(ctx context.Context, u User) (*User, error) {
 		"points",
 	}
 	q := db.NewQueryFunction("user_read", cols, u.Username)
-	row := d.db.Query(ctx, q)
 	var u2 User
-	if err := row.Scan(&u2.Username, &u2.password, &u2.Points); err != nil {
+	err := d.db.Query(ctx, q, &u2.Username, &u2.password, &u2.Points)
+	if err != nil {
 		if err == db.ErrNoRows {
 			return nil, ErrIncorrectLogin
 		}
