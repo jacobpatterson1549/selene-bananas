@@ -5,6 +5,7 @@ package socket
 import (
 	"encoding/json"
 	"reflect"
+	"strconv"
 	"syscall/js"
 	"testing"
 
@@ -167,4 +168,33 @@ func TestSend(t *testing.T) {
 	if !sendCalled {
 		t.Errorf("send function not called")
 	}
+}
+
+func TestOnMessage(t *testing.T) {
+	t.Run("setGameInfos", func(t *testing.T) {
+		mt := strconv.Itoa(int(message.GameInfos))
+		eventM := map[string]interface{}{
+			"data": `{"type":` + mt + `,"games":[{"id":8}]}`,
+		}
+		event := js.ValueOf(eventM)
+		gameInfosSet := false
+		lobby := mockLobby{
+			SetGameInfosFunc: func(gameInfos []game.Info, username string) {
+				switch {
+				case len(gameInfos) != 1, gameInfos[0].ID != 8, username != "fred":
+					t.Errorf("wanted infos for game 8 for fred, got: %v, %v", gameInfos, username)
+				}
+				gameInfosSet = true
+			},
+		}
+		user := mockUser("fred")
+		s := Socket{
+			lobby: lobby,
+			user:  user,
+		}
+		s.onMessage(event)
+		if !gameInfosSet {
+			t.Errorf("wanted game infos set")
+		}
+	})
 }

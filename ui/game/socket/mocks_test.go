@@ -11,8 +11,8 @@ func (m mockUser) JWT() string {
 	return string(m)
 }
 
-func (mockUser) Username() string {
-	return ""
+func (m mockUser) Username() string {
+	return string(m)
 }
 
 func (mockUser) Logout() {
@@ -33,8 +33,10 @@ func (mockGame) UpdateInfo(m message.Message) {
 	// NOOP
 }
 
-type mockLobby struct{}
+type mockLobby struct {
+	SetGameInfosFunc func(gameInfos []game.Info, username string)
+}
 
-func (mockLobby) SetGameInfos(gameInfos []game.Info, username string) {
-	// NOOP
+func (m mockLobby) SetGameInfos(gameInfos []game.Info, username string) {
+	m.SetGameInfosFunc(gameInfos, username)
 }
