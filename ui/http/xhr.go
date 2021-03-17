@@ -1,7 +1,7 @@
 // +build js,wasm
 
-// Package xhr makes XML HTTP Requests using native browser code.
-package xhr
+// Package http makes XML HTTP Requests using native browser code.
+package http
 
 import (
 	"errors"
@@ -11,18 +11,38 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
-	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 )
 
-// HTTPClient makes requests using the net/http package.
-// The request and response bodies are not streamed.
-type HTTPClient struct {
-	// Timeout is the amount of time a request can take before being considered timed out.
-	Timeout time.Duration
-}
+type (
+	// Client makes HTTP requests.
+	Client struct {
+		// Timeout is the amount of time a request can take before being considered timed out.
+		Timeout time.Duration
+	}
+
+	// Request identifies the question to ask a server.
+	Request struct {
+		// Method is the HTTP method (GET/POST).
+		Method string
+		// URL is the address to the server.
+		URL string
+		// Headers contain additional request properties.
+		Headers map[string]string
+		// Body contains additional request data.
+		Body io.Reader
+	}
+
+	// Response is what the server responds.
+	Response struct {
+		// Code is a descriptive status about the server handled the response (200 OK, 500 Internal Server Error).
+		Code int
+		// Body contains the response data.
+		Body io.ReadCloser
+	}
+)
 
 // Do makes a HTTP request.
-func (c HTTPClient) Do(req http.Request) (*http.Response, error) {
+func (c Client) Do(req Request) (*Response, error) {
 	xhr := dom.NewXHR()
 	xhr.Call("open", req.Method, req.URL)
 	timeoutMillis := c.Timeout.Milliseconds()
@@ -30,7 +50,7 @@ func (c HTTPClient) Do(req http.Request) (*http.Response, error) {
 	for k, v := range req.Headers {
 		xhr.Call("setRequestHeader", k, v)
 	}
-	responseC := make(chan http.Response)
+	responseC := make(chan Response)
 	errC := make(chan error)
 	eventHandler := dom.NewJsEventFunc(handleEvent(xhr, responseC, errC))
 	defer eventHandler.Release()
@@ -55,7 +75,7 @@ func (c HTTPClient) Do(req http.Request) (*http.Response, error) {
 }
 
 // handleEvent handles an event for the XHR.
-func handleEvent(xhr js.Value, responseC chan<- http.Response, errC chan<- error) func(event js.Value) {
+func handleEvent(xhr js.Value, responseC chan<- Response, errC chan<- error) func(event js.Value) {
 	return func(event js.Value) {
 		eventType := event.Get("type").String()
 		switch eventType {
@@ -64,7 +84,7 @@ func handleEvent(xhr js.Value, responseC chan<- http.Response, errC chan<- error
 			response := xhr.Get("response").String()
 			responseR := strings.NewReader(response)
 			body := io.NopCloser(responseR)
-			responseC <- http.Response{
+			responseC <- Response{
 				Code: code,
 				Body: body,
 			}

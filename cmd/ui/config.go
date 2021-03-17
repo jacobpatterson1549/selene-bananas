@@ -13,7 +13,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/ui/game/canvas"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game/lobby"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game/socket"
-	"github.com/jacobpatterson1549/selene-bananas/ui/http/xhr"
+	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 	"github.com/jacobpatterson1549/selene-bananas/ui/user"
 )
@@ -48,7 +48,7 @@ func (flags) log(ctx context.Context, wg *sync.WaitGroup) *log.Log {
 
 // user creates and initializes the user/form/http component.
 func (f flags) user(ctx context.Context, wg *sync.WaitGroup, log *log.Log) *user.User {
-	httpClient := xhr.HTTPClient{
+	httpClient := http.Client{
 		Timeout: f.httpTimeout,
 	}
 	u := user.New(log, httpClient)

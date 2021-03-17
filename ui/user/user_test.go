@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+
+	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 )
 
 func TestGetUser(t *testing.T) {
@@ -53,7 +55,8 @@ func TestGetUser(t *testing.T) {
 func TestEscapePassword(t *testing.T) {
 	init := `ok characters are: ` + "`" + `'"<>%&_:;/, escaped are  \^$*+?.()|[]{} but snowman should be unescaped: ☃`
 	want := `ok characters are: ` + "`" + `'"<>%&_:;/, escaped are  \\\^\$\*\+\?\.\(\)\|\[\]\{\} but snowman should be unescaped: ☃`
-	u := New(nil, nil)
+	var httpClient http.Client
+	u := New(nil, httpClient)
 	got := u.escapePassword(init)
 	if want != got {
 		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
