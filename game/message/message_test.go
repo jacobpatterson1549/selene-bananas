@@ -83,7 +83,7 @@ func TestMessageJSON(t *testing.T) {
 
 func TestMessageMarshalOmitsInternals(t *testing.T) {
 	m := Message{
-		Addr:       mockAddr("selene.pc"),
+		Addr:       "selene.pc",
 		PlayerName: "selene",
 	}
 	want := []byte(`{"type":0}`)

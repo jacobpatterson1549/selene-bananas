@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"sync"
 
@@ -20,8 +19,8 @@ type (
 	Runner struct {
 		log           *log.Logger
 		upgradeFunc   upgradeFunc
-		playerSockets map[player.Name]map[net.Addr]chan<- message.Message
-		playerGames   map[player.Name]map[game.ID]net.Addr
+		playerSockets map[player.Name]map[message.Addr]chan<- message.Message
+		playerGames   map[player.Name]map[game.ID]message.Addr
 		RunnerConfig
 	}
 
@@ -53,8 +52,8 @@ func (cfg RunnerConfig) NewRunner(log *log.Logger) (*Runner, error) {
 	r := Runner{
 		log:           log,
 		upgradeFunc:   uf,
-		playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message, cfg.MaxSockets),
-		playerGames:   make(map[player.Name]map[game.ID]net.Addr),
+		playerSockets: make(map[player.Name]map[message.Addr]chan<- message.Message, cfg.MaxSockets),
+		playerGames:   make(map[player.Name]map[game.ID]message.Addr),
 		RunnerConfig:  cfg,
 	}
 	return &r, nil
@@ -152,7 +151,7 @@ func (r *Runner) handleAddSocket(ctx context.Context, wg *sync.WaitGroup, sm mes
 	case ok:
 		playerSockets[s.Addr] = socketIn
 	default:
-		r.playerSockets[sm.PlayerName] = map[net.Addr]chan<- message.Message{
+		r.playerSockets[sm.PlayerName] = map[message.Addr]chan<- message.Message{
 			s.Addr: socketIn,
 		}
 	}
@@ -169,7 +168,7 @@ func (r *Runner) numSockets() int {
 }
 
 // hasSocket determines if a socket exists in the runner with the same address.  Not thread safe.
-func (r *Runner) hasSocket(a net.Addr) bool {
+func (r *Runner) hasSocket(a message.Addr) bool {
 	for _, sockets := range r.playerSockets {
 		for a0 := range sockets {
 			if a0 == a {
@@ -209,7 +208,7 @@ func (r *Runner) validateSocketMessage(m message.Message) error {
 	if len(m.PlayerName) == 0 {
 		return fmt.Errorf("no player name, cannot send message back")
 	}
-	if m.Addr == nil {
+	if len(m.Addr) == 0 {
 		return fmt.Errorf("no player address, cannot send message back")
 	}
 	socketAddrs, ok := r.playerSockets[m.PlayerName]
@@ -264,7 +263,7 @@ func (r *Runner) handleSocketMessage(ctx context.Context, m message.Message, out
 // When a socket is added, only it immediately needs game infos.  Otherwise, when any game info changes, all sockets must be notified.
 func (r *Runner) sendGameInfos(ctx context.Context, m message.Message) {
 	switch {
-	case m.Addr != nil:
+	case len(m.Addr) != 0:
 		addrs, ok := r.playerSockets[m.PlayerName]
 		if !ok {
 			r.log.Printf("no player to send infos to for %v", m)
@@ -311,13 +310,13 @@ func (r *Runner) sendMessageForGame(ctx context.Context, m message.Message) {
 		r.log.Printf("could not send game message to %v, socket addrs not found - message: (%v)", m.PlayerName, m)
 		return
 	}
-	var addr net.Addr
+	var addr message.Addr
 	switch m.Type {
 	case message.JoinGame:
 		addr = m.Addr
 	case message.LeaveGame:
 		defer r.leaveGame(ctx, m)
-		if m.Addr != nil {
+		if len(m.Addr) != 0 {
 			addr = m.Addr
 			break
 		}
@@ -353,7 +352,7 @@ func (r *Runner) joinGame(ctx context.Context, m message.Message, out chan<- mes
 	games, ok := r.playerGames[m.PlayerName]
 	switch {
 	case !ok:
-		games = make(map[game.ID]net.Addr, 1)
+		games = make(map[game.ID]message.Addr, 1)
 		r.playerGames[m.PlayerName] = games
 	default:
 		// remove other addr from the game
@@ -402,7 +401,7 @@ func (r *Runner) leaveGame(ctx context.Context, m message.Message) {
 	switch {
 	case m.Game != nil:
 		delete(playerGames, m.Game.ID)
-	case m.Addr != nil:
+	case len(m.Addr) != 0:
 		for gID, addr := range playerGames {
 			if addr == m.Addr {
 				delete(playerGames, gID)

@@ -258,11 +258,11 @@ func TestHandleSocketMessage(t *testing.T) {
 		{
 			Message: message.Message{
 				Type: message.GameInfos,
-				Addr: mockAddr("test.two"),
+				Addr: "test.two",
 			},
 			wantSocketM: message.Message{
 				Type:  message.GameInfos,
-				Addr:  mockAddr("test.two"),
+				Addr:  "test.two",
 				Games: []game.Info{{}, {}},
 			},
 		},

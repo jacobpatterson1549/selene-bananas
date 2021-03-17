@@ -120,7 +120,7 @@ func TestNewSocket(t *testing.T) {
 			},
 			want: &Socket{
 				PlayerName: pn,
-				Addr:       addr,
+				Addr:       message.Addr(addr),
 				Conn:       conn0,
 				log:        testLog,
 				Config: Config{
@@ -147,7 +147,7 @@ func TestNewSocket(t *testing.T) {
 			},
 			want: &Socket{
 				PlayerName: pn,
-				Addr:       addr,
+				Addr:       message.Addr(addr),
 				Conn:       conn0,
 				log:        testLog,
 				Config: Config{
@@ -215,12 +215,11 @@ func TestRunSocket(t *testing.T) {
 			PingPeriod:     1 * time.Hour,
 			HTTPPingPeriod: 3 * time.Hour,
 		}
-		addr := mockAddr("some.addr")
 		s := Socket{
 			log:    log.New(io.Discard, "", 0),
 			Conn:   &conn,
 			Config: cfg,
-			Addr:   addr,
+			Addr:   "some.addr",
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
@@ -240,7 +239,7 @@ func TestRunSocket(t *testing.T) {
 			wantM := message.Message{
 				Type:       message.SocketClose,
 				PlayerName: s.PlayerName,
-				Addr:       addr,
+				Addr:       "some.addr",
 			}
 			gotM := <-out
 			if !reflect.DeepEqual(wantM, gotM) {
@@ -254,7 +253,7 @@ func TestRunSocket(t *testing.T) {
 
 func TestReadMessagesSync(t *testing.T) {
 	pn := player.Name("selene")
-	addr := mockAddr("selene.pc.addr")
+	addr := message.Addr("selene.pc.addr")
 	readMessagesTests := []struct {
 		callCancelFunc     bool
 		setReadDeadlineErr error

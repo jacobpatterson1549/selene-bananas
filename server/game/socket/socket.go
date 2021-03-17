@@ -19,7 +19,7 @@ type (
 		log        *log.Logger
 		Conn       Conn
 		PlayerName player.Name
-		net.Addr
+		Addr       message.Addr
 		Config
 	}
 
@@ -78,7 +78,7 @@ func (cfg Config) NewSocket(log *log.Logger, pn player.Name, conn Conn) (*Socket
 		Conn:       conn,
 		Config:     cfg,
 		PlayerName: pn,
-		Addr:       a,
+		Addr:       message.Addr(a.String()),
 	}
 	return &s, nil
 }

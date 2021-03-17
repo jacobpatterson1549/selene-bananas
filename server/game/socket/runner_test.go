@@ -62,8 +62,8 @@ func TestNewRunner(t *testing.T) {
 			wantOk: true,
 			want: &Runner{
 				log:           testLog,
-				playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
-				playerGames:   map[player.Name]map[game.ID]net.Addr{},
+				playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{},
+				playerGames:   map[player.Name]map[game.ID]message.Addr{},
 				RunnerConfig: RunnerConfig{
 					MaxSockets:       10,
 					MaxPlayerSockets: 3,
@@ -190,18 +190,17 @@ func TestRunRunnerHandleSocketMessage(t *testing.T) {
 	}
 	var buf bytes.Buffer
 	log := log.New(&buf, "", 0)
-	addr := mockAddr("mock conn")
 	wantSocketMessage := message.Message{
 		Type:       message.CreateGame,
 		Game:       &game.Info{},
 		PlayerName: pn,
-		Addr:       addr,
+		Addr:       "mock conn",
 	}
 	j := 0
 	var readWait sync.WaitGroup
 	conn := &mockConn{
 		RemoteAddrFunc: func() net.Addr {
-			return addr
+			return mockAddr(wantSocketMessage.Addr)
 		},
 		SetReadDeadlineFunc: func(t time.Time) error {
 			return nil
@@ -245,7 +244,7 @@ func TestRunRunnerHandleSocketMessage(t *testing.T) {
 	r := Runner{
 		upgradeFunc:   upgradeFunc,
 		RunnerConfig:  runnerConfig,
-		playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message, 1),
+		playerSockets: make(map[player.Name]map[message.Addr]chan<- message.Message, 1),
 		log:           log,
 	}
 	readWait.Add(1)
@@ -283,11 +282,11 @@ func TestRunnerHandleAddSocketCheckResult(t *testing.T) {
 		},
 	}
 	for i, test := range runnerAddSocketTests {
-		addr := mockAddr("selen.pc")
+		addr := message.Addr("selene.pc")
 		upgradeFunc := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
 			return &mockConn{
 				RemoteAddrFunc: func() net.Addr {
-					return addr
+					return mockAddr(addr)
 				},
 				SetReadDeadlineFunc: func(t time.Time) error {
 					return errors.New("stop run for test")
@@ -317,7 +316,7 @@ func TestRunnerHandleAddSocketCheckResult(t *testing.T) {
 		r := Runner{
 			log:           log.New(io.Discard, "", 0),
 			upgradeFunc:   upgradeFunc,
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{},
 			RunnerConfig:  runnerConfig,
 		}
 		socketOut := make(chan message.Message)
@@ -398,7 +397,7 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 	}
 	for i, test := range runnerAddSocketTests {
 		socketRun := false
-		addr := mockAddr("an.addr")
+		addr := message.Addr("an.addr")
 		var wg sync.WaitGroup
 		if test.wantOk {
 			wg.Add(1) // ensure SetReadDeadline is called
@@ -409,7 +408,7 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			}
 			return &mockConn{
 				RemoteAddrFunc: func() net.Addr {
-					return addr
+					return mockAddr(addr)
 				},
 				SetReadDeadlineFunc: func(t time.Time) error {
 					socketRun = true
@@ -432,8 +431,8 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 		r := Runner{
 			log:           log.New(io.Discard, "", 0),
 			upgradeFunc:   upgradeFunc,
-			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
-			playerGames:   make(map[player.Name]map[game.ID]net.Addr),
+			playerSockets: make(map[player.Name]map[message.Addr]chan<- message.Message),
+			playerGames:   make(map[player.Name]map[game.ID]message.Addr),
 			RunnerConfig:  runnerConfig,
 		}
 		socketOut := make(chan message.Message, 1) // the socket will run and fail, posting a message here
@@ -526,18 +525,18 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 		j := 0
 		upgradeFunc := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
 			j++
-			var addr net.Addr
+			var addr string
 			switch j {
 			case 1:
-				addr = mockAddr(socket1Addr)
+				addr = socket1Addr
 			case 2:
-				addr = mockAddr(test.socket2Addr)
+				addr = test.socket2Addr
 			default:
 				return nil, errors.New("too many calls to upgrade")
 			}
 			return &mockConn{
 				RemoteAddrFunc: func() net.Addr {
-					return addr
+					return mockAddr(addr)
 				},
 				SetReadDeadlineFunc: func(t time.Time) error {
 					return errors.New("stop run for test")
@@ -564,8 +563,8 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 		r := Runner{
 			log:           log.New(io.Discard, "", 0),
 			upgradeFunc:   upgradeFunc,
-			playerSockets: make(map[player.Name]map[net.Addr]chan<- message.Message),
-			playerGames:   make(map[player.Name]map[game.ID]net.Addr),
+			playerSockets: make(map[player.Name]map[message.Addr]chan<- message.Message),
+			playerGames:   make(map[player.Name]map[game.ID]message.Addr),
 			RunnerConfig:  runnerConfig,
 		}
 		socketOut := make(chan message.Message, 2) // the sockets will run and fail, posting a message here
@@ -613,14 +612,12 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 }
 
 func TestRunnerHandleLobbyMessage(t *testing.T) {
-	addr1 := mockAddr("addr1")
-	addr2 := mockAddr("addr2")
 	handleLobbyMessageTests := []struct {
-		playerSockets   map[player.Name]map[net.Addr]chan<- message.Message
-		playerGames     map[player.Name]map[game.ID]net.Addr
+		playerSockets   map[player.Name]map[message.Addr]chan<- message.Message
+		playerGames     map[player.Name]map[game.ID]message.Addr
 		m               message.Message
 		wantOk          bool
-		wantPlayerGames map[player.Name]map[game.ID]net.Addr
+		wantPlayerGames map[player.Name]map[game.ID]message.Addr
 	}{
 		{ // no game on message
 			wantOk: true,
@@ -632,20 +629,20 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 			wantOk: true,
 		},
 		{ // normal message
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: make(chan<- message.Message, 1),
+					"addr1": make(chan<- message.Message, 1),
 				},
 				"barney": {
-					addr2: nil,
+					"addr2": nil,
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					2: addr1,
+					2: "addr1",
 				},
 				"barney": {
-					2: addr2,
+					2: "addr2",
 				},
 			},
 			m: message.Message{
@@ -656,30 +653,30 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			wantOk: true,
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					2: addr1,
+					2: "addr1",
 				},
 				"barney": {
-					2: addr2,
+					2: "addr2",
 				},
 			},
 		},
 		{ // game infos
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: make(chan<- message.Message, 1),
+					"addr1": make(chan<- message.Message, 1),
 				},
 				"barney": {
-					addr2: make(chan<- message.Message, 1),
+					"addr2": make(chan<- message.Message, 1),
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					2: addr1,
+					2: "addr1",
 				},
 				"barney": {
-					1: addr2,
+					1: "addr2",
 				},
 			},
 			m: message.Message{
@@ -687,72 +684,72 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				Games: []game.Info{},
 			},
 			wantOk: true,
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					2: addr1,
+					2: "addr1",
 				},
 				"barney": {
-					1: addr2,
+					1: "addr2",
 				},
 			},
 		},
 		{ // game infos, with addr: only send to player for the socket
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1:             make(chan<- message.Message, 1),
-					addr2:             nil,
-					mockAddr("addr3"): nil,
+					"addr1": make(chan<- message.Message, 1),
+					"addr2": nil,
+					"addr3": nil,
 				},
 				"barney": {
-					mockAddr("addr4"): nil,
+					"addr4": nil,
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					2: addr2,
+					2: "addr2",
 				},
 			},
 			m: message.Message{
 				Type:       message.GameInfos,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 			},
 			wantOk: true,
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					2: addr2,
+					2: "addr2",
 				},
 			},
 		},
 		{ // game infos, with addr: only send to player for the socket, but no player socket exists
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{},
 			m: message.Message{
 				Type:       message.GameInfos,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 			},
 		},
 		{ // game infos, with addr: only send to player for the socket, but no socket exists
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {},
 			},
 			m: message.Message{
 				Type:       message.GameInfos,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 			},
 		},
 		{ // socketErr message from game
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
-					addr2: make(chan<- message.Message, 1),
+					"addr1": nil,
+					"addr2": make(chan<- message.Message, 1),
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					1: addr1,
-					2: addr2,
+					1: "addr1",
+					2: "addr2",
 				},
 			},
 			m: message.Message{
@@ -763,27 +760,27 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			wantOk: true,
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					1: addr1,
-					2: addr2,
+					1: "addr1",
+					2: "addr2",
 				},
 			},
 		},
 		{ // socketErr message for player (which socket unknown)
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: make(chan<- message.Message, 1),
-					addr2: make(chan<- message.Message, 1),
+					"addr1": make(chan<- message.Message, 1),
+					"addr2": make(chan<- message.Message, 1),
 				},
 				"barney": {
-					mockAddr("addr3"): nil,
+					"addr3": nil,
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					1: addr1,
-					2: addr2,
+					1: "addr1",
+					2: "addr2",
 				},
 			},
 			m: message.Message{
@@ -791,22 +788,22 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				Type:       message.SocketError,
 			},
 			wantOk: true,
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					1: addr1,
-					2: addr2,
+					1: "addr1",
+					2: "addr2",
 				},
 			},
 		},
 		{ // game delete gets sent as a leave
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"barney": {
-					addr1: make(chan<- message.Message, 1),
+					"addr1": make(chan<- message.Message, 1),
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"barney": {
-					2: addr1,
+					2: "addr1",
 				},
 			},
 			m: message.Message{
@@ -818,11 +815,11 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			wantOk:          true,
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{},
 		},
 		{ // player not active in game, don't send message #1
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
-			playerGames:   map[player.Name]map[game.ID]net.Addr{},
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{},
+			playerGames:   map[player.Name]map[game.ID]message.Addr{},
 			m: message.Message{
 				Type:       message.ChangeGameTiles,
 				PlayerName: "fred",
@@ -831,15 +828,15 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			wantOk:          true,
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{},
 		},
 		{ // player not active in game, don't send message #2
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					"addr1": nil,
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{},
+			playerGames: map[player.Name]map[game.ID]message.Addr{},
 			m: message.Message{
 				Type:       message.ChangeGameTiles,
 				PlayerName: "fred",
@@ -848,17 +845,17 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 				},
 			},
 			wantOk:          true,
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{},
 		},
 		{ // player not active in game, don't send message #3
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					"addr1": nil,
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					1: addr1,
+					1: "addr1",
 				},
 			},
 			m: message.Message{
@@ -868,131 +865,131 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 					ID: 2,
 				},
 			},
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					1: addr1,
+					1: "addr1",
 				},
 			},
 			wantOk: true,
 		},
 		{ // player join game.  The lobby sends this when a player creates a game.
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"barney": {
-					addr1: make(chan<- message.Message, 1),
+					"addr1": make(chan<- message.Message, 1),
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{},
+			playerGames: map[player.Name]map[game.ID]message.Addr{},
 			m: message.Message{
 				Type:       message.JoinGame,
 				PlayerName: "barney",
 				Game: &game.Info{
 					ID: 3,
 				},
-				Addr: addr1,
+				Addr: "addr1",
 			},
 			wantOk: true,
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{
 				"barney": {
-					3: addr1,
+					3: "addr1",
 				},
 			},
 		},
 		{ // join game that is already joined, NOOP
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					"addr1": nil,
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					9: addr1,
+					9: "addr1",
 				},
 			},
 			m: message.Message{
 				Type:       message.JoinGame,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 				Game: &game.Info{
 					ID: 9,
 				},
 			},
 			wantOk: true,
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					9: addr1,
+					9: "addr1",
 				},
 			},
 		},
 		{ // join game from other socket, other socket should leave game
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: make(chan<- message.Message, 1),
-					addr2: make(chan<- message.Message, 1),
+					"addr1": make(chan<- message.Message, 1),
+					"addr2": make(chan<- message.Message, 1),
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					9: addr2,
+					9: "addr2",
 				},
 			},
 			m: message.Message{
 				Type:       message.JoinGame,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 				Game: &game.Info{
 					ID: 9,
 				},
 			},
 			wantOk: true,
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					9: addr1,
+					9: "addr1",
 				},
 			},
 		},
 		{ // join game, switching games
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: make(chan<- message.Message, 1),
+					"addr1": make(chan<- message.Message, 1),
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					7: addr1,
+					7: "addr1",
 				},
 			},
 			m: message.Message{
 				Type:       message.JoinGame,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 				Game: &game.Info{
 					ID: 8,
 				},
 			},
 			wantOk: true,
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					8: addr1,
+					8: "addr1",
 				},
 			},
 		},
 		{ // leave game, when not allowed in game.  This causes the ui to kick the player even though he was never added in the server
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: make(chan<- message.Message, 1),
+					"addr1": make(chan<- message.Message, 1),
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{},
+			playerGames: map[player.Name]map[game.ID]message.Addr{},
 			m: message.Message{
 				Type:       message.LeaveGame,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 				Game: &game.Info{
 					ID: 1,
 				},
 			},
 			wantOk:          true,
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{},
 		},
 	}
 	for i, test := range handleLobbyMessageTests {
@@ -1020,14 +1017,12 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 }
 
 func TestRunnerHandleSocketMessage(t *testing.T) {
-	addr1 := mockAddr("addr1")
-	addr2 := mockAddr("addr2")
 	handleSocketMessageTests := []struct {
-		playerSockets     map[player.Name]map[net.Addr]chan<- message.Message
-		playerGames       map[player.Name]map[game.ID]net.Addr
+		playerSockets     map[player.Name]map[message.Addr]chan<- message.Message
+		playerGames       map[player.Name]map[game.ID]message.Addr
 		m                 message.Message
-		wantPlayerSockets map[player.Name]map[net.Addr]chan<- message.Message
-		wantPlayerGames   map[player.Name]map[game.ID]net.Addr
+		wantPlayerSockets map[player.Name]map[message.Addr]chan<- message.Message
+		wantPlayerGames   map[player.Name]map[game.ID]message.Addr
 		want              message.Message
 		wantOk            bool
 		skipOutSend       bool
@@ -1042,11 +1037,11 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 		{ // no socket for message
 			m: message.Message{
 				PlayerName: "barney",
-				Addr:       addr1,
+				Addr:       "addr1",
 			},
 		},
 		{ // no player for message
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": nil,
 			},
 			m: message.Message{
@@ -1054,198 +1049,198 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 			},
 		},
 		{ // no game
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					"addr1": nil,
 				},
 			},
 			m: message.Message{
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 			},
 		},
 		{ // addr not in game
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					"addr1": nil,
 				},
 			},
 			m: message.Message{
 				Type:       message.SnagGameTile,
 				PlayerName: "fred",
-				Addr:       addr2,
+				Addr:       "addr2",
 				Game: &game.Info{
 					ID: 9,
 				},
 			},
 		},
 		{ // player not in game
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					"addr1": nil,
 				},
 			},
 			m: message.Message{
 				Type:       message.SnagGameTile,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 				Game: &game.Info{
 					ID: 9,
 				},
 			},
 		},
 		{ // player playing other game
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
-					addr2: nil,
+					"addr1": nil,
+					"addr2": nil,
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					1: addr1,
+					1: "addr1",
 				},
 			},
 			m: message.Message{
 				Type:       message.SnagGameTile,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 				Game: &game.Info{
 					ID: 2,
 				},
 			},
 		},
 		{ // player playing game at different address
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
-					addr2: nil,
+					"addr1": nil,
+					"addr2": nil,
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					1: addr1,
-					2: addr2,
+					1: "addr1",
+					2: "addr2",
 				},
 			},
 			m: message.Message{
 				Type:       message.SnagGameTile,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 				Game: &game.Info{
 					ID: 2,
 				},
 			},
 		},
 		{ // create game
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					"addr1": nil,
 				},
 			},
 			m: message.Message{
 				Type:       message.CreateGame,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 				Game: &game.Info{
 					Config: &game.Config{}, // this should be populated, but the gameRunner checks this
 				},
 			},
-			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			wantPlayerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					"addr1": nil,
 				},
 			},
 			wantOk: true,
 		},
 		{ // leave game
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					"addr1": nil,
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					9: addr1,
+					9: "addr1",
 				},
 			},
 			m: message.Message{
 				Type:       message.LeaveGame,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 				Game: &game.Info{
 					ID: 9,
 				},
 			},
-			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			wantPlayerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					"addr1": nil,
 				},
 			},
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{},
 			wantOk:          true,
 			skipOutSend:     true, // don't tell the game the socket is not listening
 		},
 		{ // leave game when player not in any game
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					"addr1": nil,
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{},
+			playerGames: map[player.Name]map[game.ID]message.Addr{},
 			m: message.Message{
 				Type:       message.LeaveGame,
 				PlayerName: "fred",
-				Addr:       addr2,
+				Addr:       "addr2",
 				Game: &game.Info{
 					ID: 9,
 				},
 			},
-			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			wantPlayerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: nil,
+					"addr1": nil,
 				},
 			},
-			wantPlayerGames: map[player.Name]map[game.ID]net.Addr{},
+			wantPlayerGames: map[player.Name]map[game.ID]message.Addr{},
 		},
 		{ // socket close
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: make(chan<- message.Message),
+					"addr1": make(chan<- message.Message),
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					9: addr1,
+					9: "addr1",
 				},
 			},
 			m: message.Message{
 				Type:       message.SocketClose,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 				Game: &game.Info{
 					ID: 9,
 				},
 			},
-			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
-			wantPlayerGames:   map[player.Name]map[game.ID]net.Addr{},
+			wantPlayerSockets: map[player.Name]map[message.Addr]chan<- message.Message{},
+			wantPlayerGames:   map[player.Name]map[game.ID]message.Addr{},
 			wantOk:            true,
 			skipOutSend:       true,
 		},
 		{ // socket close when not in any game
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {
-					addr1: make(chan<- message.Message),
+					"addr1": make(chan<- message.Message),
 				},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{},
+			playerGames: map[player.Name]map[game.ID]message.Addr{},
 			m: message.Message{
 				Type:       message.SocketClose,
 				PlayerName: "fred",
-				Addr:       addr1,
+				Addr:       "addr1",
 			},
-			wantPlayerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
-			wantPlayerGames:   map[player.Name]map[game.ID]net.Addr{},
+			wantPlayerSockets: map[player.Name]map[message.Addr]chan<- message.Message{},
+			wantPlayerGames:   map[player.Name]map[game.ID]message.Addr{},
 			wantOk:            true,
 			skipOutSend:       true,
 		},
@@ -1282,25 +1277,22 @@ func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 	c1 := make(chan message.Message)
 	c2 := make(chan message.Message, 1)
 	c3 := make(chan message.Message)
-	addr1 := mockAddr("addr1")
-	addr2 := mockAddr("addr2")
-	addr3 := mockAddr("addr3")
 	// player delete is sent from the lobby when the player is actually deleted
-	playerSockets := map[player.Name]map[net.Addr]chan<- message.Message{
+	playerSockets := map[player.Name]map[message.Addr]chan<- message.Message{
 		"fred": {
-			addr1: c1,
-			addr3: c3,
+			"addr1": c1,
+			"addr3": c3,
 		},
 		"barney": {
-			addr2: c2,
+			"addr2": c2,
 		},
 	}
-	playerGames := map[player.Name]map[game.ID]net.Addr{
+	playerGames := map[player.Name]map[game.ID]message.Addr{
 		"fred": {
-			1: addr1,
+			1: "addr1",
 		},
 		"barney": {
-			1: addr2,
+			1: "addr2",
 		},
 	}
 	r := Runner{
@@ -1313,14 +1305,14 @@ func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 	}
 	socketOut := make(chan message.Message)
 	lobbyIn := make(chan message.Message)
-	wantPlayerSockets := map[player.Name]map[net.Addr]chan<- message.Message{
+	wantPlayerSockets := map[player.Name]map[message.Addr]chan<- message.Message{
 		"barney": {
-			addr2: c2,
+			"addr2": c2,
 		},
 	}
-	wantPlayerGames := map[player.Name]map[game.ID]net.Addr{
+	wantPlayerGames := map[player.Name]map[game.ID]message.Addr{
 		"barney": {
-			1: addr2,
+			1: "addr2",
 		},
 	}
 	ctx := context.Background()
@@ -1346,24 +1338,24 @@ func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 // TestSendMessageForGameBadRunnerState adds coverage for some scenarios where playerGames do do not have matching playerSocket entries
 func TestSendMessageForGameBadRunnerState(t *testing.T) {
 	tests := []struct {
-		playerSockets map[player.Name]map[net.Addr]chan<- message.Message
-		playerGames   map[player.Name]map[game.ID]net.Addr
+		playerSockets map[player.Name]map[message.Addr]chan<- message.Message
+		playerGames   map[player.Name]map[game.ID]message.Addr
 	}{
 		{
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{},
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					1: mockAddr("addr1"),
+					1: "addr1",
 				},
 			},
 		},
 		{
-			playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 				"fred": {},
 			},
-			playerGames: map[player.Name]map[game.ID]net.Addr{
+			playerGames: map[player.Name]map[game.ID]message.Addr{
 				"fred": {
-					1: mockAddr("addr1"),
+					1: "addr1",
 				},
 			},
 		},
@@ -1393,23 +1385,22 @@ func TestSendMessageForGameBadRunnerState(t *testing.T) {
 func TestRemoveSocket(t *testing.T) {
 	socketIn := make(chan message.Message)
 	pn := player.Name("fred")
-	addr := mockAddr("fred.pc")
 	r := Runner{
-		playerSockets: map[player.Name]map[net.Addr]chan<- message.Message{
+		playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 			pn: {
-				addr: socketIn,
+				"fred.pc": socketIn,
 			},
 		},
-		playerGames: map[player.Name]map[game.ID]net.Addr{
+		playerGames: map[player.Name]map[game.ID]message.Addr{
 			pn: {
-				1: addr,
+				1: "fred.pc",
 			},
 		},
 	}
 	ctx := context.Background()
 	m := message.Message{
 		PlayerName: pn,
-		Addr:       addr,
+		Addr:       "fred.pc",
 	}
 	r.removeSocket(ctx, m)
 	<-socketIn // removing a socket should close it's in channel

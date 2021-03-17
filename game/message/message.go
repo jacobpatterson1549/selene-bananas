@@ -2,8 +2,6 @@
 package message
 
 import (
-	"net"
-
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 )
@@ -24,9 +22,12 @@ type (
 		Games []game.Info `json:"games,omitempty"`
 		// PlayerName is the name of the player the message is to/from.
 		PlayerName player.Name `json:"-"`
-		// Addr is the socket remote address the message is from
-		Addr net.Addr `json:"-"`
+		// Addr is the socket remote address text the message is from.
+		Addr Addr `json:"-"`
 	}
+
+	// Addr identifies the source of a message.
+	Addr string
 )
 
 //go:generate go run golang.org/x/tools/cmd/stringer -type=Type

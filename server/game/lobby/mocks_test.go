@@ -18,13 +18,3 @@ type mockGameRunner func(ctx context.Context, wg *sync.WaitGroup, in <-chan mess
 func (m mockGameRunner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 	return m(ctx, wg, in)
 }
-
-type mockAddr string
-
-func (m mockAddr) Network() string {
-	return string(m) + "_NETWORK"
-}
-
-func (m mockAddr) String() string {
-	return string(m)
-}
