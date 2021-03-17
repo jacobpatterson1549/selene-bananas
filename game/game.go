@@ -1,7 +1,7 @@
 // Package game contains communication structures for the game controller, lobby, and socket to use.
 package game
 
-import "fmt"
+import "strconv"
 
 type (
 	// ID is the id of a game.
@@ -38,7 +38,7 @@ func (cfg Config) Rules() []string {
 		rules = append(rules, "If a player tries to snag unsuccessfully, the amount potential of win points is decremented")
 	}
 	if cfg.MinLength > 2 {
-		rules = append(rules, fmt.Sprintf("All words must be at least %d letters long", cfg.MinLength))
+		rules = append(rules, "All words must be at least "+strconv.Itoa(cfg.MinLength)+" letters long")
 	}
 	if !cfg.AllowDuplicates {
 		rules = append(rules, "Duplicate words are not allowed.")
