@@ -14,7 +14,7 @@ type (
 		*websocket.Upgrader
 	}
 
-	// Conn implements the Conn interface by wrapping a gorilla/websocket GorillaConnection.
+	// Conn implements the Conn interface by wrapping a gorilla/websocket Conn.
 	Conn struct {
 		*websocket.Conn
 	}
