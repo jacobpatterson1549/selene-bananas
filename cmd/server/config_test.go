@@ -87,3 +87,18 @@ func TestNewServer(t *testing.T) {
 		t.Error("nil server created")
 	}
 }
+
+func TestGameConfig(t *testing.T) {
+	t.Run("timeFunc seeds shufflers", func(t *testing.T) {
+		timeFuncCalled := false
+		timeFunc := func() int64 {
+			timeFuncCalled = true
+			return 42
+		}
+		var f flags
+		f.gameConfig(timeFunc)
+		if !timeFuncCalled {
+			t.Error("wanted timeFunc to be called to seed game shuffle funcs")
+		}
+	})
+}

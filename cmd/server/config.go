@@ -167,6 +167,7 @@ func (f flags) gameConfig(timeFunc func() int64) gameController.Config {
 	playerCfg := playerController.Config{
 		WinPoints: 10,
 	}
+	rand.Seed(timeFunc())
 	shuffleUnusedTilesFunc := func(tiles []tile.Tile) {
 		rand.Shuffle(len(tiles), func(i, j int) {
 			tiles[i], tiles[j] = tiles[j], tiles[i]
