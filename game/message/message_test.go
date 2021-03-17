@@ -82,7 +82,10 @@ func TestMessageJSON(t *testing.T) {
 }
 
 func TestMessageMarshalOmitsInternals(t *testing.T) {
-	m := Message{PlayerName: "selene"}
+	m := Message{
+		Addr:       mockAddr("selene.pc"),
+		PlayerName: "selene",
+	}
 	want := []byte(`{"type":0}`)
 	got, err := json.Marshal(m)
 	switch {
