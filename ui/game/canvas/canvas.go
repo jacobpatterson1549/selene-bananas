@@ -25,7 +25,6 @@ type (
 		board      *board.Board
 		draw       drawMetrics
 		selection  selection
-		touchPos   pixelPosition
 		gameStatus game.Status
 		Socket     Socket
 		parentDiv  *js.Value
@@ -72,7 +71,6 @@ type (
 	selection struct {
 		moveState moveState
 		tiles     map[tile.ID]tileSelection
-		isSeen    bool
 		start     pixelPosition
 		end       pixelPosition
 	}
@@ -686,15 +684,6 @@ func (s *selection) setMoveState(ms moveState) {
 	case grab:
 		dom.SetChecked(".game>.canvas>.move-state.grab", true)
 	}
-}
-
-// inRect determines if the specified coordinates are in the rectangle.
-// The left and top edges (min-valued) are inclusive and the right and bottom (max-valued) edges are exclusive.
-func (s selection) inRect(x, y int) bool {
-	minX, maxX := sort(s.start.x, s.end.x)
-	minY, maxY := sort(s.start.y, s.end.y)
-	return minX <= x && x < maxX &&
-		minY <= y && y < maxY
 }
 
 // newPixelPosition creates a new PixelPosition with the log of the canvas.
