@@ -101,10 +101,10 @@ func TestMessageJSON(t *testing.T) {
 		NumRows: 8,
 	}
 	gameConfig := game.Config{
-		CheckOnSnag:     true,
-		Penalize:        true,
-		MinLength:       9,
-		AllowDuplicates: true,
+		CheckOnSnag:        true,
+		Penalize:           true,
+		MinLength:          9,
+		ProhibitDuplicates: true,
 	}
 	b := board.New(tiles, tilePositions)
 	b.Config = boardConfig
@@ -121,7 +121,7 @@ func TestMessageJSON(t *testing.T) {
 		},
 		Games: gameInfos,
 	}
-	wantS := `{"type":1,"info":"message test","game":{"id":6,"status":2,"board":{"tiles":[{"id":1,"ch":"A"},{"id":2,"ch":"B"}],"tilePositions":[{"t":{"id":3,"ch":"C"},"x":4,"y":5}],"config":{"c":7,"r":8}},"players":["selene","bob"],"config":{"checkOnSnag":true,"penalize":true,"minLength":9,"allowDuplicates":true},"capacity":7},"games":[{"id":9,"status":1,"createdAt":111,"capacity":11}]}`
+	wantS := `{"type":1,"info":"message test","game":{"id":6,"status":2,"board":{"tiles":[{"id":1,"ch":"A"},{"id":2,"ch":"B"}],"tilePositions":[{"t":{"id":3,"ch":"C"},"x":4,"y":5}],"config":{"c":7,"r":8}},"players":["selene","bob"],"config":{"checkOnSnag":true,"penalize":true,"minLength":9,"prohibitDuplicates":true},"capacity":7},"games":[{"id":9,"status":1,"createdAt":111,"capacity":11}]}`
 	gotS, errS := json.Marshal(m)
 	if errS != nil {
 		t.Fatalf("stringify: %v", errS)

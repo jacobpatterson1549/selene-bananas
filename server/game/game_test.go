@@ -1456,16 +1456,6 @@ func TestCheckWords(t *testing.T) {
 		wantOk        bool
 		wantUsedWords []string
 	}{
-		{ // happy path
-			Board: board.New(nil, []tile.Position{
-				{X: 2, Y: 2},
-				{X: 1, Y: 2},
-				{X: 2, Y: 1}, // y coordinates are inverted (upperleft-> down)
-			}),
-			WordValidator: mockWordValidator(func(word string) bool {
-				return true
-			}),
-		},
 		{ // short word
 			Config: game.Config{
 				MinLength: 3,
@@ -1484,10 +1474,20 @@ func TestCheckWords(t *testing.T) {
 				return false
 			}),
 		},
-		{ // ok (with duplicate and short words, but config is loose)
+		{ // duplicate words
 			Config: game.Config{
-				AllowDuplicates: true,
+				ProhibitDuplicates: true,
 			},
+			Board: board.New(nil, []tile.Position{
+				{Tile: tile.Tile{ID: 1, Ch: 'Q'}, X: 2, Y: 2},
+				{Tile: tile.Tile{ID: 2, Ch: 'X'}, X: 1, Y: 2},
+				{Tile: tile.Tile{ID: 3, Ch: 'X'}, X: 2, Y: 1}, // y coordinates are inverted (upperleft-> down)
+			}),
+			WordValidator: mockWordValidator(func(word string) bool {
+				return true
+			}),
+		},
+		{ // ok (with duplicate and short words, but config is loose)
 			Board: board.New(nil, []tile.Position{
 				{Tile: tile.Tile{ID: 1, Ch: 'Q'}, X: 2, Y: 2},
 				{Tile: tile.Tile{ID: 2, Ch: 'X'}, X: 1, Y: 2},

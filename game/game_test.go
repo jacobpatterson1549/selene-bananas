@@ -7,29 +7,24 @@ import (
 
 func TestConfigRules(t *testing.T) {
 	t.Run("testDifferent", func(t *testing.T) {
-		simpleConfig := Config{
-			AllowDuplicates: true, // TODO: reword variable to make allowing duplicates default, but be false in the config
-		}
-		defaultRules := simpleConfig.Rules()
+		var defaultConfig Config
+		defaultRules := defaultConfig.Rules()
 		defaultRulesM := make(map[string]struct{}, len(defaultRules))
 		for _, r := range defaultRules {
 			defaultRulesM[r] = struct{}{}
 		}
 		singleChangeConfigs := []Config{
 			{
-				CheckOnSnag:     true,
-				AllowDuplicates: true,
+				CheckOnSnag: true,
 			},
 			{
-				Penalize:        true,
-				AllowDuplicates: true,
+				Penalize: true,
 			},
 			{
-				MinLength:       7,
-				AllowDuplicates: true,
+				MinLength: 7,
 			},
 			{
-				AllowDuplicates: false,
+				ProhibitDuplicates: true,
 			},
 		}
 		for i, cfg := range singleChangeConfigs {
@@ -50,8 +45,7 @@ func TestConfigRules(t *testing.T) {
 	})
 	t.Run("TestMinLengthNumber", func(t *testing.T) {
 		cfg := Config{
-			AllowDuplicates: true,
-			MinLength:       1337,
+			MinLength: 1337,
 		}
 		rules := cfg.Rules()
 		for _, r := range rules {
@@ -60,5 +54,37 @@ func TestConfigRules(t *testing.T) {
 			}
 		}
 		t.Errorf("abnormal minlength not included in rules")
+	})
+	t.Run("TestUniqueRules", func(t *testing.T) {
+		configs := []Config{
+			{},
+			{
+				CheckOnSnag: true,
+			},
+			{
+				Penalize: true,
+			},
+			{
+				MinLength: 3,
+			},
+			{
+				ProhibitDuplicates: true,
+			},
+			{
+				CheckOnSnag:        true,
+				Penalize:           true,
+				MinLength:          4,
+				ProhibitDuplicates: true,
+			},
+		}
+		uniqueRules := make(map[string]struct{}, len(configs))
+		for _, cfg := range configs {
+			r := cfg.Rules()
+			longRules := strings.Join(r, "")
+			uniqueRules[longRules] = struct{}{}
+		}
+		if len(configs) != len(uniqueRules) {
+			t.Errorf("wanted %v unique rule lists for the configs, got %v", len(configs), len(uniqueRules))
+		}
 	})
 }

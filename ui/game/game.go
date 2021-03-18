@@ -81,6 +81,7 @@ func (g *Game) startCreate() {
 
 // createWithConfig clears the tiles and asks the server for a new game to join with the create config.
 func (g *Game) createWithConfig(event js.Value) {
+	// TODO: store inputs by name in form, add form as config to game
 	checkOnSnag := dom.Checked(".checkOnSnag")
 	penalize := dom.Checked(".penalize")
 	minLengthStr := dom.Value(".minLength")
@@ -89,15 +90,15 @@ func (g *Game) createWithConfig(event js.Value) {
 		g.log.Error("retrieving minimum word length: " + err.Error())
 		return
 	}
-	allowDuplicates := dom.Checked(".allowDuplicates")
+	prohibitDuplicates := dom.Checked(".prohibitDuplicates")
 	m := message.Message{
 		Type: message.CreateGame,
 		Game: &game.Info{
 			Config: &game.Config{
-				CheckOnSnag:     checkOnSnag,
-				Penalize:        penalize,
-				MinLength:       minLength,
-				AllowDuplicates: allowDuplicates,
+				CheckOnSnag:        checkOnSnag,
+				Penalize:           penalize,
+				MinLength:          minLength,
+				ProhibitDuplicates: prohibitDuplicates,
 			},
 		},
 	}

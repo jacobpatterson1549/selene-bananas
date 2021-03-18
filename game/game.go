@@ -15,8 +15,8 @@ type (
 		Penalize bool `json:"penalize,omitempty"`
 		// MinLength is the minimum allowed word length for each word on the board.
 		MinLength int `json:"minLength,omitempty"`
-		// AllowDuplicates is a flag for whether or not to allow duplicate words when checking the board
-		AllowDuplicates bool `json:"allowDuplicates,omitempty"`
+		// ProhibitDuplicates is a flag for whether or not duplicate words are prohibited when checking the board.
+		ProhibitDuplicates bool `json:"prohibitDuplicates,omitempty"`
 	}
 )
 
@@ -40,8 +40,8 @@ func (cfg Config) Rules() []string {
 	if cfg.MinLength > 2 {
 		rules = append(rules, "All words must be at least "+strconv.Itoa(cfg.MinLength)+" letters long")
 	}
-	if !cfg.AllowDuplicates {
-		rules = append(rules, "Duplicate words are not allowed.")
+	if cfg.ProhibitDuplicates {
+		rules = append(rules, "Duplicate words are prohibited.")
 	}
 	return rules
 }

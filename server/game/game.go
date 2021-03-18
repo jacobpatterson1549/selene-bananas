@@ -395,8 +395,8 @@ func (g Game) checkWords(pn player.Name) ([]string, error) {
 	uniqueWords := make(map[string]struct{}, len(usedWords))
 	errText := ""
 	for _, w := range usedWords {
-		if _, ok := uniqueWords[w]; !g.Config.AllowDuplicates && ok {
-			errText = "duplicate words detected"
+		if _, ok := uniqueWords[w]; g.Config.ProhibitDuplicates && ok {
+			errText = "duplicate words are prohibited"
 			break
 		}
 		uniqueWords[w] = struct{}{}
