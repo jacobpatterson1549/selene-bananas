@@ -11,6 +11,9 @@ func TestConfigRules(t *testing.T) {
 		defaultRules := defaultConfig.Rules()
 		defaultRulesM := make(map[string]struct{}, len(defaultRules))
 		for _, r := range defaultRules {
+			if _, ok := defaultRulesM[r]; ok {
+				t.Errorf("default rule occurred multiple times: '%v'", r)
+			}
 			defaultRulesM[r] = struct{}{}
 		}
 		singleChangeConfigs := []Config{
@@ -21,18 +24,26 @@ func TestConfigRules(t *testing.T) {
 				Penalize: true,
 			},
 			{
+				MinLength: 3,
+			},
+			{
 				MinLength: 7,
 			},
 			{
 				ProhibitDuplicates: true,
 			},
 		}
+		differentRules := make(map[string]struct{}, len(singleChangeConfigs))
 		for i, cfg := range singleChangeConfigs {
 			rules := cfg.Rules()
 			differentRuleCount := 0
 			for _, r := range rules {
 				if _, ok := defaultRulesM[r]; !ok {
 					differentRuleCount++
+					if _, ok := differentRules[r]; ok {
+						t.Errorf("Test %v: rule that should be different occurred more than once between configs: '%v'", i, r)
+					}
+					differentRules[r] = struct{}{}
 				}
 			}
 			switch {
@@ -54,37 +65,5 @@ func TestConfigRules(t *testing.T) {
 			}
 		}
 		t.Errorf("abnormal minlength not included in rules")
-	})
-	t.Run("TestUniqueRules", func(t *testing.T) {
-		configs := []Config{
-			{},
-			{
-				CheckOnSnag: true,
-			},
-			{
-				Penalize: true,
-			},
-			{
-				MinLength: 3,
-			},
-			{
-				ProhibitDuplicates: true,
-			},
-			{
-				CheckOnSnag:        true,
-				Penalize:           true,
-				MinLength:          4,
-				ProhibitDuplicates: true,
-			},
-		}
-		uniqueRules := make(map[string]struct{}, len(configs))
-		for _, cfg := range configs {
-			r := cfg.Rules()
-			longRules := strings.Join(r, "")
-			uniqueRules[longRules] = struct{}{}
-		}
-		if len(configs) != len(uniqueRules) {
-			t.Errorf("wanted %v unique rule lists for the configs, got %v", len(configs), len(uniqueRules))
-		}
 	})
 }
