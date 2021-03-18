@@ -18,14 +18,3 @@ func BenchmarkNewWordValidator(b *testing.B) {
 		b.Errorf("wanted %v words, got %v\n%v", want, got, note)
 	}
 }
-
-// TestUnembedData ensures the embedded data can be properly unembedded.
-func TestUnembedData(t *testing.T) {
-	got, err := unembedData()
-	switch {
-	case err != nil:
-		t.Errorf("unwanted error: %v", err)
-	case got == nil:
-		t.Errorf("wanted unembedded embeddedData structure")
-	}
-}
