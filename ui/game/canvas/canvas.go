@@ -468,6 +468,7 @@ func (c *Canvas) swap() {
 		Type: message.SwapGameTile,
 		Game: &g,
 	})
+	c.selection.tiles = make(map[tile.ID]tileSelection)
 }
 
 // getTileSelection returns the tile at the specified coordinates on the canvas or nil if none exists.

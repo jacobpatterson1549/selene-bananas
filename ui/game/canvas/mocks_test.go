@@ -1,5 +1,7 @@
 package canvas
 
+import "github.com/jacobpatterson1549/selene-bananas/game/message"
+
 type mockContext struct {
 	SetFontFunc        func(name string)
 	SetLineWidthFunc   func(width float64)
@@ -42,4 +44,12 @@ func (m *mockContext) FillRect(x, y, width, height int) {
 
 func (m *mockContext) StrokeRect(x, y, width, height int) {
 	m.StrokeRectFunc(x, y, width, height)
+}
+
+type mockSocket struct {
+	SendFunc func(m message.Message)
+}
+
+func (m mockSocket) Send(msg message.Message) {
+	m.SendFunc(msg)
 }

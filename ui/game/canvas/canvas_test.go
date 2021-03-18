@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
+	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 
@@ -135,5 +136,47 @@ func TestCalculateSelectedUnusedTiles(t *testing.T) {
 	got := c.calculateSelectedUnusedTiles(minX, maxX, minY, maxY)
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("not equal\nwanted: %v\ngot:    %v", want, got)
+	}
+}
+
+func TestSwap(t *testing.T) {
+	st := tile.Tile{
+		ID: 8,
+	}
+	messageSent := false
+	c := Canvas{
+		board: board.New([]tile.Tile{st}, nil),
+		selection: selection{
+			end: pixelPosition{
+				x: 1,
+				y: 1,
+			},
+			tiles: map[tile.ID]tileSelection{
+				8: {
+					tile: st,
+				},
+			},
+		},
+		draw: drawMetrics{
+			tileLength: 2,
+		},
+		Socket: mockSocket{
+			SendFunc: func(m message.Message) {
+				switch {
+				case m.Type != message.SwapGameTile, m.Game.Board.UnusedTileIDs[0] != st.ID:
+					t.Errorf("wanted message to swap tile 8, got: %v", m)
+				}
+				messageSent = true
+			},
+		},
+	}
+	c.swap()
+	switch {
+	case len(c.board.UnusedTiles) != 0:
+		t.Error("wanted tile to be swapped")
+	case !messageSent:
+		t.Error("wanted message to be sent")
+	case len(c.selection.tiles) != 0:
+		t.Error("wanted no selected tiles after swap")
 	}
 }
