@@ -426,8 +426,8 @@ func (s *Server) authHandler(h http.Handler) http.HandlerFunc {
 func (s *Server) handleAcmeChallenge(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	if path[len(acmeHeader):] != s.Challenge.Token {
-		err := fmt.Errorf("path '%v' is not for challenge", path)
-		s.writeInternalError(w, err)
+		http.NotFound(w, r)
+		return
 	}
 	data := s.Challenge.Token + "." + s.Challenge.Key
 	w.Write([]byte(data))

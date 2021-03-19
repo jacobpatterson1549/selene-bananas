@@ -482,7 +482,8 @@ func TestHandleHTTP(t *testing.T) {
 				Token: "fred",
 			},
 			httpURI:  acmeHeader + "barney",
-			wantCode: 500,
+			wantCode: 404,
+			wantBody: "404 page not found\n", // flaky check, but ensures actual token.key is not written to body
 		},
 		{
 			httpURI:      "http://example.com/",
@@ -511,7 +512,6 @@ func TestHandleHTTP(t *testing.T) {
 	}
 	for i, test := range handleHTTPTests {
 		s := Server{
-			log: log.New(io.Discard, "", 0),
 			httpsServer: &http.Server{
 				Addr: test.httpsAddr,
 			},
