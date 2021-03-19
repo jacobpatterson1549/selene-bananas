@@ -85,7 +85,11 @@ $(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(BU
 	$(LINK) $(SERVER_EMBED_DIR)/$(@F) $@
 
 $(BUILD_DIR)/$(WORDS_OBJ): | $(BUILD_DIR)
-	aspell -d en_US dump master | sort > $@
+	aspell -d en_US dump master \
+		| sort \
+		| uniq \
+		| grep -E ^[a-z]+$$ \
+		> $@
 
 $(BUILD_DIR):
 	mkdir -p $@
