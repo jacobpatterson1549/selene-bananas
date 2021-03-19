@@ -34,22 +34,43 @@ New dependencies are automatically added to [go.mod](go.mod) when the project is
 
 Run `make serve` to build and run the application.
 
+### Docker
+
+Launching the application with [Docker](https://www.docker.com) requires minimal configuration.
+
+1. Install [docker-compose](https://github.com/docker/compose)
+1. Set environment variables in the `.env` file in project root (next to Dockerfile).
+    ```
+    DATABASE_URL=postgres://selene:selene123@127.0.0.1:54320/selene_bananas_db?sslmode=disable
+    PORT=8000
+    NO_TLS_REDIRECT=true
+
+    POSTGRES_DB=selene_bananas_db
+    POSTGRES_USER=selene
+    POSTGRES_PASSWORD=selene123
+    POSTGRES_PORT=54320
+    ```
+1. Run `docker-compose up --build` to launch the application, rebuilding parts of it that are stale.
+1. Access application by opening <https://localhost:8000>.  TLS certificates will be copied to Docker.  Environment variables are used from the `.env` file.
+
 ### Environment Configuration
 
-Environment variables are needed to customize the server.  Sample config:
+Environment variables in the `.env` file are needed to customize the server.
+
+Minimal config:
 ```
 DATABASE_URL=postgres://selene:selene123@127.0.0.1:54320/selene_bananas_db?sslmode=disable
-HTTP_PORT=8001
-HTTPS_PORT=8000
+PORT=8000
+NO_TLS_REDIRECT=true
 ```
 
 For development, set `CACHE_SECONDS` to `0` to not cache static and template resources.
 
-### Database
+#### Database
 
-The app stores user information in a Postgresql database.  When the app starts, files in the [resources/sql](resources/sql) folder are ran to ensure database objects functions are fresh.
+The app stores user information in a Postgresql database.  When the app starts, files in the [resources/sql](resources/sql) folder are run to ensure database objects functions are fresh.
 
-#### localhost
+##### localhost
 
 A Postgresql database can be created with the command below.  Change the `PGUSER` and `PGPASSWORD` variables.  The command requires administrator access.
 ```bash
@@ -66,19 +87,13 @@ sudo -u postgres psql \
 && echo DATABASE_URL=postgres://$PGUSER:$PGPASSWORD@$PGHOSTADDR:$PGPORT/$PGDATABASE'
 ```
 
-### HTTPS
+#### HTTPS
 
-The app can be run on HTTP over TLS (HTTPS). If running on TLS, HTTP requests are redirected to HTTPS.
+The app can be run on HTTP over TLS (HTTPS). If running on TLS, most HTTP requests are redirected to HTTPS.
 
-#### ACME
+If the server handles HTTPS by providing its own certificate, use the PORT variable to specify the HTTPS port. When POST is defined, no HTTP server will be started from HTTP_PORT and certificates are not read.  Use this in combination weth `NO_TLS_REDIRECT=true` to prevent the server trying to check the TLS headers on requests.
 
-The server can verify its identity over HTTP to pass a Automatic Certificate Management Environment (ACME) HTTP-01 challenge.  Add the `--acme-challenge-token` and `--acme-challenge-key` parameters with necessary values when running the server to return correct responses when the server's identity is challenged to create TLS certificates.  After the certificates are created, remove the acme-* flags, and replace the [resources/tls-cert.pem](resources/tls-cert.pem) and [resources/tls-key.pem](resources/tls-key.pem) files with the certificates. See [letsencrypt.org](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) for more information about challenges.
-
-### Server Ports
-
-if the PORT parameter is specified in the `.env` file, the server will only run HTTPS without a certificate.  See TLS section below for how to run on HTTP and HTTPS
-
-#### TLS
+##### Mkcert
 
 Use [mkcert](https://github.com/FiloSottile/mkcert) to configure a development machine to accept local certificates.
 ```bash
@@ -95,27 +110,14 @@ HTTP_PORT=8001
 HTTPS_PORT=8000
 ```
 
-### Server Ports
+##### ACME
 
-By default, the server will run on ports 80 and 443 for http and https traffic.  All http traffic is redirected to HTTPS.
-
-If the server handles HTTPS by providing its own certificate, use the PORT variable to specify the HTTPS port. When POST is defined, no HTTP server will be started from HTTP_PORT and certificates are not read.
+The server can verify its identity over HTTP to pass a Automatic Certificate Management Environment (ACME) HTTP-01 challenge.  **Using a local certificate generated in the previous step by mkcert**, add the ACME environment parameters listed below with necessary values to the `.env` file.  This makes the HTTP server respond to challenge requests correctly.  After the certificates are created, remove the ACME_* parameter and replace the [resources/tls-cert.pem](resources/tls-cert.pem) and [resources/tls-key.pem](resources/tls-key.pem) files with the certificates. See [letsencrypt.org](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) for more information about challenges.
+```
+ACME_CHALLENGE_TOKEN=token123
+ACME_CHALLENGE_KEY=s3cr3t_key
+```
 
 ##### Serve on Default TCP HTTP Ports
 
 Run `make serve-tcp` to run on port 80 for HTTP and port 443 for HTTPS (default TCP ports).  Using these ports requires `sudo` (root) access.
-
-### Docker
-
-Launching the application with [Docker](https://www.docker.com) requires minimal configuration.
-
-1. Install [docker-compose](https://github.com/docker/compose)
-1. Set database environment variables in the `.env` file in project root (next to Dockerfile).
-    ```
-    POSTGRES_DB=selene_bananas_db
-    POSTGRES_USER=selene
-    POSTGRES_PASSWORD=selene123
-    POSTGRES_PORT=54320
-    ```
-1. Run `docker-compose up --build` to launch the application, rebuilding the parts of it that are stale.
-1. Access application by opening <https://localhost:8000>.  TLS certificates will be copied to Docker.  Environment variables are used from the `.env` file.
