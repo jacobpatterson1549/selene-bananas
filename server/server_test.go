@@ -303,6 +303,36 @@ EKTcWGekdmdDPsHloRNtsiCa697B2O9IFA==
 	}
 }
 
+func TestLogServerStart(t *testing.T) {
+	logServerStartTests := []struct {
+		httpServerAddr string
+		wantLogPart    string
+	}{
+		{
+			httpServerAddr: ":80",
+			wantLogPart:    "https://",
+		},
+		{
+			wantLogPart: "http://",
+		},
+	}
+	for i, test := range logServerStartTests {
+		var buf bytes.Buffer
+		s := Server{
+			log: log.New(&buf, "", 0),
+			httpServer: &http.Server{
+				Addr: test.httpServerAddr,
+			},
+			httpsServer: &http.Server{},
+		}
+		s.logServerStart()
+		gotLog := buf.String()
+		if !strings.Contains(gotLog, test.wantLogPart) {
+			t.Errorf("Test %v: wanted log to contain '%v', got '%v'", i, test.wantLogPart, gotLog)
+		}
+	}
+}
+
 func TestHandleFile(t *testing.T) {
 	t.Run("TestHandleVileVersion", func(t *testing.T) {
 		handleFileVersionTests := []struct {

@@ -264,8 +264,19 @@ func (s *Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	s.lobby.Run(ctx, &s.wg)
 	s.httpsServer.RegisterOnShutdown(cancelFunc)
-	s.log.Printf("starting https server at at https://127.0.0.1%v", s.httpsServer.Addr)
+	s.logServerStart()
 	go s.serveTCP(s.httpsServer, errC, true)
+}
+
+func (s *Server) logServerStart() {
+	var serverStartInfo string
+	switch {
+	case s.validHTTPAddr():
+		serverStartInfo = "starting server at at https://127.0.0.1%v"
+	default:
+		serverStartInfo = "starting server at at http://127.0.0.1%v"
+	}
+	s.log.Printf(serverStartInfo, s.httpsServer.Addr)
 }
 
 // serveTCP is closely derived from https://golang.org/src/net/http/server.go to allow key bytes rather than files
