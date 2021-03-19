@@ -767,27 +767,23 @@ func TestServeTemplate(t *testing.T) {
 		path            string
 		data            interface{}
 		wantStatusCode  int
-		wantContentType string
 		wantBody        string
 	}{
 		{
 			path:            "/unknown",
 			wantStatusCode:  500,
-			wantContentType: "text/plain; charset=utf-8",
 		},
 		{
 			templateName:    "index.html",
 			path:            "/index.html",
 			templateText:    "stuff",
 			wantStatusCode:  200,
-			wantContentType: "text/html; charset=utf-8",
 			wantBody:        "stuff",
 		},
 		{ // different content type
 			templateName:    "init.js",
 			path:            "/init.js",
 			wantStatusCode:  200,
-			wantContentType: "application/javascript",
 		},
 		{
 			templateName:    "name.html",
@@ -795,7 +791,6 @@ func TestServeTemplate(t *testing.T) {
 			path:            "/name.html",
 			data:            "selene",
 			wantStatusCode:  200,
-			wantContentType: "text/html; charset=utf-8",
 			wantBody:        "template for selene",
 		},
 	}
@@ -811,8 +806,6 @@ func TestServeTemplate(t *testing.T) {
 		switch {
 		case test.wantStatusCode != w.Code:
 			t.Errorf("Test %v: status codes not equal: wanted: %v, got:    %v", i, test.wantStatusCode, w.Code)
-		case test.wantContentType != w.Header().Get("Content-Type"):
-			t.Errorf("Test %v: headers content types not equal:\nwanted: %v\ngot:    %v", i, test.wantContentType, w.Header().Get("Content-Type"))
 		case test.wantStatusCode == 200 && test.wantBody != w.Body.String():
 			t.Errorf("Test %v: body not equal:\nwanted: %v\ngot:    %v", i, test.wantBody, w.Body.String())
 		}

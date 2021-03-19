@@ -470,7 +470,6 @@ func (s *Server) fileHandler(h http.Handler) http.HandlerFunc {
 // serveTemplate servers the file from the data-driven template.  The name is assumed to have a leading slash that is ignored.
 func (s *Server) serveTemplate(w http.ResponseWriter, r *http.Request) {
 	name := r.URL.Path[1:] // ignore leading slash
-	addMimeType(name, w)
 	if err := s.template.ExecuteTemplate(w, name, s.data); err != nil {
 		err = fmt.Errorf("rendering template: %v", err)
 		s.writeInternalError(w, err)
