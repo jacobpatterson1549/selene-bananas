@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log"
@@ -28,7 +29,8 @@ func TestNewWordValidator(t *testing.T) {
 // This integration test is SLOW because it starts a test server.
 func TestServerGetFiles(t *testing.T) {
 	ctx := context.Background()
-	log := log.New(io.Discard, "", 0)
+	var buf bytes.Buffer
+	log := log.New(&buf, "", 0)
 	db := db.Database{}
 	embedVersion = "1" // the version is not generated until the tests pass
 	e, err := unembedData()
@@ -44,6 +46,7 @@ func TestServerGetFiles(t *testing.T) {
 	}
 	getHandler := s.HTTPSServer.Handler
 	ts := httptest.NewTLSServer(getHandler)
+	ts.Config.ErrorLog = log
 	defer ts.Close()
 	c := ts.Client()
 	getFilePaths := []string{
@@ -60,6 +63,9 @@ func TestServerGetFiles(t *testing.T) {
 			body, _ := io.ReadAll(res.Body)
 			res.Body.Close()
 			t.Errorf("Test %v: wanted 200 code, got %v (%v): %s", i, res.StatusCode, res.Status, body)
+		case buf.Len() != 0:
+			t.Errorf("Test %v: unwanted log message, likely error: %v", i, buf.String())
+			buf.Reset()
 		}
 	}
 }
