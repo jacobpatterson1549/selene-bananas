@@ -226,8 +226,8 @@ func TestNewServer(t *testing.T) {
 			t.Errorf("Test %v: server not copied from from arguments properly: %v", i, got)
 		default:
 			nilChecks := []interface{}{
-				got.httpServer,
-				got.httpsServer,
+				got.HTTPServer,
+				got.HTTPSServer,
 				got.template,
 				got.serveStatic,
 				got.monitor,
@@ -282,7 +282,7 @@ EKTcWGekdmdDPsHloRNtsiCa697B2O9IFA==
 			},
 		}
 		s := Server{
-			httpsServer: &http.Server{},
+			HTTPSServer: &http.Server{},
 			Config:      test.Config,
 		}
 		got, err := s.tlsListener(innerListener)
@@ -297,7 +297,7 @@ EKTcWGekdmdDPsHloRNtsiCa697B2O9IFA==
 			t.Errorf("Test %v: wanted TLS listener to be different from innerListener: got %v", i, got)
 		case !reflect.DeepEqual(testAddr, got.Addr()):
 			t.Errorf("Test %v: listener addresses not equal: wanted %v, got %v", i, testAddr, got.Addr())
-		case len(s.httpsServer.TLSConfig.Certificates) != 1:
+		case len(s.HTTPSServer.TLSConfig.Certificates) != 1:
 			t.Errorf("Test %v: wanted TLSConfig with certificate to be set on https server", i)
 		}
 	}
@@ -320,10 +320,10 @@ func TestLogServerStart(t *testing.T) {
 		var buf bytes.Buffer
 		s := Server{
 			log: log.New(&buf, "", 0),
-			httpServer: &http.Server{
+			HTTPServer: &http.Server{
 				Addr: test.httpServerAddr,
 			},
-			httpsServer: &http.Server{},
+			HTTPSServer: &http.Server{},
 		}
 		s.logServerStart()
 		gotLog := buf.String()
@@ -512,7 +512,7 @@ func TestHandleHTTP(t *testing.T) {
 	}
 	for i, test := range handleHTTPTests {
 		s := Server{
-			httpsServer: &http.Server{
+			HTTPSServer: &http.Server{
 				Addr: test.httpsAddr,
 			},
 			Config: Config{
@@ -561,7 +561,7 @@ func TestHandleHTTPS(t *testing.T) {
 		{ // acme challenge with no TLS sent to HTTPS
 			Request: httptest.NewRequest("GET", acmeHeader, nil),
 			Server: &Server{
-				httpServer: &http.Server{
+				HTTPServer: &http.Server{
 					Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						w.WriteHeader(418)
 					}),
@@ -572,7 +572,7 @@ func TestHandleHTTPS(t *testing.T) {
 		{
 			Request: httptest.NewRequest("GET", "/want-redirect", nil),
 			Server: &Server{
-				httpsServer: &http.Server{},
+				HTTPSServer: &http.Server{},
 				Config: Config{
 					NoTLSRedirect: true,
 				},
@@ -582,7 +582,7 @@ func TestHandleHTTPS(t *testing.T) {
 		{
 			Request: withSecHeader(httptest.NewRequest("GET", "/unknown", nil)),
 			Server: &Server{
-				httpsServer: &http.Server{},
+				HTTPSServer: &http.Server{},
 				Config: Config{
 					NoTLSRedirect: true,
 				},
@@ -829,7 +829,7 @@ func TestValidHTTPAddr(t *testing.T) {
 	}
 	for i, test := range validHTTPAddrTests {
 		s := Server{
-			httpServer: &http.Server{
+			HTTPServer: &http.Server{
 				Addr: test.addr,
 			},
 		}

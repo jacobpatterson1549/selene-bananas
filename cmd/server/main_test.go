@@ -1,9 +1,14 @@
 package main
 
 import (
+	"context"
+	"io"
+	"log"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/jacobpatterson1549/selene-bananas/db"
 	"github.com/jacobpatterson1549/selene-bananas/game/word"
 )
 
@@ -16,5 +21,45 @@ func TestNewWordValidator(t *testing.T) {
 	if want != got {
 		note := "NOTE: this might be flaky, but it ensures that a large number of words can be loaded."
 		t.Errorf("wanted %v words, got %v\n%v", want, got, note)
+	}
+}
+
+// TestServerGet ensures the server handles get responses for files and templates.
+// This integration test is SLOW because it starts a test server.
+func TestServerGetFiles(t *testing.T) {
+	ctx := context.Background()
+	log := log.New(io.Discard, "", 0)
+	db := db.Database{}
+	embedVersion = "1" // the version is not generated until the tests pass
+	e, err := unembedData()
+	if err != nil {
+		t.Fatalf("unwanted error: %v", err)
+	}
+	f := flags{
+		httpsPort: 8000, // not actually used, overridden by httptest
+	}
+	s, err := f.createServer(ctx, log, &db, *e)
+	if err != nil {
+		t.Fatalf("unwanted error: %v", err)
+	}
+	getHandler := s.HTTPSServer.Handler
+	ts := httptest.NewTLSServer(getHandler)
+	defer ts.Close()
+	c := ts.Client()
+	getFilePaths := []string{
+		"/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/LICENSE", // static files
+		"/", "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html", // templates
+	}
+	for i, p := range getFilePaths {
+		url := ts.URL + p
+		res, err := c.Get(url)
+		switch {
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case res.StatusCode != 200:
+			body, _ := io.ReadAll(res.Body)
+			res.Body.Close()
+			t.Errorf("Test %v: wanted 200 code, got %v (%v): %s", i, res.StatusCode, res.Status, body)
+		}
 	}
 }

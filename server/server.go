@@ -31,8 +31,8 @@ type (
 		tokenizer   Tokenizer
 		userDao     UserDao
 		lobby       Lobby
-		httpServer  *http.Server
-		httpsServer *http.Server
+		HTTPServer  *http.Server
+		HTTPSServer *http.Server
 		cacheMaxAge string
 		template    *template.Template
 		serveStatic http.Handler
@@ -175,8 +175,8 @@ func (cfg Config) NewServer(p Parameters) (*Server, error) {
 		tokenizer:   p.Tokenizer,
 		userDao:     p.UserDao,
 		lobby:       p.Lobby,
-		httpServer:  httpServer,
-		httpsServer: httpsServer,
+		HTTPServer:  httpServer,
+		HTTPSServer: httpsServer,
 		cacheMaxAge: cacheMaxAge,
 		template:    template,
 		serveStatic: staticFilesHandler,
@@ -185,8 +185,8 @@ func (cfg Config) NewServer(p Parameters) (*Server, error) {
 	s.monitor = runtimeMonitor{
 		hasTLS: s.validHTTPAddr(),
 	}
-	s.httpServer.Handler = s.httpHandler()
-	s.httpsServer.Handler = s.httpsHandler()
+	s.HTTPServer.Handler = s.httpHandler()
+	s.HTTPSServer.Handler = s.httpsHandler()
 	return &s, nil
 }
 
@@ -256,16 +256,16 @@ func (s *Server) runHTTPServer(ctx context.Context, errC chan<- error) {
 	if !s.validHTTPAddr() {
 		return
 	}
-	go s.serveTCP(s.httpServer, errC, false)
+	go s.serveTCP(s.HTTPServer, errC, false)
 }
 
 // runHTTPSServer runs the https server in regards to the conviguration, adding the return error to the channel when done.
 func (s *Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	s.lobby.Run(ctx, &s.wg)
-	s.httpsServer.RegisterOnShutdown(cancelFunc)
+	s.HTTPSServer.RegisterOnShutdown(cancelFunc)
 	s.logServerStart()
-	go s.serveTCP(s.httpsServer, errC, true)
+	go s.serveTCP(s.HTTPSServer, errC, true)
 }
 
 func (s *Server) logServerStart() {
@@ -276,7 +276,7 @@ func (s *Server) logServerStart() {
 	default:
 		serverStartInfo = "starting server at at http://127.0.0.1%v"
 	}
-	s.log.Printf(serverStartInfo, s.httpsServer.Addr)
+	s.log.Printf(serverStartInfo, s.HTTPSServer.Addr)
 }
 
 // serveTCP is closely derived from https://golang.org/src/net/http/server.go to allow key bytes rather than files
@@ -312,7 +312,7 @@ func (s *Server) tlsListener(l net.Listener) (net.Listener, error) {
 	tlsConfig.NextProtos = []string{"http/1.1"}
 	tlsConfig.Certificates = []tls.Certificate{certificate}
 	tlsListener := tls.NewListener(l, tlsConfig)
-	s.httpsServer.TLSConfig = tlsConfig
+	s.HTTPSServer.TLSConfig = tlsConfig
 	return tlsListener, nil
 }
 
@@ -321,8 +321,8 @@ func (s *Server) tlsListener(l net.Listener) (net.Listener, error) {
 func (s *Server) Stop(ctx context.Context) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, s.StopDur)
 	defer cancelFunc()
-	httpsShutdownErr := s.httpsServer.Shutdown(ctx)
-	httpShutdownErr := s.httpServer.Shutdown(ctx)
+	httpsShutdownErr := s.HTTPSServer.Shutdown(ctx)
+	httpShutdownErr := s.HTTPServer.Shutdown(ctx)
 	switch {
 	case httpsShutdownErr != nil:
 		return httpsShutdownErr
@@ -349,7 +349,7 @@ func (s *Server) httpsHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.TLS == nil && !s.NoTLSRedirect:
-			s.httpServer.Handler.ServeHTTP(w, r)
+			s.HTTPServer.Handler.ServeHTTP(w, r)
 		case r.TLS == nil && s.NoTLSRedirect && !hasSecHeader(r):
 			s.redirectToHTTPS(w, r)
 		case r.Method == "GET":
@@ -479,7 +479,7 @@ func (s *Server) serveTemplate(w http.ResponseWriter, r *http.Request) {
 // validHTTPAddr determines if the HTTP address is valid.
 // If the HTTP address is valid, the HTTP server should be started to redirect to HTTPS and handle certificate creation.
 func (s *Server) validHTTPAddr() bool {
-	return len(s.httpServer.Addr) > 0
+	return len(s.HTTPServer.Addr) > 0
 }
 
 // redirectToHTTPS redirects the page to https.
@@ -490,8 +490,8 @@ func (s *Server) redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
 	if lastColonIndex >= 0 {
 		host = host[:lastColonIndex]
 	}
-	if s.httpsServer.Addr != ":443" && !s.NoTLSRedirect {
-		host = host + s.httpsServer.Addr
+	if s.HTTPSServer.Addr != ":443" && !s.NoTLSRedirect {
+		host = host + s.HTTPSServer.Addr
 	}
 	httpsURI := "https://" + host + r.URL.Path
 	http.Redirect(w, r, httpsURI, http.StatusTemporaryRedirect)
