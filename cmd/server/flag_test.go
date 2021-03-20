@@ -12,11 +12,11 @@ func TestNewFlags(t *testing.T) {
 	newFlagsTests := []struct {
 		osArgs  []string
 		envVars map[string]string
-		want    *flags
+		want    *Flags
 	}{
 		{ // defaults
-			want: &flags{
-				cacheSec: defaultCacheSec,
+			want: &Flags{
+				CacheSec: defaultCacheSec,
 			},
 		},
 		{ // all command line
@@ -31,15 +31,15 @@ func TestNewFlags(t *testing.T) {
 				"-acme-challenge-key=8",
 				"-no-tls-redirect",
 			},
-			want: &flags{
-				httpPort:       1,
-				httpsPort:      2,
-				databaseURL:    "3",
-				debugGame:      true,
-				cacheSec:       6,
-				challengeToken: "7",
-				challengeKey:   "8",
-				noTLSRedirect:  true,
+			want: &Flags{
+				HTTPPort:       1,
+				HTTPSPort:      2,
+				DatabaseURL:    "3",
+				DebugGame:      true,
+				CacheSec:       6,
+				ChallengeToken: "7",
+				ChallengeKey:   "8",
+				NoTLSRedirect:  true,
 			},
 		},
 		{ // all environment variables
@@ -53,15 +53,15 @@ func TestNewFlags(t *testing.T) {
 				"ACME_CHALLENGE_KEY":   "8",
 				"NO_TLS_REDIRECT":      "",
 			},
-			want: &flags{
-				httpPort:       1,
-				httpsPort:      2,
-				databaseURL:    "3",
-				debugGame:      true,
-				cacheSec:       6,
-				challengeToken: "7",
-				challengeKey:   "8",
-				noTLSRedirect:  true,
+			want: &Flags{
+				HTTPPort:       1,
+				HTTPSPort:      2,
+				DatabaseURL:    "3",
+				DebugGame:      true,
+				CacheSec:       6,
+				ChallengeToken: "7",
+				ChallengeKey:   "8",
+				NoTLSRedirect:  true,
 			},
 		},
 	}
@@ -89,9 +89,9 @@ func TestNewFlagsPortOverride(t *testing.T) {
 		return v, ok
 	}
 	var osArgs []string
-	want := &flags{
-		httpPort:  -1,
-		httpsPort: 3,
+	want := &Flags{
+		HTTPPort:  -1,
+		HTTPSPort: 3,
 	}
 	got := newFlags(osArgs, osLookupEnvFunc)
 	if !reflect.DeepEqual(want, got) {
@@ -103,7 +103,7 @@ func TestUsage(t *testing.T) {
 	osLookupEnvFunc := func(key string) (string, bool) {
 		return "", false
 	}
-	var f flags
+	var f Flags
 	var portOverride int
 	fs := f.newFlagSet(osLookupEnvFunc, &portOverride)
 	var buf bytes.Buffer

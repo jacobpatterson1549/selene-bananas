@@ -110,31 +110,31 @@ func TestNewEmbedParameters(t *testing.T) {
 		return fs
 	}
 	newEmbedParametersTests := []struct {
-		embeddedData
+		EmbeddedData
 		wantOk bool
-		want   *embeddedData
+		want   *EmbeddedData
 	}{
 		{}, // bad version
 		{ // missing words
-			embeddedData: embeddedData{
+			EmbeddedData: EmbeddedData{
 				Version: okVersion,
 			},
 		},
 		{ // missing static fs
-			embeddedData: embeddedData{
+			EmbeddedData: EmbeddedData{
 				Version: okVersion,
 				Words:   words,
 			},
 		},
 		{ // missing template fs
-			embeddedData: embeddedData{
+			EmbeddedData: EmbeddedData{
 				Version:  okVersion,
 				Words:    words,
 				StaticFS: emptyFS,
 			},
 		},
 		{ // missing SQL fs
-			embeddedData: embeddedData{
+			EmbeddedData: EmbeddedData{
 				Version:    okVersion,
 				Words:      words,
 				StaticFS:   emptyFS,
@@ -142,7 +142,7 @@ func TestNewEmbedParameters(t *testing.T) {
 			},
 		},
 		{ // bad static fs
-			embeddedData: embeddedData{
+			EmbeddedData: EmbeddedData{
 				Version:    okVersion,
 				Words:      words,
 				StaticFS:   emptyFS,
@@ -151,7 +151,7 @@ func TestNewEmbedParameters(t *testing.T) {
 			},
 		},
 		{ // bad template fs
-			embeddedData: embeddedData{
+			EmbeddedData: EmbeddedData{
 				Version:    okVersion,
 				Words:      words,
 				StaticFS:   staticFS,
@@ -160,7 +160,7 @@ func TestNewEmbedParameters(t *testing.T) {
 			},
 		},
 		{ // bad SQL fs
-			embeddedData: embeddedData{
+			EmbeddedData: EmbeddedData{
 				Version:    okVersion,
 				Words:      words,
 				StaticFS:   staticFS,
@@ -169,7 +169,7 @@ func TestNewEmbedParameters(t *testing.T) {
 			},
 		},
 		{ // happy path
-			embeddedData: embeddedData{
+			EmbeddedData: EmbeddedData{
 				Version:    okVersion + "\n",
 				Words:      words,
 				TLSCertPEM: "tls cert",
@@ -179,7 +179,7 @@ func TestNewEmbedParameters(t *testing.T) {
 				SQLFS:      sqlFS,
 			},
 			wantOk: true,
-			want: &embeddedData{
+			want: &EmbeddedData{
 				Version:    "9d2ffad8e5e5383569d37ec381147f2d", // trimmed
 				Words:      words,
 				TLSCertPEM: "tls cert",
@@ -191,7 +191,7 @@ func TestNewEmbedParameters(t *testing.T) {
 		},
 	}
 	for i, test := range newEmbedParametersTests {
-		got, err := test.embeddedData.unEmbed()
+		got, err := test.EmbeddedData.unEmbed()
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -209,7 +209,7 @@ func TestNewEmbedParameters(t *testing.T) {
 // The table creation scripts must be run before other scripts reference the tables.
 func TestSQLFiles(t *testing.T) {
 	t.Run("BadFS", func(t *testing.T) {
-		e := embeddedData{
+		e := EmbeddedData{
 			SQLFS: fstest.MapFS{},
 		}
 		_, err := e.sqlFiles()
@@ -218,7 +218,7 @@ func TestSQLFiles(t *testing.T) {
 		}
 	})
 	t.Run("OkFS", func(t *testing.T) {
-		e := embeddedData{
+		e := EmbeddedData{
 			SQLFS: fstest.MapFS{
 				"user_create.sql":                  &fstest.MapFile{Data: []byte("2")},
 				"user_delete.sql":                  &fstest.MapFile{Data: []byte("6")},

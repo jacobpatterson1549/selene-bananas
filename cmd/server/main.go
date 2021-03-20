@@ -25,16 +25,16 @@ func main() {
 
 // runServer runs the server
 func runServer(ctx context.Context, log *log.Logger) error {
-	e, err := unembedData()
+	e, err := UnembedData()
 	if err != nil {
 		return fmt.Errorf("reading embedded files: %v", err)
 	}
 	f := newFlags(os.Args, os.LookupEnv)
-	db, err := f.createDatabase(ctx, "postgres", *e)
+	db, err := f.CreateDatabase(ctx, "postgres", *e)
 	if err != nil {
 		return fmt.Errorf("creating database: %v", err)
 	}
-	server, err := f.createServer(ctx, log, db, *e)
+	server, err := f.CreateServer(ctx, log, db, *e)
 	if err != nil {
 		return fmt.Errorf("creating server: %v", err)
 	}
@@ -59,9 +59,9 @@ func runServer(ctx context.Context, log *log.Logger) error {
 	return nil
 }
 
-// unembedData returns the unembedded data that was embedded in the server.
-func unembedData() (*embeddedData, error) {
-	e := embeddedData{
+// UnembedData returns the unembedded data that was embedded in the server.
+func UnembedData() (*EmbeddedData, error) {
+	e := EmbeddedData{
 		Version:    embedVersion,
 		Words:      embeddedWords,
 		TLSCertPEM: embeddedTLSCertPEM,

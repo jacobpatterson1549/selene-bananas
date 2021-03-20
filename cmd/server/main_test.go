@@ -1,4 +1,5 @@
-package main
+// Package main_test contains integration tests using embedded data.  Some of the tests are slow.
+package main_test
 
 import (
 	"bytes"
@@ -9,13 +10,24 @@ import (
 	"strings"
 	"testing"
 
+	main "github.com/jacobpatterson1549/selene-bananas/cmd/server"
 	"github.com/jacobpatterson1549/selene-bananas/db"
 	"github.com/jacobpatterson1549/selene-bananas/game/word"
 )
 
+func embeddedData(t *testing.T) main.EmbeddedData {
+	t.Helper()
+	e, err := main.UnembedData()
+	if err != nil {
+		t.Fatalf("unembedding data: %v", err)
+	}
+	return *e
+}
+
 // TestNewWordValidator loads the embedded words, which should be the dump of the aspell en_US dictionary, Debian: aspell-en2018.04.16-0-1,Alpine: aspell-en=2020.12.07-r0
 func TestNewWordValidator(t *testing.T) {
-	r := strings.NewReader(embeddedWords)
+	e := embeddedData(t)
+	r := strings.NewReader(e.Words)
 	c := word.NewValidator(r)
 	want := 77976
 	got := len(*c)
@@ -32,14 +44,11 @@ func TestServerGetFiles(t *testing.T) {
 	var buf bytes.Buffer
 	log := log.New(&buf, "", 0)
 	db := db.Database{}
-	e, err := unembedData()
-	if err != nil {
-		t.Fatalf("unwanted error: %v", err)
+	e := embeddedData(t)
+	f := main.Flags{
+		HTTPSPort: 8000, // not actually used, overridden by httptest
 	}
-	f := flags{
-		httpsPort: 8000, // not actually used, overridden by httptest
-	}
-	s, err := f.createServer(ctx, log, &db, *e)
+	s, err := f.CreateServer(ctx, log, &db, e)
 	if err != nil {
 		t.Fatalf("unwanted error: %v", err)
 	}

@@ -44,8 +44,8 @@ func init() {
 
 // TestCreateDatabase only checks the happy path, making sure defaults defined in config.go are valid.
 func TestCreateDatabase(t *testing.T) {
-	var f flags
-	e := embeddedData{
+	var f Flags
+	e := EmbeddedData{
 		SQLFS: fstest.MapFS{
 			"user_create.sql":                  &fstest.MapFile{Data: []byte("2")},
 			"user_delete.sql":                  &fstest.MapFile{Data: []byte("6")},
@@ -56,7 +56,7 @@ func TestCreateDatabase(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
-	got, err := f.createDatabase(ctx, "TestCreateDatabaseDB", e)
+	got, err := f.CreateDatabase(ctx, "TestCreateDatabaseDB", e)
 	switch {
 	case err != nil:
 		t.Errorf("unwanted error: %v", err)
@@ -67,19 +67,19 @@ func TestCreateDatabase(t *testing.T) {
 
 // TestNewServer only checks the happy path, making sure defaults defined in config.go are valid.
 func TestNewServer(t *testing.T) {
-	f := flags{
-		httpsPort: 443,
+	f := Flags{
+		HTTPSPort: 443,
 	}
 	ctx := context.Background()
 	log := log.New(io.Discard, "", 0)
 	db := db.Database{}
-	e := embeddedData{
+	e := EmbeddedData{
 		Version:    "1",
 		Words:      "apple\nbanana\ncarrot",
 		StaticFS:   fstest.MapFS{},
 		TemplateFS: fstest.MapFS{"file": &fstest.MapFile{}},
 	}
-	s, err := f.createServer(ctx, log, &db, e)
+	s, err := f.CreateServer(ctx, log, &db, e)
 	switch {
 	case err != nil:
 		t.Errorf("unwanted error: %v", err)
@@ -95,7 +95,7 @@ func TestGameConfig(t *testing.T) {
 			timeFuncCalled = true
 			return 42
 		}
-		var f flags
+		var f Flags
 		f.gameConfig(timeFunc)
 		if !timeFuncCalled {
 			t.Error("wanted timeFunc to be called to seed game shuffle funcs")

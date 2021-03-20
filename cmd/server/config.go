@@ -23,10 +23,10 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/server/game/socket"
 )
 
-// createDatabase creates and sets up the database.
-func (f flags) createDatabase(ctx context.Context, driverName string, e embeddedData) (*db.Database, error) {
+// CreateDatabase creates and sets up the database.
+func (f Flags) CreateDatabase(ctx context.Context, driverName string, e EmbeddedData) (*db.Database, error) {
 	cfg := f.sqlDatabaseConfig()
-	sqlDB, err := sql.Open(driverName, f.databaseURL)
+	sqlDB, err := sql.Open(driverName, f.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("opening database %w", err)
 	}
@@ -44,8 +44,8 @@ func (f flags) createDatabase(ctx context.Context, driverName string, e embedded
 	return db, nil
 }
 
-// createServer creates the server.
-func (f flags) createServer(ctx context.Context, log *log.Logger, db *db.Database, e embeddedData) (*server.Server, error) {
+// CreateServer creates the server.
+func (f Flags) CreateServer(ctx context.Context, log *log.Logger, db *db.Database, e EmbeddedData) (*server.Server, error) {
 	timeFunc := func() int64 {
 		return time.Now().UTC().Unix()
 	}
@@ -80,21 +80,21 @@ func (f flags) createServer(ctx context.Context, log *log.Logger, db *db.Databas
 		return nil, fmt.Errorf("creating lobby: %w", err)
 	}
 	challenge := server.Challenge{
-		Token: f.challengeToken,
-		Key:   f.challengeKey,
+		Token: f.ChallengeToken,
+		Key:   f.ChallengeKey,
 	}
 	colorConfig := f.colorConfig()
 	cfg := server.Config{
-		HTTPPort:      f.httpPort,
-		HTTPSPort:     f.httpsPort,
+		HTTPPort:      f.HTTPPort,
+		HTTPSPort:     f.HTTPSPort,
 		StopDur:       20 * time.Second, // should be longer than the PingPeriod of sockets so they can close gracefully
-		CacheSec:      f.cacheSec,
+		CacheSec:      f.CacheSec,
 		Version:       e.Version,
 		TLSCertPEM:    e.TLSCertPEM,
 		TLSKeyPEM:     e.TLSKeyPEM,
 		Challenge:     challenge,
 		ColorConfig:   colorConfig,
-		NoTLSRedirect: f.noTLSRedirect,
+		NoTLSRedirect: f.NoTLSRedirect,
 	}
 	p := server.Parameters{
 		Log:        log,
@@ -108,7 +108,7 @@ func (f flags) createServer(ctx context.Context, log *log.Logger, db *db.Databas
 }
 
 // colorConfig creates the color config for the css.
-func (flags) colorConfig() server.ColorConfig {
+func (Flags) colorConfig() server.ColorConfig {
 	cfg := server.ColorConfig{
 		CanvasPrimary: "#000000",
 		CanvasDrag:    "#0000ff",
@@ -126,7 +126,7 @@ func (flags) colorConfig() server.ColorConfig {
 }
 
 // tokenizerConfig creates the configuration for authentication token reader/writer.
-func (flags) tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
+func (Flags) tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
 	oneDay := 24 * time.Hour.Seconds()
 	cfg := auth.TokenizerConfig{
 		TimeFunc: timeFunc,
@@ -136,7 +136,7 @@ func (flags) tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
 }
 
 // sqlDatabase creates the configuration for a SQL database to persist user information.
-func (f flags) sqlDatabaseConfig() db.Config {
+func (f Flags) sqlDatabaseConfig() db.Config {
 	cfg := db.Config{
 		QueryPeriod: 5 * time.Second,
 	}
@@ -144,18 +144,18 @@ func (f flags) sqlDatabaseConfig() db.Config {
 }
 
 // lobbyConfig creates the configuration for running and managing players of games.
-func (f flags) lobbyConfig() lobby.Config {
+func (f Flags) lobbyConfig() lobby.Config {
 	cfg := lobby.Config{
-		Debug: f.debugGame,
+		Debug: f.DebugGame,
 	}
 	return cfg
 }
 
 // gameRunnerConfig creates the configuration for running and managing games.
-func (f flags) gameRunnerConfig(timeFunc func() int64) gameController.RunnerConfig {
+func (f Flags) gameRunnerConfig(timeFunc func() int64) gameController.RunnerConfig {
 	gameCfg := f.gameConfig(timeFunc)
 	cfg := gameController.RunnerConfig{
-		Debug:      f.debugGame,
+		Debug:      f.DebugGame,
 		MaxGames:   4,
 		GameConfig: gameCfg,
 	}
@@ -163,7 +163,7 @@ func (f flags) gameRunnerConfig(timeFunc func() int64) gameController.RunnerConf
 }
 
 // gameConfig creates the base configuration for all games.
-func (f flags) gameConfig(timeFunc func() int64) gameController.Config {
+func (f Flags) gameConfig(timeFunc func() int64) gameController.Config {
 	playerCfg := playerController.Config{
 		WinPoints: 10,
 	}
@@ -179,7 +179,7 @@ func (f flags) gameConfig(timeFunc func() int64) gameController.Config {
 		})
 	}
 	cfg := gameController.Config{
-		Debug:                  f.debugGame,
+		Debug:                  f.DebugGame,
 		TimeFunc:               timeFunc,
 		MaxPlayers:             6,
 		PlayerCfg:              playerCfg,
@@ -193,9 +193,9 @@ func (f flags) gameConfig(timeFunc func() int64) gameController.Config {
 }
 
 // socketRunnerConfig creates the configuration for creating new sockets (each tab that is connected to the lobby).
-func (f flags) socketRunnerConfig(timeFunc func() int64) socket.RunnerConfig {
+func (f Flags) socketRunnerConfig(timeFunc func() int64) socket.RunnerConfig {
 	socketCfg := socket.Config{
-		Debug:          f.debugGame,
+		Debug:          f.DebugGame,
 		TimeFunc:       timeFunc,
 		ReadWait:       60 * time.Second,
 		WriteWait:      10 * time.Second,
@@ -203,7 +203,7 @@ func (f flags) socketRunnerConfig(timeFunc func() int64) socket.RunnerConfig {
 		HTTPPingPeriod: 10 * time.Minute,
 	}
 	cfg := socket.RunnerConfig{
-		Debug:            f.debugGame,
+		Debug:            f.DebugGame,
 		MaxSockets:       32,
 		MaxPlayerSockets: 5,
 		SocketConfig:     socketCfg,

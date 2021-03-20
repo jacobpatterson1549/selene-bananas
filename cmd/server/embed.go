@@ -42,8 +42,8 @@ func unembedFS(fsys fs.FS, subdirectory string) (fs.FS, error) {
 	return fs.Sub(fsys, dir)
 }
 
-// embeddedData is used to retrieve files embedded in the server.
-type embeddedData struct {
+// EmbeddedData is used to retrieve files embedded in the server.
+type EmbeddedData struct {
 	Version    string
 	Words      string
 	TLSCertPEM string
@@ -55,7 +55,7 @@ type embeddedData struct {
 
 // unEmbed validates, unembeds, and returns the parameters in a structure.
 // Version and words are required, file systems are unembedded
-func (e embeddedData) unEmbed() (*embeddedData, error) {
+func (e EmbeddedData) unEmbed() (*EmbeddedData, error) {
 	switch {
 	case len(e.Version) == 0:
 		return nil, fmt.Errorf("version required")
@@ -81,7 +81,7 @@ func (e embeddedData) unEmbed() (*embeddedData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unembedding sql file system: %w", err)
 	}
-	e2 := embeddedData{
+	e2 := EmbeddedData{
 		Version:    trimmedVersion,
 		Words:      e.Words,
 		TLSCertPEM: e.TLSCertPEM,
@@ -94,7 +94,7 @@ func (e embeddedData) unEmbed() (*embeddedData, error) {
 }
 
 // sqlFiles opens the SQL files needed to manage user data.
-func (e embeddedData) sqlFiles() ([]io.Reader, error) {
+func (e EmbeddedData) sqlFiles() ([]io.Reader, error) {
 	sqlFileNames := []string{
 		"users",
 		"user_create",
