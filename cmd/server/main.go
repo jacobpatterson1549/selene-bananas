@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -17,18 +18,25 @@ func main() {
 	ctx := context.Background()
 	logFlags := log.Ldate | log.Ltime | log.LUTC | log.Lshortfile | log.Lmsgprefix
 	log := log.New(os.Stdout, "", logFlags)
+	if err := runServer(ctx, log); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// runServer runs the server
+func runServer(ctx context.Context, log *log.Logger) error {
 	e, err := unembedData()
 	if err != nil {
-		log.Fatalf("reading embedded files: %v", err)
+		return fmt.Errorf("reading embedded files: %v", err)
 	}
 	f := newFlags(os.Args, os.LookupEnv)
 	db, err := f.createDatabase(ctx, "postgres", *e)
 	if err != nil {
-		log.Fatalf("creating database: %v", err)
+		return fmt.Errorf("creating database: %v", err)
 	}
 	server, err := f.createServer(ctx, log, db, *e)
 	if err != nil {
-		log.Fatalf("creating server: %v", err)
+		return fmt.Errorf("creating server: %v", err)
 	}
 	done := make(chan os.Signal, 2)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
@@ -45,9 +53,10 @@ func main() {
 		log.Printf("handled signal: %v", signal)
 	}
 	if err := server.Stop(ctx); err != nil {
-		log.Fatalf("stopping server: %v", err)
+		return fmt.Errorf("stopping server: %v", err)
 	}
 	log.Println("server stopped successfully")
+	return nil
 }
 
 // unembedData returns the unembedded data that was embedded in the server.
