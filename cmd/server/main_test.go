@@ -17,7 +17,7 @@ import (
 func TestNewWordValidator(t *testing.T) {
 	r := strings.NewReader(embeddedWords)
 	c := word.NewValidator(r)
-	want := 77808
+	want := 77976
 	got := len(*c)
 	if want != got {
 		note := "NOTE: this might be flaky, but it ensures that a large number of words can be loaded."

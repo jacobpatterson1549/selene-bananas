@@ -29,6 +29,16 @@ New dependencies are automatically added to [go.mod](go.mod) when the project is
 [Make](https://www.gnu.org/software/make/) is used to by [Makefile](Makefile) to build and runs the application. Run `make` without any arguments to build the server with the client and other resources embedded in it.  This will likely need to be done before using an IDE in order to generate some files and prepropulate the embedded filesystem used by the the server.
 
 [Aspell](https://github.com/GNUAspell/aspell) is used to generate the en_US dictionary to validate words on player boards.
+ * Note: An integration test depends on aspell-en 2020.12.07-0.  This version is used by Docker.  Follow the steps below to install the version on your computer:
+   1. Download https://ftp.gnu.org/gnu/aspell/dict/en/aspell6-en-2020.12.07-0.tar.bz2
+   1. unzip the archive with `tar -xf aspell6-en-2020.12.07-0.tar.bz2`
+   1. configure and install it:
+   ```
+   cd aspell6-en-2020.12.07-0
+   ./configure
+   make
+   sudo make install
+   ```
 
 [Node](https://github.com/nodejs) is needed to run WebAssembly tests.
 
