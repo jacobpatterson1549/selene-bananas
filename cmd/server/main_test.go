@@ -32,7 +32,6 @@ func TestServerGetFiles(t *testing.T) {
 	var buf bytes.Buffer
 	log := log.New(&buf, "", 0)
 	db := db.Database{}
-	embedVersion = "1" // the version is not generated until the tests pass
 	e, err := unembedData()
 	if err != nil {
 		t.Fatalf("unwanted error: %v", err)
