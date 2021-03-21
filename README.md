@@ -51,17 +51,19 @@ Launching the application with [Docker](https://www.docker.com) requires minimal
 1. Install [docker-compose](https://github.com/docker/compose)
 1. Set environment variables in the `.env` file in project root (next to Dockerfile).
     ```
-    DATABASE_URL=postgres://selene:selene123@127.0.0.1:54320/selene_bananas_db?sslmode=disable
     PORT=8000
     NO_TLS_REDIRECT=true
+    HTTP_PORT=8001
+    HTTPS_PORT=8000
 
+    DATABASE_URL=postgres://selene:selene123@127.0.0.1:5432/selene_bananas_db
     POSTGRES_DB=selene_bananas_db
     POSTGRES_USER=selene
     POSTGRES_PASSWORD=selene123
     POSTGRES_PORT=54320
     ```
 1. Run `docker-compose up --build` to launch the application, rebuilding parts of it that are stale.
-1. Access application by opening <https://localhost:8000>.  TLS certificates will be copied to Docker.  Environment variables are used from the `.env` file.
+1. Access application by opening <http://127.0.0.1:8000>.  TLS certificates will be copied to Docker.  Environment variables are used from the `.env` file.
 
 ### Environment Configuration
 
