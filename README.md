@@ -20,7 +20,7 @@ New dependencies are automatically added to [go.mod](go.mod) when the project is
 * [Gorilla Websockets](https://github.com/gorilla/websocket) are used for bidirectional communication between users and the server
 * [jwt-go](https://github.com/dgrijalva/jwt-go) is used for stateless web sessions
 * [crypto](https://github.com/golang/crypto) is used to  encrypt passwords with bcrypt
-* [Font-Awesome](https://github.com/FortAwesome/Font-Awesome) provides the "copyright", "github," "linkedin", and "gavel" icons on the about page; they were copied from version [5.13.0](https://github.com/FortAwesome/Font-Awesome/releases/tag/5.13.0) to [resources/fa](resources/fa).
+* [Font-Awesome](https://github.com/FortAwesome/Font-Awesome) provides the "copyright", "github," "linkedin", and "gavel" icons on the about page; they were copied from version [5.13.0](https://github.com/FortAwesome/Font-Awesome/releases/tag/5.13.0) to [resources/template/fa](resources/template/fa).
 
 ## Build
 
@@ -114,7 +114,7 @@ Generate certificates for localhost at 127.0.0.1
 ```bash
 mkcert 127.0.0.1
 ```
-Then, replace the [resources/tls-cert.pem](resources/tls-cert.pem) and [resources/tls-key.pem](resources/tls-key.pem) files with the certificates.  Update the `.env` file with the parateters below. Make sure to remove the `PORT` variable, if present.
+Then, replace the `resources/tls-cert.pem` and `resources/tls-key.pem` files with the certificates.  Update the `.env` file with the parateters below. Make sure to remove the `PORT` variable, if present.
 ```
 HTTP_PORT=8001
 HTTPS_PORT=8000
@@ -122,7 +122,7 @@ HTTPS_PORT=8000
 
 ##### ACME
 
-The server can verify its identity over HTTP to pass a Automatic Certificate Management Environment (ACME) HTTP-01 challenge.  **Using a local certificate generated in the previous step by mkcert**, add the ACME environment parameters listed below with necessary values to the `.env` file.  This makes the HTTP server respond to challenge requests correctly.  After the certificates are created, remove the ACME_* parameter and replace the [resources/tls-cert.pem](resources/tls-cert.pem) and [resources/tls-key.pem](resources/tls-key.pem) files with the certificates. See [letsencrypt.org](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) for more information about challenges.
+The server can verify its identity over HTTP to pass a Automatic Certificate Management Environment (ACME) HTTP-01 challenge.  **Using a local certificate generated in the previous step by mkcert**, add the ACME environment parameters listed below with necessary values to the `.env` file.  This makes the HTTP server respond to challenge requests correctly.  After the certificates are created, remove the ACME_* parameter and replace the `resources/tls-cert.pem` and `resources/tls-key.pem` files with the certificates. See [letsencrypt.org](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) for more information about challenges.
 ```
 ACME_CHALLENGE_TOKEN=token123
 ACME_CHALLENGE_KEY=s3cr3t_key
