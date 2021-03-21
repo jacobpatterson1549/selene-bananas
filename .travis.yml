@@ -1,7 +1,0 @@
-language: minimial
-
-services:
-  - docker
-
-script:
-  - docker build .
