@@ -45,7 +45,7 @@ func TestNewDatabase(t *testing.T) {
 		if testDriverName != name {
 			return nil, fmt.Errorf("draver names not equal: wanted %v, got %v", testDriverName, name)
 		}
-		return MockDriverConn{}, nil
+		return MockConn{}, nil
 	}
 	for i, test := range newSQLDatabaseTests {
 		cfg := Config{
@@ -101,12 +101,12 @@ func TestDatabaseSetup(t *testing.T) {
 		},
 	}
 	for i, test := range setupTests {
-		result := MockDriverResult{
+		result := MockResult{
 			RowsAffectedFunc: func() (int64, error) {
 				return 0, nil
 			},
 		}
-		stmt := MockDriverStmt{
+		stmt := MockStmt{
 			CloseFunc: func() error {
 				return nil
 			},
@@ -117,7 +117,7 @@ func TestDatabaseSetup(t *testing.T) {
 				return result, test.execErr
 			},
 		}
-		tx := MockDriverTx{
+		tx := MockTx{
 			CommitFunc: func() error {
 				return nil
 			},
@@ -125,7 +125,7 @@ func TestDatabaseSetup(t *testing.T) {
 				return nil
 			},
 		}
-		conn := MockDriverConn{
+		conn := MockConn{
 			PrepareFunc: func(query string) (driver.Stmt, error) {
 				return stmt, nil
 			},
@@ -177,7 +177,7 @@ func TestDatabaseQuery(t *testing.T) {
 	}
 	for i, test := range queryTests {
 		want := 6
-		rows := MockDriverRows{
+		rows := MockRows{
 			ColumnsFunc: func() []string {
 				return []string{"?column?"}
 			},
@@ -189,7 +189,7 @@ func TestDatabaseQuery(t *testing.T) {
 				return nil
 			},
 		}
-		stmt := MockDriverStmt{
+		stmt := MockStmt{
 			CloseFunc: func() error {
 				return nil
 			},
@@ -200,7 +200,7 @@ func TestDatabaseQuery(t *testing.T) {
 				return rows, test.scanErr
 			},
 		}
-		conn := MockDriverConn{
+		conn := MockConn{
 			PrepareFunc: func(query string) (driver.Stmt, error) {
 				return stmt, nil
 			},
@@ -289,12 +289,12 @@ func TestDatabaseExec(t *testing.T) {
 		},
 	}
 	for i, test := range execTests {
-		result := MockDriverResult{
+		result := MockResult{
 			RowsAffectedFunc: func() (int64, error) {
 				return test.rowsAffected, test.rowsAffectedErr
 			},
 		}
-		stmt := MockDriverStmt{
+		stmt := MockStmt{
 			CloseFunc: func() error {
 				return nil
 			},
@@ -308,7 +308,7 @@ func TestDatabaseExec(t *testing.T) {
 				return result, test.execErr
 			},
 		}
-		tx := MockDriverTx{
+		tx := MockTx{
 			CommitFunc: func() error {
 				return test.commitErr
 			},
@@ -316,7 +316,7 @@ func TestDatabaseExec(t *testing.T) {
 				return test.rollbackErr
 			},
 		}
-		conn := MockDriverConn{
+		conn := MockConn{
 			PrepareFunc: func(query string) (driver.Stmt, error) {
 				return stmt, nil
 			},
