@@ -762,36 +762,36 @@ func TestAddMimeType(t *testing.T) {
 
 func TestServeTemplate(t *testing.T) {
 	serveTemplateTests := []struct {
-		templateName    string
-		templateText    string
-		path            string
-		data            interface{}
-		wantStatusCode  int
-		wantBody        string
+		templateName   string
+		templateText   string
+		path           string
+		data           interface{}
+		wantStatusCode int
+		wantBody       string
 	}{
 		{
-			path:            "/unknown",
-			wantStatusCode:  500,
+			path:           "/unknown",
+			wantStatusCode: 500,
 		},
 		{
-			templateName:    "index.html",
-			path:            "/index.html",
-			templateText:    "stuff",
-			wantStatusCode:  200,
-			wantBody:        "stuff",
+			templateName:   "index.html",
+			path:           "/index.html",
+			templateText:   "stuff",
+			wantStatusCode: 200,
+			wantBody:       "stuff",
 		},
 		{ // different content type
-			templateName:    "init.js",
-			path:            "/init.js",
-			wantStatusCode:  200,
+			templateName:   "init.js",
+			path:           "/init.js",
+			wantStatusCode: 200,
 		},
 		{
-			templateName:    "name.html",
-			templateText:    "template for {{ . }}",
-			path:            "/name.html",
-			data:            "selene",
-			wantStatusCode:  200,
-			wantBody:        "template for selene",
+			templateName:   "name.html",
+			templateText:   "template for {{ . }}",
+			path:           "/name.html",
+			data:           "selene",
+			wantStatusCode: 200,
+			wantBody:       "template for selene",
 		},
 	}
 	for i, test := range serveTemplateTests {
