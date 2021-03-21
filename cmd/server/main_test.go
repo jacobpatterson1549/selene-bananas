@@ -4,6 +4,7 @@ package main_test
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"io"
 	"log"
 	"net/http/httptest"
@@ -75,5 +76,18 @@ func TestServerGetFiles(t *testing.T) {
 			t.Errorf("Test %v: unwanted log message, likely error: %v", i, buf.String())
 			buf.Reset()
 		}
+	}
+}
+
+func init() {
+	sql.Register("TestDatabaseFilesExistDriver", main.TestNoopDriver)
+}
+
+func TestDatabaseFilesExist(t *testing.T) {
+	var f main.Flags
+	ctx := context.Background()
+	e := embeddedData(t)
+	if _, err := f.CreateDatabase(ctx, "TestDatabaseFilesExistDriver", e); err != nil {
+		t.Errorf("unwanted error: %v", err)
 	}
 }

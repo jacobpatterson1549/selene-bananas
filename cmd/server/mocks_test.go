@@ -4,6 +4,34 @@ import (
 	"database/sql/driver"
 )
 
+// TestNoopDriver creates connections that have noop statements and transactions.
+var TestNoopDriver driver.Driver = &mockDriver{
+	OpenFunc: func(name string) (driver.Conn, error) {
+		return mockConn{
+			PrepareFunc: func(query string) (driver.Stmt, error) {
+				return mockStmt{
+					CloseFunc: func() error {
+						return nil
+					},
+					NumInputFunc: func() int {
+						return 0
+					},
+					ExecFunc: func(args []driver.Value) (driver.Result, error) {
+						return nil, nil
+					},
+				}, nil
+			},
+			BeginFunc: func() (driver.Tx, error) {
+				return mockTx{
+					CommitFunc: func() error {
+						return nil
+					},
+				}, nil
+			},
+		}, nil
+	},
+}
+
 // mockDriver implements the sql/driver.Driver interface.
 type mockDriver struct {
 	OpenFunc func(name string) (driver.Conn, error)
