@@ -435,14 +435,14 @@ func (s *Server) handleAcmeChallenge(w http.ResponseWriter, r *http.Request) {
 
 // fileHandler wraps the handling of the file, add cache-control header and gzip compression, if possible.
 func (s *Server) fileHandler(h http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	cacheControl := func(r *http.Request) string {
 		switch r.URL.Path {
-		default:
-			// TODO: add cachControl(url) func, make default last
-			w.Header().Set(HeaderCacheControl, s.cacheMaxAge)
 		case rootTemplatePath:
-			w.Header().Set(HeaderCacheControl, "no-store")
+			return "no-store"
 		}
+		return s.cacheMaxAge
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.Header.Get(HeaderAcceptEncoding), "gzip") {
 			w2 := gzip.NewWriter(w)
 			defer w2.Close()
@@ -452,6 +452,7 @@ func (s *Server) fileHandler(h http.Handler) http.HandlerFunc {
 			}
 			w.Header().Add(HeaderContentEncoding, "gzip")
 		}
+		w.Header().Set(HeaderCacheControl, cacheControl(r))
 		addMimeType(r.URL.Path, w)
 		h.ServeHTTP(w, r)
 	}
