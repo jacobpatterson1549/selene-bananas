@@ -1,4 +1,4 @@
-const cacheName = "cache-{{.Version}}";
+const cacheName = "{{.Name}}-cache-{{.Version}}";
 const assets = [
     "./favicon.png",
     "./favicon.svg",
@@ -6,6 +6,8 @@ const assets = [
     "./wasm_exec.js",
     "./main.wasm",
     "./network_check.html",
+    "./robots.txt",
+    "./LICENSE",
 ];
 
 self.addEventListener("install", event => {
