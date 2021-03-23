@@ -672,6 +672,7 @@ func TestHasSecHeader(t *testing.T) {
 
 func TestAddMimeType(t *testing.T) {
 	addMimeTypeTests := map[string]string{
+		"favicon.ico":   "image/vnd.microsoft.icon",
 		"favicon.png":   "image/png",
 		"favicon.svg":   "image/svg+xml",
 		"manifest.json": "application/json",

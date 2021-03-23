@@ -1,5 +1,6 @@
 const cacheName = "{{.Name}}-cache-{{.Version}}";
 const assets = [
+    "./favicon.ico",
     "./favicon.png",
     "./favicon.svg",
     "./manifest.json",

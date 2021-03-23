@@ -366,7 +366,7 @@ func (s *Server) httpsHandler() http.HandlerFunc {
 func (s *Server) getHandler() http.Handler {
 	getMux := http.NewServeMux()
 	templatePatterns := []string{rootTemplatePath, "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html"}
-	staticPatterns := []string{"/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/LICENSE"}
+	staticPatterns := []string{"/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/favicon.ico", "/LICENSE"}
 	templateHandler := s.fileHandler(http.HandlerFunc(s.serveTemplate))
 	staticHandler := s.fileHandler(s.serveStatic)
 	for _, p := range templatePatterns {
