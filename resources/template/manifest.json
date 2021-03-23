@@ -5,7 +5,7 @@
   "theme_color": "{{.Colors.CanvasTile}}",
   "background_color": "{{.Colors.TabBackground}}",
   "display": "standalone",
-  "start_url": "/network_check.html?v={{.Version}}",
+  "start_url": "/network_check.html",
   "icons": [
     {
       "src": "favicon.svg",

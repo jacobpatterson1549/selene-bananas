@@ -2,9 +2,9 @@
 <html lang="en">
     <head>
         <title>{{.Name}}</title>
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg?v={{.Version}}">
-        <link rel="apple-touch-icon" href="/favicon.svg?v={{.Version}}">
-        <link rel="manifest" href="manifest.json?v={{.Version}}">
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+        <link rel="apple-touch-icon" href="/favicon.svg">
+        <link rel="manifest" href="manifest.json">
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="Description" content="{{.Description}}">
@@ -14,7 +14,7 @@
         <style>
             {{ template "index.css" . }}
         </style>
-        <script defer src="wasm_exec.js?v={{.Version}}"></script>
+        <script defer src="wasm_exec.js"></script>
         <script>
             {{ template "init.js" . }}
         </script>
@@ -23,7 +23,7 @@
         {{ template "noscript.html" . }}
         <header>
             <h1>
-                <img src="/favicon.svg?v={{.Version}}" alt="tile" width="32" height="32">
+                <img src="/favicon.svg" alt="tile" width="32" height="32">
                 <a href="/">{{.Name}}</a>
             </h1>
         </header>

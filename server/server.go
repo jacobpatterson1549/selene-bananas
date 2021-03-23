@@ -438,17 +438,7 @@ func (s *Server) fileHandler(h http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		default:
-			if r.URL.Query().Get("v") != s.Version {
-				url := r.URL
-				q := url.Query()
-				q.Set("v", s.Version)
-				url.RawQuery = q.Encode()
-				w.Header().Set(HeaderLocation, url.String())
-				w.WriteHeader(http.StatusMovedPermanently)
-				return
-			}
-			fallthrough
-		case "/favicon.svg", "/favicon.png", "/robots.txt":
+			// TODO: add cachControl(url) func, make default last
 			w.Header().Set(HeaderCacheControl, s.cacheMaxAge)
 		case rootTemplatePath:
 			w.Header().Set(HeaderCacheControl, "no-store")
