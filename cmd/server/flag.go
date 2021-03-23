@@ -32,7 +32,7 @@ type Flags struct {
 }
 
 const (
-	defaultCacheSec int = 60 * 60 * 24 * 365 // 1 year
+	defaultCacheSec int = 60 * 60 * 24 // 1 day
 )
 
 // usage prints how to run the server to the flagset's output.
