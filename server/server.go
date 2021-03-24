@@ -27,16 +27,9 @@ type (
 	Server struct {
 		wg          sync.WaitGroup
 		log         *log.Logger
-		data        interface{}
-		tokenizer   Tokenizer
-		userDao     UserDao
 		lobby       Lobby
 		HTTPServer  *http.Server
 		HTTPSServer *http.Server
-		cacheMaxAge string
-		template    *template.Template
-		serveStatic http.Handler
-		monitor     http.Handler
 		Config
 	}
 
@@ -140,34 +133,23 @@ func (cfg Config) NewServer(p Parameters) (*Server, error) {
 		return nil, err
 	}
 	httpAddr := fmt.Sprintf(":%d", cfg.HTTPPort)
-	if cfg.HTTPPort <= 0 {
-		httpAddr = ""
-	}
 	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
-	httpServer := &http.Server{
-		Addr: httpAddr,
-	}
-	httpsServer := &http.Server{
-		Addr: httpsAddr,
-	}
+	httpsRedirectHandler := cfg.httpsRedirectHandler()
+	httpHandler := cfg.httpHandler(httpsRedirectHandler)
+	httpsHandler := cfg.httpsHandler(httpHandler, httpsRedirectHandler, p, template)
 	s := Server{
-		log:         p.Log,
-		data:        cfg.data(),
-		tokenizer:   p.Tokenizer,
-		userDao:     p.UserDao,
-		lobby:       p.Lobby,
-		HTTPServer:  httpServer,
-		HTTPSServer: httpsServer,
-		cacheMaxAge: fmt.Sprintf("max-age=%d", cfg.CacheSec),
-		template:    template,
-		serveStatic: http.FileServer(http.FS(p.StaticFS)),
-		Config:      cfg,
+		log:   p.Log,
+		lobby: p.Lobby,
+		HTTPServer: &http.Server{
+			Addr:    httpAddr,
+			Handler: httpHandler,
+		},
+		HTTPSServer: &http.Server{
+			Addr:    httpsAddr,
+			Handler: httpsHandler,
+		},
+		Config: cfg,
 	}
-	s.monitor = runtimeMonitor{
-		hasTLS: s.validHTTPAddr(),
-	}
-	s.HTTPServer.Handler = s.httpHandler()
-	s.HTTPSServer.Handler = s.httpsHandler()
 	return &s, nil
 }
 
@@ -342,24 +324,24 @@ func (s *Server) Stop(ctx context.Context) error {
 }
 
 // handleHTTPS creates a handler for HTTP endpoints.
-func (s *Server) httpHandler() http.Handler {
+func (cfg Config) httpHandler(httpsRedirectHandler http.Handler) http.Handler {
 	httpMux := http.NewServeMux()
-	httpMux.HandleFunc(acmeHeader, http.HandlerFunc(acmeChallengeHandler(s.Challenge)))
-	httpMux.Handle("/", http.HandlerFunc(s.redirectToHTTPSHandler()))
+	httpMux.HandleFunc(acmeHeader, http.HandlerFunc(acmeChallengeHandler(cfg.Challenge)))
+	httpMux.Handle("/", httpsRedirectHandler)
 	return httpMux
 }
 
 // httpsHandler creates a handler for HTTPS endpoints.
 // Non-TLS requests are redirected to HTTPS.  GET and POST requests are handled by more specific handlers.
-func (s *Server) httpsHandler() http.HandlerFunc {
-	getHandler := s.getHandler()
-	postHandler := s.postHandler()
+func (cfg Config) httpsHandler(httpHandler, httpsRedirectHandler http.Handler, p Parameters, template *template.Template) http.HandlerFunc {
+	getHandler := p.getHandler(cfg, template)
+	postHandler := p.postHandler()
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.TLS == nil && !s.NoTLSRedirect:
-			s.HTTPServer.Handler.ServeHTTP(w, r)
-		case r.TLS == nil && s.NoTLSRedirect && !hasSecHeader(r):
-			s.redirectToHTTPSHandler().ServeHTTP(w, r)
+		case r.TLS == nil && !cfg.NoTLSRedirect:
+			httpHandler.ServeHTTP(w, r)
+		case r.TLS == nil && cfg.NoTLSRedirect && !hasSecHeader(r):
+			httpsRedirectHandler.ServeHTTP(w, r)
 		case r.Method == "GET":
 			getHandler.ServeHTTP(w, r)
 		case r.Method == "POST":
@@ -371,35 +353,41 @@ func (s *Server) httpsHandler() http.HandlerFunc {
 }
 
 // getHandler forwards calls to various endpoints.
-func (s *Server) getHandler() http.Handler {
-	getMux := http.NewServeMux()
+func (p Parameters) getHandler(cfg Config, template *template.Template) http.Handler {
+	data := cfg.data()
+	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
+	staticFileHandler := http.FileServer(http.FS(p.StaticFS))
+	templateHandler := fileHandler(http.HandlerFunc(templateHandler(template, data)), cacheMaxAge)
+	staticHandler := fileHandler(staticFileHandler, cacheMaxAge)
+	monitor := runtimeMonitor{
+		hasTLS: cfg.validHTTPAddr(),
+	}
 	templatePatterns := []string{rootTemplatePath, "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html"}
 	staticPatterns := []string{"/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/favicon.ico", "/LICENSE"}
-	templateHandler := fileHandler(http.HandlerFunc(templateHandler(s.template, s.data)), s.cacheMaxAge)
-	staticHandler := fileHandler(s.serveStatic, s.cacheMaxAge)
+
+	getMux := http.NewServeMux()
 	for _, p := range templatePatterns {
 		getMux.Handle(p, templateHandler)
 	}
 	for _, p := range staticPatterns {
 		getMux.Handle(p, staticHandler)
 	}
-	getMux.Handle("/lobby", http.HandlerFunc(userLobbyConnectHandler(s.tokenizer, s.lobby, s.log)))
-	getMux.Handle("/monitor", s.monitor)
+	getMux.Handle("/lobby", http.HandlerFunc(userLobbyConnectHandler(p.Tokenizer, p.Lobby, p.Log)))
+	getMux.Handle("/monitor", monitor)
 	return rootHandler(getMux)
 }
 
 // postHandler checks authentication and calls handlers for POST endpoints.
-func (s *Server) postHandler() http.Handler {
+func (p Parameters) postHandler() http.Handler {
 	postMux := http.NewServeMux()
-	noopHandler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+	postMux.Handle("/user_create", http.HandlerFunc(userCreateHandler(p.UserDao, p.Log)))
+	postMux.Handle("/user_login", http.HandlerFunc(userLoginHandler(p.UserDao, p.Tokenizer, p.Log)))
+	postMux.Handle("/user_update_password", http.HandlerFunc(userUpdatePasswordHandler(p.UserDao, p.Lobby, p.Log)))
+	postMux.Handle("/user_delete", http.HandlerFunc(userDeleteHandler(p.UserDao, p.Lobby, p.Log)))
+	postMux.Handle("/ping", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// NOOP
-	})
-	postMux.Handle("/user_create", http.HandlerFunc(userCreateHandler(s.userDao, s.log)))
-	postMux.Handle("/user_login", http.HandlerFunc(userLoginHandler(s.userDao, s.tokenizer, s.log)))
-	postMux.Handle("/user_update_password", http.HandlerFunc(userUpdatePasswordHandler(s.userDao, s.lobby, s.log)))
-	postMux.Handle("/user_delete", http.HandlerFunc(userDeleteHandler(s.userDao, s.lobby, s.log)))
-	postMux.Handle("/ping", noopHandler) // NOOP
-	return authHandler(postMux, s.tokenizer, s.log)
+	}))
+	return authHandler(postMux, p.Tokenizer, p.Log)
 }
 
 // rootHandler maps requests for / to /index.html.
@@ -476,8 +464,8 @@ func templateHandler(template *template.Template, data interface{}) http.Handler
 	}
 }
 
-// redirectToHTTPSHandler redirects the request to https.
-func (cfg Config) redirectToHTTPSHandler() http.HandlerFunc {
+// httpsRedirectHandler redirects the request to https.
+func (cfg Config) httpsRedirectHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		host := r.Host
 		// derived from net.SplitHostPort, but does not throw error :
