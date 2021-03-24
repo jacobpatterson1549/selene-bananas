@@ -83,7 +83,7 @@ func (f Flags) CreateServer(ctx context.Context, log *log.Logger, db *db.Databas
 		Token: f.ChallengeToken,
 		Key:   f.ChallengeKey,
 	}
-	colorConfig := f.colorConfig()
+	colorCfg := f.colorConfig()
 	cfg := server.Config{
 		HTTPPort:      f.HTTPPort,
 		HTTPSPort:     f.HTTPSPort,
@@ -93,7 +93,7 @@ func (f Flags) CreateServer(ctx context.Context, log *log.Logger, db *db.Databas
 		TLSCertPEM:    e.TLSCertPEM,
 		TLSKeyPEM:     e.TLSKeyPEM,
 		Challenge:     challenge,
-		ColorConfig:   colorConfig,
+		ColorConfig:   colorCfg,
 		NoTLSRedirect: f.NoTLSRedirect,
 	}
 	p := server.Parameters{

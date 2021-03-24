@@ -71,12 +71,16 @@ func TestDatabaseSetup(t *testing.T) {
 		t.Fatalf("unwanted error: %v", err)
 	}
 	setupTests := []struct {
+		cancelled bool
 		files   []io.Reader
 		execErr error
 		wantOk  bool
 	}{
 		{
 			wantOk: true,
+		},
+		{
+			cancelled: true,
 		},
 		{
 			files: []io.Reader{
@@ -143,6 +147,10 @@ func TestDatabaseSetup(t *testing.T) {
 			},
 		}
 		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		if test.cancelled {
+			cancelFunc()
+		}
 		err = db.Setup(ctx, test.files)
 		switch {
 		case !test.wantOk:
@@ -152,6 +160,7 @@ func TestDatabaseSetup(t *testing.T) {
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		}
+		cancelFunc()
 	}
 }
 

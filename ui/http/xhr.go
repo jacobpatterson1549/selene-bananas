@@ -66,7 +66,7 @@ func (c Client) Do(req Request) (*Response, error) {
 		body = string(bytes)
 	}
 	xhr.Call("send", body)
-	select {
+	select { // BLOCKING
 	case response := <-responseC:
 		return &response, nil
 	case err := <-errC:

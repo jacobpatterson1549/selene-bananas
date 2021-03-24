@@ -60,10 +60,11 @@ func (f *Flags) newFlagSet(osLookupEnvFunc func(string) (string, bool), portOver
 		usage(fs) // [lazy evaluation]
 	}
 	envValue := func(key string) string {
-		if envValue, ok := osLookupEnvFunc(key); ok {
-			return envValue
+		envValue, ok := osLookupEnvFunc(key)
+		if !ok {
+			return ""
 		}
-		return ""
+		return envValue
 	}
 	envValueInt := func(key string, defaultValue int) int {
 		v1 := envValue(key)

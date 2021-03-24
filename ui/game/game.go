@@ -133,9 +133,10 @@ func (g Game) ID() game.ID {
 
 // sendLeave tells the server to stop sending messages to it and changes tabs.
 func (g *Game) sendLeave() {
-	g.Socket.Send(message.Message{
+	m := message.Message{
 		Type: message.LeaveGame,
-	})
+	}
+	g.Socket.Send(m)
 	g.Leave()
 }
 
@@ -149,38 +150,43 @@ func (g *Game) Leave() {
 
 // delete removes everyone from the game and deletes it.
 func (g *Game) delete() {
-	if dom.Confirm("Are you sure? Deleting the game will kick everyone out.") {
-		g.Socket.Send(message.Message{
-			Type: message.DeleteGame,
-		})
+	if ok := dom.Confirm("Are you sure? Deleting the game will kick everyone out."); !ok {
+		return
 	}
+	m := message.Message{
+		Type: message.DeleteGame,
+	}
+	g.Socket.Send(m)
 }
 
 // Start triggers the game to start for everyone.
 func (g *Game) Start() {
-	g.Socket.Send(message.Message{
+	m := message.Message{
 		Type: message.ChangeGameStatus,
 		Game: &game.Info{
 			Status: game.InProgress,
 		},
-	})
+	}
+	g.Socket.Send(m)
 }
 
 // finish triggers the game to finish for everyone by checking the players tiles.
 func (g *Game) finish() {
-	g.Socket.Send(message.Message{
+	m := message.Message{
 		Type: message.ChangeGameStatus,
 		Game: &game.Info{
 			Status: game.Finished,
 		},
-	})
+	}
+	g.Socket.Send(m)
 }
 
 // snagTile asks the game to give everone a new tile.
 func (g *Game) snagTile() {
-	g.Socket.Send(message.Message{
+	m := message.Message{
 		Type: message.SnagGameTile,
-	})
+	}
+	g.Socket.Send(m)
 }
 
 // startTileSwap start a swap move on the canvas.
@@ -313,10 +319,11 @@ func (g *Game) updateTilesLeft(m message.Message) {
 
 // updatePlayers sets the players list display from the message.
 func (g *Game) updatePlayers(m message.Message) {
-	if len(m.Game.Players) > 0 {
-		players := strings.Join(m.Game.Players, ",")
-		dom.SetValue(".game>.info .players", players)
+	if len(m.Game.Players) == 0 {
+		return
 	}
+	players := strings.Join(m.Game.Players, ",")
+	dom.SetValue(".game>.info .players", players)
 }
 
 // resetTiles clears the tiles on the board.

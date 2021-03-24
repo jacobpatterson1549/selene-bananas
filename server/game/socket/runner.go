@@ -110,16 +110,17 @@ func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 func (r *Runner) addSocket(ctx context.Context, wg *sync.WaitGroup, sm message.Socket, socketOut chan<- message.Message, lobbyIn chan<- message.Message) {
 	s, err := r.handleAddSocket(ctx, wg, sm, socketOut)
 	sm.Result <- err // signal that the socket is added
-	if err == nil {
-		// request game infos for the only the new socket
-		// make the request asynchronously because lobby might be processing other messages by now
-		m := message.Message{
-			Type:       message.GameInfos,
-			PlayerName: sm.PlayerName,
-			Addr:       s.Addr,
-		}
-		go message.Send(m, lobbyIn, r.Debug, r.log)
+	if err != nil {
+		return
 	}
+	// request game infos for the only the new socket
+	// make the request asynchronously because lobby might be processing other messages by now
+	m := message.Message{
+		Type:       message.GameInfos,
+		PlayerName: sm.PlayerName,
+		Addr:       s.Addr,
+	}
+	go message.Send(m, lobbyIn, r.Debug, r.log)
 }
 
 // handleAddSocket runs and adds a socket for the player to the runner.

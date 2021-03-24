@@ -226,6 +226,7 @@ func TestNewServer(t *testing.T) {
 			t.Errorf("Test %v: server not copied from from arguments properly: %v", i, got)
 		default:
 			nilChecks := []interface{}{
+				got.data,
 				got.HTTPServer,
 				got.HTTPSServer,
 				got.template,

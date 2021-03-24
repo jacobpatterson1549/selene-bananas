@@ -66,6 +66,7 @@ type (
 )
 
 var errSocketClosed = fmt.Errorf("socket closed")
+var errServerShuttingDown = fmt.Errorf("server shutting down")
 
 // NewSocket creates a socket
 func (cfg Config) NewSocket(log *log.Logger, pn player.Name, conn Conn) (*Socket, error) {
@@ -134,7 +135,7 @@ func (s *Socket) readMessagesSync(ctx context.Context, wg *sync.WaitGroup, out c
 	pongHandler := func(appData string) error {
 		if err := s.refreshDeadline(s.Conn.SetReadDeadline, s.ReadWait); err != nil {
 			err = fmt.Errorf("setting read deadline: %w", err)
-			s.writeClose(err.Error())
+			s.writeClose(err)
 			return err
 		}
 		return nil
@@ -151,11 +152,11 @@ func (s *Socket) readMessagesSync(ctx context.Context, wg *sync.WaitGroup, out c
 		default:
 		}
 		if err != nil {
-			var reason string
+			var err2 error
 			if err != errSocketClosed {
-				reason = fmt.Sprintf("reading socket messages stopped for player %v: %v", s, err)
+				err2 = fmt.Errorf("reading socket messages stopped for player %v: %v", s, err)
 			}
-			s.writeClose(reason)
+			s.writeClose(err2)
 			return
 		}
 		message.Send(*m, out, s.Debug, s.log)
@@ -183,12 +184,12 @@ func (s *Socket) writeMessagesSync(ctx context.Context, wg *sync.WaitGroup, in <
 	for { // BLOCKING
 		select {
 		case <-ctx.Done():
-			s.writeClose("server shutting down")
+			s.writeClose(errServerShuttingDown)
 			return
 		case m, ok := <-in:
 			switch {
 			case !ok:
-				err = fmt.Errorf("server shutting down")
+				err = errServerShuttingDown
 				stopWrite = true
 			default:
 				err = write(func() error { return s.writeMessage(m) })
@@ -202,8 +203,7 @@ func (s *Socket) writeMessagesSync(ctx context.Context, wg *sync.WaitGroup, in <
 			err = write(func() error { return s.writeMessage(m) })
 		}
 		if err != nil {
-			closeReason := err.Error()
-			s.writeClose(closeReason)
+			s.writeClose(err)
 			s.closeConn() // will cause readMessages() to fail
 			if stopWrite {
 				return
@@ -248,14 +248,14 @@ func (s *Socket) writeMessage(m message.Message) error {
 	return nil
 }
 
-// writeClose writes a closeMessage with the reason, logging the reason if successful.  Thread safe.
-func (s *Socket) writeClose(reason string) {
-	if err := s.Conn.WriteClose(reason); err != nil {
-		return
+// writeClose writes a closeMessage with the reason, logging the reason.
+func (s *Socket) writeClose(reasonErr error) {
+	var reason string
+	if reasonErr != nil {
+		reason = reasonErr.Error()
+		s.log.Printf("closing socket for %v at %v: %v", s.PlayerName, s.Addr, reason)
 	}
-	if len(reason) != 0 {
-		s.log.Print(reason)
-	}
+	s.Conn.WriteClose(reason)
 }
 
 func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, period time.Duration) error {

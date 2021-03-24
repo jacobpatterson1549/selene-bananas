@@ -230,7 +230,7 @@ func TestRunRunnerHandleSocketMessage(t *testing.T) {
 	upgradeFunc := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
 		return conn, nil
 	}
-	runnerConfig := RunnerConfig{
+	cfg := RunnerConfig{
 		MaxSockets:       1,
 		MaxPlayerSockets: 1,
 		SocketConfig: Config{
@@ -243,7 +243,7 @@ func TestRunRunnerHandleSocketMessage(t *testing.T) {
 	}
 	r := Runner{
 		upgradeFunc:   upgradeFunc,
-		RunnerConfig:  runnerConfig,
+		RunnerConfig:  cfg,
 		playerSockets: make(map[player.Name]map[message.Addr]chan<- message.Message, 1),
 		log:           log,
 	}
@@ -302,7 +302,7 @@ func TestRunnerHandleAddSocketCheckResult(t *testing.T) {
 				},
 			}, nil
 		}
-		runnerConfig := RunnerConfig{
+		cfg := RunnerConfig{
 			MaxSockets:       1,
 			MaxPlayerSockets: 1,
 			SocketConfig: Config{
@@ -317,7 +317,7 @@ func TestRunnerHandleAddSocketCheckResult(t *testing.T) {
 			log:           log.New(io.Discard, "", 0),
 			upgradeFunc:   upgradeFunc,
 			playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{},
-			RunnerConfig:  runnerConfig,
+			RunnerConfig:  cfg,
 		}
 		socketOut := make(chan message.Message)
 		lobbyIn := make(chan message.Message)
@@ -423,7 +423,7 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 				},
 			}, nil
 		}
-		runnerConfig := RunnerConfig{
+		cfg := RunnerConfig{
 			MaxSockets:       test.maxSockets,
 			MaxPlayerSockets: test.maxPlayerSockets,
 			SocketConfig:     test.Config,
@@ -433,7 +433,7 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 			upgradeFunc:   upgradeFunc,
 			playerSockets: make(map[player.Name]map[message.Addr]chan<- message.Message),
 			playerGames:   make(map[player.Name]map[game.ID]message.Addr),
-			RunnerConfig:  runnerConfig,
+			RunnerConfig:  cfg,
 		}
 		socketOut := make(chan message.Message, 1) // the socket will run and fail, posting a message here
 		pn := test.playerName
@@ -549,7 +549,7 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 				},
 			}, nil
 		}
-		runnerConfig := RunnerConfig{
+		cfg := RunnerConfig{
 			MaxSockets:       test.maxSockets,
 			MaxPlayerSockets: test.maxPlayerSockets,
 			SocketConfig: Config{
@@ -565,7 +565,7 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 			upgradeFunc:   upgradeFunc,
 			playerSockets: make(map[player.Name]map[message.Addr]chan<- message.Message),
 			playerGames:   make(map[player.Name]map[game.ID]message.Addr),
-			RunnerConfig:  runnerConfig,
+			RunnerConfig:  cfg,
 		}
 		socketOut := make(chan message.Message, 2) // the sockets will run and fail, posting a message here
 		ctx := context.Background()
