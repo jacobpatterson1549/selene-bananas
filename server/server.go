@@ -194,6 +194,7 @@ func (cfg Config) validate(p Parameters) error {
 	return nil
 }
 
+// date is a structure of variables to insert into templates.
 func (cfg Config) data() interface{} {
 	var gameConfig game.Config
 	data := struct {
@@ -212,6 +213,13 @@ func (cfg Config) data() interface{} {
 		Rules:       gameConfig.Rules(),
 	}
 	return data
+}
+
+// validHTTPAddr determines if the HTTP address is valid.
+// The HTTP address is valid if and only if the HTTP port is positive
+// If the HTTP address is valid, the HTTP server should be started to redirect to HTTPS and handle certificate creation.
+func (cfg Config) validHTTPAddr() bool {
+	return cfg.HTTPPort > 0
 }
 
 // validate ensures that all of the parameters are present.
@@ -336,8 +344,8 @@ func (s *Server) Stop(ctx context.Context) error {
 // handleHTTPS creates a handler for HTTP endpoints.
 func (s *Server) httpHandler() http.Handler {
 	httpMux := http.NewServeMux()
-	httpMux.HandleFunc(acmeHeader, http.HandlerFunc(s.handleAcmeChallenge))
-	httpMux.Handle("/", http.HandlerFunc(s.redirectToHTTPS))
+	httpMux.HandleFunc(acmeHeader, http.HandlerFunc(acmeChallengeHandler(s.Challenge)))
+	httpMux.Handle("/", http.HandlerFunc(s.redirectToHTTPSHandler()))
 	return httpMux
 }
 
@@ -351,7 +359,7 @@ func (s *Server) httpsHandler() http.HandlerFunc {
 		case r.TLS == nil && !s.NoTLSRedirect:
 			s.HTTPServer.Handler.ServeHTTP(w, r)
 		case r.TLS == nil && s.NoTLSRedirect && !hasSecHeader(r):
-			s.redirectToHTTPS(w, r)
+			s.redirectToHTTPSHandler().ServeHTTP(w, r)
 		case r.Method == "GET":
 			getHandler.ServeHTTP(w, r)
 		case r.Method == "POST":
@@ -367,8 +375,8 @@ func (s *Server) getHandler() http.Handler {
 	getMux := http.NewServeMux()
 	templatePatterns := []string{rootTemplatePath, "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html"}
 	staticPatterns := []string{"/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/favicon.ico", "/LICENSE"}
-	templateHandler := s.fileHandler(http.HandlerFunc(s.serveTemplate))
-	staticHandler := s.fileHandler(s.serveStatic)
+	templateHandler := fileHandler(http.HandlerFunc(templateHandler(s.template, s.data)), s.cacheMaxAge)
+	staticHandler := fileHandler(s.serveStatic, s.cacheMaxAge)
 	for _, p := range templatePatterns {
 		getMux.Handle(p, templateHandler)
 	}
@@ -377,7 +385,7 @@ func (s *Server) getHandler() http.Handler {
 	}
 	getMux.Handle("/lobby", http.HandlerFunc(s.handleUserLobby))
 	getMux.Handle("/monitor", s.monitor)
-	return s.rootHandler(getMux)
+	return rootHandler(getMux)
 }
 
 // postHandler checks authentication and calls handlers for POST endpoints.
@@ -391,11 +399,11 @@ func (s *Server) postHandler() http.Handler {
 	postMux.Handle("/user_update_password", http.HandlerFunc(s.handleUserUpdatePassword))
 	postMux.Handle("/user_delete", http.HandlerFunc(s.handleUserDelete))
 	postMux.Handle("/ping", noopHandler) // NOOP
-	return s.authHandler(postMux)
+	return authHandler(postMux, s.tokenizer, s.log)
 }
 
 // rootHandler maps requests for / to /index.html.
-func (*Server) rootHandler(h http.Handler) http.HandlerFunc {
+func rootHandler(h http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			r.URL.Path = rootTemplatePath
@@ -405,14 +413,14 @@ func (*Server) rootHandler(h http.Handler) http.HandlerFunc {
 }
 
 // authHandler checks the token username of the request before running the child handler
-func (s *Server) authHandler(h http.Handler) http.HandlerFunc {
+func authHandler(h http.Handler, tokenizer Tokenizer, log *log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/user_create", "/user_login":
 			// [unauthenticated]
 		default:
-			if err := s.checkTokenUsername(r); err != nil {
-				s.log.Print(err)
+			if err := checkTokenUsername(r, tokenizer); err != nil {
+				log.Print(err)
 				httpError(w, http.StatusForbidden)
 				return
 			}
@@ -421,26 +429,28 @@ func (s *Server) authHandler(h http.Handler) http.HandlerFunc {
 	}
 }
 
-// handleAcmeChallenge writes the challenge to the response.
+// acmeChallengeHandler writes the challenge to the response.
 // Writes the concatenation of the token, a period, and the key.
-func (s *Server) handleAcmeChallenge(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	if path[len(acmeHeader):] != s.Challenge.Token {
-		http.NotFound(w, r)
-		return
+func acmeChallengeHandler(challenge Challenge) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		if path[len(acmeHeader):] != challenge.Token {
+			http.NotFound(w, r)
+			return
+		}
+		data := challenge.Token + "." + challenge.Key
+		w.Write([]byte(data))
 	}
-	data := s.Challenge.Token + "." + s.Challenge.Key
-	w.Write([]byte(data))
 }
 
 // fileHandler wraps the handling of the file, add cache-control header and gzip compression, if possible.
-func (s *Server) fileHandler(h http.Handler) http.HandlerFunc {
+func fileHandler(h http.Handler, cacheMaxAge string) http.HandlerFunc {
 	cacheControl := func(r *http.Request) string {
 		switch r.URL.Path {
 		case rootTemplatePath:
 			return "no-store"
 		}
-		return s.cacheMaxAge
+		return cacheMaxAge
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.Header.Get(HeaderAcceptEncoding), "gzip") {
@@ -458,44 +468,39 @@ func (s *Server) fileHandler(h http.Handler) http.HandlerFunc {
 	}
 }
 
-// serveTemplate servers the file from the data-driven template.  The name is assumed to have a leading slash that is ignored.
-func (s *Server) serveTemplate(w http.ResponseWriter, r *http.Request) {
-	name := r.URL.Path[1:] // ignore leading slash
-	if err := s.template.ExecuteTemplate(w, name, s.data); err != nil {
-		err = fmt.Errorf("rendering template: %v", err)
-		s.writeInternalError(w, err)
+// templateHandler servers the file from the data-driven template.  The name is assumed to have a leading slash that is ignored.
+func templateHandler(template *template.Template, data interface{}) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		name := r.URL.Path[1:] // ignore leading slash
+		template.ExecuteTemplate(w, name, data)
 	}
 }
 
-// validHTTPAddr determines if the HTTP address is valid.
-// If the HTTP address is valid, the HTTP server should be started to redirect to HTTPS and handle certificate creation.
-func (s *Server) validHTTPAddr() bool {
-	return len(s.HTTPServer.Addr) > 0
-}
-
-// redirectToHTTPS redirects the page to https.
-func (s *Server) redirectToHTTPS(w http.ResponseWriter, r *http.Request) {
-	host := r.Host
-	// derived from net.SplitHostPort, but does not throw error :
-	lastColonIndex := strings.LastIndex(host, ":")
-	if lastColonIndex >= 0 {
-		host = host[:lastColonIndex]
+// redirectToHTTPSHandler redirects the request to https.
+func (cfg Config) redirectToHTTPSHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		host := r.Host
+		// derived from net.SplitHostPort, but does not throw error :
+		lastColonIndex := strings.LastIndex(host, ":")
+		if lastColonIndex >= 0 {
+			host = host[:lastColonIndex]
+		}
+		if cfg.HTTPSPort != 443 && !cfg.NoTLSRedirect {
+			host += fmt.Sprintf(":%d", cfg.HTTPSPort)
+		}
+		httpsURI := "https://" + host + r.URL.Path
+		http.Redirect(w, r, httpsURI, http.StatusTemporaryRedirect)
 	}
-	if s.HTTPSServer.Addr != ":443" && !s.NoTLSRedirect {
-		host = host + s.HTTPSServer.Addr
-	}
-	httpsURI := "https://" + host + r.URL.Path
-	http.Redirect(w, r, httpsURI, http.StatusTemporaryRedirect)
 }
 
 // checkTokenUsername ensures the username in the authorization header matches that in the username form value.
-func (s *Server) checkTokenUsername(r *http.Request) error {
+func checkTokenUsername(r *http.Request, tokenizer Tokenizer) error {
 	authorization := r.Header.Get("Authorization")
 	if len(authorization) < 7 || authorization[:7] != "Bearer " {
 		return fmt.Errorf("invalid authorization header: %v", authorization)
 	}
 	tokenString := authorization[7:]
-	tokenUsername, err := s.tokenizer.ReadUsername(tokenString)
+	tokenUsername, err := tokenizer.ReadUsername(tokenString)
 	if err != nil {
 		return err
 	}
@@ -507,8 +512,8 @@ func (s *Server) checkTokenUsername(r *http.Request) error {
 }
 
 // writeInternalError logs and writes the error as an internal server error (500).
-func (s *Server) writeInternalError(w http.ResponseWriter, err error) {
-	s.log.Printf("server error: %v", err)
+func writeInternalError(err error, log *log.Logger, w http.ResponseWriter) {
+	log.Printf("server error: %v", err)
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }
 

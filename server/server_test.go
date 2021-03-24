@@ -304,12 +304,12 @@ EKTcWGekdmdDPsHloRNtsiCa697B2O9IFA==
 
 func TestLogServerStart(t *testing.T) {
 	logServerStartTests := []struct {
-		httpServerAddr string
-		wantLogPart    string
+		HTTPPort    int
+		wantLogPart string
 	}{
 		{
-			httpServerAddr: ":80",
-			wantLogPart:    "https://",
+			HTTPPort:    80,
+			wantLogPart: "https://",
 		},
 		{
 			wantLogPart: "http://",
@@ -317,12 +317,14 @@ func TestLogServerStart(t *testing.T) {
 	}
 	for i, test := range logServerStartTests {
 		var buf bytes.Buffer
+		cfg := Config{
+			HTTPPort: test.HTTPPort,
+		}
 		s := Server{
-			log: log.New(&buf, "", 0),
-			HTTPServer: &http.Server{
-				Addr: test.httpServerAddr,
-			},
+			log:         log.New(&buf, "", 0),
+			HTTPServer:  &http.Server{},
 			HTTPSServer: &http.Server{},
+			Config:      cfg,
 		}
 		s.logServerStart()
 		gotLog := buf.String()
@@ -367,9 +369,6 @@ func TestHandleFile(t *testing.T) {
 		},
 	}
 	for i, test := range handleFileHeadersTests {
-		s := Server{
-			cacheMaxAge: cacheMaxAge,
-		}
 		w := httptest.NewRecorder()
 		r := httptest.NewRequest("", test.path, nil)
 		r.Header = test.requestHeader
@@ -377,7 +376,7 @@ func TestHandleFile(t *testing.T) {
 		h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			handlerCalled = true
 		})
-		fh := s.fileHandler(h)
+		fh := fileHandler(h, cacheMaxAge)
 		fh.ServeHTTP(w, r)
 		gotHeader := w.Header()
 		switch {
@@ -393,7 +392,7 @@ func TestHandleHTTP(t *testing.T) {
 	handleHTTPTests := []struct {
 		Challenge
 		httpURI      string
-		httpsAddr    string
+		httpsPort    int
 		wantCode     int
 		wantBody     string
 		wantLocation string
@@ -417,36 +416,34 @@ func TestHandleHTTP(t *testing.T) {
 		},
 		{
 			httpURI:      "http://example.com/",
-			httpsAddr:    ":443",
+			httpsPort:    443,
 			wantCode:     307,
 			wantLocation: "https://example.com/",
 		},
 		{
 			httpURI:      "https://example.com/",
-			httpsAddr:    ":443",
+			httpsPort:    443,
 			wantCode:     307,
 			wantLocation: "https://example.com/",
 		},
 		{
 			httpURI:      "http://example.com:80/abc",
-			httpsAddr:    ":443",
+			httpsPort:    443,
 			wantCode:     307,
 			wantLocation: "https://example.com/abc",
 		},
 		{
 			httpURI:      "http://example.com:8001/abc/d",
-			httpsAddr:    ":8000",
+			httpsPort:    8000,
 			wantCode:     307,
 			wantLocation: "https://example.com:8000/abc/d",
 		},
 	}
 	for i, test := range handleHTTPTests {
 		s := Server{
-			HTTPSServer: &http.Server{
-				Addr: test.httpsAddr,
-			},
 			Config: Config{
 				Challenge: test.Challenge,
+				HTTPSPort: test.httpsPort,
 			},
 		}
 		r := httptest.NewRequest("", test.httpURI, nil)
@@ -591,21 +588,19 @@ func TestCheckTokenUsername(t *testing.T) {
 		},
 	}
 	for i, test := range checkTokenUsernameTests {
-		s := Server{
-			tokenizer: mockTokenizer{
-				ReadUsernameFunc: func(tokenString string) (string, error) {
-					if test.readTokenUsernameErr != nil {
-						return "", test.readTokenUsernameErr
-					}
-					return want, nil
-				},
+		tokenizer := mockTokenizer{
+			ReadUsernameFunc: func(tokenString string) (string, error) {
+				if test.readTokenUsernameErr != nil {
+					return "", test.readTokenUsernameErr
+				}
+				return want, nil
 			},
 		}
 		r := httptest.NewRequest("", "/", nil)
 		r.Header.Add("Authorization", test.authorizationHeader)
 		r.Form = make(url.Values)
 		r.Form.Add("username", test.formUsername)
-		err := s.checkTokenUsername(r)
+		err := checkTokenUsername(r, tokenizer)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -630,16 +625,13 @@ func TestHTTPError(t *testing.T) {
 	}
 }
 
-func TestHandleError(t *testing.T) {
+func TestWriteInternalError(t *testing.T) {
 	var buf bytes.Buffer
 	w := httptest.NewRecorder()
 	err := fmt.Errorf("mock error")
 	log := log.New(&buf, "", 0)
-	s := Server{
-		log: log,
-	}
 	want := 500
-	s.writeInternalError(w, err)
+	writeInternalError(err, log, w)
 	got := w.Code
 	switch {
 	case want != got:
@@ -691,7 +683,7 @@ func TestAddMimeType(t *testing.T) {
 	}
 }
 
-func TestServeTemplate(t *testing.T) {
+func TestTemplateHandler(t *testing.T) {
 	serveTemplateTests := []struct {
 		templateName   string
 		templateText   string
@@ -700,10 +692,6 @@ func TestServeTemplate(t *testing.T) {
 		wantStatusCode int
 		wantBody       string
 	}{
-		{
-			path:           "/unknown",
-			wantStatusCode: 500,
-		},
 		{
 			templateName:   "index.html",
 			path:           "/index.html",
@@ -724,16 +712,28 @@ func TestServeTemplate(t *testing.T) {
 			wantStatusCode: 200,
 			wantBody:       "template for selene",
 		},
+		{
+			templateName:   "name.html",
+			templateText:   "template for {{ .Name }}",
+			path:           "/name.html",
+			data:           struct{ Name string }{Name: "selene"},
+			wantStatusCode: 200,
+			wantBody:       "template for selene",
+		},
+		// { // bad template variable name - TODO: this should return an error
+		// 	templateName:   "name.html",
+		// 	templateText:   "template for {{ .NAME }}",
+		// 	path:           "/name.html",
+		// 	data:           struct{ Name string }{Name: "selene"},
+		// 	wantStatusCode: ???,
+		// },
 	}
 	for i, test := range serveTemplateTests {
-		s := Server{
-			log:      log.New(io.Discard, "", 0),
-			template: template.Must(template.New(test.templateName).Parse(test.templateText)),
-			data:     test.data,
-		}
+		template := template.Must(template.New(test.templateName).Parse(test.templateText))
 		r := httptest.NewRequest("", test.path, nil)
 		w := httptest.NewRecorder()
-		s.serveTemplate(w, r)
+		h := templateHandler(template, test.data)
+		h.ServeHTTP(w, r)
 		switch {
 		case test.wantStatusCode != w.Code:
 			t.Errorf("Test %v: status codes not equal: wanted: %v, got:    %v", i, test.wantStatusCode, w.Code)
@@ -745,28 +745,29 @@ func TestServeTemplate(t *testing.T) {
 
 func TestValidHTTPAddr(t *testing.T) {
 	validHTTPAddrTests := []struct {
-		addr string
-		want bool
+		HTTPPort int
+		want     bool
 	}{
 		{},
 		{
-			addr: "example.com",
-			want: true,
+			HTTPPort: 80,
+			want:     true,
 		},
 		{
-			addr: ":8001",
-			want: true,
+			HTTPPort: 8001,
+			want:     true,
 		},
 	}
 	for i, test := range validHTTPAddrTests {
+		cfg := Config{
+			HTTPPort: test.HTTPPort,
+		}
 		s := Server{
-			HTTPServer: &http.Server{
-				Addr: test.addr,
-			},
+			Config: cfg,
 		}
 		got := s.validHTTPAddr()
 		if test.want != got {
-			t.Errorf("Test %v: wanted %v, got %v for when addr is '%v'", i, test.want, got, test.addr)
+			t.Errorf("Test %v: when HTTP Port is '%v', validHTTPAddrs not equal: wanted: %v, got: %v", i, test.HTTPPort, test.want, got)
 		}
 	}
 }
