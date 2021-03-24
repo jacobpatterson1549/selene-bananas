@@ -55,7 +55,7 @@ func runServer(ctx context.Context, log *log.Logger) error {
 	if err := server.Stop(ctx); err != nil {
 		return fmt.Errorf("stopping server: %v", err)
 	}
-	log.Println("server stopped successfully")
+	log.Printf("server stopped successfully")
 	return nil
 }
 

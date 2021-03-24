@@ -139,22 +139,6 @@ func (cfg Config) NewServer(p Parameters) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	var gameConfig game.Config
-	data := struct {
-		Name        string
-		ShortName   string
-		Description string
-		Version     string
-		Colors      ColorConfig
-		Rules       []string
-	}{
-		Name:        "selene-bananas",
-		ShortName:   "bananas",
-		Description: "a tile-based word-forming game",
-		Version:     cfg.Version,
-		Colors:      cfg.ColorConfig,
-		Rules:       gameConfig.Rules(),
-	}
 	httpAddr := fmt.Sprintf(":%d", cfg.HTTPPort)
 	if cfg.HTTPPort <= 0 {
 		httpAddr = ""
@@ -166,20 +150,17 @@ func (cfg Config) NewServer(p Parameters) (*Server, error) {
 	httpsServer := &http.Server{
 		Addr: httpsAddr,
 	}
-	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
-	staticFileSystem := http.FS(p.StaticFS)
-	staticFilesHandler := http.FileServer(staticFileSystem)
 	s := Server{
 		log:         p.Log,
-		data:        data,
+		data:        cfg.data(),
 		tokenizer:   p.Tokenizer,
 		userDao:     p.UserDao,
 		lobby:       p.Lobby,
 		HTTPServer:  httpServer,
 		HTTPSServer: httpsServer,
-		cacheMaxAge: cacheMaxAge,
+		cacheMaxAge: fmt.Sprintf("max-age=%d", cfg.CacheSec),
 		template:    template,
-		serveStatic: staticFilesHandler,
+		serveStatic: http.FileServer(http.FS(p.StaticFS)),
 		Config:      cfg,
 	}
 	s.monitor = runtimeMonitor{
@@ -211,6 +192,26 @@ func (cfg Config) validate(p Parameters) error {
 		}
 	}
 	return nil
+}
+
+func (cfg Config) data() interface{} {
+	var gameConfig game.Config
+	data := struct {
+		Name        string
+		ShortName   string
+		Description string
+		Version     string
+		Colors      ColorConfig
+		Rules       []string
+	}{
+		Name:        "selene-bananas",
+		ShortName:   "bananas",
+		Description: "a tile-based word-forming game",
+		Version:     cfg.Version,
+		Colors:      cfg.ColorConfig,
+		Rules:       gameConfig.Rules(),
+	}
+	return data
 }
 
 // validate ensures that all of the parameters are present.
@@ -308,11 +309,11 @@ func (s *Server) tlsListener(l net.Listener) (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	tlsConfig := &tls.Config{}
-	tlsConfig.NextProtos = []string{"http/1.1"}
-	tlsConfig.Certificates = []tls.Certificate{certificate}
-	tlsListener := tls.NewListener(l, tlsConfig)
-	s.HTTPSServer.TLSConfig = tlsConfig
+	tlsCfg := &tls.Config{}
+	tlsCfg.NextProtos = []string{"http/1.1"}
+	tlsCfg.Certificates = []tls.Certificate{certificate}
+	tlsListener := tls.NewListener(l, tlsCfg)
+	s.HTTPSServer.TLSConfig = tlsCfg
 	return tlsListener, nil
 }
 

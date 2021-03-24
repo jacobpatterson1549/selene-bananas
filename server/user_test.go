@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
@@ -21,20 +20,22 @@ func TestHandleUserCreate(t *testing.T) {
 		password        string
 		wantHandleError bool
 		daoErr          error
-		wantOk          bool
+		wantCode        int
 	}{
 		{
 			wantHandleError: true,
+			wantCode:        500,
 		},
 		{
 			username: "selene",
 			password: "password123",
 			daoErr:   fmt.Errorf("problem creating user"),
+			wantCode: 500,
 		},
 		{
 			username: "selene",
 			password: "password123",
-			wantOk:   true,
+			wantCode: 200,
 		},
 	}
 	for i, test := range handleUserCreateTests {
@@ -56,25 +57,13 @@ func TestHandleUserCreate(t *testing.T) {
 		r.Form.Add("password_confirm", test.password)
 		w := httptest.NewRecorder()
 		s.handleUserCreate(w, r)
+		gotCode := w.Code
 		switch {
-		case test.wantOk:
-			want := 200
-			got := w.Code
-			if want != got {
-				t.Errorf("Test %v: wanted response code to be %v, but was %v", i, want, got)
-			}
-		case test.daoErr != nil:
-			want := test.daoErr.Error()
-			got := w.Body.String()
-			if !strings.Contains(got, want) {
-				t.Errorf("Test %v: wanted response body to be %v, but was %v", i, want, got)
-			}
-			fallthrough
-		default: // user creation error
-			want := 500
-			got := w.Code
-			if want != got {
-				t.Errorf("Test %v: wanted response code to be %v, but was %v", i, want, got)
+		case test.wantCode != gotCode:
+			t.Errorf("Test %v: response codes not equal: wanted: %v, got: %v", i, test.wantCode, gotCode)
+		case w.Body.Len() == 0:
+			if gotCode != 200 {
+				t.Errorf("Test %v: response body should not be empty", i)
 			}
 		}
 	}
@@ -159,20 +148,9 @@ func TestHandleUserLogin(t *testing.T) {
 		gotCode := w.Code
 		switch {
 		case test.wantCode != gotCode:
-			t.Errorf("Test %v: wanted response code to be %v, but was %v", i, test.wantCode, gotCode)
-		case test.daoErr == user.ErrIncorrectLogin:
-			if buf.Len() != 0 {
-				t.Errorf("Test %v: no error should be logged when the dao reads an incorrect login, got %v", i, w.Body)
-			}
-		case test.tokenizerErr != nil:
-			want := test.tokenizerErr.Error()
-			got := w.Body.String()
-			// daoErr should be mapped to user-friendly message, do not checkit
-			if !strings.Contains(got, want) {
-				t.Errorf("Test %v: wanted response body to be %v, but was %v", i, want, got)
-			}
+			t.Errorf("Test %v: response codes not equal: wanted: %v, got: %v", i, test.wantCode, gotCode)
 		case w.Body.Len() == 0:
-			t.Errorf("Test %v: response body should not be empty when an error occurred", i)
+			t.Errorf("Test %v: response body should not be empty", i)
 		}
 	}
 }
@@ -228,8 +206,13 @@ func TestHandleUserLobby(t *testing.T) {
 		w := httptest.NewRecorder()
 		s.handleUserLobby(w, r)
 		gotCode := w.Code
-		if test.wantCode != gotCode {
-			t.Errorf("Test %v: wanted response code to be %v, but was %v.  Response body: %v", i, test.wantCode, gotCode, w.Body.String())
+		switch {
+		case test.wantCode != gotCode:
+			t.Errorf("Test %v: response codes not equal: wanted: %v, got: %v", i, test.wantCode, gotCode)
+		case w.Body.Len() == 0:
+			if gotCode != 200 { // connecting to the lobby will normally keep the connection open until the user leaves the lobby
+				t.Errorf("Test %v: response body should not be empty", i)
+			}
 		}
 	}
 }
@@ -240,25 +223,25 @@ func TestHandleUserUpdatePassword(t *testing.T) {
 		password        string
 		newPassword     string
 		daoUpdateErr    error
-		wantStatusCode  int
+		wantCode        int
 		wantLobbyRemove bool
 	}{
 		{
-			username:       "INVALID username!",
-			wantStatusCode: 500,
+			username: "INVALID username!",
+			wantCode: 500,
 		},
 		{
-			username:       "selene",
-			password:       "TOP_s3cret!",
-			newPassword:    "MoR&_sCr3T",
-			daoUpdateErr:   fmt.Errorf("error updating user password"),
-			wantStatusCode: 500,
+			username:     "selene",
+			password:     "TOP_s3cret!",
+			newPassword:  "MoR&_sCr3T",
+			daoUpdateErr: fmt.Errorf("error updating user password"),
+			wantCode:     500,
 		},
 		{
 			username:        "selene",
 			password:        "TOP_s3cret!",
 			newPassword:     "MoR&_sCr3T",
-			wantStatusCode:  200,
+			wantCode:        200,
 			wantLobbyRemove: true,
 		},
 	}
@@ -295,10 +278,14 @@ func TestHandleUserUpdatePassword(t *testing.T) {
 		r.Form.Add("password_confirm", test.newPassword)
 		w := httptest.NewRecorder()
 		s.handleUserUpdatePassword(w, r)
-		gotStatusCode := w.Result().StatusCode
+		gotCode := w.Code
 		switch {
-		case test.wantStatusCode != gotStatusCode:
-			t.Errorf("Test %v: wanted status code to be %v, got %v", i, test.wantStatusCode, gotStatusCode)
+		case test.wantCode != gotCode:
+			t.Errorf("Test %v: response codes not equal: wanted: %v, got: %v", i, test.wantCode, gotCode)
+		case w.Body.Len() == 0:
+			if gotCode != 200 {
+				t.Errorf("Test %v: response body should not be empty", i)
+			}
 		case test.wantLobbyRemove != gotLobbyRemove:
 			t.Errorf("Test %v: wanted lobby.RemoveUser to be called %v, got %v", i, test.wantLobbyRemove, gotLobbyRemove)
 		}
@@ -310,23 +297,23 @@ func TestHandleUserDelete(t *testing.T) {
 		username        string
 		password        string
 		daoDeleteErr    error
-		wantStatusCode  int
+		wantCode        int
 		wantLobbyRemove bool
 	}{
 		{
-			username:       "INVALID username!",
-			wantStatusCode: 500,
+			username: "INVALID username!",
+			wantCode: 500,
 		},
 		{
-			username:       "selene",
-			password:       "TOP_s3cret!",
-			daoDeleteErr:   fmt.Errorf("error deleting user from dao"),
-			wantStatusCode: 500,
+			username:     "selene",
+			password:     "TOP_s3cret!",
+			daoDeleteErr: fmt.Errorf("error deleting user from dao"),
+			wantCode:     500,
 		},
 		{
 			username:        "selene",
 			password:        "TOP_s3cret!",
-			wantStatusCode:  200,
+			wantCode:        200,
 			wantLobbyRemove: true,
 		},
 	}
@@ -359,10 +346,14 @@ func TestHandleUserDelete(t *testing.T) {
 		r.Form.Add("password", test.password)
 		w := httptest.NewRecorder()
 		s.handleUserDelete(w, r)
-		gotStatusCode := w.Result().StatusCode
+		gotCode := w.Code
 		switch {
-		case test.wantStatusCode != gotStatusCode:
-			t.Errorf("Test %v: wanted status code to be %v, got %v", i, test.wantStatusCode, gotStatusCode)
+		case test.wantCode != gotCode:
+			t.Errorf("Test %v: response codes not equal: wanted: %v, got: %v", i, test.wantCode, gotCode)
+		case w.Body.Len() == 0:
+			if gotCode != 200 {
+				t.Errorf("Test %v: response body should not be empty", i)
+			}
 		case test.wantLobbyRemove != gotLobbyRemove:
 			t.Errorf("Test %v: wanted lobby.RemoveUser to be called %v, got %v", i, test.wantLobbyRemove, gotLobbyRemove)
 		}

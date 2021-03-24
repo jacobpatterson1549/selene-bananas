@@ -7,6 +7,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 )
 
+// mockAddr implements the net.Addr interface
 type mockAddr string
 
 func (m mockAddr) Network() string {

@@ -265,7 +265,7 @@ func (c *Canvas) Redraw() {
 		c.drawUnusedTiles(true)
 		c.drawUsedTiles(true)
 	}
-	if c.gameStatus == game.Finished {
+	if c.gameStatus == game.Finished { // Allow tiles to be moved/selected after game is finished
 		c.drawErrorMessage("Game Finished")
 	}
 }
@@ -460,14 +460,13 @@ func (c *Canvas) swap() {
 	tiles := []tile.Tile{
 		endTS.tile,
 	}
-	b := board.New(tiles, nil)
-	g := game.Info{
-		Board: b,
-	}
-	c.Socket.Send(message.Message{
+	m := message.Message{
 		Type: message.SwapGameTile,
-		Game: &g,
-	})
+		Game: &game.Info{
+			Board: board.New(tiles, nil),
+		},
+	}
+	c.Socket.Send(m)
 	c.selection.tiles = make(map[tile.ID]tileSelection)
 }
 
@@ -595,16 +594,13 @@ func (c *Canvas) moveSelectedTiles() {
 		c.log.Error("moving tiles to presumably valid locations: " + err.Error())
 		return
 	}
-	b := board.New(nil, tilePositions)
-	g := game.Info{
-		Board: b,
+	m := message.Message{
+		Type: message.MoveGameTile,
+		Game: &game.Info{
+			Board: board.New(nil, tilePositions),
+		},
 	}
-	if c.gameStatus == game.InProgress {
-		c.Socket.Send(message.Message{
-			Type: message.MoveGameTile,
-			Game: &g,
-		})
-	}
+	c.Socket.Send(m)
 }
 
 // selectionTilePositions calculates the new positions of the selected tiles.

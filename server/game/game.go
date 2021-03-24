@@ -283,20 +283,21 @@ func (g *Game) handleAddPlayer(ctx context.Context, m message.Message, send mess
 	}
 	m2.Info = "joining game"
 	send(*m2)
-	gamePlayers := g.playerNames() // also called in g.ResizeBoard
-	for n := range g.players {
-		if n != m.PlayerName {
-			m2 := message.Message{
-				Type:       message.ChangeGameTiles,
-				PlayerName: n,
-				Info:       fmt.Sprintf("%v joined the game", m.PlayerName),
-				Game: &game.Info{
-					TilesLeft: len(g.unusedTiles),
-					Players:   gamePlayers,
-				},
-			}
-			send(m2)
+	gamePlayers := m2.Game.Players
+	for n := range g.players { // send info to other players
+		if n == m.PlayerName {
+			continue
 		}
+		m3 := message.Message{
+			Type:       message.ChangeGameTiles,
+			PlayerName: n,
+			Info:       fmt.Sprintf("%v joined the game", m.PlayerName),
+			Game: &game.Info{
+				TilesLeft: len(g.unusedTiles),
+				Players:   gamePlayers,
+			},
+		}
+		send(m3)
 	}
 	g.handleInfoChanged(send)
 	return nil
@@ -362,22 +363,18 @@ func (g *Game) handleGameStart(ctx context.Context, m message.Message, send mess
 // The player's winPoints are decremented if an error is returned if and only if the config wants to.
 func (g *Game) checkPlayerBoard(pn player.Name, checkWords bool) ([]string, error) {
 	var usedWords []string
-	errText := ""
+	var err error
 	p := g.players[pn]
 	switch {
 	case len(p.Board.UnusedTiles) != 0:
-		errText = "not all tiles used"
+		err = fmt.Errorf("not all tiles used")
 	case !p.Board.CanBeFinished():
-		errText = "not all used tiles form a single group"
+		err = fmt.Errorf("not all used tiles form a single group")
 	case checkWords:
-		var err error
 		usedWords, err = g.checkWords(pn)
-		if err != nil {
-			errText = err.Error()
-		}
 	}
-	if len(errText) != 0 {
-		errText = "invalid board: " + errText
+	if err != nil {
+		errText := "invalid board: " + err.Error()
 		if g.Config.Penalize && p.WinPoints > 2 {
 			p.WinPoints--
 			errText = errText + ", possible win points decremented"
@@ -393,26 +390,26 @@ func (g Game) checkWords(pn player.Name) ([]string, error) {
 	usedWords := p.Board.UsedTileWords()
 	var invalidWords []string
 	uniqueWords := make(map[string]struct{}, len(usedWords))
-	errText := ""
+	var err error
 	for _, w := range usedWords {
 		if _, ok := uniqueWords[w]; g.Config.ProhibitDuplicates && ok {
-			errText = "duplicate words are prohibited"
+			err = fmt.Errorf("duplicate words are prohibited")
 			break
 		}
 		uniqueWords[w] = struct{}{}
 		if len(w) < g.Config.MinLength {
-			errText = fmt.Sprintf("short word detected, all must be at least %v characters", g.Config.MinLength)
+			err = fmt.Errorf("short word detected, all must be at least %v characters", g.Config.MinLength)
 			break
 		}
 		if !g.WordValidator.Validate(w) {
 			invalidWords = append(invalidWords, w)
 		}
 	}
-	if len(invalidWords) > 0 { // len(errText) == 0
-		errText = fmt.Sprintf("invalid words: %v", invalidWords)
+	if len(invalidWords) > 0 {
+		err = fmt.Errorf("invalid words: %v", invalidWords)
 	}
-	if len(errText) != 0 {
-		return usedWords, fmt.Errorf(errText)
+	if err != nil {
+		return nil, err
 	}
 	return usedWords, nil
 }
@@ -529,8 +526,7 @@ func (g *Game) handleGameSwap(ctx context.Context, m message.Message, send messa
 	tid := m.Game.Board.UnusedTileIDs[0]
 	t := m.Game.Board.UnusedTiles[tid]
 	p := g.players[m.PlayerName]
-	err := p.Board.RemoveTile(t)
-	if err != nil {
+	if err := p.Board.RemoveTile(t); err != nil {
 		return err
 	}
 	g.unusedTiles = append(g.unusedTiles, t)
@@ -538,8 +534,7 @@ func (g *Game) handleGameSwap(ctx context.Context, m message.Message, send messa
 	var newTiles []tile.Tile
 	for i := 0; i < 3 && len(g.unusedTiles) > 0; i++ {
 		newTiles = append(newTiles, g.unusedTiles[0])
-		err := p.Board.AddTile(g.unusedTiles[0])
-		if err != nil {
+		if err := p.Board.AddTile(g.unusedTiles[0]); err != nil {
 			return err
 		}
 		g.unusedTiles = g.unusedTiles[1:]

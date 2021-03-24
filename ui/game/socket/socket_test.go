@@ -96,18 +96,18 @@ func TestMessageJSON(t *testing.T) {
 		"selene",
 		"bob",
 	}
-	boardConfig := board.Config{
+	boardCfg := board.Config{
 		NumCols: 7,
 		NumRows: 8,
 	}
-	gameConfig := game.Config{
+	gameCfg := game.Config{
 		CheckOnSnag:        true,
 		Penalize:           true,
 		MinLength:          9,
 		ProhibitDuplicates: true,
 	}
 	b := board.New(tiles, tilePositions)
-	b.Config = boardConfig
+	b.Config = boardCfg
 	m := message.Message{
 		Type: message.CreateGame,
 		Info: "message test",
@@ -116,7 +116,7 @@ func TestMessageJSON(t *testing.T) {
 			Board:    b,
 			Status:   game.InProgress,
 			Players:  gamePlayers,
-			Config:   &gameConfig,
+			Config:   &gameCfg,
 			Capacity: 7,
 		},
 		Games: gameInfos,

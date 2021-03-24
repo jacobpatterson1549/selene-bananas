@@ -2,7 +2,7 @@ package game
 
 import "testing"
 
-func TestCanJoinInfo(t *testing.T) {
+func TestInfoCanJoin(t *testing.T) {
 	canJoinTests := []struct {
 		info       Info
 		playerName string
