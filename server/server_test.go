@@ -185,10 +185,8 @@ func TestNewServer(t *testing.T) {
 			},
 			wantOk: true,
 			want: &Server{
-				log:       testLog,
-				tokenizer: tokenizer,
-				userDao:   userDao,
-				lobby:     lobby,
+				log:   testLog,
+				lobby: lobby,
 				Config: Config{
 					StopDur:   1 * time.Hour,
 					CacheSec:  86400,
@@ -202,7 +200,6 @@ func TestNewServer(t *testing.T) {
 						CanvasPrimary: "blue",
 					},
 				},
-				cacheMaxAge: "max-age=86400",
 			},
 		},
 	}
@@ -217,21 +214,16 @@ func TestNewServer(t *testing.T) {
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		// cannot use DeepEqual on Server because http.Server and template.Template contain a error fields:
 		case !reflect.DeepEqual(test.want.log, got.log),
-			!reflect.DeepEqual(test.want.tokenizer, got.tokenizer),
-			!reflect.DeepEqual(test.want.userDao, got.userDao),
 			!reflect.DeepEqual(test.want.lobby, got.lobby),
 			test.want.Challenge != got.Challenge,
-			test.want.cacheMaxAge != got.cacheMaxAge,
 			test.want.Config != got.Config:
 			t.Errorf("Test %v: server not copied from from arguments properly: %v", i, got)
 		default:
 			nilChecks := []interface{}{
-				got.data,
+				got.log,
+				got.lobby,
 				got.HTTPServer,
 				got.HTTPSServer,
-				got.template,
-				got.serveStatic,
-				got.monitor,
 			}
 			for j, gotJ := range nilChecks {
 				if gotJ == nil {
@@ -388,21 +380,24 @@ func TestHandleFile(t *testing.T) {
 	}
 }
 
-func TestHandleHTTP(t *testing.T) {
-	handleHTTPTests := []struct {
+func TestHTTPHandler(t *testing.T) {
+	httpHandlerTests := []struct {
 		Challenge
-		httpURI      string
-		httpsPort    int
-		wantCode     int
-		wantBody     string
-		wantLocation string
+		httpURI              string
+		httpsPort            int
+		httpsRedirectHandler http.HandlerFunc
+		wantCode             int
+		wantBody             string
 	}{
 		{
 			Challenge: Challenge{
 				Token: "abc",
 				Key:   "def",
 			},
-			httpURI:  acmeHeader + "abc",
+			httpURI: acmeHeader + "abc",
+			httpsRedirectHandler: func(rw http.ResponseWriter, r *http.Request) {
+				// NOOP
+			},
 			wantCode: 200,
 			wantBody: "abc.def",
 		},
@@ -410,59 +405,39 @@ func TestHandleHTTP(t *testing.T) {
 			Challenge: Challenge{
 				Token: "fred",
 			},
-			httpURI:  acmeHeader + "barney",
+			httpURI: acmeHeader + "barney",
+			httpsRedirectHandler: func(rw http.ResponseWriter, r *http.Request) {
+				// NOOP
+			},
 			wantCode: 404,
 			wantBody: "404 page not found\n", // flaky check, but ensures actual token.key is not written to body
 		},
 		{
-			httpURI:      "http://example.com/",
-			httpsPort:    443,
-			wantCode:     307,
-			wantLocation: "https://example.com/",
-		},
-		{
-			httpURI:      "https://example.com/",
-			httpsPort:    443,
-			wantCode:     307,
-			wantLocation: "https://example.com/",
-		},
-		{
-			httpURI:      "http://example.com:80/abc",
-			httpsPort:    443,
-			wantCode:     307,
-			wantLocation: "https://example.com/abc",
-		},
-		{
-			httpURI:      "http://example.com:8001/abc/d",
-			httpsPort:    8000,
-			wantCode:     307,
-			wantLocation: "https://example.com:8000/abc/d",
+			httpURI:   "http://example.com/",
+			httpsPort: 443,
+			httpsRedirectHandler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(418)
+			},
+			wantCode: 418,
 		},
 	}
-	for i, test := range handleHTTPTests {
-		s := Server{
-			Config: Config{
-				Challenge: test.Challenge,
-				HTTPSPort: test.httpsPort,
-			},
+	for i, test := range httpHandlerTests {
+		cfg := Config{
+			Challenge: test.Challenge,
+			HTTPSPort: test.httpsPort,
 		}
 		r := httptest.NewRequest("", test.httpURI, nil)
 		w := httptest.NewRecorder()
-		h := s.httpHandler()
+		h := cfg.httpHandler(test.httpsRedirectHandler)
 		h.ServeHTTP(w, r)
 		gotCode := w.Code
-		switch {
-		case test.wantCode != gotCode:
+		if test.wantCode != gotCode {
 			t.Errorf("Test %v: wanted status code %v, got %v", i, test.wantCode, gotCode)
-		case test.wantLocation != w.Header().Get("Location"):
-			t.Errorf("Test %v: Locations no equal:\nwanted: %v\ngot:    %v", i, test.wantLocation, w.Header().Get("Location"))
-		case len(test.wantBody) > 0 && test.wantBody != w.Body.String():
-			t.Errorf("Test %v: response bodies not equal:\nwanted: %v\ngot:    %v", i, test.wantBody, w.Body.String())
 		}
 	}
 }
 
-func TestHandleHTTPS(t *testing.T) {
+func TestHTTPSHandler(t *testing.T) {
 	username := "selene" // used to check token for POST
 	withTLS := func(r *http.Request) *http.Request {
 		r.TLS = &tls.ConnectionState{}
@@ -477,61 +452,52 @@ func TestHandleHTTPS(t *testing.T) {
 		r.Form = url.Values{"username": {username}}
 		return r
 	}
-	noopMonitor := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		// NOOP
-	})
-	handleHTTPSTests := []struct {
+	httpsHandlerTests := []struct {
 		*http.Request
-		*Server
+		Config
+		Parameters
+		httpHandler          http.HandlerFunc
+		httpsRedirectHandler http.HandlerFunc
+		*template.Template
 		wantCode int
 	}{
 		{ // acme challenge with no TLS sent to HTTPS
 			Request: httptest.NewRequest("GET", acmeHeader, nil),
-			Server: &Server{
-				HTTPServer: &http.Server{
-					Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						w.WriteHeader(418)
-					}),
-				},
+			httpHandler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(418)
 			},
 			wantCode: 418,
 		},
 		{
 			Request: httptest.NewRequest("GET", "/want-redirect", nil),
-			Server: &Server{
-				HTTPSServer: &http.Server{},
-				Config: Config{
-					NoTLSRedirect: true,
-				},
+			httpsRedirectHandler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(307307)
 			},
-			wantCode: 307,
+			Config: Config{
+				NoTLSRedirect: true,
+			},
+			wantCode: 307307,
 		},
 		{
 			Request: withSecHeader(httptest.NewRequest("GET", "/unknown", nil)),
-			Server: &Server{
-				HTTPSServer: &http.Server{},
-				Config: Config{
-					NoTLSRedirect: true,
-				},
+			Config: Config{
+				NoTLSRedirect: true,
 			},
 			wantCode: 404,
 		},
 		{
 			Request:  withTLS(httptest.NewRequest("GET", "/unknown", nil)),
-			Server:   &Server{},
 			wantCode: 404,
 		},
 		{
-			Request: withTLS(httptest.NewRequest("GET", "/", nil)),
-			Server: &Server{
-				template: template.Must(template.New("index.html").Parse("")),
-			},
+			Request:  withTLS(httptest.NewRequest("GET", "/", nil)),
+			Template: template.Must(template.New("index.html").Parse("")),
 			wantCode: 200,
 		},
 		{
 			Request: withTLS(withAuthorization(httptest.NewRequest("POST", "/unknown", nil))),
-			Server: &Server{
-				tokenizer: mockTokenizer{
+			Parameters: Parameters{
+				Tokenizer: mockTokenizer{
 					ReadUsernameFunc: func(tokenString string) (string, error) {
 						return username, nil
 					},
@@ -541,14 +507,12 @@ func TestHandleHTTPS(t *testing.T) {
 		},
 		{
 			Request:  withTLS(httptest.NewRequest("DELETE", "/", nil)),
-			Server:   &Server{},
 			wantCode: 405,
 		},
 	}
-	for i, test := range handleHTTPSTests {
-		test.Server.monitor = noopMonitor
+	for i, test := range httpsHandlerTests {
 		w := httptest.NewRecorder()
-		h := test.Server.httpsHandler()
+		h := test.Config.httpsHandler(test.httpHandler, test.httpsRedirectHandler, test.Parameters, test.Template)
 		h.ServeHTTP(w, test.Request)
 		gotCode := w.Code
 		if test.wantCode != gotCode {
@@ -743,6 +707,56 @@ func TestTemplateHandler(t *testing.T) {
 	}
 }
 
+func TestHTTPSRedirectHandler(t *testing.T) {
+	httpsRedirectHandlerTests := []struct {
+		httpURI      string
+		httpsPort    int
+		wantCode     int
+		wantLocation string
+	}{
+		{
+			httpURI:      "http://example.com/",
+			httpsPort:    443,
+			wantCode:     307,
+			wantLocation: "https://example.com/",
+		},
+		{
+			httpURI:      "https://example.com/",
+			httpsPort:    443,
+			wantCode:     307,
+			wantLocation: "https://example.com/",
+		},
+		{
+			httpURI:      "http://example.com:80/abc",
+			httpsPort:    443,
+			wantCode:     307,
+			wantLocation: "https://example.com/abc",
+		},
+		{
+			httpURI:      "http://example.com:8001/abc/d",
+			httpsPort:    8000,
+			wantCode:     307,
+			wantLocation: "https://example.com:8000/abc/d",
+		},
+	}
+	for i, test := range httpsRedirectHandlerTests {
+		r := httptest.NewRequest("", test.httpURI, nil)
+		w := httptest.NewRecorder()
+		cfg := Config{
+			HTTPSPort: test.httpsPort,
+		}
+		h := cfg.httpsRedirectHandler()
+		h.ServeHTTP(w, r)
+		gotCode := w.Code
+		switch {
+		case test.wantCode != gotCode:
+			t.Errorf("Test %v: wanted status code %v, got %v", i, test.wantCode, gotCode)
+		case test.wantLocation != w.Header().Get("Location"):
+			t.Errorf("Test %v: Locations no equal:\nwanted: %v\ngot:    %v", i, test.wantLocation, w.Header().Get("Location"))
+		}
+	}
+}
+
 func TestValidHTTPAddr(t *testing.T) {
 	validHTTPAddrTests := []struct {
 		HTTPPort int
@@ -787,69 +801,58 @@ func TestWrappedResponseWriter(t *testing.T) {
 	}
 }
 
-func TestHandleGet(t *testing.T) {
-	type handleGetTest struct {
-		path     string
-		wantCode int
-	}
-	var handleGetTests []handleGetTest
+func TestGetHandler(t *testing.T) {
+	getHandlerPathWantCodes := make(map[string]int)
 	for _, path := range []string{"/invalid/get/path", "/ping"} {
-		handleGetTests = append(handleGetTests,
-			handleGetTest{path: path, wantCode: 404},
-		)
+		getHandlerPathWantCodes[path] = 404
 	}
 	validGetEndpoints := []string{
+		// templates:
 		"/index.html",
 		"/manifest.json",
 		"/serviceWorker.js",
 		"/favicon.svg",
 		"/network_check.html",
+		// static files:
 		"/wasm_exec.js",
 		"/main.wasm",
 		"/robots.txt",
 		"/favicon.png",
+		"/favicon.ico",
 		"/LICENSE",
 		"/lobby",
 		"/monitor",
 	}
 	for _, path := range validGetEndpoints {
-		handleGetTests = append(handleGetTests,
-			handleGetTest{path: path, wantCode: 200},
-		)
+		getHandlerPathWantCodes[path] = 200
 	}
-	for i, test := range handleGetTests {
-		r := httptest.NewRequest("", test.path+"?v=1", nil)
+	for path, wantCode := range getHandlerPathWantCodes {
+		r := httptest.NewRequest("", path, nil)
 		w := httptest.NewRecorder()
-		tmplName := test.path[1:]
-		tmpl := template.Must(template.New(tmplName).Parse(""))
-		s := Server{
-			log: log.New(io.Discard, "", 0),
-			tokenizer: mockTokenizer{
+		fileName := path[1:]
+		template := template.Must(template.New(fileName).Parse(""))
+		var cfg Config
+		p := Parameters{
+			Log: log.New(io.Discard, "", 0),
+			Tokenizer: mockTokenizer{
 				ReadUsernameFunc: func(tokenString string) (string, error) {
 					return "", nil
 				},
 			},
-			lobby: mockLobby{
+			Lobby: mockLobby{
 				addUserFunc: func(username string, w http.ResponseWriter, r *http.Request) error {
 					return nil
 				},
 			},
-			template: tmpl,
-			serveStatic: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-				// NOOP
-			}),
-			monitor: http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-				// NOOP
-			}),
-			Config: Config{
-				Version: "1",
+			StaticFS: fstest.MapFS{
+				fileName: &fstest.MapFile{Data: []byte{}},
 			},
 		}
-		h := s.getHandler()
+		h := p.getHandler(cfg, template)
 		h.ServeHTTP(w, r)
 		gotCode := w.Code
-		if test.wantCode != gotCode {
-			t.Errorf("Test %v:\nGET to %v: status codes not equal: wanted: %v, got: %v", i, test.path, test.wantCode, gotCode)
+		if wantCode != gotCode {
+			t.Errorf("codes not equal for GET to %v: status codes not equal: wanted: %v, got: %v", path, wantCode, gotCode)
 		}
 	}
 }
@@ -916,13 +919,13 @@ func TestHandlePost(t *testing.T) {
 		r.Form = formParams
 		r.Header.Add("Authorization", test.authorization)
 		w := httptest.NewRecorder()
-		s := Server{
-			log:       log.New(io.Discard, "", 0),
-			tokenizer: tokenizer,
-			lobby:     lobby,
-			userDao:   userDao,
+		p := Parameters{
+			Log:       log.New(io.Discard, "", 0),
+			Tokenizer: tokenizer,
+			Lobby:     lobby,
+			UserDao:   userDao,
 		}
-		h := s.postHandler()
+		h := p.postHandler()
 		h.ServeHTTP(w, r)
 		gotCode := w.Code
 		if test.wantCode != gotCode {
