@@ -383,7 +383,7 @@ func (s *Server) getHandler() http.Handler {
 	for _, p := range staticPatterns {
 		getMux.Handle(p, staticHandler)
 	}
-	getMux.Handle("/lobby", http.HandlerFunc(s.handleUserLobby))
+	getMux.Handle("/lobby", http.HandlerFunc(userLobbyConnectHandler(s.tokenizer, s.lobby, s.log)))
 	getMux.Handle("/monitor", s.monitor)
 	return rootHandler(getMux)
 }
@@ -394,10 +394,10 @@ func (s *Server) postHandler() http.Handler {
 	noopHandler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// NOOP
 	})
-	postMux.Handle("/user_create", http.HandlerFunc(s.handleUserCreate))
-	postMux.Handle("/user_login", http.HandlerFunc(s.handleUserLogin))
-	postMux.Handle("/user_update_password", http.HandlerFunc(s.handleUserUpdatePassword))
-	postMux.Handle("/user_delete", http.HandlerFunc(s.handleUserDelete))
+	postMux.Handle("/user_create", http.HandlerFunc(userCreateHandler(s.userDao, s.log)))
+	postMux.Handle("/user_login", http.HandlerFunc(userLoginHandler(s.userDao, s.tokenizer, s.log)))
+	postMux.Handle("/user_update_password", http.HandlerFunc(userUpdatePasswordHandler(s.userDao, s.lobby, s.log)))
+	postMux.Handle("/user_delete", http.HandlerFunc(userDeleteHandler(s.userDao, s.lobby, s.log)))
 	postMux.Handle("/ping", noopHandler) // NOOP
 	return authHandler(postMux, s.tokenizer, s.log)
 }
