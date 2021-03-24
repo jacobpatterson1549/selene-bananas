@@ -14,8 +14,8 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 )
 
-func TestHandleUserCreate(t *testing.T) {
-	handleUserCreateTests := []struct {
+func TestUserCreateHandler(t *testing.T) {
+	userCreateHandlerTests := []struct {
 		username        string
 		password        string
 		wantHandleError bool
@@ -38,25 +38,24 @@ func TestHandleUserCreate(t *testing.T) {
 			wantCode: 200,
 		},
 	}
-	for i, test := range handleUserCreateTests {
-		s := Server{
-			log: log.New(io.Discard, "", 0),
-			userDao: mockUserDao{
-				createFunc: func(ctx context.Context, u user.User) error {
-					switch {
-					case test.username != u.Username:
-						t.Errorf("Test %v wanted username to update to be %v, got %v", i, test.username, u.Username)
-					}
-					return test.daoErr
-				},
+	for i, test := range userCreateHandlerTests {
+		userDao := mockUserDao{
+			createFunc: func(ctx context.Context, u user.User) error {
+				switch {
+				case test.username != u.Username:
+					t.Errorf("Test %v wanted username to update to be %v, got %v", i, test.username, u.Username)
+				}
+				return test.daoErr
 			},
 		}
+		log := log.New(io.Discard, "", 0)
 		r := httptest.NewRequest("", "/", nil)
 		r.Form = make(url.Values)
 		r.Form.Add("username", test.username)
 		r.Form.Add("password_confirm", test.password)
 		w := httptest.NewRecorder()
-		s.handleUserCreate(w, r)
+		h := userCreateHandler(userDao, log)
+		h.ServeHTTP(w, r)
 		gotCode := w.Code
 		switch {
 		case test.wantCode != gotCode:
@@ -69,8 +68,8 @@ func TestHandleUserCreate(t *testing.T) {
 	}
 }
 
-func TestHandleUserLogin(t *testing.T) {
-	handleUserLoginTests := []struct {
+func TestUserLoginHandler(t *testing.T) {
+	userLoginHandlerTests := []struct {
 		username     string
 		password     string
 		daoErr       error
@@ -106,45 +105,44 @@ func TestHandleUserLogin(t *testing.T) {
 	}
 	wantPoints := 8
 	wantToken := "created token for logged-in user"
-	for i, test := range handleUserLoginTests {
+	for i, test := range userLoginHandlerTests {
 		var buf bytes.Buffer
-		s := Server{
-			log: log.New(&buf, "", 0),
-			userDao: mockUserDao{
-				loginFunc: func(ctx context.Context, u user.User) (*user.User, error) {
-					switch {
-					case test.username != u.Username:
-						t.Errorf("Test %v wanted username to update to be %v, got %v", i, test.username, u.Username)
-					case test.daoErr != nil:
-						return nil, test.daoErr
-					}
-					u2 := user.User{
-						Username: u.Username,
-						Points:   wantPoints,
-					}
-					return &u2, nil
-				},
-			},
-			tokenizer: mockTokenizer{
-				CreateFunc: func(username string, points int) (string, error) {
-					switch {
-					case test.username != username:
-						t.Errorf("Test %v wanted username to create token for to be %v, got %v", i, test.username, username)
-					case wantPoints != points:
-						t.Errorf("Test %v wanted points be %v, got %v", i, wantPoints, points)
-					case test.tokenizerErr != nil:
-						return "", test.tokenizerErr
-					}
-					return wantToken, nil
-				},
+		userDao := mockUserDao{
+			loginFunc: func(ctx context.Context, u user.User) (*user.User, error) {
+				switch {
+				case test.username != u.Username:
+					t.Errorf("Test %v wanted username to update to be %v, got %v", i, test.username, u.Username)
+				case test.daoErr != nil:
+					return nil, test.daoErr
+				}
+				u2 := user.User{
+					Username: u.Username,
+					Points:   wantPoints,
+				}
+				return &u2, nil
 			},
 		}
+		tokenizer := mockTokenizer{
+			CreateFunc: func(username string, points int) (string, error) {
+				switch {
+				case test.username != username:
+					t.Errorf("Test %v wanted username to create token for to be %v, got %v", i, test.username, username)
+				case wantPoints != points:
+					t.Errorf("Test %v wanted points be %v, got %v", i, wantPoints, points)
+				case test.tokenizerErr != nil:
+					return "", test.tokenizerErr
+				}
+				return wantToken, nil
+			},
+		}
+		log := log.New(&buf, "", 0)
 		r := httptest.NewRequest("", "/", nil)
 		r.Form = make(url.Values)
 		r.Form.Add("username", test.username)
 		r.Form.Add("password", test.password)
 		w := httptest.NewRecorder()
-		s.handleUserLogin(w, r)
+		h := userLoginHandler(userDao, tokenizer, log)
+		h.ServeHTTP(w, r)
 		gotCode := w.Code
 		switch {
 		case test.wantCode != gotCode:
@@ -155,10 +153,10 @@ func TestHandleUserLogin(t *testing.T) {
 	}
 }
 
-func TestHandleUserLobby(t *testing.T) {
+func TestUserLobbyConnectHandler(t *testing.T) {
 	wantAccessToken := "selene_access_token"
 	wantUsername := "selene"
-	handleUserLobbyTests := []struct {
+	userLobbyConnectHandlerTests := []struct {
 		accessToken string
 		addUserErr  error
 		wantCode    int
@@ -177,34 +175,33 @@ func TestHandleUserLobby(t *testing.T) {
 			wantCode:    200,
 		},
 	}
-	for i, test := range handleUserLobbyTests {
-		s := Server{
-			log: log.New(io.Discard, "", 0),
-			tokenizer: mockTokenizer{
-				ReadUsernameFunc: func(tokenString string) (string, error) {
-					if test.accessToken != tokenString {
-						t.Errorf("Test %v wanted tokenString to be %v, got %v", i, test.accessToken, tokenString)
-					}
-					if wantAccessToken != tokenString {
-						return "", fmt.Errorf("problem reading access token")
-					}
-					return wantUsername, nil
-				},
-			},
-			lobby: mockLobby{
-				addUserFunc: func(username string, w http.ResponseWriter, r *http.Request) error {
-					if username != wantUsername {
-						return fmt.Errorf("wanted username %v, got %v", wantUsername, username)
-					}
-					return test.addUserErr
-				},
+	for i, test := range userLobbyConnectHandlerTests {
+		tokenizer := mockTokenizer{
+			ReadUsernameFunc: func(tokenString string) (string, error) {
+				if test.accessToken != tokenString {
+					t.Errorf("Test %v wanted tokenString to be %v, got %v", i, test.accessToken, tokenString)
+				}
+				if wantAccessToken != tokenString {
+					return "", fmt.Errorf("problem reading access token")
+				}
+				return wantUsername, nil
 			},
 		}
+		lobby := mockLobby{
+			addUserFunc: func(username string, w http.ResponseWriter, r *http.Request) error {
+				if username != wantUsername {
+					return fmt.Errorf("wanted username %v, got %v", wantUsername, username)
+				}
+				return test.addUserErr
+			},
+		}
+		log := log.New(io.Discard, "", 0)
 		r := httptest.NewRequest("", "/", nil)
 		r.Form = make(url.Values)
 		r.Form.Add("access_token", test.accessToken)
 		w := httptest.NewRecorder()
-		s.handleUserLobby(w, r)
+		h := userLobbyConnectHandler(tokenizer, lobby, log)
+		h.ServeHTTP(w, r)
 		gotCode := w.Code
 		switch {
 		case test.wantCode != gotCode:
@@ -217,8 +214,8 @@ func TestHandleUserLobby(t *testing.T) {
 	}
 }
 
-func TestHandleUserUpdatePassword(t *testing.T) {
-	handleUserUpdatePasswordTests := []struct {
+func TestUserUpdatePasswordHandler(t *testing.T) {
+	userUpdatePasswordHandlerTests := []struct {
 		username        string
 		password        string
 		newPassword     string
@@ -245,7 +242,7 @@ func TestHandleUserUpdatePassword(t *testing.T) {
 			wantLobbyRemove: true,
 		},
 	}
-	for i, test := range handleUserUpdatePasswordTests {
+	for i, test := range userUpdatePasswordHandlerTests {
 		userDao := mockUserDao{
 			updatePasswordFunc: func(ctx context.Context, u user.User, newP string) error {
 				switch {
@@ -258,7 +255,7 @@ func TestHandleUserUpdatePassword(t *testing.T) {
 			},
 		}
 		gotLobbyRemove := false
-		l := mockLobby{
+		lobby := mockLobby{
 			removeUserFunc: func(username string) {
 				if test.username != username {
 					t.Errorf("Test %v: wanted %v to be removed from lobby, got %v", i, test.username, username)
@@ -266,18 +263,15 @@ func TestHandleUserUpdatePassword(t *testing.T) {
 				gotLobbyRemove = true
 			},
 		}
-		s := Server{
-			log:     log.New(io.Discard, "", 0),
-			userDao: userDao,
-			lobby:   l,
-		}
+		log := log.New(io.Discard, "", 0)
 		r := httptest.NewRequest("", "/", nil)
 		r.Form = make(url.Values)
 		r.Form.Add("username", test.username)
 		r.Form.Add("password", test.password)
 		r.Form.Add("password_confirm", test.newPassword)
 		w := httptest.NewRecorder()
-		s.handleUserUpdatePassword(w, r)
+		h := userUpdatePasswordHandler(userDao, lobby, log)
+		h.ServeHTTP(w, r)
 		gotCode := w.Code
 		switch {
 		case test.wantCode != gotCode:
@@ -292,8 +286,8 @@ func TestHandleUserUpdatePassword(t *testing.T) {
 	}
 }
 
-func TestHandleUserDelete(t *testing.T) {
-	handleUserDeleteTests := []struct {
+func TestUserDeleteHandler(t *testing.T) {
+	userDeleteHandlerTests := []struct {
 		username        string
 		password        string
 		daoDeleteErr    error
@@ -317,7 +311,7 @@ func TestHandleUserDelete(t *testing.T) {
 			wantLobbyRemove: true,
 		},
 	}
-	for i, test := range handleUserDeleteTests {
+	for i, test := range userDeleteHandlerTests {
 		userDao := mockUserDao{
 			deleteFunc: func(ctx context.Context, u user.User) error {
 				if test.username != u.Username {
@@ -327,7 +321,7 @@ func TestHandleUserDelete(t *testing.T) {
 			},
 		}
 		gotLobbyRemove := false
-		l := mockLobby{
+		lobby := mockLobby{
 			removeUserFunc: func(username string) {
 				if test.username != username {
 					t.Errorf("Test %v: wanted %v to be removed from lobby, got %v", i, test.username, username)
@@ -335,17 +329,14 @@ func TestHandleUserDelete(t *testing.T) {
 				gotLobbyRemove = true
 			},
 		}
-		s := Server{
-			log:     log.New(io.Discard, "", 0),
-			userDao: userDao,
-			lobby:   l,
-		}
+		log := log.New(io.Discard, "", 0)
 		r := httptest.NewRequest("", "/", nil)
 		r.Form = make(url.Values)
 		r.Form.Add("username", test.username)
 		r.Form.Add("password", test.password)
 		w := httptest.NewRecorder()
-		s.handleUserDelete(w, r)
+		h := userDeleteHandler(userDao, lobby, log)
+		h.ServeHTTP(w, r)
 		gotCode := w.Code
 		switch {
 		case test.wantCode != gotCode:
