@@ -83,7 +83,7 @@ func (d Dao) Login(ctx context.Context, u User) (*User, error) {
 	case err != nil:
 		return nil, fmt.Errorf("reading user: %w", err)
 	case !isCorrect:
-		return nil, fmt.Errorf("incorrect password")
+		return nil, ErrIncorrectLogin
 	}
 	return &u2, nil
 }

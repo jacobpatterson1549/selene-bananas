@@ -126,7 +126,7 @@ func TestDaoLogin(t *testing.T) {
 			if err == nil {
 				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
-			if test.rowScanErr == db.ErrNoRows && err != ErrIncorrectLogin {
+			if (test.rowScanErr == db.ErrNoRows || test.incorrectPassword) && err != ErrIncorrectLogin {
 				t.Errorf("Test %v: errs not equal when the db has no rows: wanted %v, got: %v", i, ErrIncorrectLogin, err)
 			}
 		case err != nil:

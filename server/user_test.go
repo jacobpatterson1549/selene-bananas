@@ -75,15 +75,18 @@ func TestUserLoginHandler(t *testing.T) {
 		daoErr       error
 		tokenizerErr error
 		wantCode     int
+		wantLog      bool
 	}{
 		{
 			wantCode: 500,
+			wantLog:  true,
 		},
 		{
 			username: "selene",
 			password: "password123",
 			daoErr:   fmt.Errorf("problem signing user in"),
 			wantCode: 500,
+			wantLog:  true,
 		},
 		{
 			username: "eve",
@@ -96,6 +99,7 @@ func TestUserLoginHandler(t *testing.T) {
 			password:     "password123",
 			tokenizerErr: fmt.Errorf("problem creating token"),
 			wantCode:     500,
+			wantLog:      true,
 		},
 		{
 			username: "selene",
@@ -144,11 +148,12 @@ func TestUserLoginHandler(t *testing.T) {
 		h := userLoginHandler(userDao, tokenizer, log)
 		h.ServeHTTP(w, r)
 		gotCode := w.Code
+		gotLog := buf.Len() != 0
 		switch {
 		case test.wantCode != gotCode:
 			t.Errorf("Test %v: response codes not equal: wanted: %v, got: %v", i, test.wantCode, gotCode)
-		case w.Body.Len() == 0:
-			t.Errorf("Test %v: response body should not be empty", i)
+		case test.wantLog != gotLog:
+			t.Errorf("Test %v: wanted or did not want log states not equal: wanted %v, got: %v - '%v'", i, test.wantLog, gotLog, buf.String())
 		}
 	}
 }
