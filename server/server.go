@@ -313,7 +313,6 @@ func (s *Server) tlsListener(l net.Listener) (net.Listener, error) {
 	tlsCfg.NextProtos = []string{"http/1.1"}
 	tlsCfg.Certificates = []tls.Certificate{certificate}
 	tlsListener := tls.NewListener(l, tlsCfg)
-	s.HTTPSServer.TLSConfig = tlsCfg
 	return tlsListener, nil
 }
 
