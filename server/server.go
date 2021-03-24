@@ -307,7 +307,7 @@ func (s *Server) tlsListener(l net.Listener) (net.Listener, error) {
 }
 
 // Stop asks the server to shutdown and waits for the shutdown to complete.
-// An error is returned if the server if the context times out.
+// An error is returned if the server context times out.
 func (s *Server) Stop(ctx context.Context) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, s.StopDur)
 	defer cancelFunc()
@@ -356,8 +356,9 @@ func (cfg Config) httpsHandler(httpHandler, httpsRedirectHandler http.Handler, p
 func (p Parameters) getHandler(cfg Config, template *template.Template) http.Handler {
 	data := cfg.data()
 	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
+	templateFileHandler := templateHandler(template, data)
 	staticFileHandler := http.FileServer(http.FS(p.StaticFS))
-	templateHandler := fileHandler(http.HandlerFunc(templateHandler(template, data)), cacheMaxAge)
+	templateHandler := fileHandler(http.HandlerFunc(templateFileHandler), cacheMaxAge)
 	staticHandler := fileHandler(staticFileHandler, cacheMaxAge)
 	monitor := runtimeMonitor{
 		hasTLS: cfg.validHTTPAddr(),

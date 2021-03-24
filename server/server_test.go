@@ -649,48 +649,36 @@ func TestAddMimeType(t *testing.T) {
 
 func TestTemplateHandler(t *testing.T) {
 	serveTemplateTests := []struct {
-		templateName   string
-		templateText   string
-		path           string
-		data           interface{}
-		wantStatusCode int
-		wantBody       string
+		templateName string
+		templateText string
+		path         string
+		data         interface{}
+		wantBody     string
 	}{
 		{
-			templateName:   "index.html",
-			path:           "/index.html",
-			templateText:   "stuff",
-			wantStatusCode: 200,
-			wantBody:       "stuff",
+			templateName: "index.html",
+			path:         "/index.html",
+			templateText: "stuff",
+			wantBody:     "stuff",
 		},
 		{ // different content type
-			templateName:   "init.js",
-			path:           "/init.js",
-			wantStatusCode: 200,
+			templateName: "init.js",
+			path:         "/init.js",
 		},
 		{
-			templateName:   "name.html",
-			templateText:   "template for {{ . }}",
-			path:           "/name.html",
-			data:           "selene",
-			wantStatusCode: 200,
-			wantBody:       "template for selene",
+			templateName: "name.html",
+			templateText: "template for {{ . }}",
+			path:         "/name.html",
+			data:         "selene",
+			wantBody:     "template for selene",
 		},
 		{
-			templateName:   "name.html",
-			templateText:   "template for {{ .Name }}",
-			path:           "/name.html",
-			data:           struct{ Name string }{Name: "selene"},
-			wantStatusCode: 200,
-			wantBody:       "template for selene",
+			templateName: "name.html",
+			templateText: "template for {{ .Name }}",
+			path:         "/name.html",
+			data:         struct{ Name string }{Name: "selene"},
+			wantBody:     "template for selene",
 		},
-		// { // bad template variable name - TODO: this should return an error
-		// 	templateName:   "name.html",
-		// 	templateText:   "template for {{ .NAME }}",
-		// 	path:           "/name.html",
-		// 	data:           struct{ Name string }{Name: "selene"},
-		// 	wantStatusCode: ???,
-		// },
 	}
 	for i, test := range serveTemplateTests {
 		template := template.Must(template.New(test.templateName).Parse(test.templateText))
@@ -698,11 +686,14 @@ func TestTemplateHandler(t *testing.T) {
 		w := httptest.NewRecorder()
 		h := templateHandler(template, test.data)
 		h.ServeHTTP(w, r)
+		wantCode := 200
+		gotCode := w.Code
+		gotBody := w.Body.String()
 		switch {
-		case test.wantStatusCode != w.Code:
-			t.Errorf("Test %v: status codes not equal: wanted: %v, got:    %v", i, test.wantStatusCode, w.Code)
-		case test.wantStatusCode == 200 && test.wantBody != w.Body.String():
-			t.Errorf("Test %v: body not equal:\nwanted: %v\ngot:    %v", i, test.wantBody, w.Body.String())
+		case wantCode != gotCode:
+			t.Errorf("Test %v: status codes not equal: wanted: %v, got:    %v", i, wantCode, gotCode)
+		case test.wantBody != gotBody:
+			t.Errorf("Test %v: body not equal:\nwanted: %v\ngot:    %v", i, test.wantBody, gotBody)
 		}
 	}
 }
