@@ -298,8 +298,6 @@ EKTcWGekdmdDPsHloRNtsiCa697B2O9IFA==
 			t.Errorf("Test %v: wanted TLS listener to be different from innerListener: got %v", i, got)
 		case !reflect.DeepEqual(testAddr, got.Addr()):
 			t.Errorf("Test %v: listener addresses not equal: wanted %v, got %v", i, testAddr, got.Addr())
-		case len(s.HTTPSServer.TLSConfig.Certificates) != 1:
-			t.Errorf("Test %v: wanted TLSConfig with certificate to be set on https server", i)
 		}
 	}
 }
