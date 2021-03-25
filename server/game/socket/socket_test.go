@@ -572,7 +572,7 @@ func TestWriteMessage(t *testing.T) {
 func TestWriteClose(t *testing.T) {
 	writeCloseTests := []struct {
 		connCloseErr error
-		reason       string
+		reasonErr    error
 		wantLog      bool
 	}{
 		{},
@@ -580,12 +580,13 @@ func TestWriteClose(t *testing.T) {
 			connCloseErr: errors.New("cannot write message to connection"),
 		},
 		{
-			reason:       "server shutting down",
+			reasonErr:    errServerShuttingDown,
 			connCloseErr: errors.New("cannot write message to connection"),
+			wantLog:      true, // should still log to server logs
 		},
 		{
-			reason:  "server shutting down",
-			wantLog: true,
+			reasonErr: errServerShuttingDown,
+			wantLog:   true,
 		},
 	}
 	for i, test := range writeCloseTests {
@@ -598,7 +599,7 @@ func TestWriteClose(t *testing.T) {
 				},
 			},
 		}
-		s.writeClose(test.reason)
+		s.writeClose(test.reasonErr)
 		if test.wantLog != (buf.Len() > 0) {
 			t.Errorf("Test %v: wanted log (%v), got '%v'", i, test.wantLog, buf.String())
 		}
