@@ -57,6 +57,22 @@ type (
 		NoTLSRedirect bool
 	}
 
+	// Parameters contains the interfaces needed to create a new server
+	Parameters struct {
+		Log *log.Logger
+		Tokenizer
+		UserDao
+		Lobby
+		StaticFS   fs.FS
+		TemplateFS fs.FS
+	}
+
+	// Challenge token and key used to get a TLS certificate using the ACME HTTP-01.
+	Challenge struct {
+		Token string
+		Key   string
+	}
+
 	// ColorConfig represents the colors on the site.
 	ColorConfig struct {
 		// The color to paint text on the canvas.
@@ -89,20 +105,11 @@ type (
 		ReadUsername(tokenString string) (string, error)
 	}
 
-	// Challenge token and key used to get a TLS certificate using the ACME HTTP-01.
-	Challenge struct {
-		Token string
-		Key   string
-	}
-
-	// Parameters contains the interfaces needed to create a new server
-	Parameters struct {
-		Log *log.Logger
-		Tokenizer
-		UserDao
-		Lobby
-		StaticFS   fs.FS
-		TemplateFS fs.FS
+	// Lobby is the place users can create, join, and participate in games.
+	Lobby interface {
+		Run(ctx context.Context, wg *sync.WaitGroup)
+		AddUser(username string, w http.ResponseWriter, r *http.Request) error
+		RemoveUser(username string)
 	}
 )
 

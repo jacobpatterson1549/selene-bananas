@@ -5,27 +5,17 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"sync"
 
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 )
 
-type (
-	// UserDao contains CRUD operations for user-related information.
-	UserDao interface {
-		Create(ctx context.Context, u user.User) error
-		Login(ctx context.Context, u user.User) (*user.User, error)
-		UpdatePassword(ctx context.Context, u user.User, newP string) error
-		Delete(ctx context.Context, u user.User) error
-	}
-
-	// Lobby is the place users can create, join, and participate in games.
-	Lobby interface {
-		Run(ctx context.Context, wg *sync.WaitGroup)
-		AddUser(username string, w http.ResponseWriter, r *http.Request) error
-		RemoveUser(username string)
-	}
-)
+// UserDao contains CRUD operations for user-related information.
+type UserDao interface {
+	Create(ctx context.Context, u user.User) error
+	Login(ctx context.Context, u user.User) (*user.User, error)
+	UpdatePassword(ctx context.Context, u user.User, newP string) error
+	Delete(ctx context.Context, u user.User) error
+}
 
 // userCreateHandler creates a user, adding it to the database.
 func userCreateHandler(userDao UserDao, log *log.Logger) http.HandlerFunc {
