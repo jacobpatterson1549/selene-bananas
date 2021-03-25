@@ -1092,7 +1092,7 @@ func TestHandleGameDelete(t *testing.T) {
 			gotInfoChanged = true
 			return
 		case message.LeaveGame:
-			// NOOP falthrough
+			// NOOP
 		default:
 			t.Errorf("wanted leave game message, got %v", m.Type)
 		}
@@ -1965,7 +1965,7 @@ func TestHandleGameSwap(t *testing.T) {
 				},
 				Config: Config{
 					ShuffleUnusedTilesFunc: func(tiles []tile.Tile) {
-						// NOOP, expect an error occurs after shuffle
+						// NOOP, but expect an error occur after the shuffle
 					},
 				},
 			},
