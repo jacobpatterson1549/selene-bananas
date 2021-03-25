@@ -52,7 +52,7 @@ func runServer(ctx context.Context, log *log.Logger) error {
 	case signal := <-done:
 		log.Printf("handled signal: %v", signal)
 	}
-	if err := server.Stop(ctx); err != nil {
+	if err := server.Shutdown(ctx); err != nil {
 		return fmt.Errorf("stopping server: %v", err)
 	}
 	log.Printf("server stopped successfully")

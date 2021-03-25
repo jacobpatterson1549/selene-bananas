@@ -247,7 +247,7 @@ func (s *Server) runHTTPServer(ctx context.Context, errC chan<- error) {
 	if !s.validHTTPAddr() {
 		return
 	}
-	go s.serveTCP(s.HTTPServer, errC, false)
+	go s.serveTCP(s.HTTPServer, errC, false, s.log)
 }
 
 // runHTTPSServer runs the https server in regards to the conviguration, adding the return error to the channel when done.
@@ -256,7 +256,7 @@ func (s *Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
 	s.lobby.Run(ctx, &s.wg)
 	s.HTTPSServer.RegisterOnShutdown(cancelFunc)
 	s.logServerStart()
-	go s.serveTCP(s.HTTPSServer, errC, true)
+	go s.serveTCP(s.HTTPSServer, errC, true, s.log)
 }
 
 func (s *Server) logServerStart() {
@@ -270,8 +270,9 @@ func (s *Server) logServerStart() {
 	s.log.Printf(serverStartInfo, s.HTTPSServer.Addr)
 }
 
-// serveTCP is closely derived from https://golang.org/src/net/http/server.go to allow key bytes rather than files
-func (s *Server) serveTCP(svr *http.Server, errC chan<- error, tls bool) (err error) {
+// serveTCP runs the specified server on the TCP network, configuring tls if necessary.
+// ServeTCP is closely derived from https://golang.org/src/net/http/server.go to allow key bytes rather than files
+func (cfg Config) serveTCP(svr *http.Server, errC chan<- error, tls bool, log *log.Logger) (err error) {
 	defer func() { errC <- err }()
 	ln, err := net.Listen("tcp", svr.Addr)
 	if err != nil {
@@ -281,21 +282,22 @@ func (s *Server) serveTCP(svr *http.Server, errC chan<- error, tls bool) (err er
 	switch {
 	case !tls:
 		// NOOP
-	case s.validHTTPAddr():
-		ln, err = s.tlsListener(ln)
+	case cfg.validHTTPAddr():
+		ln, err = cfg.tlsListener(ln)
 		if err != nil {
 			return err
 		}
-	case len(s.TLSCertPEM) != 0, len(s.TLSKeyPEM) != 0:
-		s.log.Printf("Ignoring certificate since PORT was specified, using automated certificate management.")
+	case len(cfg.TLSCertPEM) != 0, len(cfg.TLSKeyPEM) != 0:
+		log.Printf("Ignoring certificate since PORT was specified, using automated certificate management.")
 	}
 	err = svr.Serve(ln) // BLOCKING
 	return
 }
 
-// tlsListener is derived from https://golang.org/src/net/http/server.go to allow key bytes rather than files
-func (s *Server) tlsListener(l net.Listener) (net.Listener, error) {
-	certificate, err := tls.X509KeyPair([]byte(s.TLSCertPEM), []byte(s.TLSKeyPEM))
+// tlsListener creates a TLS listener, wrapping the base listener.
+// TLSListener is derived from https://golang.org/src/net/http/server.go to create a TLS Listener using the key bytes rather than files.
+func (cfg Config) tlsListener(l net.Listener) (net.Listener, error) {
+	certificate, err := tls.X509KeyPair([]byte(cfg.TLSCertPEM), []byte(cfg.TLSKeyPEM))
 	if err != nil {
 		return nil, err
 	}
@@ -306,9 +308,9 @@ func (s *Server) tlsListener(l net.Listener) (net.Listener, error) {
 	return tlsListener, nil
 }
 
-// Stop asks the server to shutdown and waits for the shutdown to complete.
+// Shutdown asks the servers to shutdown and waits for the shutdown to complete.
 // An error is returned if the server context times out.
-func (s *Server) Stop(ctx context.Context) error {
+func (s *Server) Shutdown(ctx context.Context) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, s.StopDur)
 	defer cancelFunc()
 	httpsShutdownErr := s.HTTPSServer.Shutdown(ctx)
