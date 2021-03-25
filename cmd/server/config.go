@@ -5,7 +5,6 @@ import (
 	crypto_rand "crypto/rand"
 	"database/sql"
 	"fmt"
-	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -21,6 +20,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/server/game/lobby"
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/server/game/socket"
+	"github.com/jacobpatterson1549/selene-bananas/server/log"
 )
 
 // CreateDatabase creates and sets up the database.
@@ -45,7 +45,7 @@ func (f Flags) CreateDatabase(ctx context.Context, driverName string, e Embedded
 }
 
 // CreateServer creates the server.
-func (f Flags) CreateServer(ctx context.Context, log *log.Logger, db *db.Database, e EmbeddedData) (*server.Server, error) {
+func (f Flags) CreateServer(ctx context.Context, log log.Logger, db *db.Database, e EmbeddedData) (*server.Server, error) {
 	timeFunc := func() int64 {
 		return time.Now().UTC().Unix()
 	}
@@ -97,7 +97,7 @@ func (f Flags) CreateServer(ctx context.Context, log *log.Logger, db *db.Databas
 		NoTLSRedirect: f.NoTLSRedirect,
 	}
 	p := server.Parameters{
-		Log:        log,
+		Logger:     log,
 		Tokenizer:  tokenizer,
 		UserDao:    userDao,
 		Lobby:      lobby,

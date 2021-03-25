@@ -3,19 +3,19 @@ package game
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/server/log"
 )
 
 type (
 	// Runner runs games.
 	Runner struct {
 		// log is used to log errors and other information
-		log *log.Logger
+		log log.Logger
 		// games maps game ids to the channel each games listens to for incoming messages
 		// OutChannels are stored here because the Runner writes to the game, which in turn reads from the Runner's channel as an InChannel
 		games map[game.ID]chan<- message.Message
@@ -52,7 +52,7 @@ type (
 )
 
 // NewRunner creates a new game runner from the config.
-func (cfg RunnerConfig) NewRunner(log *log.Logger, WordValidator WordValidator, userDao UserDao) (*Runner, error) {
+func (cfg RunnerConfig) NewRunner(log log.Logger, WordValidator WordValidator, userDao UserDao) (*Runner, error) {
 	if err := cfg.validate(log, WordValidator, userDao); err != nil {
 		return nil, fmt.Errorf("creating game runner: validation: %w", err)
 	}
@@ -74,7 +74,7 @@ func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer r.log.Println("game runner stopped")
+		defer r.log.Printf("game runner stopped")
 		defer close(out)
 		defer cancelFunc()
 		for { // BLOCKING
@@ -93,7 +93,7 @@ func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 }
 
 // validate ensures the configuration has no errors.
-func (cfg RunnerConfig) validate(log *log.Logger, WordValidator WordValidator, userDao UserDao) error {
+func (cfg RunnerConfig) validate(log log.Logger, WordValidator WordValidator, userDao UserDao) error {
 	switch {
 	case log == nil:
 		return fmt.Errorf("log required")

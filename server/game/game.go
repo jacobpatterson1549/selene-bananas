@@ -4,7 +4,6 @@ package game
 import (
 	"context"
 	"fmt"
-	"log"
 	"sort"
 	"sync"
 	"time"
@@ -15,12 +14,13 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/server/log"
 )
 
 type (
 	// Game contains the logic to play a tile-base word-forming game between users.
 	Game struct {
-		log           *log.Logger
+		log           log.Logger
 		id            game.ID
 		createdAt     int64
 		status        game.Status
@@ -76,7 +76,7 @@ const (
 )
 
 // NewGame creates a new game and runs it.
-func (cfg Config) NewGame(log *log.Logger, id game.ID, WordValidator WordValidator, userDao UserDao) (*Game, error) {
+func (cfg Config) NewGame(log log.Logger, id game.ID, WordValidator WordValidator, userDao UserDao) (*Game, error) {
 	if err := cfg.validate(log, id, WordValidator, userDao); err != nil {
 		return nil, fmt.Errorf("creating game: validation: %w", err)
 	}
@@ -98,7 +98,7 @@ func (cfg Config) NewGame(log *log.Logger, id game.ID, WordValidator WordValidat
 
 // validate ensures the configuration has no errors.
 // the config is modified to use the default tile letters if the tile letters are empty.
-func (cfg *Config) validate(log *log.Logger, id game.ID, wordValidator WordValidator, userDao UserDao) error {
+func (cfg *Config) validate(log log.Logger, id game.ID, wordValidator WordValidator, userDao UserDao) error {
 	if len(cfg.TileLetters) == 0 {
 		cfg.TileLetters = defaultTileLetters
 	}

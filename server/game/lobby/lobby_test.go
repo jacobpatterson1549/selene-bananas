@@ -3,8 +3,6 @@ package lobby
 import (
 	"context"
 	"fmt"
-	"io"
-	"log"
 	"net/http/httptest"
 	"reflect"
 	"sync"
@@ -13,10 +11,12 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/server/log"
+	"github.com/jacobpatterson1549/selene-bananas/server/log/logtest"
 )
 
 func TestNewLobby(t *testing.T) {
-	testLog := log.New(io.Discard, "", 0)
+	testLog := logtest.DiscardLogger
 	testSocketRunner := mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
 		t.Error("socker runner run called")
 		return nil
@@ -26,7 +26,7 @@ func TestNewLobby(t *testing.T) {
 		return nil
 	})
 	newLobbyTests := []struct {
-		log          *log.Logger
+		log          log.Logger
 		wantOk       bool
 		want         *Lobby
 		socketRunner SocketRunner
@@ -117,7 +117,7 @@ func TestRun(t *testing.T) {
 		socketRunnerRun := false
 		gameRunnerRun := false
 		l := Lobby{
-			log: log.New(io.Discard, "", 0),
+			log: logtest.DiscardLogger,
 			socketRunner: mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
 				socketRunnerRun = true
 				return socketRunnerOut
@@ -175,7 +175,7 @@ func TestAddUser(t *testing.T) {
 			wg.Done()
 		}
 		l := Lobby{
-			log: log.New(io.Discard, "", 0),
+			log: logtest.DiscardLogger,
 			socketRunner: mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
 				wg.Add(1)
 				go handleSocketMessage(wg, inSM)
@@ -219,7 +219,7 @@ func TestRemoveUser(t *testing.T) {
 		wg.Done()
 	}
 	l := &Lobby{
-		log: log.New(io.Discard, "", 0),
+		log: logtest.DiscardLogger,
 		socketRunner: mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
 			wg.Add(1)
 			go handleModifyRequest(wg, inSM)
@@ -271,7 +271,7 @@ func TestHandleSocketMessage(t *testing.T) {
 		var wg sync.WaitGroup
 		var gotGameM, gotSocketM message.Message
 		l := Lobby{
-			log: log.New(io.Discard, "", 0),
+			log: logtest.DiscardLogger,
 			socketRunner: mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
 				wg.Add(1)
 				go func() {
@@ -401,7 +401,7 @@ func TestHandleGameMessage(t *testing.T) {
 			wg.Done()
 		}
 		l := Lobby{
-			log: log.New(io.Discard, "", 0),
+			log: logtest.DiscardLogger,
 			socketRunner: mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
 				wg.Add(1)
 				go handleGameMessages(wg, in)

@@ -9,7 +9,6 @@ import (
 	"html/template"
 	"io"
 	"io/fs"
-	"log"
 	"mime"
 	"net"
 	"net/http"
@@ -20,13 +19,14 @@ import (
 	"unicode"
 
 	"github.com/jacobpatterson1549/selene-bananas/server/game"
+	"github.com/jacobpatterson1549/selene-bananas/server/log"
 )
 
 type (
 	// Server runs the site
 	Server struct {
 		wg          sync.WaitGroup
-		log         *log.Logger
+		log         log.Logger
 		lobby       Lobby
 		HTTPServer  *http.Server
 		HTTPSServer *http.Server
@@ -59,7 +59,7 @@ type (
 
 	// Parameters contains the interfaces needed to create a new server
 	Parameters struct {
-		Log *log.Logger
+		log.Logger
 		Tokenizer
 		UserDao
 		Lobby
@@ -145,7 +145,7 @@ func (cfg Config) NewServer(p Parameters) (*Server, error) {
 	httpHandler := cfg.httpHandler(httpsRedirectHandler)
 	httpsHandler := cfg.httpsHandler(httpHandler, httpsRedirectHandler, p, template)
 	s := Server{
-		log:   p.Log,
+		log:   p.Logger,
 		lobby: p.Lobby,
 		HTTPServer: &http.Server{
 			Addr:    httpAddr,
@@ -214,7 +214,7 @@ func (cfg Config) validHTTPAddr() bool {
 // validate ensures that all of the parameters are present.
 func (p Parameters) validate() error {
 	switch {
-	case p.Log == nil:
+	case p.Logger == nil:
 		return fmt.Errorf("log required")
 	case p.Tokenizer == nil:
 		return fmt.Errorf("tokenizer required")
@@ -279,7 +279,7 @@ func (s *Server) logServerStart() {
 
 // serveTCP runs the specified server on the TCP network, configuring tls if necessary.
 // ServeTCP is closely derived from https://golang.org/src/net/http/server.go to allow key bytes rather than files
-func (cfg Config) serveTCP(svr *http.Server, errC chan<- error, tls bool, log *log.Logger) (err error) {
+func (cfg Config) serveTCP(svr *http.Server, errC chan<- error, tls bool, log log.Logger) (err error) {
 	defer func() { errC <- err }()
 	ln, err := net.Listen("tcp", svr.Addr)
 	if err != nil {
@@ -382,7 +382,7 @@ func (p Parameters) getHandler(cfg Config, template *template.Template) http.Han
 	for _, p := range staticPatterns {
 		getMux.Handle(p, staticHandler)
 	}
-	getMux.Handle("/lobby", http.HandlerFunc(userLobbyConnectHandler(p.Tokenizer, p.Lobby, p.Log)))
+	getMux.Handle("/lobby", http.HandlerFunc(userLobbyConnectHandler(p.Tokenizer, p.Lobby, p.Logger)))
 	getMux.Handle("/monitor", monitor)
 	return rootHandler(getMux)
 }
@@ -390,14 +390,14 @@ func (p Parameters) getHandler(cfg Config, template *template.Template) http.Han
 // postHandler checks authentication and calls handlers for POST endpoints.
 func (p Parameters) postHandler() http.Handler {
 	postMux := http.NewServeMux()
-	postMux.Handle("/user_create", http.HandlerFunc(userCreateHandler(p.UserDao, p.Log)))
-	postMux.Handle("/user_login", http.HandlerFunc(userLoginHandler(p.UserDao, p.Tokenizer, p.Log)))
-	postMux.Handle("/user_update_password", http.HandlerFunc(userUpdatePasswordHandler(p.UserDao, p.Lobby, p.Log)))
-	postMux.Handle("/user_delete", http.HandlerFunc(userDeleteHandler(p.UserDao, p.Lobby, p.Log)))
+	postMux.Handle("/user_create", http.HandlerFunc(userCreateHandler(p.UserDao, p.Logger)))
+	postMux.Handle("/user_login", http.HandlerFunc(userLoginHandler(p.UserDao, p.Tokenizer, p.Logger)))
+	postMux.Handle("/user_update_password", http.HandlerFunc(userUpdatePasswordHandler(p.UserDao, p.Lobby, p.Logger)))
+	postMux.Handle("/user_delete", http.HandlerFunc(userDeleteHandler(p.UserDao, p.Lobby, p.Logger)))
 	postMux.Handle("/ping", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// NOOP
 	}))
-	return authHandler(postMux, p.Tokenizer, p.Log)
+	return authHandler(postMux, p.Tokenizer, p.Logger)
 }
 
 // rootHandler maps requests for / to /index.html.
@@ -411,14 +411,14 @@ func rootHandler(h http.Handler) http.HandlerFunc {
 }
 
 // authHandler checks the token username of the request before running the child handler
-func authHandler(h http.Handler, tokenizer Tokenizer, log *log.Logger) http.HandlerFunc {
+func authHandler(h http.Handler, tokenizer Tokenizer, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/user_create", "/user_login":
 			// [unauthenticated]
 		default:
 			if err := checkTokenUsername(r, tokenizer); err != nil {
-				log.Print(err)
+				log.Printf(err.Error())
 				httpError(w, http.StatusForbidden)
 				return
 			}
@@ -510,7 +510,7 @@ func checkTokenUsername(r *http.Request, tokenizer Tokenizer) error {
 }
 
 // writeInternalError logs and writes the error as an internal server error (500).
-func writeInternalError(err error, log *log.Logger, w http.ResponseWriter) {
+func writeInternalError(err error, log log.Logger, w http.ResponseWriter) {
 	log.Printf("server error: %v", err)
 	http.Error(w, err.Error(), http.StatusInternalServerError)
 }

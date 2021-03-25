@@ -3,12 +3,11 @@ package main
 import (
 	"context"
 	"database/sql"
-	"io"
-	"log"
 	"testing"
 	"testing/fstest"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
+	"github.com/jacobpatterson1549/selene-bananas/server/log/logtest"
 )
 
 // init registers a mock driver that does nothing when executing transactions
@@ -45,7 +44,7 @@ func TestNewServer(t *testing.T) {
 		HTTPSPort: 443,
 	}
 	ctx := context.Background()
-	log := log.New(io.Discard, "", 0)
+	log := logtest.DiscardLogger
 	db := db.Database{}
 	e := EmbeddedData{
 		Version:    "1",

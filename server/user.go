@@ -3,10 +3,10 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
+	"github.com/jacobpatterson1549/selene-bananas/server/log"
 )
 
 // UserDao contains CRUD operations for user-related information.
@@ -18,7 +18,7 @@ type UserDao interface {
 }
 
 // userCreateHandler creates a user, adding it to the database.
-func userCreateHandler(userDao UserDao, log *log.Logger) http.HandlerFunc {
+func userCreateHandler(userDao UserDao, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		password := r.FormValue("password_confirm")
@@ -36,7 +36,7 @@ func userCreateHandler(userDao UserDao, log *log.Logger) http.HandlerFunc {
 }
 
 // userLoginHandler signs a user in, writing the token to the response.
-func userLoginHandler(userDao UserDao, tokenizer Tokenizer, log *log.Logger) http.HandlerFunc {
+func userLoginHandler(userDao UserDao, tokenizer Tokenizer, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		password := r.FormValue("password")
@@ -66,7 +66,7 @@ func userLoginHandler(userDao UserDao, tokenizer Tokenizer, log *log.Logger) htt
 }
 
 // userLobbyConnectHandler adds the user to the lobby.
-func userLobbyConnectHandler(tokenizer Tokenizer, lobby Lobby, log *log.Logger) http.HandlerFunc {
+func userLobbyConnectHandler(tokenizer Tokenizer, lobby Lobby, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tokenString := r.FormValue("access_token")
 		username, err := tokenizer.ReadUsername(tokenString)
@@ -84,7 +84,7 @@ func userLobbyConnectHandler(tokenizer Tokenizer, lobby Lobby, log *log.Logger) 
 }
 
 // userUpdatePasswordHandler updates the user's password.
-func userUpdatePasswordHandler(userDao UserDao, lobby Lobby, log *log.Logger) http.HandlerFunc {
+func userUpdatePasswordHandler(userDao UserDao, lobby Lobby, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		password := r.FormValue("password")
@@ -104,7 +104,7 @@ func userUpdatePasswordHandler(userDao UserDao, lobby Lobby, log *log.Logger) ht
 }
 
 // userDeleteHandler deletes the user from the database.
-func userDeleteHandler(userDao UserDao, lobby Lobby, log *log.Logger) http.HandlerFunc {
+func userDeleteHandler(userDao UserDao, lobby Lobby, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		password := r.FormValue("password")

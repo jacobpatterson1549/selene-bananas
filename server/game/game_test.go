@@ -1,11 +1,8 @@
 package game
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"log"
 	"reflect"
 	"sort"
 	"strings"
@@ -19,10 +16,11 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/server/log"
+	"github.com/jacobpatterson1549/selene-bananas/server/log/logtest"
 )
 
 func TestNewGame(t *testing.T) {
-	testLog := log.New(io.Discard, "", 0)
 	timeFunc := func() int64 {
 		return 47
 	}
@@ -63,10 +61,11 @@ func TestNewGame(t *testing.T) {
 		},
 	}
 	for i, test := range newGameTests {
+		log := logtest.DiscardLogger
 		id := game.ID(7)
 		var WordValidator mockWordValidator
 		var userDao mockUserDao
-		got, err := test.Config.NewGame(testLog, id, WordValidator, userDao)
+		got, err := test.Config.NewGame(log, id, WordValidator, userDao)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -74,7 +73,7 @@ func TestNewGame(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
-		case !reflect.DeepEqual(testLog, got.log),
+		case !reflect.DeepEqual(log, got.log),
 			got.id != id,
 			got.createdAt != 47,
 			got.status != game.NotStarted,
@@ -89,7 +88,7 @@ func TestNewGame(t *testing.T) {
 
 func TestValidateConfig(t *testing.T) {
 	t.Run("TestErrCheck", func(t *testing.T) {
-		testLog := log.New(io.Discard, "", 0)
+		testLog := logtest.DiscardLogger
 		timeFunc := func() int64 {
 			return 0
 		}
@@ -103,7 +102,7 @@ func TestValidateConfig(t *testing.T) {
 		var userDao mockUserDao
 		errCheckTests := []struct {
 			Config
-			*log.Logger
+			log.Logger
 			game.ID
 			WordValidator
 			UserDao
@@ -243,7 +242,7 @@ func TestValidateConfig(t *testing.T) {
 			},
 		}
 		for i, test := range setTileLettersTests {
-			log := log.New(io.Discard, "", 0)
+			log := logtest.DiscardLogger
 			wordValidator := mockWordValidator(func(word string) bool { return false })
 			userDao := mockUserDao{}
 			test.Config.validate(log, 1, wordValidator, userDao) // Ignore the error.  This test doesn't care about it.
@@ -284,7 +283,6 @@ func TestRun(t *testing.T) {
 }
 
 func TestRunSync(t *testing.T) {
-	testLog := log.New(io.Discard, "", 0)
 	t.Run("TestValidMessageHandler", func(t *testing.T) {
 		validMessageHandlerTests := []struct {
 			message.Type
@@ -378,7 +376,7 @@ func TestRunSync(t *testing.T) {
 			}
 			pn := player.Name("selene")
 			g := Game{
-				log: testLog,
+				log: logtest.DiscardLogger,
 				players: map[player.Name]*playerController.Player{
 					pn: nil,
 				},
@@ -434,7 +432,7 @@ func TestRunSync(t *testing.T) {
 		}
 		pn := player.Name("selene")
 		g := Game{
-			log: testLog,
+			log: logtest.DiscardLogger,
 			players: map[player.Name]*playerController.Player{
 				pn: nil,
 			},
@@ -794,8 +792,8 @@ func TestHandleMessage(t *testing.T) {
 	}
 	for i, test := range handleMessageTests {
 		ctx := context.Background()
-		var buf bytes.Buffer
-		test.Game.log = log.New(&buf, "", 0)
+		log := logtest.NewLogger()
+		test.Game.log = log
 		gotSend := false
 		send := func(m message.Message) {
 			gotSend = true
@@ -813,8 +811,8 @@ func TestHandleMessage(t *testing.T) {
 		switch {
 		case active != test.wantActive:
 			t.Errorf("Test %v: wanted active flag to be %v after handler was run, got %v", i, active, test.wantActive)
-		case test.wantLog != (buf.Len() > 0):
-			t.Errorf("Test %v: wanted message logged (%v), got %v", i, test.wantLog, buf.Len() > 0)
+		case test.wantLog != !log.Empty():
+			t.Errorf("Test %v: wanted message logged (%v), got %v", i, test.wantLog, !log.Empty())
 		case test.wantSendType != 0 && !gotSend:
 			t.Errorf("Test %v: wanted message to be sent", i)
 		}
@@ -1624,8 +1622,8 @@ func TestHandleGameFinish(t *testing.T) {
 			}
 		}
 		userDaoCalled := false
-		var buf bytes.Buffer
-		test.Game.log = log.New(&buf, "", 0)
+		log := logtest.NewLogger()
+		test.Game.log = log
 		test.Game.userDao = mockUserDao{
 			UpdatePointsIncrementFunc: func(ctx context.Context, userPoints map[string]int) error {
 				userDaoCalled = true
@@ -1636,8 +1634,8 @@ func TestHandleGameFinish(t *testing.T) {
 		switch {
 		case test.wantOk != userDaoCalled:
 			t.Errorf("Test %v: wanted user dao to be called to increment points of users", i)
-		case (buf.Len() != 0) != (test.userDaoErr != nil):
-			t.Errorf("Test %v: wanted log message (%v) if and only if user dao fails (%v)", i, buf.Len() != 0, test.userDaoErr != nil)
+		case !log.Empty() != (test.userDaoErr != nil):
+			t.Errorf("Test %v: wanted log message (%v) if and only if user dao fails (%v)", i, !log.Empty(), test.userDaoErr != nil)
 		case !test.wantOk:
 			if err == nil {
 				t.Errorf("Test %v: wanted error", i)

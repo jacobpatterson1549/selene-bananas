@@ -2,8 +2,6 @@ package game
 
 import (
 	"context"
-	"io"
-	"log"
 	"reflect"
 	"sync"
 	"testing"
@@ -15,14 +13,16 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/server/log"
+	"github.com/jacobpatterson1549/selene-bananas/server/log/logtest"
 )
 
 func TestNewRunner(t *testing.T) {
 	var wc mockWordValidator
 	userDao := mockUserDao{}
-	testLog := log.New(io.Discard, "", 0)
+	testLog := logtest.DiscardLogger
 	newRunnerTests := []struct {
-		log *log.Logger
+		log log.Logger
 		RunnerConfig
 		WordValidator
 		UserDao
@@ -118,7 +118,7 @@ func TestRunRunner(t *testing.T) {
 	}
 	for i, test := range runRunnerTests {
 		r := Runner{
-			log: log.New(io.Discard, "", 0),
+			log: logtest.DiscardLogger,
 		}
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
@@ -139,7 +139,6 @@ func TestGameCreate(t *testing.T) {
 	basicGameCfg := &game.Config{
 		CheckOnSnag: true,
 	}
-	testLog := log.New(io.Discard, "", 0)
 	gameCreateTests := []struct {
 		m      message.Message
 		wantOk bool
@@ -238,7 +237,7 @@ func TestGameCreate(t *testing.T) {
 		var wordValidator mockWordValidator
 		var userDao mockUserDao
 		r := Runner{
-			log:           testLog,
+			log:           logtest.DiscardLogger,
 			games:         make(map[game.ID]chan<- message.Message),
 			lastID:        3,
 			WordValidator: wordValidator,
@@ -314,7 +313,7 @@ func TestGameDelete(t *testing.T) {
 		in := make(chan message.Message)
 		gIn := make(chan message.Message)
 		r := Runner{
-			log: log.New(io.Discard, "", 0),
+			log: logtest.DiscardLogger,
 			games: map[game.ID]chan<- message.Message{
 				5: gIn,
 			},
@@ -382,7 +381,7 @@ func TestHandleGameMessage(t *testing.T) {
 		in := make(chan message.Message)
 		gIn := make(chan message.Message)
 		r := Runner{
-			log: log.New(io.Discard, "", 0),
+			log: logtest.DiscardLogger,
 			games: map[game.ID]chan<- message.Message{
 				3: gIn,
 			},

@@ -4,7 +4,6 @@ package lobby
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"sort"
 	"sync"
@@ -12,13 +11,14 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/server/log"
 )
 
 type (
 	// Lobby is the place users can create, join, and participate in games.
 	// It is a middleman between the socket runner and game runner.  It also handles communication from the server to add and remove sockets.
 	Lobby struct {
-		log          *log.Logger
+		log          log.Logger
 		socketRunner SocketRunner
 		gameRunner   GameRunner
 		// socketMessages is used for sending messages to the socket runner that stem from HTTP requests to add and remove sockets.
@@ -46,7 +46,7 @@ type (
 )
 
 // NewLobby creates a new game lobby.
-func (cfg Config) NewLobby(log *log.Logger, socketRunner SocketRunner, gameRunner GameRunner) (*Lobby, error) {
+func (cfg Config) NewLobby(log log.Logger, socketRunner SocketRunner, gameRunner GameRunner) (*Lobby, error) {
 	if err := cfg.validate(log, socketRunner, gameRunner); err != nil {
 		return nil, fmt.Errorf("creating lobby: validation: %w", err)
 	}
@@ -62,7 +62,7 @@ func (cfg Config) NewLobby(log *log.Logger, socketRunner SocketRunner, gameRunne
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(log *log.Logger, socketRunner SocketRunner, gameRunner GameRunner) error {
+func (cfg Config) validate(log log.Logger, socketRunner SocketRunner, gameRunner GameRunner) error {
 	switch {
 	case log == nil:
 		return fmt.Errorf("log required")
@@ -83,7 +83,7 @@ func (l *Lobby) Run(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer l.log.Println("lobby stopped")
+		defer l.log.Printf("lobby stopped")
 		defer close(socketRunnerIn)
 		defer close(gameRunnerIn)
 		for { // BLOCKING
@@ -163,7 +163,7 @@ func (l *Lobby) handleGameInfoChanged(m message.Message, socketRunnerIn chan<- m
 			PlayerName: m.PlayerName,
 		}
 		message.Send(m2, socketRunnerIn, l.Debug, l.log)
-		l.log.Print(m2.Info)
+		l.log.Printf(m2.Info)
 		return
 	}
 	switch m.Game.Status {

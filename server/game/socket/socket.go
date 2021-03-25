@@ -4,19 +4,19 @@ package socket
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/server/log"
 )
 
 type (
 	// Socket reads and writes messages to the browsers
 	Socket struct {
-		log        *log.Logger
+		log        log.Logger
 		Conn       Conn
 		PlayerName player.Name
 		Addr       message.Addr
@@ -69,7 +69,7 @@ var errSocketClosed = fmt.Errorf("socket closed")
 var errServerShuttingDown = fmt.Errorf("server shutting down")
 
 // NewSocket creates a socket
-func (cfg Config) NewSocket(log *log.Logger, pn player.Name, conn Conn) (*Socket, error) {
+func (cfg Config) NewSocket(log log.Logger, pn player.Name, conn Conn) (*Socket, error) {
 	a, err := cfg.validate(log, pn, conn)
 	if err != nil {
 		return nil, fmt.Errorf("creating socket: validation: %w", err)
@@ -85,7 +85,7 @@ func (cfg Config) NewSocket(log *log.Logger, pn player.Name, conn Conn) (*Socket
 }
 
 // validate ensures the configuration has no errors.
-func (cfg Config) validate(log *log.Logger, pn player.Name, conn Conn) (net.Addr, error) {
+func (cfg Config) validate(log log.Logger, pn player.Name, conn Conn) (net.Addr, error) {
 	switch {
 	case len(pn) == 0:
 		return nil, fmt.Errorf("player name rquired")
@@ -264,7 +264,7 @@ func (s *Socket) refreshDeadline(refreshDeadlineFunc func(t time.Time) error, pe
 	deadline := nowTime.Add(period)
 	if err := refreshDeadlineFunc(deadline); err != nil {
 		err = fmt.Errorf("error refreshing ping/pong deadline: %w", err)
-		s.log.Print(err)
+		s.log.Printf(err.Error())
 		return err
 	}
 	return nil

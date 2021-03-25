@@ -43,7 +43,7 @@ func TestNewWordValidator(t *testing.T) {
 func TestServerGetFiles(t *testing.T) {
 	ctx := context.Background()
 	var buf bytes.Buffer
-	log := log.New(&buf, "", 0)
+	log := log.New(&buf, "", 0) // must be "real" for the test server
 	db := db.Database{}
 	e := embeddedData(t)
 	f := main.Flags{

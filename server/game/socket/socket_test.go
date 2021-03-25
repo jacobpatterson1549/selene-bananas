@@ -1,11 +1,8 @@
 package socket
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io"
-	"log"
 	"net"
 	"reflect"
 	"sync"
@@ -15,10 +12,12 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
+	"github.com/jacobpatterson1549/selene-bananas/server/log"
+	"github.com/jacobpatterson1549/selene-bananas/server/log/logtest"
 )
 
 func TestNewSocket(t *testing.T) {
-	testLog := log.New(io.Discard, "", 0)
+	testLog := logtest.DiscardLogger
 	timeFunc := func() int64 { return 0 }
 	pn := player.Name("selene")
 	addr := mockAddr("selene.pc")
@@ -29,7 +28,7 @@ func TestNewSocket(t *testing.T) {
 		playerName player.Name
 		Conn
 		remoteAddr net.Addr
-		log        *log.Logger
+		log        log.Logger
 		Config
 	}{
 		{}, // no playerName
@@ -216,7 +215,7 @@ func TestRunSocket(t *testing.T) {
 			HTTPPingPeriod: 3 * time.Hour,
 		}
 		s := Socket{
-			log:    log.New(io.Discard, "", 0),
+			log:    logtest.DiscardLogger,
 			Conn:   &conn,
 			Config: cfg,
 			Addr:   "some.addr",
@@ -326,10 +325,10 @@ func TestReadMessagesSync(t *testing.T) {
 				setPongHandlerFuncCalled = true
 			},
 		}
-		var buf bytes.Buffer
+		log := logtest.NewLogger()
 		s := Socket{
 			Conn: &conn,
-			log:  log.New(&buf, "", 0),
+			log:  log,
 			Config: Config{
 				Debug:    test.debug,
 				TimeFunc: func() int64 { return 0 },
@@ -369,10 +368,10 @@ func TestReadMessagesSync(t *testing.T) {
 			t.Errorf("Test %v: wanted last message to be socket close, got %v", i, gotMessages[len(gotMessages)-1])
 		case test.setReadDeadlineErr == nil && !setPongHandlerFuncCalled:
 			t.Errorf("Test %v: wanted pong handler to be set", i)
-		case !test.wantOk && buf.Len() == 0 && !test.isNormalCloseErr:
+		case !test.wantOk && log.Empty() && !test.isNormalCloseErr:
 			t.Errorf("Test %v: wanted message to be logged", i)
-		case test.wantOk && (buf.Len() != 0) != test.debug:
-			t.Errorf("Test %v: wanted message to be logged (%v), got '%v'", i, test.debug, buf.String())
+		case test.wantOk && !log.Empty() != test.debug:
+			t.Errorf("Test %v: wanted message to be logged (%v), got '%v'", i, test.debug, log.String())
 		case test.wantOk && gotMessages[0].Info != normalMessageInfo:
 			t.Errorf("Test %v: wanted first message to be normal message, got %v", i, gotMessages[0])
 		}
@@ -478,10 +477,10 @@ func TestWriteMessagesSync(t *testing.T) {
 				return test.pingErr
 			},
 		}
-		var buf bytes.Buffer
+		log := logtest.NewLogger()
 		s := Socket{
 			Conn: &conn,
-			log:  log.New(&buf, "", 0),
+			log:  log,
 			Config: Config{
 				TimeFunc: func() int64 { return 0 },
 			},
@@ -543,9 +542,9 @@ func TestWriteMessage(t *testing.T) {
 		},
 	}
 	for i, test := range writeMessageTests {
-		var buf bytes.Buffer
+		log := logtest.NewLogger()
 		s := Socket{
-			log: log.New(&buf, "", 0),
+			log: log,
 			Config: Config{
 				Debug: test.debug,
 			},
@@ -557,8 +556,8 @@ func TestWriteMessage(t *testing.T) {
 		}
 		err := s.writeMessage(test.m)
 		switch {
-		case test.debug != (buf.Len() != 0):
-			t.Errorf("Test %v: wanted debug only when debug is on, got %v", i, buf.String())
+		case test.debug != !log.Empty():
+			t.Errorf("Test %v: wanted debug only when debug is on, got %v", i, log.String())
 		case !test.wantOk:
 			if err == nil {
 				t.Errorf("Test %v: wanted error", i)
@@ -590,9 +589,9 @@ func TestWriteClose(t *testing.T) {
 		},
 	}
 	for i, test := range writeCloseTests {
-		var buf bytes.Buffer
+		log := logtest.NewLogger()
 		s := Socket{
-			log: log.New(&buf, "", 0),
+			log: log,
 			Conn: &mockConn{
 				WriteCloseFunc: func(reason string) error {
 					return test.connCloseErr
@@ -600,8 +599,8 @@ func TestWriteClose(t *testing.T) {
 			},
 		}
 		s.writeClose(test.reasonErr)
-		if test.wantLog != (buf.Len() > 0) {
-			t.Errorf("Test %v: wanted log (%v), got '%v'", i, test.wantLog, buf.String())
+		if test.wantLog != !log.Empty() {
+			t.Errorf("Test %v: wanted log (%v), got '%v'", i, test.wantLog, log.String())
 		}
 	}
 }
@@ -610,7 +609,6 @@ func TestWriteClose(t *testing.T) {
 // This prevents deadlocks if the lobby keeps sending it messages before it is closed.
 func TestWriteMessagesSkipSend(t *testing.T) {
 	numMessagesWritten := 0
-	testLog := log.New(io.Discard, "", 0)
 	timeFunc := func() int64 { return 0 }
 	conn := mockConn{
 		CloseFunc: func() error {
@@ -634,7 +632,7 @@ func TestWriteMessagesSkipSend(t *testing.T) {
 		},
 	}
 	s := Socket{
-		log:  testLog,
+		log:  logtest.DiscardLogger,
 		Conn: &conn,
 		Config: Config{
 			TimeFunc: timeFunc,

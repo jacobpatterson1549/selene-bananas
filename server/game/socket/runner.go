@@ -3,7 +3,6 @@ package socket
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 
@@ -11,13 +10,14 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/server/game/socket/gorilla"
+	"github.com/jacobpatterson1549/selene-bananas/server/log"
 )
 
 type (
 	// Runner handles sending messages to different sockets.
 	// The runner allows for players to open multiple sockets, but multiple sockets cannot play in the same game before first leaving.
 	Runner struct {
-		log           *log.Logger
+		log           log.Logger
 		upgradeFunc   upgradeFunc
 		playerSockets map[player.Name]map[message.Addr]chan<- message.Message
 		playerGames   map[player.Name]map[game.ID]message.Addr
@@ -41,7 +41,7 @@ type (
 )
 
 // NewRunner creates a new socket runner from the config.
-func (cfg RunnerConfig) NewRunner(log *log.Logger) (*Runner, error) {
+func (cfg RunnerConfig) NewRunner(log log.Logger) (*Runner, error) {
 	if err := cfg.validate(log); err != nil {
 		return nil, fmt.Errorf("creating socket runner: validation: %w", err)
 	}
@@ -60,7 +60,7 @@ func (cfg RunnerConfig) NewRunner(log *log.Logger) (*Runner, error) {
 }
 
 // validate ensures the configuration has no errors.
-func (cfg RunnerConfig) validate(log *log.Logger) error {
+func (cfg RunnerConfig) validate(log log.Logger) error {
 	switch {
 	case log == nil:
 		return fmt.Errorf("log required")
@@ -81,7 +81,7 @@ func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer r.log.Println("socket runner stopped")
+		defer r.log.Printf("socket runner stopped")
 		defer close(out)
 		defer cancelFunc()
 		for { // BLOCKING

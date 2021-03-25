@@ -6,8 +6,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html/template"
-	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -19,10 +17,11 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
+	"github.com/jacobpatterson1549/selene-bananas/server/log/logtest"
 )
 
 func TestNewServer(t *testing.T) {
-	testLog := log.New(io.Discard, "", 0)
+	testLog := logtest.DiscardLogger
 	var tokenizer mockTokenizer
 	var userDao mockUserDao
 	var lobby mockLobby
@@ -39,25 +38,25 @@ func TestNewServer(t *testing.T) {
 		{}, // no log
 		{ // no tokenizer
 			Parameters: Parameters{
-				Log: testLog,
+				Logger: testLog,
 			},
 		},
 		{ // no userDao
 			Parameters: Parameters{
-				Log:       testLog,
+				Logger:    testLog,
 				Tokenizer: tokenizer,
 			},
 		},
 		{ // no lobby
 			Parameters: Parameters{
-				Log:       testLog,
+				Logger:    testLog,
 				Tokenizer: tokenizer,
 				UserDao:   userDao,
 			},
 		},
 		{ // no challenge
 			Parameters: Parameters{
-				Log:       testLog,
+				Logger:    testLog,
 				Tokenizer: tokenizer,
 				UserDao:   userDao,
 				Lobby:     lobby,
@@ -65,7 +64,7 @@ func TestNewServer(t *testing.T) {
 		},
 		{ // no staticFS
 			Parameters: Parameters{
-				Log:       testLog,
+				Logger:    testLog,
 				Tokenizer: tokenizer,
 				UserDao:   userDao,
 				Lobby:     lobby,
@@ -73,7 +72,7 @@ func TestNewServer(t *testing.T) {
 		},
 		{ // no templateFS
 			Parameters: Parameters{
-				Log:       testLog,
+				Logger:    testLog,
 				Tokenizer: tokenizer,
 				UserDao:   userDao,
 				Lobby:     lobby,
@@ -82,7 +81,7 @@ func TestNewServer(t *testing.T) {
 		},
 		{ // no stopDur
 			Parameters: Parameters{
-				Log:        testLog,
+				Logger:     testLog,
 				Tokenizer:  tokenizer,
 				UserDao:    userDao,
 				Lobby:      lobby,
@@ -92,7 +91,7 @@ func TestNewServer(t *testing.T) {
 		},
 		{ // bad cacheSec
 			Parameters: Parameters{
-				Log:        testLog,
+				Logger:     testLog,
 				Tokenizer:  tokenizer,
 				UserDao:    userDao,
 				Lobby:      lobby,
@@ -106,7 +105,7 @@ func TestNewServer(t *testing.T) {
 		},
 		{ // missing httpsPort
 			Parameters: Parameters{
-				Log:        testLog,
+				Logger:     testLog,
 				Tokenizer:  tokenizer,
 				UserDao:    userDao,
 				Lobby:      lobby,
@@ -119,7 +118,7 @@ func TestNewServer(t *testing.T) {
 		},
 		{ // missing version
 			Parameters: Parameters{
-				Log:        testLog,
+				Logger:     testLog,
 				Tokenizer:  tokenizer,
 				UserDao:    userDao,
 				Lobby:      lobby,
@@ -133,7 +132,7 @@ func TestNewServer(t *testing.T) {
 		},
 		{ // bad version
 			Parameters: Parameters{
-				Log:        testLog,
+				Logger:     testLog,
 				Tokenizer:  tokenizer,
 				UserDao:    userDao,
 				Lobby:      lobby,
@@ -148,7 +147,7 @@ func TestNewServer(t *testing.T) {
 		},
 		{ // bad templateFS
 			Parameters: Parameters{
-				Log:        testLog,
+				Logger:     testLog,
 				Tokenizer:  tokenizer,
 				UserDao:    userDao,
 				Lobby:      lobby,
@@ -163,7 +162,7 @@ func TestNewServer(t *testing.T) {
 		},
 		{ // happy path
 			Parameters: Parameters{
-				Log:        testLog,
+				Logger:     testLog,
 				Tokenizer:  tokenizer,
 				UserDao:    userDao,
 				Lobby:      lobby,
@@ -308,18 +307,18 @@ func TestLogServerStart(t *testing.T) {
 		},
 	}
 	for i, test := range logServerStartTests {
-		var buf bytes.Buffer
+		log := logtest.NewLogger()
 		cfg := Config{
 			HTTPPort: test.HTTPPort,
 		}
 		s := Server{
-			log:         log.New(&buf, "", 0),
+			log:         log,
 			HTTPServer:  &http.Server{},
 			HTTPSServer: &http.Server{},
 			Config:      cfg,
 		}
 		s.logServerStart()
-		gotLog := buf.String()
+		gotLog := log.String()
 		if !strings.Contains(gotLog, test.wantLogPart) {
 			t.Errorf("Test %v: wanted log to contain '%v', got '%v'", i, test.wantLogPart, gotLog)
 		}
@@ -394,7 +393,7 @@ func TestHTTPHandler(t *testing.T) {
 				Token: "abc",
 				Key:   "def",
 			},
-			httpURI: acmeHeader + "abc",
+			httpURI:  acmeHeader + "abc",
 			wantCode: 200,
 			wantBody: "abc.def",
 		},
@@ -402,7 +401,7 @@ func TestHTTPHandler(t *testing.T) {
 			Challenge: Challenge{
 				Token: "fred",
 			},
-			httpURI: acmeHeader + "barney",
+			httpURI:  acmeHeader + "barney",
 			wantCode: 404,
 			wantBody: "404 page not found\n", // flaky check, but ensures actual token.key is not written to body
 		},
@@ -584,10 +583,9 @@ func TestHTTPError(t *testing.T) {
 }
 
 func TestWriteInternalError(t *testing.T) {
-	var buf bytes.Buffer
 	w := httptest.NewRecorder()
 	err := fmt.Errorf("mock error")
-	log := log.New(&buf, "", 0)
+	log := logtest.NewLogger()
 	want := 500
 	writeInternalError(err, log, w)
 	got := w.Code
@@ -596,8 +594,8 @@ func TestWriteInternalError(t *testing.T) {
 		t.Errorf("wanted error message to contain %v, got %v", want, got)
 	case !strings.Contains(w.Body.String(), err.Error()):
 		t.Errorf("wanted message in body (%v), but got %v", err.Error(), w.Body.String())
-	case !strings.Contains(buf.String(), err.Error()):
-		t.Errorf("wanted message in log (%v), but got %v", err.Error(), buf.String())
+	case !strings.Contains(log.String(), err.Error()):
+		t.Errorf("wanted message in log (%v), but got %v", err.Error(), log.String())
 	}
 }
 
@@ -818,7 +816,7 @@ func TestGetHandler(t *testing.T) {
 		template := template.Must(template.New(fileName).Parse(""))
 		var cfg Config
 		p := Parameters{
-			Log: log.New(io.Discard, "", 0),
+			Logger: logtest.DiscardLogger,
 			Tokenizer: mockTokenizer{
 				ReadUsernameFunc: func(tokenString string) (string, error) {
 					return "", nil
@@ -905,7 +903,7 @@ func TestHandlePost(t *testing.T) {
 		r.Header.Add("Authorization", test.authorization)
 		w := httptest.NewRecorder()
 		p := Parameters{
-			Log:       log.New(io.Discard, "", 0),
+			Logger:    logtest.DiscardLogger,
 			Tokenizer: tokenizer,
 			Lobby:     lobby,
 			UserDao:   userDao,
