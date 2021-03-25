@@ -72,9 +72,9 @@ func TestDatabaseSetup(t *testing.T) {
 	}
 	setupTests := []struct {
 		cancelled bool
-		files   []io.Reader
-		execErr error
-		wantOk  bool
+		files     []io.Reader
+		execErr   error
+		wantOk    bool
 	}{
 		{
 			wantOk: true,
