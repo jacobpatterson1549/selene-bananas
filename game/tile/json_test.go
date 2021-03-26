@@ -24,7 +24,7 @@ func TestMarshalLetter(t *testing.T) {
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case test.want != string(got):
-			t.Errorf("Test %v: wanted %v, got %v", i, test.want, string(got))
+			t.Errorf("Test %v: wanted %v, got %s", i, test.want, got)
 		}
 	}
 }

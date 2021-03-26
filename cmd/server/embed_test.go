@@ -233,17 +233,17 @@ func TestSQLFiles(t *testing.T) {
 		case err != nil:
 			t.Errorf("unwanted error: %v", err)
 		default:
-			got := ""
+			var got []byte
 			for j, f := range gotFiles {
 				b, err := io.ReadAll(f)
 				if err != nil {
 					t.Errorf("could not read file %v: %v", j, err)
 				}
-				got += string(b)
+				got = append(got, b...)
 			}
 			want := "123456"
-			if want != got {
-				t.Errorf("concatenation of files not equal: wanted %v, got %v", want, got)
+			if want != string(got) {
+				t.Errorf("concatenation of files not equal: wanted %v, got %s", want, got)
 			}
 		}
 	})

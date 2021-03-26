@@ -659,7 +659,7 @@ func TestMarshal(t *testing.T) {
 	case err != nil:
 		t.Errorf("unwanted error: %v", err)
 	case want != string(got):
-		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, string(got))
+		t.Errorf("not equal:\nwanted: %v\ngot:    %s", want, got)
 	}
 }
 
@@ -724,7 +724,7 @@ func TestMarshalOrderedTiles(t *testing.T) {
 	case err != nil:
 		t.Errorf("unwanted error: %v", err)
 	case want != string(got):
-		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, string(got))
+		t.Errorf("not equal:\nwanted: %v\ngot:    %s", want, got)
 	}
 }
 

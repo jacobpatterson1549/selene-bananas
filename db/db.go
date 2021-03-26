@@ -59,7 +59,7 @@ func (db Database) Setup(ctx context.Context, files []io.Reader) error {
 		if err != nil {
 			return fmt.Errorf("reading sql setup query %v: %w", i, err)
 		}
-		queries[i] = RawQuery(string(b))
+		queries[i] = RawQuery(b)
 	}
 	if err := db.Exec(ctx, queries...); err != nil {
 		return fmt.Errorf("running setup queries %w", err)

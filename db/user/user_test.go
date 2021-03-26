@@ -75,9 +75,9 @@ func TestNewUser(t *testing.T) {
 			}
 		case !test.wantOk:
 			t.Errorf("Test %v: wanted error", i)
-		case test.username != string(u.Username):
+		case test.username != u.Username:
 			t.Errorf("Test %v: wanted user's username to be %v, but was %v", i, test.username, u.Username)
-		case test.password != string(u.password):
+		case test.password != u.password:
 			t.Errorf("Test %v: wanted user's password to be %v, but was %v", i, test.password, u.password)
 		}
 	}
