@@ -18,7 +18,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/jacobpatterson1549/selene-bananas/server/game"
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/server/log"
 )
 
@@ -185,7 +185,8 @@ func (cfg Config) validate(p Parameters) error {
 
 // date is a structure of variables to insert into templates.
 func (cfg Config) data() interface{} {
-	var gameConfig game.Config
+	var defaultGameCfg game.Config
+	rules := defaultGameCfg.Rules()
 	data := struct {
 		Name        string
 		ShortName   string
@@ -199,7 +200,7 @@ func (cfg Config) data() interface{} {
 		Description: "a tile-based word-forming game",
 		Version:     cfg.Version,
 		Colors:      cfg.ColorConfig,
-		Rules:       gameConfig.Rules(),
+		Rules:       rules,
 	}
 	return data
 }

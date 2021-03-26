@@ -70,6 +70,7 @@ func (f Flags) CreateServer(ctx context.Context, log log.Logger, db *db.Database
 	wordsReader := strings.NewReader(e.Words)
 	wordValidator := word.NewValidator(wordsReader)
 	gameRunnerCfg := f.gameRunnerConfig(timeFunc)
+	gameRunnerCfg.GameConfig.Rules()
 	gameRunner, err := gameRunnerCfg.NewRunner(log, wordValidator, userDao)
 	if err != nil {
 		return nil, fmt.Errorf("creating game runner: %w", err)
