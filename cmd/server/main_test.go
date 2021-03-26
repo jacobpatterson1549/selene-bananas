@@ -2,11 +2,9 @@
 package main_test
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"io"
-	"log"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -14,6 +12,7 @@ import (
 	main "github.com/jacobpatterson1549/selene-bananas/cmd/server"
 	"github.com/jacobpatterson1549/selene-bananas/db"
 	"github.com/jacobpatterson1549/selene-bananas/game/word"
+	"github.com/jacobpatterson1549/selene-bananas/server/log/logtest"
 )
 
 func embeddedData(t *testing.T) main.EmbeddedData {
@@ -42,8 +41,7 @@ func TestNewWordValidator(t *testing.T) {
 // This integration test is SLOW because it starts a test server.
 func TestServerGetFiles(t *testing.T) {
 	ctx := context.Background()
-	var buf bytes.Buffer
-	log := log.New(&buf, "", 0) // must be "real" for the test server
+	log := logtest.DiscardLogger
 	db := db.Database{}
 	e := embeddedData(t)
 	f := main.Flags{
@@ -55,7 +53,6 @@ func TestServerGetFiles(t *testing.T) {
 	}
 	getHandler := s.HTTPSServer.Handler
 	ts := httptest.NewTLSServer(getHandler)
-	ts.Config.ErrorLog = log
 	defer ts.Close()
 	c := ts.Client()
 	getFilePaths := []string{
@@ -69,12 +66,12 @@ func TestServerGetFiles(t *testing.T) {
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case res.StatusCode != 200:
-			body, _ := io.ReadAll(res.Body)
+			body, err := io.ReadAll(res.Body)
 			res.Body.Close()
+			if err != nil {
+				t.Errorf("reading error response body: %v", err)
+			}
 			t.Errorf("Test %v: wanted 200 code, got %v (%v): %s", i, res.StatusCode, res.Status, body)
-		case buf.Len() != 0:
-			t.Errorf("Test %v: unwanted log message, likely error: %v", i, buf.String())
-			buf.Reset()
 		}
 	}
 }

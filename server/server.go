@@ -2,6 +2,7 @@
 package server
 
 import (
+	"bytes"
 	"compress/gzip"
 	"context"
 	"crypto/tls"
@@ -366,7 +367,7 @@ func (cfg Config) httpsHandler(httpHandler, httpsRedirectHandler http.Handler, p
 func (p Parameters) getHandler(cfg Config, template *template.Template) http.Handler {
 	data := cfg.data()
 	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
-	templateFileHandler := templateHandler(template, data)
+	templateFileHandler := templateHandler(template, data, p.Logger)
 	staticFileHandler := http.FileServer(http.FS(p.StaticFS))
 	templateHandler := fileHandler(http.HandlerFunc(templateFileHandler), cacheMaxAge)
 	staticHandler := fileHandler(staticFileHandler, cacheMaxAge)
@@ -468,10 +469,16 @@ func fileHandler(h http.Handler, cacheMaxAge string) http.HandlerFunc {
 }
 
 // templateHandler servers the file from the data-driven template.  The name is assumed to have a leading slash that is ignored.
-func templateHandler(template *template.Template, data interface{}) http.HandlerFunc {
+// Templates are written a buffer to ensure they execute correctly before they are written to the response
+func templateHandler(template *template.Template, data interface{}, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		name := r.URL.Path[1:] // ignore leading slash
-		template.ExecuteTemplate(w, name, data)
+		var buf bytes.Buffer
+		if err := template.ExecuteTemplate(&buf, name, data); err != nil {
+			err = fmt.Errorf("rendering template: %v", err)
+			writeInternalError(err, log, w)
+		}
+		w.Write(buf.Bytes())
 	}
 }
 

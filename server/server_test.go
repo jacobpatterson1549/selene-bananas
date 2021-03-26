@@ -645,17 +645,20 @@ func TestTemplateHandler(t *testing.T) {
 		templateText string
 		path         string
 		data         interface{}
+		wantCode     int
 		wantBody     string
 	}{
 		{
 			templateName: "index.html",
 			path:         "/index.html",
 			templateText: "stuff",
+			wantCode:     200,
 			wantBody:     "stuff",
 		},
 		{ // different content type
 			templateName: "init.js",
 			path:         "/init.js",
+			wantCode:     200,
 		},
 		{
 			templateName: "name.html",
@@ -663,6 +666,7 @@ func TestTemplateHandler(t *testing.T) {
 			path:         "/name.html",
 			data:         "selene",
 			wantBody:     "template for selene",
+			wantCode:     200,
 		},
 		{
 			templateName: "name.html",
@@ -670,22 +674,32 @@ func TestTemplateHandler(t *testing.T) {
 			path:         "/name.html",
 			data:         struct{ Name string }{Name: "selene"},
 			wantBody:     "template for selene",
+			wantCode:     200,
+		},
+		{
+			templateName: "name.html",
+			templateText: "template for {{ .NameINVALID }}",
+			path:         "/name.html",
+			data:         struct{ Name string }{Name: "selene"},
+			wantCode:     500,
 		},
 	}
 	for i, test := range serveTemplateTests {
 		template := template.Must(template.New(test.templateName).Parse(test.templateText))
 		r := httptest.NewRequest("", test.path, nil)
 		w := httptest.NewRecorder()
-		h := templateHandler(template, test.data)
+		log := logtest.DiscardLogger
+		h := templateHandler(template, test.data, log)
 		h.ServeHTTP(w, r)
-		wantCode := 200
 		gotCode := w.Code
 		gotBody := w.Body.String()
 		switch {
-		case wantCode != gotCode:
-			t.Errorf("Test %v: status codes not equal: wanted: %v, got:    %v", i, wantCode, gotCode)
+		case test.wantCode != gotCode:
+			t.Errorf("Test %v: status codes not equal: wanted: %v, got:    %v", i, test.wantCode, gotCode)
 		case test.wantBody != gotBody:
-			t.Errorf("Test %v: body not equal:\nwanted: %v\ngot:    %v", i, test.wantBody, gotBody)
+			if test.wantCode == 200 {
+				t.Errorf("Test %v: body not equal:\nwanted: %v\ngot:    %v", i, test.wantBody, gotBody)
+			}
 		}
 	}
 }
