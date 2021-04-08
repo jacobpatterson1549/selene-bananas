@@ -259,7 +259,7 @@ func (s *Server) runHTTPServer(ctx context.Context, errC chan<- error) {
 	go s.serveTCP(s.HTTPServer, errC, false, s.log)
 }
 
-// runHTTPSServer runs the https server in regards to the conviguration, adding the return error to the channel when done.
+// runHTTPSServer runs the https server in regards to the configuration, adding the return error to the channel when done.
 func (s *Server) runHTTPSServer(ctx context.Context, errC chan<- error) {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	s.lobby.Run(ctx, &s.wg)
@@ -528,7 +528,7 @@ func httpError(w http.ResponseWriter, statusCode int) {
 	http.Error(w, http.StatusText(statusCode), statusCode)
 }
 
-// hasSecHeader returns true if thhe request has any header starting with "Sec-".
+// hasSecHeader returns true if the request has any header starting with "Sec-".
 func hasSecHeader(r *http.Request) bool {
 	for header := range r.Header {
 		if strings.HasPrefix(header, "Sec-") {

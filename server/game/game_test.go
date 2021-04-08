@@ -1982,9 +1982,9 @@ func TestHandleGameSwap(t *testing.T) {
 					"shaggy": {
 						Board: board.New([]tile.Tile{{ID: 13, Ch: 'D'}}, nil),
 					},
-					"daphine": nil,
-					"fred":    nil,
-					"velma":   nil,
+					"daphne": nil,
+					"fred":   nil,
+					"velma":  nil,
 				},
 				Config: Config{
 					ShuffleUnusedTilesFunc: func(tiles []tile.Tile) {
@@ -2236,7 +2236,7 @@ func TestHandleBoardRefresh(t *testing.T) {
 func TestHandleGameChat(t *testing.T) {
 	from := "scooby"
 	secret := "he's wearing a mask!"
-	playerNames := []player.Name{"shaggy", "velma", "fred", "daphine"}
+	playerNames := []player.Name{"shaggy", "velma", "fred", "daphne"}
 	players := make(map[player.Name]*playerController.Player, len(playerNames))
 	playersAwaitingChat := make(map[player.Name]struct{}, len(playerNames))
 	for _, pn := range playerNames {

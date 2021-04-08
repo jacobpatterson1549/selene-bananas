@@ -778,6 +778,6 @@ func TestMarshalBadJson(t *testing.T) {
 	var got Board
 	err := json.Unmarshal([]byte(j), &got)
 	if err == nil {
-		t.Error("wanted error when unmarshaling bad json")
+		t.Error("wanted error when unmarshalling bad json")
 	}
 }

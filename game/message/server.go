@@ -19,7 +19,7 @@ type Socket struct {
 	*http.Request
 }
 
-// Send is a unility function for sending messages. out on.
+// Send is a utility function for sending messages. out on.
 // When debugging, it prints a message before and after the message is sent to help identify deadlocks
 func Send(m Message, out chan<- Message, debug bool, log log.Logger) {
 	if debug {

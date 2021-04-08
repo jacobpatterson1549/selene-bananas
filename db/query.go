@@ -10,7 +10,7 @@ type (
 	Query interface {
 		// cmd is the injection-safe message to send to the database.
 		Cmd() string
-		// args are the user-provided properties of the messages which shuld be escaped.
+		// args are the user-provided properties of the messages which should be escaped.
 		Args() []interface{}
 	}
 

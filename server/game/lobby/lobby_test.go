@@ -18,7 +18,7 @@ import (
 func TestNewLobby(t *testing.T) {
 	testLog := logtest.DiscardLogger
 	testSocketRunner := mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
-		t.Error("socker runner run called")
+		t.Error("socket runner run called")
 		return nil
 	})
 	testGameManeger := mockGameRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {

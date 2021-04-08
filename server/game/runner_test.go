@@ -267,7 +267,7 @@ func TestGameCreate(t *testing.T) {
 		case gotM.Type != message.JoinGame, gotM.Game.ID != 4, gotM.PlayerName != "selene":
 			t.Errorf("Test %v: wanted join message for game 4 for player, got %v", i, gotM)
 		case r.RunnerConfig.GameConfig.Config != game.Config{}:
-			t.Errorf("Test %v: creating a game unwantedly stored the game's config in the runner", i)
+			t.Errorf("Test %v: did not want the game's config to be stored in the runner", i)
 		case !reflect.DeepEqual(basicGameCfg, gotM.Game.Config):
 			t.Errorf("Test %v: game config not set to basic config:\nwanted: %#v\ngot:    %#v", i, basicGameCfg, gotM.Game.Config)
 		default:

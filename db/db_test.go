@@ -16,7 +16,7 @@ var testDriver *MockDriver
 
 const (
 	testDriverName  = "mockDB"
-	testDatabaseURL = "postgres://username:password@host:port/dbname"
+	testDatabaseURL = "postgres://username:password@host:port/db_name"
 )
 
 func init() {
@@ -43,7 +43,7 @@ func TestNewDatabase(t *testing.T) {
 	}
 	testDriver.OpenFunc = func(name string) (driver.Conn, error) {
 		if testDriverName != name {
-			return nil, fmt.Errorf("draver names not equal: wanted %v, got %v", testDriverName, name)
+			return nil, fmt.Errorf("driver names not equal: wanted %v, got %v", testDriverName, name)
 		}
 		return MockConn{}, nil
 	}

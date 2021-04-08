@@ -57,7 +57,7 @@ type (
 		// ShufflePlayersFunc is used to shuffle the order of players when giving tiles after a snag
 		// The snagging player should always get a new tile.  Other players will get a tile, if possible.
 		ShufflePlayersFunc func(playerNames []player.Name)
-		// Config is the nested coniguration for the specific game
+		// Config is the nested configuration for the specific game
 		game.Config
 	}
 
@@ -151,7 +151,7 @@ func (g *Game) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Me
 	go g.runSync(ctx, wg, in, out, idleTicker)
 }
 
-// runSync runs the game until the conteixt is close or the input channel closes.
+// runSync runs the game until the context is closed or the input channel closes.
 func (g *Game) runSync(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, out chan<- message.Message, idleTicker *time.Ticker) {
 	defer wg.Done()
 	active := false
@@ -594,7 +594,7 @@ func (g *Game) handleGameChat(ctx context.Context, m message.Message, send messa
 }
 
 // updateUserPoints updates the points for users in the game after a player has won.
-// The winning player gets their winpoints, whould should be at least 2.  Other players in the game get a consolation point.
+// The winning player gets their winpoints, which should be at least 2.  Other players in the game get a consolation point.
 func (g *Game) updateUserPoints(ctx context.Context, winningPlayerName player.Name) error {
 	userPoints := make(map[string]int, len(g.players))
 	for pn, p := range g.players {

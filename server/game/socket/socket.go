@@ -27,9 +27,9 @@ type (
 	Config struct {
 		// Debug is a flag that causes the socket to log the types non-ping/pong messages that are read/written
 		Debug bool
-		// ReadWait is the amout of time that can pass between receiving client messages before timing out.
+		// ReadWait is the amount of time that can pass between receiving client messages before timing out.
 		ReadWait time.Duration
-		// WriteWait is the amout of time that the socket can take to write a message.
+		// WriteWait is the amount of time that the socket can take to write a message.
 		WriteWait time.Duration
 		// PingPeriod is how often ping messages should be sent.  Should be less than WriteWait.
 		PingPeriod time.Duration
@@ -88,7 +88,7 @@ func (cfg Config) NewSocket(log log.Logger, pn player.Name, conn Conn) (*Socket,
 func (cfg Config) validate(log log.Logger, pn player.Name, conn Conn) (net.Addr, error) {
 	switch {
 	case len(pn) == 0:
-		return nil, fmt.Errorf("player name rquired")
+		return nil, fmt.Errorf("player name required")
 	case conn == nil:
 		return nil, fmt.Errorf("websocket connection required")
 	}

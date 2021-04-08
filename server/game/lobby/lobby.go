@@ -133,7 +133,7 @@ func (l *Lobby) RemoveUser(username string) {
 	l.socketMessages <- sm
 }
 
-// handleSocketMessage writes a socket message to the gametMessages channel unless it is a gameInfos request, in which case it is sent back with infos.
+// handleSocketMessage writes a socket message to the gameRunnerIn channel unless it is a gameInfos request, in which case it is sent back with infos.
 func (l *Lobby) handleSocketMessage(m message.Message, gameRunnerIn, socketRunnerIn chan<- message.Message) {
 	switch m.Type {
 	case message.GameInfos:

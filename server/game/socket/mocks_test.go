@@ -23,7 +23,7 @@ type mockConn struct {
 	WriteMessageFunc     func(m message.Message) error
 	SetReadDeadlineFunc  func(t time.Time) error
 	SetWriteDeadlineFunc func(t time.Time) error
-	SetPongHandlerFunc   func(h func(appDauta string) error)
+	SetPongHandlerFunc   func(h func(appData string) error)
 	CloseFunc            func() error
 	WritePingFunc        func() error
 	WriteCloseFunc       func(reason string) error

@@ -130,7 +130,7 @@ func TestRunRunner(t *testing.T) {
 	}
 }
 
-// TestRunRunnerHandleLobbyMessage ensures a basic yet invalid lobby message passes throgh the runner correctly.
+// TestRunRunnerHandleLobbyMessage ensures a basic yet invalid lobby message passes through the runner correctly.
 func TestRunRunnerHandleLobbyMessage(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
@@ -151,7 +151,7 @@ func TestRunRunnerHandleLobbyMessage(t *testing.T) {
 	}
 }
 
-// TestRunRunnerHandleLobbyModifyRequest ensures a basic yet invalid lobby message passes throgh the runner correctly.
+// TestRunRunnerHandleLobbyModifyRequest ensures a basic yet invalid lobby message passes through the runner correctly.
 func TestRunRunnerHandleLobbyModifyRequest(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
@@ -171,7 +171,7 @@ func TestRunRunnerHandleLobbyModifyRequest(t *testing.T) {
 	}
 }
 
-// TestRunRunnerHandleSocketMessage ensures a basic, yet invalid socket messages passes throgh the runner correctly.
+// TestRunRunnerHandleSocketMessage ensures a basic, yet invalid socket messages passes through the runner correctly.
 func TestRunRunnerHandleSocketMessage(t *testing.T) {
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
@@ -201,7 +201,7 @@ func TestRunRunnerHandleSocketMessage(t *testing.T) {
 		SetReadDeadlineFunc: func(t time.Time) error {
 			return nil
 		},
-		SetPongHandlerFunc: func(h func(appDauta string) error) {
+		SetPongHandlerFunc: func(h func(appData string) error) {
 			// NOOP
 		},
 		ReadMessageFunc: func(m *message.Message) error {
@@ -1324,7 +1324,7 @@ func TestRunnerHandleLobbyMessagePlayerRemove(t *testing.T) {
 		c2 <- message.Message{Info: "ok"}
 		m := <-c2
 		if m.Info != "ok" {
-			t.Errorf("wansted c2 to be left open")
+			t.Errorf("wanted c2 to be left open")
 		}
 	}
 }

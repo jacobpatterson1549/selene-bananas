@@ -70,7 +70,7 @@ func TestExecFunctionCmd(t *testing.T) {
 	e := ExecFunction{
 		name: "kill_orcs",
 		arguments: []interface{}{
-			"minas ithil",
+			"barad-dur",
 			"minas tirith",
 			"minas morgul",
 		},

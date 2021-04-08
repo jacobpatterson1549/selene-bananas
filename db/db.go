@@ -16,7 +16,7 @@ type (
 		Config
 	}
 
-	// Config contains opnions for how the database should run.
+	// Config contains options for how the database should run.
 	Config struct {
 		// QueryPeriod is the amount of time that any database action can take before it should timeout.
 		QueryPeriod time.Duration

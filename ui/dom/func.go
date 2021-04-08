@@ -71,7 +71,7 @@ func ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[s
 }
 
 // AlertOnPanic checks to see if a panic has occurred.
-// Thes function shoould be deferred as the first statement for each goroutine
+// This function should be deferred as the first statement for each goroutine.
 func AlertOnPanic() {
 	if r := recover(); r != nil {
 		err := RecoverError(r)

@@ -1,6 +1,6 @@
 // +build js,wasm
 
-// Package url replaces the standard net/url package for pasic url operations
+// Package url replaces the standard net/url package for basic url operations
 package url
 
 import (
@@ -53,7 +53,7 @@ func Parse(text string) (*URL, error) {
 	rawQuery := text[queryStartIndex:]
 	fragmentIndex := strings.Index(rawQuery, "#")
 	if fragmentIndex >= 0 {
-		return nil, errors.New("url fraagment not allowed: " + text)
+		return nil, errors.New("url fragment not allowed: " + text)
 	}
 	u := URL{
 		Scheme:    scheme,
@@ -97,6 +97,6 @@ func (v Values) Encode() string {
 func encodeURIComponent(str string) string {
 	global := js.Global()
 	fn := global.Get("encodeURIComponent")
-	rval := fn.Invoke(str)
-	return rval.String()
+	encodedURIValue := fn.Invoke(str)
+	return encodedURIValue.String()
 }

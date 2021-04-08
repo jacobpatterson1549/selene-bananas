@@ -61,7 +61,7 @@ func writeGoroutineExpectations(w io.Writer, hasTLS bool) {
 	fmt.Fprintln(w, "Each game in the lobby runs on a single (1) goroutine.")
 }
 
-// writeGoroutineStackTraces writes the goroutine runitme profile's stack traces.
+// writeGoroutineStackTraces writes the goroutine runtime profile's stack traces.
 func writeGoroutineStackTraces(w io.Writer, p *pprof.Profile) {
 	fmt.Fprintln(w, "--- Goroutine Stack Traces ---")
 	p.WriteTo(w, 1)

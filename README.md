@@ -17,7 +17,7 @@ Uses WebAssembly to manage browser logic.
 
 New dependencies are automatically added to [go.mod](go.mod) when the project is built.
 * [pq](https://github.com/lib/pq) provides the Postgres driver for storing user passwords and points
-* [Gorilla Websockets](https://github.com/gorilla/websocket) are used for bidirectional communication between users and the server
+* [Gorilla WebSocket](https://github.com/gorilla/websocket) are used for bidirectional communication between users and the server
 * [jwt-go](https://github.com/dgrijalva/jwt-go) is used for stateless web sessions
 * [crypto](https://github.com/golang/crypto) is used to  encrypt passwords with bcrypt
 * [Font-Awesome](https://github.com/FortAwesome/Font-Awesome) provides the "copyright", "github," "linkedin", and "gavel" icons on the about page; they were copied from version [5.13.0](https://github.com/FortAwesome/Font-Awesome/releases/tag/5.13.0) to [resources/template/fa](resources/template/fa).
@@ -26,7 +26,7 @@ New dependencies are automatically added to [go.mod](go.mod) when the project is
 
 [Go 1.16](https://golang.org/dl/) is used to build the application.
 
-[Make](https://www.gnu.org/software/make/) is used to by [Makefile](Makefile) to build and runs the application. Run `make` without any arguments to build the server with the client and other resources embedded in it.  This will likely need to be done before using an IDE in order to generate some files and prepropulate the embedded filesystem used by the the server.
+[Make](https://www.gnu.org/software/make/) is used to by [Makefile](Makefile) to build and runs the application. Run `make` without any arguments to build the server with the client and other resources embedded in it.  This will likely need to be done before using an IDE in order to generate some files and populate the embedded filesystem used by the the server.
 
 [Aspell](https://github.com/GNUAspell/aspell) is used to generate the en_US dictionary to validate words on player boards.
  * Note: An integration test depends on aspell-en 2020.12.07-0.  This version is used by Docker.  Follow the steps below to install the version on your computer:
@@ -116,7 +116,7 @@ Generate certificates for localhost at 127.0.0.1
 ```bash
 mkcert 127.0.0.1
 ```
-Then, replace the `resources/tls-cert.pem` and `resources/tls-key.pem` files with the certificates.  Update the `.env` file with the parateters below. Make sure to remove the `PORT` variable, if present.
+Then, replace the `resources/tls-cert.pem` and `resources/tls-key.pem` files with the certificates.  Update the `.env` file with the parameters below. Make sure to remove the `PORT` variable, if present.
 ```
 HTTP_PORT=8001
 HTTPS_PORT=8000

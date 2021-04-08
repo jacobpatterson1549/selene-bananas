@@ -145,7 +145,7 @@ func (s *Socket) onClose(event js.Value) {
 	s.closeWebSocket()
 }
 
-// closeWebSocket releases the event listeners, unregisters them, and does some dom cleanup.
+// closeWebSocket releases the event listeners and does some dom cleanup.
 func (s *Socket) closeWebSocket() {
 	s.webSocket.Set("onopen", nil)
 	s.webSocket.Set("onclose", nil)

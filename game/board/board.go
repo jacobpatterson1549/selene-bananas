@@ -339,12 +339,12 @@ func (b Board) usedTileWordsX() []string {
 	return b.usedTileWordsZ(usedTilesYx, tilePositionX)
 }
 
-// tilePositionY returns the y position of thhe tile as an int.
+// tilePositionY returns the y position of the tile as an int.
 func tilePositionY(tp tile.Position) int {
 	return int(tp.Y)
 }
 
-// tilePositionX returns the x position of thhe tile as an int.
+// tilePositionX returns the x position of the tile as an int.
 func tilePositionX(tp tile.Position) int {
 	return int(tp.X)
 }
@@ -434,7 +434,7 @@ func (b Board) hasTile(t tile.Tile) bool {
 	return false
 }
 
-// Resize rezises the board to use the new config.  Any board size change information is returned in the message.
+// Resize resizes the board to use the new config.  Any board size change information is returned in the message.
 func (b *Board) Resize(cfg Config) (*ResizeResult, error) {
 	usedTilePositions := make([]tile.Position, 0, len(b.UsedTiles))
 	var movedTiles []tile.Tile

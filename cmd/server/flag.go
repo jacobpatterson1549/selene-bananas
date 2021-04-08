@@ -19,7 +19,7 @@ const (
 	environmentVariableChallengeKey   = "ACME_CHALLENGE_KEY"
 )
 
-// Flags are the configuration options which can be easly configured at run startup for different environments.
+// Flags are the configuration options which can be easily configured at run startup for different environments.
 type Flags struct {
 	HTTPPort       int
 	HTTPSPort      int

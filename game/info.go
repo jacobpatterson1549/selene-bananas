@@ -44,7 +44,7 @@ func (i Info) isInGame(playerName string) bool {
 	return false
 }
 
-// CapacityRatio computes the compacity ratio of the game as a string.
+// CapacityRatio computes the capacity ratio of the game as a string.
 func (i Info) CapacityRatio() string {
 	return strconv.Itoa(len(i.Players)) + "/" + strconv.Itoa(i.Capacity)
 }
