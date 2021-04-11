@@ -1,5 +1,5 @@
 .PHONY: serve serve-tcp clean
-SHELL = /bin/bash -eo pipefail
+SHELL := /bin/bash -eo pipefail
 
 BUILD_DIR        := build
 RESOURCES_DIR    := resources
@@ -45,13 +45,15 @@ $(BUILD_DIR)/$(SERVER_OBJ): $(BUILD_DIR)/$(CLIENT_OBJ) $(BUILD_DIR)/$(SERVER_TES
 		| $(GO_ARGS) xargs $(GO_BUILD) \
 			-o $@
 
-$(BUILD_DIR)/$(CLIENT_OBJ): $(BUILD_DIR)/$(CLIENT_TEST) | $(BUILD_DIR) $(SERVER_EMBED_DIR)
+$(BUILD_DIR)/$(CLIENT_OBJ): $(SERVER_EMBED_DIR)/$(STATIC_DIR)/$(CLIENT_OBJ) | $(BUILD_DIR)
+	$(LINK) $< $@
+
+$(SERVER_EMBED_DIR)/$(STATIC_DIR)/$(CLIENT_OBJ): $(BUILD_DIR)/$(CLIENT_TEST) | $(SERVER_EMBED_DIR)
 	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep cmd/ui \
 		| $(GO_WASM_ARGS) xargs $(GO_BUILD) \
-			-o $(SERVER_EMBED_DIR)/$(STATIC_DIR)/$(@F)
-		$(LINK) $(SERVER_EMBED_DIR)/$(STATIC_DIR)/$(@F) $@
+			-o $@
 
-$(BUILD_DIR)/$(SERVER_TEST): $(SERVER_SRC) $(GENERATE_SRC) $(BUILD_DIR)/$(VERSION_OBJ)| $(BUILD_DIR)
+$(BUILD_DIR)/$(SERVER_TEST): $(SERVER_SRC) $(GENERATE_SRC) $(BUILD_DIR)/$(VERSION_OBJ) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
 		| $(GO_ARGS) xargs $(GO_TEST) \
 		| tee $@
@@ -67,11 +69,14 @@ $(BUILD_DIR)/$(SERVER_BENCHMARK): $(SERVER_SRC) $(GENERATE_SRC) | $(BUILD_DIR)
 		| $(GO_ARGS) xargs $(GO_BENCH) \
 		| tee $@
 
-$(GENERATE_SRC): $(GO_MOD_FILES) | $(SERVER_EMBED_DIR)
+$(GENERATE_SRC): $(GO_MOD_FILES) | $(BUILD_DIR)/$(VERSION_OBJ)
 	$(GO_INSTALL)  $(GO_PACKAGES)
 	$(GO_GENERATE) $(GO_PACKAGES)
 
-$(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(BUILD_DIR) $(SERVER_EMBED_DIR)
+$(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_EMBED_DIR)/$(VERSION_OBJ) | $(BUILD_DIR)
+	$(LINK) $^ $@
+
+$(SERVER_EMBED_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(SERVER_EMBED_DIR)
 	grep "^!" $(DOCKERIGNORE_FILE) \
 		| cut -c 2- \
 		| xargs -I{} find {} -type f -print \
@@ -82,7 +87,6 @@ $(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(BU
 		| cut -c -32 \
 		| tee $(SERVER_EMBED_DIR)/$(@F) \
 		| xargs echo $(SERVER_EMBED_DIR)/$(@F) is
-	$(LINK) $(SERVER_EMBED_DIR)/$(@F) $@
 
 $(BUILD_DIR)/$(WORDS_OBJ): | $(BUILD_DIR)
 	aspell -d en_US dump master \
@@ -99,10 +103,7 @@ $(SERVER_EMBED_DIR): | $(RESOURCES_SRC) $(RESOURCES_DIR)/$(TLS_CERT_FILE) $(RESO
 		$@/$(STATIC_DIR) \
 		$@/$(TEMPLATE_DIR) \
 		$@/$(SQL_DIR)
-	# $(VERSION_OBJ) and $(CLIENT_OBJ) are built later:
-	touch \
-		$@/$(VERSION_OBJ) \
-		$@/$(STATIC_DIR)/$(CLIENT_OBJ)
+	# $@/$(VERSION_OBJ) and $@/$(STATIC_DIR)/$(CLIENT_OBJ) are linked later
 	$(LINK) $(RESOURCES_DIR)/$(TLS_CERT_FILE) $@/$(TLS_CERT_FILE)
 	$(LINK) $(RESOURCES_DIR)/$(TLS_KEY_FILE)  $@/$(TLS_KEY_FILE)
 	$(LINK) $(BUILD_DIR)/$(WORDS_OBJ)         $@/$(WORDS_OBJ)
