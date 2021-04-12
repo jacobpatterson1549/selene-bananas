@@ -233,6 +233,13 @@ func TestUserUpdatePasswordHandler(t *testing.T) {
 			username:     "selene",
 			password:     "TOP_s3cret!",
 			newPassword:  "MoR&_sCr3T",
+			daoUpdateErr: user.ErrIncorrectLogin,
+			wantCode:     401,
+		},
+		{
+			username:     "selene",
+			password:     "TOP_s3cret!",
+			newPassword:  "MoR&_sCr3T",
 			daoUpdateErr: fmt.Errorf("error updating user password"),
 			wantCode:     500,
 		},
@@ -299,6 +306,12 @@ func TestUserDeleteHandler(t *testing.T) {
 		{
 			username: "INVALID username!",
 			wantCode: 500,
+		},
+		{
+			username:     "selene",
+			password:     "TOP_s3cret!",
+			daoDeleteErr: user.ErrIncorrectLogin,
+			wantCode:     401,
 		},
 		{
 			username:     "selene",

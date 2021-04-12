@@ -87,18 +87,25 @@ func TestDaoLogin(t *testing.T) {
 		isCorrectPasswordErr error
 		want                 User
 		wantOk               bool
+		wantIncorrectLogin   bool
 	}{
 		{
 			rowScanErr: fmt.Errorf("problem reading user row"),
 		},
 		{
-			rowScanErr: db.ErrNoRows,
+			rowScanErr:         db.ErrNoRows,
+			wantIncorrectLogin: true,
+		},
+		{
+			rowScanErr:         fmt.Errorf("wrapped db.ErrNoRows: %w", db.ErrNoRows),
+			wantIncorrectLogin: true,
 		},
 		{
 			isCorrectPasswordErr: fmt.Errorf("problem checking password"),
 		},
 		{
-			incorrectPassword: true,
+			incorrectPassword:  true,
+			wantIncorrectLogin: true,
 		},
 		{
 			wantOk: true,
@@ -126,7 +133,7 @@ func TestDaoLogin(t *testing.T) {
 			if err == nil {
 				t.Errorf("Test %v: unwanted error: %v", i, err)
 			}
-			if (test.rowScanErr == db.ErrNoRows || test.incorrectPassword) && err != ErrIncorrectLogin {
+			if test.wantIncorrectLogin && err != ErrIncorrectLogin {
 				t.Errorf("Test %v: errs not equal when the db has no rows: wanted %v, got: %v", i, ErrIncorrectLogin, err)
 			}
 		case err != nil:
@@ -143,6 +150,7 @@ func TestDaoUpdatePassword(t *testing.T) {
 		dbP             string
 		newP            string
 		hashPasswordErr error
+		dbQueryErr      error
 		dbExecErr       error
 		wantOk          bool
 	}{
@@ -162,6 +170,18 @@ func TestDaoUpdatePassword(t *testing.T) {
 			oldP: "homer_S!mps0n", // ensure the old password is compared to what is in the database
 			dbP:  "el+bart0_rulZ",
 			newP: "el+bart0_rulZ",
+		},
+		{
+			oldP:       "homer_S!mps0n",
+			dbP:        "homer_S!mps0n",
+			newP:       "TOP_s3cr3t",
+			dbQueryErr: fmt.Errorf("problem reading user"),
+		},
+		{
+			oldP:       "homer_S!mps0n",
+			dbP:        "homer_S!mps0n",
+			newP:       "TOP_s3cr3t",
+			dbQueryErr: ErrIncorrectLogin,
 		},
 		{
 			oldP:      "homer_S!mps0n",
@@ -194,7 +214,7 @@ func TestDaoUpdatePassword(t *testing.T) {
 		db := mockDatabase{
 			queryFunc: func(ctx context.Context, q db.Query, dest ...interface{}) error {
 				*dest[1].(*string) = test.dbP
-				return nil
+				return test.dbQueryErr
 			},
 			execFunc: func(ctx context.Context, queries ...db.Query) error {
 				return test.dbExecErr
@@ -209,6 +229,9 @@ func TestDaoUpdatePassword(t *testing.T) {
 		case !test.wantOk:
 			if err == nil {
 				t.Errorf("Test %v: wanted error", i)
+			}
+			if test.dbQueryErr == ErrIncorrectLogin && err != ErrIncorrectLogin {
+				t.Errorf("Test %v: error not passed through:\nwanted: %v\ngot:    %v", i, ErrIncorrectLogin, err)
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
@@ -270,12 +293,15 @@ func TestDaoUpdatePointsIncrement(t *testing.T) {
 
 func TestDaoDelete(t *testing.T) {
 	deleteTests := []struct {
-		readErr   error
-		dbExecErr error
-		wantOk    bool
+		dbQueryErr error
+		dbExecErr  error
+		wantOk     bool
 	}{
 		{
-			readErr: fmt.Errorf("problem reading user"),
+			dbQueryErr: fmt.Errorf("problem reading user"),
+		},
+		{
+			dbQueryErr: ErrIncorrectLogin,
 		},
 		{
 			dbExecErr: fmt.Errorf("problem deleting user"),
@@ -295,7 +321,7 @@ func TestDaoDelete(t *testing.T) {
 		d := Dao{
 			db: mockDatabase{
 				queryFunc: func(ctx context.Context, q db.Query, dest ...interface{}) error {
-					return test.readErr
+					return test.dbQueryErr
 				},
 				execFunc: func(ctx context.Context, queries ...db.Query) error {
 					return test.dbExecErr
@@ -308,6 +334,9 @@ func TestDaoDelete(t *testing.T) {
 		case !test.wantOk:
 			if err == nil {
 				t.Errorf("Test %v: wanted error", i)
+			}
+			if test.dbQueryErr == ErrIncorrectLogin && err != ErrIncorrectLogin {
+				t.Errorf("Test %v: error not passed through:\nwanted: %v\ngot:    %v", i, ErrIncorrectLogin, err)
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)

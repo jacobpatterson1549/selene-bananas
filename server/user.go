@@ -48,12 +48,7 @@ func userLoginHandler(userDao UserDao, tokenizer Tokenizer, log log.Logger) http
 		ctx := r.Context()
 		u2, err := userDao.Login(ctx, *u)
 		if err != nil {
-			if err != user.ErrIncorrectLogin {
-				log.Printf("login failure: %v", err)
-				writeInternalError(err, log, w)
-				return
-			}
-			http.Error(w, "incorrect username/password", http.StatusUnauthorized)
+			handleUserDaoError(w, err, "login", log)
 			return
 		}
 		token, err := tokenizer.Create(u2.Username, u2.Points)
@@ -96,7 +91,7 @@ func userUpdatePasswordHandler(userDao UserDao, lobby Lobby, log log.Logger) htt
 		}
 		ctx := r.Context()
 		if err := userDao.UpdatePassword(ctx, *u, newPassword); err != nil {
-			writeInternalError(err, log, w)
+			handleUserDaoError(w, err, "update password", log)
 			return
 		}
 		lobby.RemoveUser(username)
@@ -115,9 +110,20 @@ func userDeleteHandler(userDao UserDao, lobby Lobby, log log.Logger) http.Handle
 		}
 		ctx := r.Context()
 		if err := userDao.Delete(ctx, *u); err != nil {
-			writeInternalError(err, log, w)
+			handleUserDaoError(w, err, "delete", log)
 			return
 		}
 		lobby.RemoveUser(username)
+	}
+}
+
+// handleUserDaoError writes a 401 error for users that signed in incorrectly, otherwise writing and logging an internal server error.
+func handleUserDaoError(w http.ResponseWriter, err error, action string, log log.Logger) {
+	switch err {
+	case user.ErrIncorrectLogin:
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+	default:
+		log.Printf("%user v failure: %v", action, err)
+		writeInternalError(err, log, w)
 	}
 }

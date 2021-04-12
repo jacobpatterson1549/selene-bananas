@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -72,7 +73,7 @@ func (d Dao) Login(ctx context.Context, u User) (*User, error) {
 	var u2 User
 	err := d.db.Query(ctx, q, &u2.Username, &u2.password, &u2.Points)
 	if err != nil {
-		if err == db.ErrNoRows {
+		if errors.Is(err, db.ErrNoRows) {
 			return nil, ErrIncorrectLogin
 		}
 		return nil, fmt.Errorf("reading user: %w", err)
@@ -91,6 +92,9 @@ func (d Dao) Login(ctx context.Context, u User) (*User, error) {
 // UpdatePassword sets the password of a user.
 func (d Dao) UpdatePassword(ctx context.Context, u User, newP string) error {
 	if _, err := d.Login(ctx, u); err != nil {
+		if errors.Is(err, ErrIncorrectLogin) {
+			return ErrIncorrectLogin
+		}
 		return fmt.Errorf("checking password: %w", err)
 	}
 	if err := validatePassword(newP); err != nil {
@@ -123,6 +127,9 @@ func (d Dao) UpdatePointsIncrement(ctx context.Context, userPoints map[string]in
 // Delete removes a user.
 func (d Dao) Delete(ctx context.Context, u User) error {
 	if _, err := d.Login(ctx, u); err != nil {
+		if errors.Is(err, ErrIncorrectLogin) {
+			return ErrIncorrectLogin
+		}
 		return fmt.Errorf("checking password: %w", err)
 	}
 	q := db.NewExecFunction("user_delete", u.Username)

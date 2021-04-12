@@ -121,7 +121,6 @@ func (u *User) newRequest(f dom.Form) (*request, error) {
 }
 
 func (u *User) handleResponseError(resp *http.Response) {
-	u.Logout()
 	body := resp.Body
 	defer body.Close()
 	message, err := io.ReadAll(body)
@@ -130,7 +129,9 @@ func (u *User) handleResponseError(resp *http.Response) {
 		u.log.Error("reading error response body: " + err.Error())
 	case resp.Code == 401: // Unauthorized
 		u.log.Warning(string(message))
+		return
 	case len(message) > 0:
 		u.log.Error("HTTP error: status " + strconv.Itoa(resp.Code) + ": " + string(message))
 	}
+	u.Logout()
 }
