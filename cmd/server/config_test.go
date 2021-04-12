@@ -38,17 +38,18 @@ func TestCreateDatabase(t *testing.T) {
 	}
 }
 
-// TestNewServer only checks the happy path, making sure defaults defined in config.go are valid.
-func TestNewServer(t *testing.T) {
+// TestCreateServer mainly checks the happy path, making sure defaults defined in config.go are valid.
+func TestCreateServer(t *testing.T) {
 	f := Flags{
 		HTTPSPort: 443,
 	}
 	ctx := context.Background()
 	log := logtest.DiscardLogger
 	db := db.Database{}
+	wantVersion := "9d2ffad8e5e5383569d37ec381147f2d"
 	e := EmbeddedData{
-		Version:    "1",
-		Words:      "apple\nbanana\ncarrot",
+		Version:    []byte(wantVersion + "\n"),
+		Words:      []byte("apple\nbanana\ncarrot"),
 		StaticFS:   fstest.MapFS{},
 		TemplateFS: fstest.MapFS{"file": &fstest.MapFile{}},
 	}
@@ -58,6 +59,8 @@ func TestNewServer(t *testing.T) {
 		t.Errorf("unwanted error: %v", err)
 	case s == nil:
 		t.Error("nil server created")
+	case wantVersion != s.Config.Version:
+		t.Errorf("config versions not equal:\nwanted: '%v'\ngot:    '%v'", wantVersion, s.Config.Version)
 	}
 }
 

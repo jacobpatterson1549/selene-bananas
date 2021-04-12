@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	crypto_rand "crypto/rand"
 	"database/sql"
@@ -67,7 +68,7 @@ func (f Flags) CreateServer(ctx context.Context, log log.Logger, db *db.Database
 	if err != nil {
 		return nil, fmt.Errorf("creating socket runner: %w", err)
 	}
-	wordsReader := strings.NewReader(e.Words)
+	wordsReader := bytes.NewReader(e.Words)
 	wordValidator := word.NewValidator(wordsReader)
 	gameRunnerCfg := f.gameRunnerConfig(timeFunc)
 	gameRunnerCfg.GameConfig.Rules()
@@ -90,9 +91,9 @@ func (f Flags) CreateServer(ctx context.Context, log log.Logger, db *db.Database
 		HTTPSPort:     f.HTTPSPort,
 		StopDur:       20 * time.Second, // should be longer than the PingPeriod of sockets so they can close gracefully
 		CacheSec:      f.CacheSec,
-		Version:       e.Version,
-		TLSCertPEM:    e.TLSCertPEM,
-		TLSKeyPEM:     e.TLSKeyPEM,
+		Version:       strings.TrimSpace(string(e.Version)),
+		TLSCertPEM:    string(e.TLSCertPEM),
+		TLSKeyPEM:     string(e.TLSKeyPEM),
 		Challenge:     challenge,
 		ColorConfig:   colorCfg,
 		NoTLSRedirect: f.NoTLSRedirect,

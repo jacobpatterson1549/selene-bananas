@@ -9,189 +9,100 @@ import (
 )
 
 func TestUnembedFS(t *testing.T) {
+	version := []byte("v")
+	words := []byte("a\nb\nc")
+	tlsCert := []byte("C")
+	tlsKey := []byte("K")
+	unembedOrFail := func(fsys fs.FS, subdirectory string) fs.FS {
+		embedFS, err := fs.Sub(fsys, "embed")
+		if err != nil {
+			t.Fatal(err)
+		}
+		dir, err := fs.Sub(embedFS, subdirectory)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return dir
+	}
 	unembedFSTests := []struct {
 		fs.FS
-		subdirectory  string
-		wantFileNames []string
-		wantOk        bool
-	}{
-		{
-			FS: fstest.MapFS{},
-		},
-		{ // no embedded file system
-			FS: fstest.MapFS{
-				"f1":        &fstest.MapFile{},
-				"subdir/f2": &fstest.MapFile{},
-			},
-		},
-		{ // empty embedded file system, missing subdirectory
-			FS: fstest.MapFS{
-				"embed/d1": &fstest.MapFile{},
-			},
-			subdirectory: "d2",
-		},
-		{ // empty embedded file system, no subdirectory
-			FS: fstest.MapFS{
-				"embed":    &fstest.MapFile{},
-				"embed/f1": &fstest.MapFile{},
-			},
-			wantOk: true,
-			wantFileNames: []string{
-				"f1",
-			},
-		},
-		{ // empty embedded file system
-			FS: fstest.MapFS{
-				"embed/d1": &fstest.MapFile{},
-			},
-			subdirectory: "d1",
-			wantOk:       true,
-		},
-		{
-			FS: fstest.MapFS{
-				"f0":                &fstest.MapFile{},
-				"embed/f1":          &fstest.MapFile{},
-				"embed/d1/f2":       &fstest.MapFile{},
-				"embed/d1/d2/d3/f3": &fstest.MapFile{},
-				"embed/d1/d4/f4":    &fstest.MapFile{},
-				"embed/d1/d4/f5":    &fstest.MapFile{},
-				"embed/d2/f6":       &fstest.MapFile{},
-			},
-			subdirectory: "d1",
-			wantFileNames: []string{
-				"f2",
-				"d2/d3/f3",
-				"d4/f4",
-				"d4/f5",
-			},
-			wantOk: true,
-		},
-	}
-	for i, test := range unembedFSTests {
-		got, err := unembedFS(test.FS, test.subdirectory)
-		switch {
-		case !test.wantOk:
-			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
-			}
-		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
-		case got == nil:
-			t.Errorf("Test %v: wanted unembedded file system to not be nil", i)
-		default:
-			for _, n := range test.wantFileNames {
-				if _, err := got.Open(n); err != nil {
-					t.Errorf("Test %v: wanted file named '%v' in unembedded file stystem", i, n)
-				}
-			}
-		}
-	}
-}
-
-func TestNewEmbedParameters(t *testing.T) {
-	var emptyFS fstest.MapFS
-	staticFS := fstest.MapFS{
-		"embed/static": &fstest.MapFile{},
-	}
-	templateFS := fstest.MapFS{
-		"embed/template": &fstest.MapFile{},
-	}
-	sqlFS := fstest.MapFS{
-		"embed/sql": &fstest.MapFile{},
-	}
-	okVersion := "9d2ffad8e5e5383569d37ec381147f2d"
-	words := "apple\nbanana\ncarrot"
-	unembedOrFail := func(fs fs.FS, subdirectory string) fs.FS {
-		fs, err := unembedFS(fs, subdirectory)
-		if err != nil {
-			t.Errorf("unwanted error unembedding %v file system: %v", subdirectory, err)
-			return &fstest.MapFS{}
-		}
-		return fs
-	}
-	newEmbedParametersTests := []struct {
-		EmbeddedData
 		wantOk bool
 		want   *EmbeddedData
 	}{
-		{}, // bad version
-		{ // missing words
-			EmbeddedData: EmbeddedData{
-				Version: okVersion,
+		{ // no embed subdirectory
+			FS: fstest.MapFS{},
+		},
+		{ // no version
+			FS: fstest.MapFS{
+				"embed/": &fstest.MapFile{},
 			},
 		},
-		{ // missing static fs
-			EmbeddedData: EmbeddedData{
-				Version: okVersion,
-				Words:   words,
+		{ // no words
+			FS: fstest.MapFS{
+				"embed/version.txt": &fstest.MapFile{Data: version},
 			},
 		},
-		{ // missing template fs
-			EmbeddedData: EmbeddedData{
-				Version:  okVersion,
-				Words:    words,
-				StaticFS: emptyFS,
+		{ // no tls cert
+			FS: fstest.MapFS{
+				"embed/version.txt": &fstest.MapFile{Data: version},
+				"embed/words.txt":   &fstest.MapFile{Data: words},
 			},
 		},
-		{ // missing SQL fs
-			EmbeddedData: EmbeddedData{
-				Version:    okVersion,
-				Words:      words,
-				StaticFS:   emptyFS,
-				TemplateFS: emptyFS,
+		{ // no tls key
+			FS: fstest.MapFS{
+				"embed/version.txt":  &fstest.MapFile{Data: version},
+				"embed/words.txt":    &fstest.MapFile{Data: words},
+				"embed/tls-cert.pem": &fstest.MapFile{Data: tlsCert},
 			},
 		},
-		{ // bad static fs
-			EmbeddedData: EmbeddedData{
-				Version:    okVersion,
-				Words:      words,
-				StaticFS:   emptyFS,
-				TemplateFS: emptyFS,
-				SQLFS:      emptyFS,
+		{ // no static fs
+			FS: fstest.MapFS{
+				"embed/version.txt":  &fstest.MapFile{Data: version},
+				"embed/words.txt":    &fstest.MapFile{Data: words},
+				"embed/tls-cert.pem": &fstest.MapFile{Data: tlsCert},
+				"embed/tls-key.pem":  &fstest.MapFile{Data: tlsKey},
 			},
 		},
-		{ // bad template fs
-			EmbeddedData: EmbeddedData{
-				Version:    okVersion,
-				Words:      words,
-				StaticFS:   staticFS,
-				TemplateFS: emptyFS,
-				SQLFS:      emptyFS,
+		{ // no template fs
+			FS: fstest.MapFS{
+				"embed/version.txt":  &fstest.MapFile{Data: version},
+				"embed/words.txt":    &fstest.MapFile{Data: words},
+				"embed/tls-cert.pem": &fstest.MapFile{Data: tlsCert},
+				"embed/tls-key.pem":  &fstest.MapFile{Data: tlsKey},
+				"embed/static":       &fstest.MapFile{},
 			},
 		},
-		{ // bad SQL fs
-			EmbeddedData: EmbeddedData{
-				Version:    okVersion,
-				Words:      words,
-				StaticFS:   staticFS,
-				TemplateFS: templateFS,
-				SQLFS:      emptyFS,
+		{ // no SQL fs
+			FS: fstest.MapFS{
+				"embed/version.txt":  &fstest.MapFile{Data: version},
+				"embed/words.txt":    &fstest.MapFile{Data: words},
+				"embed/tls-cert.pem": &fstest.MapFile{Data: tlsCert},
+				"embed/tls-key.pem":  &fstest.MapFile{Data: tlsKey},
+				"embed/static":       &fstest.MapFile{},
+				"embed/template":     &fstest.MapFile{},
 			},
 		},
 		{ // happy path
-			EmbeddedData: EmbeddedData{
-				Version:    okVersion + "\n",
-				Words:      words,
-				TLSCertPEM: "tls cert",
-				TLSKeyPEM:  "tls key",
-				StaticFS:   staticFS,
-				TemplateFS: templateFS,
-				SQLFS:      sqlFS,
+			FS: fstest.MapFS{
+				"embed/version.txt":  &fstest.MapFile{Data: version},
+				"embed/words.txt":    &fstest.MapFile{Data: words},
+				"embed/tls-cert.pem": &fstest.MapFile{Data: tlsCert},
+				"embed/tls-key.pem":  &fstest.MapFile{Data: tlsKey},
+				"embed/static":       &fstest.MapFile{},
+				"embed/template":     &fstest.MapFile{},
+				"embed/sql":          &fstest.MapFile{},
 			},
 			wantOk: true,
 			want: &EmbeddedData{
-				Version:    "9d2ffad8e5e5383569d37ec381147f2d", // trimmed
+				Version:    version,
 				Words:      words,
-				TLSCertPEM: "tls cert",
-				TLSKeyPEM:  "tls key",
-				StaticFS:   unembedOrFail(staticFS, "static"),
-				TemplateFS: unembedOrFail(templateFS, "template"),
-				SQLFS:      unembedOrFail(sqlFS, "sql"),
+				TLSCertPEM: tlsCert,
+				TLSKeyPEM:  tlsKey,
 			},
 		},
 	}
-	for i, test := range newEmbedParametersTests {
-		got, err := test.EmbeddedData.unEmbed()
+	for i, test := range unembedFSTests {
+		got, err := unembedFS(test.FS)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -199,8 +110,14 @@ func TestNewEmbedParameters(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
-		case !reflect.DeepEqual(test.want, got):
-			t.Errorf("Test %v: not equal:\nwanted: %v\ngot:    %v", i, test.want, got)
+		default:
+			// create the embedded file systems from the parent embedded file system for deep equal to work
+			test.want.StaticFS = unembedOrFail(test.FS, "static")
+			test.want.TemplateFS = unembedOrFail(test.FS, "template")
+			test.want.SQLFS = unembedOrFail(test.FS, "sql")
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("Test %v: not equal:\nwanted: %v\ngot:    %v", i, test.want, got)
+			}
 		}
 	}
 }

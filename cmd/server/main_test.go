@@ -2,11 +2,11 @@
 package main_test
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"io"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	main "github.com/jacobpatterson1549/selene-bananas/cmd/server"
@@ -17,7 +17,7 @@ import (
 
 func embeddedData(t *testing.T) main.EmbeddedData {
 	t.Helper()
-	e, err := main.UnembedData()
+	e, err := main.UnembedFS()
 	if err != nil {
 		t.Fatalf("unembedding data: %v", err)
 	}
@@ -27,7 +27,7 @@ func embeddedData(t *testing.T) main.EmbeddedData {
 // TestNewWordValidator loads the embedded words, which should be the dump of the aspell en_US dictionary, Debian: aspell-en2018.04.16-0-1,Alpine: aspell-en=2020.12.07-r0
 func TestNewWordValidator(t *testing.T) {
 	e := embeddedData(t)
-	r := strings.NewReader(e.Words)
+	r := bytes.NewReader(e.Words)
 	c := word.NewValidator(r)
 	want := 77976
 	got := len(*c)

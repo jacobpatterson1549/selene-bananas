@@ -5,92 +5,74 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"path/filepath"
-	"strings"
 )
 
-//go:embed embed/version.txt
-var embedVersion string
-
-//go:embed embed/words.txt
-var embeddedWords string
-
-//go:embed embed/tls-cert.pem
-var embeddedTLSCertPEM string
-
-//go:embed embed/tls-key.pem
-var embeddedTLSKeyPEM string
-
-//go:embed embed/sql
-var embeddedSQLFS embed.FS
-
-//go:embed embed/template
-var embeddedTemplateFS embed.FS
-
-//go:embed embed/static
-var embeddedStaticFS embed.FS
-
-// unembedFS returns the embed/subdirectory subdirectory of the file system.
-func unembedFS(fsys fs.FS, subdirectory string) (fs.FS, error) {
-	dir := filepath.Join("embed", subdirectory)
-	// Open the directory to ensure it exists.
-	// This ensures the file systems passed to newEmbeddedData are not out of order.
-	_, err := fsys.Open(dir)
-	if err != nil {
-		return nil, fmt.Errorf("unembedding file system to %v: %w", dir, err)
-	}
-	return fs.Sub(fsys, dir)
-}
+// Expect an "embed" subdirectory in this package with files for the server.
+//go:embed embed
+var embeddedFS embed.FS
 
 // EmbeddedData is used to retrieve files embedded in the server.
 type EmbeddedData struct {
-	Version    string
-	Words      string
-	TLSCertPEM string
-	TLSKeyPEM  string
+	Version    []byte
+	Words      []byte
+	TLSCertPEM []byte
+	TLSKeyPEM  []byte
 	StaticFS   fs.FS
 	TemplateFS fs.FS
 	SQLFS      fs.FS
 }
 
-// unEmbed validates, unembeds, and returns the parameters in a structure.
+// unembedFS validates, unembeds, and returns the files from the "embed" directory of the file system.
 // Version and words are required, file systems are unembedded
-func (e EmbeddedData) unEmbed() (*EmbeddedData, error) {
-	switch {
-	case len(e.Version) == 0:
-		return nil, fmt.Errorf("version required")
-	case len(e.Words) == 0:
-		return nil, fmt.Errorf("empty words file provided")
-	case e.StaticFS == nil:
-		return nil, fmt.Errorf("embedded static file system required")
-	case e.TemplateFS == nil:
-		return nil, fmt.Errorf("embedded template file system required")
-	case e.SQLFS == nil:
-		return nil, fmt.Errorf("embedded sql file system required")
+func unembedFS(fsys fs.FS) (*EmbeddedData, error) {
+	unembedSubdirectory := func(fsys fs.FS, subdirectory string) (fs.FS, error) {
+		if _, err := fsys.Open(subdirectory); err != nil {
+			return nil, fmt.Errorf("checking embedded subdirectory existence: %w", err)
+		}
+		return fs.Sub(fsys, subdirectory)
 	}
-	trimmedVersion := strings.TrimSpace(e.Version)
-	staticFS, err := unembedFS(e.StaticFS, "static")
+	embedFS, err := unembedSubdirectory(fsys, "embed")
+	if err != nil {
+		return nil, fmt.Errorf("unembedding embed directory")
+	}
+	version, err := fs.ReadFile(embedFS, "version.txt")
+	if err != nil {
+		return nil, fmt.Errorf("unembedding version: %w", err)
+	}
+	embeddedWords, err := fs.ReadFile(embedFS, "words.txt")
+	if err != nil {
+		return nil, fmt.Errorf("unembedding words file: %w", err)
+	}
+	tlsCertPEM, err := fs.ReadFile(embedFS, "tls-cert.pem")
+	if err != nil {
+		return nil, fmt.Errorf("unembedding TLS cert PEM: %w", err)
+	}
+	tlsKeyPEM, err := fs.ReadFile(embedFS, "tls-key.pem")
+	if err != nil {
+		return nil, fmt.Errorf("unembedding TLS key PEM: %w", err)
+	}
+	staticFS, err := unembedSubdirectory(embedFS, "static")
 	if err != nil {
 		return nil, fmt.Errorf("unembedding static file system: %w", err)
 	}
-	templateFS, err := unembedFS(e.TemplateFS, "template")
+	templateFS, err := unembedSubdirectory(embedFS, "template")
 	if err != nil {
 		return nil, fmt.Errorf("unembedding template file system: %w", err)
 	}
-	sqlFS, err := unembedFS(e.SQLFS, "sql")
+	sqlFS, err := unembedSubdirectory(embedFS, "sql")
 	if err != nil {
 		return nil, fmt.Errorf("unembedding sql file system: %w", err)
 	}
-	e2 := EmbeddedData{
-		Version:    trimmedVersion,
-		Words:      e.Words,
-		TLSCertPEM: e.TLSCertPEM,
-		TLSKeyPEM:  e.TLSKeyPEM,
+	e := EmbeddedData{
+		Version:    version,
+		Words:      embeddedWords,
+		TLSCertPEM: tlsCertPEM,
+		TLSKeyPEM:  tlsKeyPEM,
 		StaticFS:   staticFS,
 		TemplateFS: templateFS,
 		SQLFS:      sqlFS,
 	}
-	return &e2, nil
+	return &e, nil
 }
 
 // sqlFiles opens the SQL files needed to manage user data.
