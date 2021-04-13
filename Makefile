@@ -19,7 +19,7 @@ GO_PACKAGES  := ./...
 GO_INSTALL   := $(GO) install
 GO_GENERATE  := $(GO) generate
 GO_LIST      := $(GO) list
-GO_TEST      := $(GO) test --cover -timeout 30s # -race # -run TestFuncName
+GO_TEST      := $(GO) test -cover -timeout 30s # -race # -run TestFuncName # -test.short
 GO_BENCH     := $(GO) test -bench=.
 GO_BUILD     := $(GO) build # -race
 GO_ARGS      :=

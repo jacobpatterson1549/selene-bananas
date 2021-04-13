@@ -17,6 +17,9 @@ import (
 
 func embeddedData(t *testing.T) main.EmbeddedData {
 	t.Helper()
+	if testing.Short() {
+		t.Skip("skipping long running test that uses embedded file system")
+	}
 	e, err := main.UnembedFS()
 	if err != nil {
 		t.Fatalf("unembedding data: %v", err)
