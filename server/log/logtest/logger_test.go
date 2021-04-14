@@ -2,6 +2,7 @@ package logtest
 
 import (
 	"bytes"
+	"sync"
 	"testing"
 )
 
@@ -16,38 +17,60 @@ func TestNewLogger(t *testing.T) {
 }
 
 func TestLoggerPrintf(t *testing.T) {
-	printfTests := []struct {
-		format string
-		v      []interface{}
-		want   string
-	}{
-		{},
-		{
-			format: "Hello, %s",
-			v:      []interface{}{"Selene"},
-			want:   "Hello, Selene",
-		},
-		{
-			format: "%s, do you have $%d to lend me?  I want to buy a %s.",
-			v:      []interface{}{"Dad", 500, "car"},
-			want:   "Dad, do you have $500 to lend me?  I want to buy a car.",
-		},
-	}
-	for i, test := range printfTests {
-		var buf bytes.Buffer
-		l := Logger{&buf}
-		l.Printf(test.format, test.v...)
-		got := buf.String()
-		if test.want != got {
-			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
+	t.Run("basic", func(t *testing.T) {
+		printfTests := []struct {
+			format string
+			v      []interface{}
+			want   string
+		}{
+			{},
+			{
+				format: "Hello, %s",
+				v:      []interface{}{"Selene"},
+				want:   "Hello, Selene",
+			},
+			{
+				format: "%s, do you have $%d to lend me?  I want to buy a %s.",
+				v:      []interface{}{"Dad", 500, "car"},
+				want:   "Dad, do you have $500 to lend me?  I want to buy a car.",
+			},
 		}
-	}
+		for i, test := range printfTests {
+			var buf bytes.Buffer
+			var l Logger
+			l.buf = &buf
+			l.Printf(test.format, test.v...)
+			got := buf.String()
+			if test.want != got {
+				t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
+			}
+		}
+	})
+	t.Run("async race", func(t *testing.T) {
+		var buf bytes.Buffer
+		var l Logger
+		l.buf = &buf
+		n := 10
+		var wg sync.WaitGroup
+		wg.Add(n)
+		for i := 0; i < n; i++ {
+			go func() {
+				l.Printf("a")
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+		if want, got := "aaaaaaaaaa", buf.String(); want != got {
+			t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
+		}
+	})
 }
 
 func TestLoggerString(t *testing.T) {
 	want := "hello"
 	buf := bytes.NewBuffer([]byte(want))
-	l := Logger{buf}
+	var l Logger
+	l.buf = buf
 	got := l.String()
 	if want != got {
 		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
@@ -72,7 +95,8 @@ func TestLoggerEmpty(t *testing.T) {
 	}
 	for i, test := range emptyTests {
 		buf := bytes.NewBuffer([]byte(test.contents))
-		l := Logger{buf}
+		var l Logger
+		l.buf = buf
 		got := l.Empty()
 		if test.want != got {
 			t.Errorf("Test %v: empty states not equal: wanted: %v, got: %v", i, test.want, got)
@@ -88,7 +112,8 @@ func TestLoggerReset(t *testing.T) {
 	}
 	for i, data := range contents {
 		buf := bytes.NewBuffer([]byte(data))
-		l := Logger{buf}
+		var l Logger
+		l.buf = buf
 		l.Reset()
 		switch {
 		case !l.Empty():

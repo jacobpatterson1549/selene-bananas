@@ -4,6 +4,7 @@ package logtest
 import (
 	"bytes"
 	"fmt"
+	"sync"
 
 	"github.com/jacobpatterson1549/selene-bananas/server/log"
 )
@@ -35,6 +36,7 @@ func (discardLogger) Printf(format string, v ...interface{}) {
 // Logger is a logger that writes to a buffer to be read later.
 type Logger struct {
 	buf *bytes.Buffer
+	mu  sync.RWMutex
 }
 
 // Logger implements the server's log.Logger interface.
@@ -42,20 +44,28 @@ var _ log.Logger = NewLogger()
 
 // Printf implements the log.Logger interface
 func (l *Logger) Printf(format string, v ...interface{}) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	fmt.Fprintf(l.buf, format, v...)
 }
 
 // String returns the recorded string.
 func (l *Logger) String() string {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 	return l.buf.String()
 }
 
 // Empty returns if buffer is empty.
 func (l *Logger) Empty() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	return l.buf.Len() == 0
 }
 
 // Reset resets the buffer to be empty,
 func (l *Logger) Reset() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	l.buf.Reset()
 }
