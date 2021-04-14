@@ -345,7 +345,10 @@ func (cfg Config) httpHandler(httpsRedirectHandler http.Handler) http.Handler {
 // httpsHandler creates a handler for HTTPS endpoints.
 // Non-TLS requests are redirected to HTTPS.  GET and POST requests are handled by more specific handlers.
 func (cfg Config) httpsHandler(httpHandler, httpsRedirectHandler http.Handler, p Parameters, template *template.Template) http.HandlerFunc {
-	getHandler := p.getHandler(cfg, template)
+	monitor := runtimeMonitor{
+		hasTLS: cfg.validHTTPAddr(),
+	}
+	getHandler := p.getHandler(cfg, template, monitor)
 	postHandler := p.postHandler()
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -364,16 +367,13 @@ func (cfg Config) httpsHandler(httpHandler, httpsRedirectHandler http.Handler, p
 }
 
 // getHandler forwards calls to various endpoints.
-func (p Parameters) getHandler(cfg Config, template *template.Template) http.Handler {
+func (p Parameters) getHandler(cfg Config, template *template.Template, monitor http.Handler) http.Handler {
 	data := cfg.data()
 	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
 	templateFileHandler := templateHandler(template, data, p.Logger)
 	staticFileHandler := http.FileServer(http.FS(p.StaticFS))
 	templateHandler := fileHandler(http.HandlerFunc(templateFileHandler), cacheMaxAge)
 	staticHandler := fileHandler(staticFileHandler, cacheMaxAge)
-	monitor := runtimeMonitor{
-		hasTLS: cfg.validHTTPAddr(),
-	}
 	templatePatterns := []string{rootTemplatePath, "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html"}
 	staticPatterns := []string{"/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/favicon.ico", "/LICENSE"}
 

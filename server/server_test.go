@@ -799,38 +799,66 @@ func TestWrappedResponseWriter(t *testing.T) {
 }
 
 func TestGetHandler(t *testing.T) {
-	getHandlerPathWantCodes := make(map[string]int)
-	for _, path := range []string{"/invalid/get/path", "/ping"} {
-		getHandlerPathWantCodes[path] = 404
-	}
-	validGetEndpoints := []string{
-		// templates:
-		"/index.html",
-		"/manifest.json",
-		"/serviceWorker.js",
-		"/favicon.svg",
-		"/network_check.html",
-		// static files:
-		"/wasm_exec.js",
-		"/main.wasm",
-		"/robots.txt",
-		"/favicon.png",
-		"/favicon.ico",
-		"/LICENSE",
-		"/lobby",
-		"/monitor",
-	}
-	for _, path := range validGetEndpoints {
-		getHandlerPathWantCodes[path] = 200
-	}
-	for path, wantCode := range getHandlerPathWantCodes {
+	monitor := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		// NOOP
+	})
+	checkCode := func(t *testing.T, path string, p Parameters, cfg Config, template *template.Template, wantCode int) {
+		t.Helper()
 		r := httptest.NewRequest("", path, nil)
 		w := httptest.NewRecorder()
-		fileName := path[1:]
-		template := template.Must(template.New(fileName).Parse(""))
+		h := p.getHandler(cfg, template, monitor)
+		h.ServeHTTP(w, r)
+		if gotCode := w.Code; wantCode != gotCode {
+			t.Errorf("codes not equal for GET to %v: status codes not equal: wanted: %v, got: %v", path, wantCode, gotCode)
+		}
+	}
+	t.Run("invalidGetPaths", func(t *testing.T) {
+		invalidPaths := []string{"/invalid/get/path", "/ping"}
+		for _, path := range invalidPaths {
+			var cfg Config
+			var p Parameters
+			checkCode(t, path, p, cfg, nil, 404)
+		}
+	})
+	t.Run("templates", func(t *testing.T) {
+		templates := []string{
+			"/index.html",
+			"/manifest.json",
+			"/serviceWorker.js",
+			"/favicon.svg",
+			"/network_check.html",
+		}
+		for _, path := range templates {
+			fileName := path[1:]
+			template := template.Must(template.New(fileName).Parse(""))
+			var p Parameters
+			var cfg Config
+			checkCode(t, path, p, cfg, template, 200)
+		}
+	})
+	t.Run("staticFiles", func(t *testing.T) {
+		staticFiles := []string{
+			"/wasm_exec.js",
+			"/main.wasm",
+			"/robots.txt",
+			"/favicon.png",
+			"/favicon.ico",
+			"/LICENSE",
+		}
+		for _, path := range staticFiles {
+			fileName := path[1:]
+			var cfg Config
+			p := Parameters{
+				StaticFS: fstest.MapFS{
+					fileName: &fstest.MapFile{Data: []byte{}},
+				},
+			}
+			checkCode(t, path, p, cfg, nil, 200)
+		}
+	})
+	t.Run("lobby", func(t *testing.T) {
 		var cfg Config
 		p := Parameters{
-			Logger: logtest.DiscardLogger,
 			Tokenizer: mockTokenizer{
 				ReadUsernameFunc: func(tokenString string) (string, error) {
 					return "", nil
@@ -841,17 +869,22 @@ func TestGetHandler(t *testing.T) {
 					return nil
 				},
 			},
-			StaticFS: fstest.MapFS{
-				fileName: &fstest.MapFile{Data: []byte{}},
-			},
 		}
-		h := p.getHandler(cfg, template)
-		h.ServeHTTP(w, r)
-		gotCode := w.Code
-		if wantCode != gotCode {
-			t.Errorf("codes not equal for GET to %v: status codes not equal: wanted: %v, got: %v", path, wantCode, gotCode)
-		}
-	}
+		checkCode(t, "/lobby", p, cfg, nil, 200)
+	})
+	t.Run("monitor", func(t *testing.T) {
+		var cfg Config
+		var p Parameters
+		// empty monitor used in checkCode
+		checkCode(t, "/monitor", p, cfg, nil, 200)
+	})
+	t.Run("rootHandler", func(t *testing.T) {
+		fileName := "index.html"
+		template := template.Must(template.New(fileName).Parse(""))
+		var p Parameters
+		var cfg Config
+		checkCode(t, "/", p, cfg, template, 200)
+	})
 }
 
 func TestHandlePost(t *testing.T) {
