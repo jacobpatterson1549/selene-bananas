@@ -5,8 +5,6 @@ package http
 
 import (
 	"errors"
-	"io"
-	"strings"
 	"syscall/js"
 	"time"
 
@@ -29,7 +27,7 @@ type (
 		// Headers contain additional request properties.
 		Headers map[string]string
 		// Body contains additional request data.
-		Body io.Reader
+		Body string
 	}
 
 	// Response is what the server responds.
@@ -37,7 +35,7 @@ type (
 		// Code is a descriptive status about the server handled the response (200 OK, 500 Internal Server Error).
 		Code int
 		// Body contains the response data.
-		Body io.ReadCloser
+		Body string
 	}
 )
 
@@ -57,15 +55,7 @@ func (c Client) Do(req Request) (*Response, error) {
 	for _, event := range []string{"load", "timeout", "abort"} {
 		xhr.Call("addEventListener", event, eventHandler)
 	}
-	var body string
-	if req.Body != nil {
-		bytes, err := io.ReadAll(req.Body)
-		if err != nil {
-			return nil, errors.New("getting request body: " + err.Error())
-		}
-		body = string(bytes)
-	}
-	xhr.Call("send", body)
+	xhr.Call("send", req.Body)
 	select { // BLOCKING
 	case response := <-responseC:
 		return &response, nil
@@ -81,9 +71,7 @@ func handleEvent(xhr js.Value, responseC chan<- Response, errC chan<- error) fun
 		switch eventType {
 		case "load":
 			code := xhr.Get("status").Int()
-			response := xhr.Get("response").String()
-			responseR := strings.NewReader(response)
-			body := io.NopCloser(responseR)
+			body := xhr.Get("response").String()
 			responseC <- Response{
 				Code: code,
 				Body: body,

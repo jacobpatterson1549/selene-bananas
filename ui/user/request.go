@@ -4,9 +4,7 @@ package user
 
 import (
 	"errors"
-	"io"
 	"strconv"
-	"strings"
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
@@ -18,7 +16,7 @@ type request struct {
 	user      *User
 	form      dom.Form
 	validator func() bool
-	handler   func(body io.ReadCloser)
+	handler   func(body string)
 }
 
 // Request makes an BLOCKING request to the server using the fields in the form.
@@ -64,7 +62,7 @@ func (r request) do() (*http.Response, error) {
 		req.URL = f.URL.String()
 	case "post":
 		req.URL = f.URL.String()
-		req.Body = strings.NewReader(f.Params.Encode())
+		req.Body = f.Params.Encode()
 		req.Headers["Content-Type"] = "application/x-www-form-urlencoded"
 	default:
 		return nil, errors.New("unknown method: " + f.Method)
@@ -79,10 +77,10 @@ func (r request) do() (*http.Response, error) {
 // responseHandler creates a response-handling function for the url and form.  Nil is returned if the url is unknown.Path
 func (u *User) newRequest(f dom.Form) (*request, error) {
 	var validator func() bool
-	var handler func(body io.ReadCloser)
+	var handler func(body string)
 	switch f.URL.Path {
 	case "/user_create", "/user_update_password":
-		handler = func(body io.ReadCloser) {
+		handler = func(body string) {
 			f.StoreCredentials()
 			u.Logout()
 		}
@@ -92,19 +90,13 @@ func (u *User) newRequest(f dom.Form) (*request, error) {
 			ok := dom.Confirm(message)
 			return ok
 		}
-		handler = func(body io.ReadCloser) {
+		handler = func(body string) {
 			u.Logout()
 		}
 	case "/user_login":
-		handler = func(body io.ReadCloser) {
-			defer body.Close()
-			jwt, err := io.ReadAll(body)
-			if err != nil {
-				u.log.Error("reading response body: " + err.Error())
-				return
-			}
+		handler = func(body string) {
 			f.StoreCredentials()
-			u.login(string(jwt))
+			u.login(body)
 		}
 	case "/ping":
 		// NOOP
@@ -121,17 +113,11 @@ func (u *User) newRequest(f dom.Form) (*request, error) {
 }
 
 func (u *User) handleResponseError(resp *http.Response) {
-	body := resp.Body
-	defer body.Close()
-	message, err := io.ReadAll(body)
 	switch {
-	case err != nil:
-		u.log.Error("reading error response body: " + err.Error())
 	case resp.Code == 401: // Unauthorized
-		u.log.Warning(string(message))
-		return
-	case len(message) > 0:
-		u.log.Error("HTTP error: status " + strconv.Itoa(resp.Code) + ": " + string(message))
+		u.log.Warning(resp.Body)
+	default:
+		u.log.Error("HTTP error: status " + strconv.Itoa(resp.Code) + ": " + resp.Body)
+		u.Logout()
 	}
-	u.Logout()
 }
