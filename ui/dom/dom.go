@@ -120,3 +120,11 @@ func RecoverError(r interface{}) error {
 		panic([]interface{}{"unknown panic type", v, r})
 	}
 }
+
+// Base64Decode decodes the ascii base-64 string to binary (atob).
+// Panics if the encodedData is not a valid url encoded base64 string.
+func Base64Decode(a string) []byte {
+	global := js.Global()
+	s := global.Call("atob", a)
+	return []byte(s.String())
+}

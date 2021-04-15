@@ -5,7 +5,6 @@ package user
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"strconv"
@@ -102,10 +101,7 @@ func (User) info(jwt string) (*userInfo, error) {
 		return nil, errors.New("wanted 3 jwt parts, got " + strconv.Itoa(len(parts)))
 	}
 	payload := parts[1]
-	jwtUserClaims, err := base64.RawURLEncoding.DecodeString(payload)
-	if err != nil {
-		return nil, errors.New("decoding user info: " + err.Error())
-	}
+	jwtUserClaims := dom.Base64Decode(payload)
 	var ui userInfo
 	if err := json.Unmarshal(jwtUserClaims, &ui); err != nil {
 		return nil, errors.New("parsing json: " + err.Error())
