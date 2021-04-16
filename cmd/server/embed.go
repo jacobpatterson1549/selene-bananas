@@ -7,9 +7,9 @@ import (
 	"io/fs"
 )
 
-// Expect an "embed" subdirectory in this package with files for the server.
+// EmbeddedFS is the embedded "embed" subdirectory in this package with files for the server.
 //go:embed embed
-var embeddedFS embed.FS
+var EmbeddedFS embed.FS
 
 // EmbeddedData is used to retrieve files embedded in the server.
 type EmbeddedData struct {
@@ -24,7 +24,7 @@ type EmbeddedData struct {
 
 // unembedFS validates, unembeds, and returns the files from the "embed" directory of the file system.
 // Version and words are required, file systems are unembedded
-func unembedFS(fsys fs.FS) (*EmbeddedData, error) {
+func UnembedFS(fsys fs.FS) (*EmbeddedData, error) {
 	unembedSubdirectory := func(fsys fs.FS, subdirectory string) (fs.FS, error) {
 		if _, err := fsys.Open(subdirectory); err != nil {
 			return nil, fmt.Errorf("checking embedded subdirectory existence: %w", err)

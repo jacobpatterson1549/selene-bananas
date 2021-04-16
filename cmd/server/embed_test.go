@@ -102,7 +102,7 @@ func TestUnembedFS(t *testing.T) {
 		},
 	}
 	for i, test := range unembedFSTests {
-		got, err := unembedFS(test.FS)
+		got, err := UnembedFS(test.FS)
 		switch {
 		case !test.wantOk:
 			if err == nil {

@@ -25,7 +25,7 @@ func main() {
 
 // runServer runs the server
 func runServer(ctx context.Context, log *log.Logger) error {
-	e, err := UnembedFS()
+	e, err := UnembedFS(EmbeddedFS)
 	if err != nil {
 		return fmt.Errorf("reading embedded files: %v", err)
 	}
@@ -57,9 +57,4 @@ func runServer(ctx context.Context, log *log.Logger) error {
 	}
 	log.Printf("server stopped successfully")
 	return nil
-}
-
-// UnembedFS returns the unembedded data that was embedded in the server.
-func UnembedFS() (*EmbeddedData, error) {
-	return unembedFS(embeddedFS)
 }
