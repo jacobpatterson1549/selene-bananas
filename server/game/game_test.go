@@ -501,39 +501,6 @@ func TestSendMessage(t *testing.T) {
 	}
 }
 
-func TestInitializeUnusedTilesShuffled(t *testing.T) {
-	createTilesShuffledTests := []struct {
-		want      tile.Letter
-		inReverse string
-	}{
-		{'A', ""},
-		{'Z', " IN REVERSE"},
-	}
-	for _, test := range createTilesShuffledTests {
-		g := Game{
-			Config: Config{
-				TileLetters: "AZ",
-				ShuffleUnusedTilesFunc: func(tiles []tile.Tile) {
-					sort.Slice(tiles, func(i, j int) bool {
-						lessThan := tiles[i].Ch < tiles[j].Ch
-						if len(test.inReverse) > 0 {
-							return !lessThan
-						}
-						return lessThan
-					})
-				},
-			},
-		}
-		if err := g.initializeUnusedTiles(); err != nil {
-			t.Errorf("unwanted error: %v", err)
-		}
-		got := g.unusedTiles[0].Ch
-		if test.want != got {
-			t.Errorf("wanted first tile to be %q when sorted%v (a fake shuffle), but was %q", test.want, test.inReverse, got)
-		}
-	}
-}
-
 func TestInitializeUnusedTiles(t *testing.T) {
 	initializeUnusedTilesTests := []struct {
 		tileLetters string
@@ -558,6 +525,7 @@ func TestInitializeUnusedTiles(t *testing.T) {
 	}
 	for i, test := range initializeUnusedTilesTests {
 		shuffleFunc := func(tiles []tile.Tile) {
+			// sort tiles by letter descending, id ascending
 			sort.Slice(tiles, func(i, j int) bool {
 				if tiles[i].Ch == tiles[j].Ch {
 					return tiles[i].ID < tiles[j].ID

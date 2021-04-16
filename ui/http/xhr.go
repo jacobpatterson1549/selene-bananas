@@ -52,7 +52,8 @@ func (c Client) Do(req Request) (*Response, error) {
 	errC := make(chan error)
 	eventHandler := dom.NewJsEventFunc(handleEvent(xhr, responseC, errC))
 	defer eventHandler.Release()
-	for _, event := range []string{"load", "timeout", "abort"} {
+	xhrEventTypes := []string{"load", "timeout", "abort", "error"}
+	for _, event := range xhrEventTypes {
 		xhr.Call("addEventListener", event, eventHandler)
 	}
 	xhr.Call("send", req.Body)
@@ -68,16 +69,14 @@ func (c Client) Do(req Request) (*Response, error) {
 func handleEvent(xhr js.Value, responseC chan<- Response, errC chan<- error) func(event js.Value) {
 	return func(event js.Value) {
 		eventType := event.Get("type").String()
-		switch eventType {
-		case "load":
-			code := xhr.Get("status").Int()
-			body := xhr.Get("response").String()
-			responseC <- Response{
-				Code: code,
-				Body: body,
-			}
-		default:
+		if eventType != "load" {
 			errC <- errors.New("received event type: " + eventType)
+		}
+		code := xhr.Get("status").Int()
+		body := xhr.Get("response").String()
+		responseC <- Response{
+			Code: code,
+			Body: body,
 		}
 	}
 }

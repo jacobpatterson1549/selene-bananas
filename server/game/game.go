@@ -207,15 +207,7 @@ func (g *Game) handleMessage(ctx context.Context, m message.Message, send messag
 	if g.Debug {
 		g.log.Printf("game reading message with type %v", m.Type)
 	}
-	var err error
-	if mh, ok := messageHandlers[m.Type]; !ok {
-		err = fmt.Errorf("game does not know how to handle MessageType %v", m.Type)
-	} else if _, ok := g.players[m.PlayerName]; !ok && m.Type != message.JoinGame {
-		err = fmt.Errorf("game does not have player named '%v'", m.PlayerName)
-	} else {
-		err = mh(ctx, m, send)
-		*active = true
-	}
+	err := g.handleMessageHelper(ctx, m, send, active, messageHandlers)
 	if err != nil {
 		var mt message.Type
 		switch err.(type) {
@@ -232,6 +224,20 @@ func (g *Game) handleMessage(ctx context.Context, m message.Message, send messag
 		}
 		send(m2)
 	}
+}
+
+// handleMessageHelper clearly handles the message, after checking the a handler exists and the player for the message is in the game.
+func (g *Game) handleMessageHelper(ctx context.Context, m message.Message, send messageSender, active *bool, messageHandlers map[message.Type]messageHandler) error {
+	messageHandler, handlerExists := messageHandlers[m.Type]
+	if !handlerExists {
+		return fmt.Errorf("game does not know how to handle MessageType %v", m.Type)
+	}
+	_, playerInGame := g.players[m.PlayerName]
+	if !playerInGame && m.Type != message.JoinGame {
+		return fmt.Errorf("game does not have player named '%v'", m.PlayerName)
+	}
+	*active = true
+	return messageHandler(ctx, m, send)
 }
 
 // handleGameJoin adds the player from the message to the game.

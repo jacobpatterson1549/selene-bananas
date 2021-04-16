@@ -2,7 +2,7 @@ package user
 
 import "testing"
 
-func TestIsValidateUsername(t *testing.T) {
+func TestValidateUsername(t *testing.T) {
 	isValidTests := []struct {
 		username string
 		want     bool
