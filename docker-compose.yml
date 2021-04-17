@@ -5,7 +5,7 @@ services:
     container_name: "selene-bananas-db"
     env_file: ./.env
     ports:
-      - "${POSTGRES_PORT}:5432" # port 5432 on container maps to POSTGRES_PORT on the docker host
+      - "${POSTGRES_PORT}:5432"
     environment:
       - PGUSER=${POSTGRES_USER}
       - PGPASSWORD=${POSTGRES_PASSWORD}
@@ -22,11 +22,11 @@ services:
     container_name: "selene-bananas-web"
     env_file: ./.env
     ports:
-      - "${HTTPS_PORT}:8000" # port 8000 on container maps to HTTPS_PORT on docker host
-      - "${HTTP_PORT}:8001"  # port 8001 on container maps to HTTP_PORT on docker host
+      - "${HTTPS_PORT}:${HTTPS_PORT}"
+      - "${HTTP_PORT}:${HTTP_PORT}"
     environment:
-      - HTTPS_PORT=8000
-      - HTTP_PORT=8001
+      - HTTPS_PORT=${HTTPS_PORT}
+      - HTTP_PORT=${HTTP_PORT}
       - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
     depends_on:
       db:
