@@ -19,10 +19,11 @@ GO_PACKAGES  := ./...
 GO_INSTALL   := $(GO) install
 GO_GENERATE  := $(GO) generate
 GO_LIST      := $(GO) list
-GO_TEST      := $(GO) test -cover -timeout 30s # -race # -run TestFuncName # -test.short
+GO_TEST      := $(GO) test -cover -timeout 30s 
 GO_BENCH     := $(GO) test -bench=.
-GO_BUILD     := $(GO) build # -race
+GO_BUILD     := $(GO) build
 GO_ARGS      :=
+GO_TEST_ARGS := # -v # -test.short # -race # -run TestFuncName 
 GO_WASM_ARGS := GOOS=js GOARCH=wasm
 GO_WASM_PATH := $(shell $(GO) env GOROOT)/misc/wasm
 SERVER_OBJ  := main
@@ -55,12 +56,12 @@ $(SERVER_EMBED_DIR)/$(STATIC_DIR)/$(CLIENT_OBJ): $(BUILD_DIR)/$(CLIENT_TEST) | $
 
 $(BUILD_DIR)/$(SERVER_TEST): $(SERVER_SRC) $(GENERATE_SRC) $(BUILD_DIR)/$(VERSION_OBJ) | $(BUILD_DIR)
 	$(GO_LIST) $(GO_PACKAGES) | grep -v ui \
-		| $(GO_ARGS) xargs $(GO_TEST) \
+		| $(GO_ARGS) xargs $(GO_TEST) $(GO_TEST_ARGS) \
 		| tee $@
 
 $(BUILD_DIR)/$(CLIENT_TEST): $(CLIENT_SRC) $(GENERATE_SRC) | $(BUILD_DIR)
 	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep ui \
-		| $(GO_WASM_ARGS) xargs $(GO_TEST) \
+		| $(GO_WASM_ARGS) xargs $(GO_TEST) $(GO_TEST_ARGS) \
 			-exec=$(GO_WASM_PATH)/go_js_wasm_exec \
 		| tee $@
 
