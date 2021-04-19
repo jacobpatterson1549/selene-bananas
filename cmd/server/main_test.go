@@ -31,9 +31,12 @@ func embeddedData(t *testing.T) main.EmbeddedData {
 func TestNewWordValidator(t *testing.T) {
 	e := embeddedData(t)
 	r := bytes.NewReader(e.Words)
-	c := word.NewValidator(r)
+	validator, err := word.NewValidator(r)
+	if err != nil {
+		t.Fatalf("unwanted error: %v", err)
+	}
 	want := 77976
-	got := len(*c)
+	got := len(*validator)
 	if want != got {
 		note := "NOTE: this might be flaky, but it ensures that a large number of words can be loaded."
 		t.Errorf("wanted %v words, got %v\n%v", want, got, note)

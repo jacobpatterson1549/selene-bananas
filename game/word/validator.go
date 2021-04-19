@@ -3,6 +3,7 @@ package word
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"strings"
 	"unicode"
@@ -12,7 +13,10 @@ import (
 type Validator map[string]struct{}
 
 // NewValidator consumes the lower case words in the reader to use for validating.
-func NewValidator(r io.Reader) *Validator {
+func NewValidator(r io.Reader) (*Validator, error) {
+	if r == nil {
+		return nil, errors.New("reader required to initialize word validator from")
+	}
 	c := make(Validator)
 	scanner := bufio.NewScanner(r)
 	scanner.Split(scanLowerWords)
@@ -20,7 +24,10 @@ func NewValidator(r io.Reader) *Validator {
 		rawWord := scanner.Text()
 		c[rawWord] = struct{}{}
 	}
-	return &c
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return &c, nil
 }
 
 // Validate determines whether or not the word is valid.

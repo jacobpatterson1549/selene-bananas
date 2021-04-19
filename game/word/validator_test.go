@@ -1,42 +1,72 @@
 package word
 
 import (
+	"errors"
+	"io"
 	"reflect"
 	"strings"
 	"testing"
+	"testing/iotest"
 )
 
+func reader(words string) io.Reader {
+	return strings.NewReader(words)
+}
+
 func TestNewValidator(t *testing.T) {
+	wantWords := func(words ...string) *Validator {
+		validator := Validator(make(map[string]struct{}, len(words)))
+		for _, w := range words {
+			validator[w] = struct{}{}
+		}
+		return &validator
+	}
 	newValidatorTests := []struct {
-		words     string
-		wantWords []string
+		wantOk bool
+		words  io.Reader
+		want   *Validator
 	}{
 		{},
 		{
-			words: "   ",
+			words: iotest.ErrReader(errors.New("cannot read words")),
 		},
 		{
-			words:     "a bad cat",
-			wantWords: []string{"a", "bad", "cat"},
+			wantOk: true,
+			words:  reader("   "),
+			want:   wantWords(),
 		},
 		{
-			words:     "A man, a plan, a canal, panama!",
-			wantWords: []string{"a"},
+			wantOk: true,
+			words:  reader("a bad cat"),
+			want:   wantWords("a", "bad", "cat"),
 		},
 		{
-			words: "Abc 'words' they're top-secret not.",
+			wantOk: true,
+			words:  reader("a bad cat"),
+			want:   wantWords("a", "bad", "cat"),
+		},
+		{
+			wantOk: true,
+			words:  reader("A man, a plan, a canal, panama!"),
+			want:   wantWords("a"),
+		},
+		{
+			wantOk: true,
+			words:  reader("Abc 'words' they're top-secret not."),
+			want:   wantWords(),
 		},
 	}
 	for i, test := range newValidatorTests {
-		want := Validator(make(map[string]struct{}, len(test.wantWords)))
-		for _, w := range test.wantWords {
-			want[w] = struct{}{}
-		}
-		r := strings.NewReader(test.words)
-		c := NewValidator(r)
-		got := *c
-		if !reflect.DeepEqual(want, got) {
-			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, want, got)
+		got, err := NewValidator(test.words)
+		switch {
+		case !test.wantOk:
+			if err == nil {
+				t.Errorf("Test %v: wanted error", i)
+			}
+		case err != nil:
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case !reflect.DeepEqual(test.want, got):
+			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
 		}
 	}
 }
@@ -65,12 +95,16 @@ func TestValidate(t *testing.T) {
 			word: "care",
 		},
 	}
-	r := strings.NewReader("apple bat car")
-	c := NewValidator(r)
 	for i, test := range validateTests {
-		got := c.Validate(test.word)
+		r := reader("apple bat car")
+		validator, err := NewValidator(r)
+		if err != nil {
+			t.Errorf("Test %v: unwanted error: %v", i, err)
+			continue
+		}
+		got := validator.Validate(test.word)
 		if test.want != got {
-			t.Errorf("Test %v: wanted %v, but got %v for word %v - valid words are %v", i, test.want, got, test.word, c)
+			t.Errorf("Test %v: wanted %v, but got %v for word %v - valid words are %v", i, test.want, got, test.word, validator)
 		}
 	}
 }
