@@ -41,19 +41,13 @@ func TestNewValidator(t *testing.T) {
 			want:   wantWords("a", "bad", "cat"),
 		},
 		{
-			wantOk: true,
-			words:  reader("a bad cat"),
-			want:   wantWords("a", "bad", "cat"),
+			words: reader("A man, a plan, a canal, panama!"),
 		},
 		{
-			wantOk: true,
-			words:  reader("A man, a plan, a canal, panama!"),
-			want:   wantWords("a"),
+			words: reader("Abc 'words' they're top-secret not."),
 		},
 		{
-			wantOk: true,
-			words:  reader("Abc 'words' they're top-secret not."),
-			want:   wantWords(),
+			words: reader("illegal punctuation - in middle"),
 		},
 	}
 	for i, test := range newValidatorTests {
@@ -98,13 +92,11 @@ func TestValidate(t *testing.T) {
 	for i, test := range validateTests {
 		r := reader("apple bat car")
 		validator, err := NewValidator(r)
-		if err != nil {
+		switch {
+		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
-			continue
-		}
-		got := validator.Validate(test.word)
-		if test.want != got {
-			t.Errorf("Test %v: wanted %v, but got %v for word %v - valid words are %v", i, test.want, got, test.word, validator)
+		case test.want != validator.Validate(test.word):
+			t.Errorf("Test %v: wanted valid = %v for word %v - valid words are %v", i, test.want, test.word, validator)
 		}
 	}
 }
