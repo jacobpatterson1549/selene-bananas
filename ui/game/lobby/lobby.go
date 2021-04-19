@@ -86,7 +86,7 @@ func (l *Lobby) SetGameInfos(gameInfos []game.Info, username string) {
 		status := gameInfo.Status.String()
 		rowElement.Get("children").Index(3).Set("innerHTML", status)
 		joinElements := rowElement.Get("children").Index(4)
-		joinElements.Get("children").Index(0).Set("value", int(gameInfo.ID))
+		joinElements.Get("children").Index(0).Set("value", gameInfo.ID)
 		if !gameInfo.CanJoin(username) {
 			joinElements.Get("children").Index(1).Call("setAttribute", "disabled", true)
 		}

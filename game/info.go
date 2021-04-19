@@ -31,7 +31,8 @@ type Info struct {
 // CanJoin indicates whether or not a player can join the game.
 // Players can only join games that are not started or that they were previously a part of, assuming there is room.
 func (i Info) CanJoin(playerName string) bool {
-	return i.isInGame(playerName) || (int(i.Status) == int(NotStarted) && len(i.Players) < i.Capacity)
+	return i.isInGame(playerName) ||
+		(i.Status == NotStarted && len(i.Players) < i.Capacity)
 }
 
 // isInGame determines if a player with the specified game is in the players slice.
