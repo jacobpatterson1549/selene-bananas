@@ -117,7 +117,7 @@ func (cfg Config) NewServer(p Parameters) (*Server, error) {
 	}
 	httpAddr := fmt.Sprintf(":%d", cfg.HTTPPort)
 	httpsAddr := fmt.Sprintf(":%d", cfg.HTTPSPort)
-	httpsRedirectHandler := cfg.httpsRedirectHandler()
+	httpsRedirectHandler := httpsRedirectHandler(cfg.HTTPSPort)
 	httpHandler := cfg.httpHandler(httpsRedirectHandler)
 	httpsHandler := cfg.httpsHandler(httpHandler, httpsRedirectHandler, p, template, monitor)
 	s := Server{
@@ -362,7 +362,7 @@ func templateHandler(template *template.Template, data interface{}, log log.Logg
 }
 
 // httpsRedirectHandler redirects the request to https.
-func (cfg Config) httpsRedirectHandler() http.HandlerFunc {
+func httpsRedirectHandler(httpsPort int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		host := r.Host
 		// derived from net.SplitHostPort, but does not throw error :
@@ -370,8 +370,8 @@ func (cfg Config) httpsRedirectHandler() http.HandlerFunc {
 		if lastColonIndex >= 0 {
 			host = host[:lastColonIndex]
 		}
-		if cfg.HTTPSPort != 443 && !cfg.NoTLSRedirect {
-			host += fmt.Sprintf(":%d", cfg.HTTPSPort)
+		if httpsPort != 443 {
+			host += fmt.Sprintf(":%d", httpsPort)
 		}
 		httpsURI := "https://" + host + r.URL.Path
 		http.Redirect(w, r, httpsURI, http.StatusTemporaryRedirect)

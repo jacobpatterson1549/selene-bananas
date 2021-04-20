@@ -649,10 +649,7 @@ func TestHTTPSRedirectHandler(t *testing.T) {
 	for i, test := range httpsRedirectHandlerTests {
 		r := httptest.NewRequest("", test.httpURI, nil)
 		w := httptest.NewRecorder()
-		cfg := Config{
-			HTTPSPort: test.httpsPort,
-		}
-		h := cfg.httpsRedirectHandler()
+		h := httpsRedirectHandler(test.httpsPort)
 		h.ServeHTTP(w, r)
 		gotCode := w.Code
 		switch {
