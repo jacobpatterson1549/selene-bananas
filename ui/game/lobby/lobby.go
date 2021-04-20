@@ -75,21 +75,33 @@ func (l *Lobby) SetGameInfos(gameInfos []game.Info, username string) {
 		return
 	}
 	for _, gameInfo := range gameInfos {
-		gameInfoElement := dom.CloneElement(".game-info-row")
-		rowElement := gameInfoElement.Get("children").Index(0)
-		createdAtTimeText := dom.FormatTime(gameInfo.CreatedAt)
-		rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
-		players := strings.Join(gameInfo.Players, ", ")
-		rowElement.Get("children").Index(1).Set("innerHTML", players)
-		capacityRatio := gameInfo.CapacityRatio()
-		rowElement.Get("children").Index(2).Set("innerHTML", capacityRatio)
-		status := gameInfo.Status.String()
-		rowElement.Get("children").Index(3).Set("innerHTML", status)
-		joinElements := rowElement.Get("children").Index(4)
-		joinElements.Get("children").Index(0).Set("value", gameInfo.ID)
-		if !gameInfo.CanJoin(username) {
-			joinElements.Get("children").Index(1).Call("setAttribute", "disabled", true)
-		}
+		gameInfoElement := gameInfoElement(gameInfo, username)
 		tbodyElement.Call("appendChild", gameInfoElement)
 	}
+}
+
+func gameInfoElement(gameInfo game.Info, username string) js.Value {
+	gameInfoElement := dom.CloneElement(".game-info-row")
+
+	rowElement := gameInfoElement.Get("children").Index(0)
+
+	createdAtTimeText := dom.FormatTime(gameInfo.CreatedAt)
+	rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
+
+	players := strings.Join(gameInfo.Players, ", ")
+	rowElement.Get("children").Index(1).Set("innerHTML", players)
+
+	capacityRatio := gameInfo.CapacityRatio()
+	rowElement.Get("children").Index(2).Set("innerHTML", capacityRatio)
+
+	status := gameInfo.Status.String()
+	rowElement.Get("children").Index(3).Set("innerHTML", status)
+
+	joinElements := rowElement.Get("children").Index(4)
+	joinElements.Get("children").Index(0).Set("value", int(gameInfo.ID)) // must cast ID to int for js.Value conversion
+	if !gameInfo.CanJoin(username) {
+		joinElements.Get("children").Index(1).Call("setAttribute", "disabled", true)
+	}
+
+	return gameInfoElement
 }
