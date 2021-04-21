@@ -189,7 +189,7 @@ func (s *Socket) writeMessagesSync(ctx context.Context, wg *sync.WaitGroup, in <
 		case m, ok := <-in:
 			switch {
 			case !ok:
-				err = errServerShuttingDown
+				err = errSocketClosed
 				stopWrite = true
 			default:
 				err = write(func() error { return s.writeMessage(m) })
@@ -251,7 +251,7 @@ func (s *Socket) writeMessage(m message.Message) error {
 // writeClose writes a closeMessage with the reason, logging the reason.
 func (s *Socket) writeClose(reasonErr error) {
 	var reason string
-	if reasonErr != nil {
+	if reasonErr != nil && reasonErr != errSocketClosed {
 		reason = reasonErr.Error()
 		s.log.Printf("closing socket for %v at %v: %v", s.PlayerName, s.Addr, reason)
 	}
