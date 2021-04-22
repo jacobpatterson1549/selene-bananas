@@ -2,15 +2,15 @@
 <html lang="en">
     <head>
         <meta charset="utf-8">
-        <title>{{.Name}}</title>
+        <title>{{ .Name }}</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg">
         <link rel="apple-touch-icon" href="/favicon.svg">
         <link rel="manifest" href="manifest.json">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="Description" content="{{.Description}}">
-        <meta property="og:title" content="{{.Name}}">
-        <meta property="og:description" content="{{.Description}}">
-        <meta name="theme-color" content="{{.Colors.TabBackground}}">
+        <meta name="Description" content="{{ .Description }}">
+        <meta property="og:title" content="{{ .Name }}">
+        <meta property="og:description" content="{{ .Description }}">
+        <meta name="theme-color" content="{{ .Colors.TabBackground }}">
         <style>
             {{ template "index.css" . }}
         </style>
@@ -24,7 +24,7 @@
         <header>
             <h1>
                 <img src="/favicon.svg" alt="tile" width="32" height="32">
-                <a href="/">{{.Name}}</a>
+                <a href="/">{{ .Name }}</a>
             </h1>
         </header>
         <main>

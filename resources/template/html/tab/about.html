@@ -1,18 +1,30 @@
 <div class="about">
-    <h3><em>{{.Name}}</em> is based on <a href="https://bananagrams.com/games/bananagrams">Bananagrams</a></h3>
+    <h3><em>{{ .Name }}</em> is based on <a href="https://bananagrams.com/games/bananagrams">Bananagrams</a></h3>
     <p>
         <span>Rules:</span>
         <ul>
-            {{range .Rules}}
-            <li>{{.}}</li>
-            {{end}}
+            {{ range .Rules -}}
+            <li>{{ . }}</li>
+            {{ end -}}
         </ul>
     </p>
     <h3>Questions can be posted on the issues page of Github for this project.</h3>
     <ul class="icons">
-        <li>{{template "copyright.svg"}}<span>2020 Jacob Patterson</span></li>
-        <li>{{template "github-square.svg"}}<a href="https://github.com/jacobpatterson1549/selene-bananas">Github</a></li>
-        <li>{{template "linkedin.svg"}}<a href="https://www.linkedin.com/in/jacobpatterson1549">LinkedIn</a></li>
-        <li>{{template "gavel.svg"}}<a href="/LICENSE">LICENSE</a></li>
+        <li>
+            {{ template "copyright.svg" }}
+            <span>2020 Jacob Patterson</span>
+        </li>
+        <li>
+            {{ template "github-square.svg" }}
+            <a href="https://github.com/jacobpatterson1549/selene-bananas">Github</a>
+        </li>
+        <li>
+            {{ template "linkedin.svg" }}
+            <a href="https://www.linkedin.com/in/jacobpatterson1549">LinkedIn</a>
+        </li>
+        <li>
+            {{ template "gavel.svg" }}
+            <a href="/LICENSE">LICENSE</a>
+        </li>
     </ul>
 </div>
