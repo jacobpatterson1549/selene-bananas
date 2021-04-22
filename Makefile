@@ -37,7 +37,7 @@ GENERATE_SRC := game/message/type_string.go
 GO_SRC_FN = find $(1) $(foreach g,$(GENERATE_SRC),-path $g -prune -o) -name *.go -print # exclude the generated source from go sources because it is created after the version, which depends on normal source
 SERVER_SRC := $(shell $(call GO_SRC_FN,cmd/server/ game/ server/ db/))
 CLIENT_SRC := $(shell $(call GO_SRC_FN,cmd/ui/     game/ ui/))
-EMBED_FILES := $(addprefix $(SERVER_EMBED_DIR)/,\
+EMBED_FILES ::= $(addprefix $(SERVER_EMBED_DIR)/,\
 	$(TLS_CERT_FILE) \
 	$(TLS_KEY_FILE) \
 	$(VERSION_OBJ) \
@@ -45,7 +45,8 @@ EMBED_FILES := $(addprefix $(SERVER_EMBED_DIR)/,\
 	$(STATIC_DIR) \
 	$(TEMPLATE_DIR) \
 	$(SQL_DIR) \
-	$(addprefix $(STATIC_DIR)/,$(LICENSE_FILE) $(WASM_EXEC_JS) $(CLIENT_OBJ)))
+	$(addprefix $(STATIC_DIR)/,$(LICENSE_FILE) $(WASM_EXEC_JS) $(CLIENT_OBJ))) \
+	$(shell if [ -d $(SERVER_EMBED_DIR) ]; then find $(SERVER_EMBED_DIR) -type f; fi)
 EMBED_RESOURCES_FN = find $(PWD)/$(RESOURCES_DIR)/$(1) -type f | xargs -i{} $(LINK) {} $(SERVER_EMBED_DIR)/$(1)
 
 $(BUILD_DIR)/$(SERVER_OBJ): $(BUILD_DIR)/$(SERVER_TEST) | $(BUILD_DIR)
