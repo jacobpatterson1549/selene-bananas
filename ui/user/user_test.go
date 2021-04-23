@@ -13,14 +13,14 @@ import (
 
 func TestGetUser(t *testing.T) {
 	global := js.Global()
-	atob_NodeJS := func(this js.Value, args []js.Value) interface{} {
+	atobNodeJS := func(this js.Value, args []js.Value) interface{} {
 		encodedData := args[0].String()
 		buffer := global.Get("Buffer")
 		buf := buffer.Call("from", encodedData, "base64")
 		decodedData := buf.Call("toString")
 		return decodedData
 	}
-	atob := js.FuncOf(atob_NodeJS)
+	atob := js.FuncOf(atobNodeJS)
 	global.Set("atob", atob)
 	defer atob.Release()
 	getUserTests := []struct {
