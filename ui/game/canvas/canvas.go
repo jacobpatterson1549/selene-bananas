@@ -594,6 +594,9 @@ func (c *Canvas) moveSelectedTiles() {
 		c.log.Error("moving tiles to presumably valid locations: " + err.Error())
 		return
 	}
+	if c.gameStatus == game.Finished {
+		return
+	}
 	m := message.Message{
 		Type: message.MoveGameTile,
 		Game: &game.Info{
