@@ -80,8 +80,8 @@ noscript,
 .tab>input:checked+.button+.content {
     display: block;
 }
-table thead th:nth-last-of-type(even),
-table tbody td:nth-last-of-type(even) {
+table thead th:nth-of-type(even),
+table tbody td:nth-of-type(even) {
     background: {{ .Colors.TableStripe }};
 }
 .tile-length-display {
