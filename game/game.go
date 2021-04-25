@@ -13,10 +13,10 @@ type (
 		CheckOnSnag bool `json:"checkOnSnag,omitempty"`
 		// Penalize is a flag to decrement a player's points if they try to snag a tile when their board is invalid.
 		Penalize bool `json:"penalize,omitempty"`
-		// MinLength is the minimum allowed word length for each word on the board.
-		MinLength int `json:"minLength,omitempty"`
 		// ProhibitDuplicates is a flag for whether or not duplicate words are prohibited when checking the board.
 		ProhibitDuplicates bool `json:"prohibitDuplicates,omitempty"`
+		// MinLength is the minimum allowed word length for each word on the board.
+		MinLength int `json:"minLength,omitempty"`
 	}
 )
 

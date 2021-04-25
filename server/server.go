@@ -14,12 +14,12 @@ import (
 type (
 	// Server runs the site
 	Server struct {
+		Config
 		wg          sync.WaitGroup
 		log         log.Logger
 		lobby       Lobby
 		HTTPServer  *http.Server
 		HTTPSServer *http.Server
-		Config
 	}
 
 	// Tokenizer creates and reads tokens from http traffic.
