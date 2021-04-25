@@ -22,7 +22,7 @@ type EmbeddedData struct {
 	SQLFS      fs.FS
 }
 
-// unembedFS validates, unembeds, and returns the files from the "embed" directory of the file system.
+// UnembedFS validates, unembeds, and returns the files from the "embed" directory of the file system.
 // Version and words are required, file systems are unembedded
 func UnembedFS(fsys fs.FS) (*EmbeddedData, error) {
 	unembedSubdirectory := func(fsys fs.FS, subdirectory string) (fs.FS, error) {

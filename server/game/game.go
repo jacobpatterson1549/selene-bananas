@@ -228,7 +228,7 @@ func (g *Game) handleMessage(ctx context.Context, m message.Message, send messag
 
 // handleMessageHelper clearly handles the message, after checking the a handler exists and the player for the message is in the game.
 func (g *Game) handleMessageHelper(ctx context.Context, m message.Message, send messageSender, active *bool, messageHandlers map[message.Type]messageHandler) error {
-	messageHandler, handlerExists := messageHandlers[m.Type]
+	handler, handlerExists := messageHandlers[m.Type]
 	if !handlerExists {
 		return fmt.Errorf("game does not know how to handle MessageType %v", m.Type)
 	}
@@ -237,7 +237,7 @@ func (g *Game) handleMessageHelper(ctx context.Context, m message.Message, send 
 		return fmt.Errorf("game does not have player named '%v'", m.PlayerName)
 	}
 	*active = true
-	return messageHandler(ctx, m, send)
+	return handler(ctx, m, send)
 }
 
 // handleGameJoin adds the player from the message to the game.
