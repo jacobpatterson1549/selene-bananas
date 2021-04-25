@@ -66,7 +66,6 @@ func TestInfoCanJoin(t *testing.T) {
 
 func TestCapacityRatio(t *testing.T) {
 	capacityRatioTests := []struct {
-		players  []string
 		capacity int
 		want     string
 		Info
