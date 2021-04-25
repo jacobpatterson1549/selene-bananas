@@ -63,9 +63,3 @@ func (l *Logger) Empty() bool {
 	return l.buf.Len() == 0
 }
 
-// Reset resets the buffer to be empty,
-func (l *Logger) Reset() {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.buf.Reset()
-}

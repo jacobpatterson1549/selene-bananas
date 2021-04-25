@@ -103,23 +103,3 @@ func TestLoggerEmpty(t *testing.T) {
 		}
 	}
 }
-
-func TestLoggerReset(t *testing.T) {
-	contents := []string{
-		"",
-		"stuff",
-		"1. there\n2. may be\n3. a TOOOOOOOOOOOOOOOOOON\n4. of stuff",
-	}
-	for i, data := range contents {
-		buf := bytes.NewBuffer([]byte(data))
-		var l Logger
-		l.buf = buf
-		l.Reset()
-		switch {
-		case !l.Empty():
-			t.Errorf("Test %v: wanted Logger to be empty after reset", i)
-		case l.String() != "":
-			t.Errorf("Test %v: wanted Logger string to be empty after reset, got %v", i, l.String())
-		}
-	}
-}
