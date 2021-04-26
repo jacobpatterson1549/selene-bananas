@@ -8,6 +8,7 @@ import (
 )
 
 // EmbeddedFS is the embedded "embed" subdirectory in this package with files for the server.
+// !!! Run `make` to generate this directory. !!!
 //go:embed embed
 var EmbeddedFS embed.FS
 
@@ -33,7 +34,7 @@ func UnembedFS(fsys fs.FS) (*EmbeddedData, error) {
 	}
 	embedFS, err := unembedSubdirectory(fsys, "embed")
 	if err != nil {
-		return nil, fmt.Errorf("unembedding embed directory")
+		return nil, fmt.Errorf("unembedding embed director: %w", err)
 	}
 	version, err := fs.ReadFile(embedFS, "version.txt")
 	if err != nil {
