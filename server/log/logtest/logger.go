@@ -62,4 +62,3 @@ func (l *Logger) Empty() bool {
 	defer l.mu.Unlock()
 	return l.buf.Len() == 0
 }
-

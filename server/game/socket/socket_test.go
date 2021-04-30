@@ -579,7 +579,7 @@ func TestWriteClose(t *testing.T) {
 			connCloseErr: errors.New("cannot write message to connection"),
 		},
 		{
-			reasonErr:    errSocketClosed,
+			reasonErr: errSocketClosed,
 		},
 		{
 			reasonErr:    errServerShuttingDown,
