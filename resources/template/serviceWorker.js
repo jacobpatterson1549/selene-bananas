@@ -10,8 +10,16 @@ const assets = [
     "./robots.txt",
     "./LICENSE",
 ];
+const addSelfEventListener = (type, listener) => {
+    self.addEventListener(type, event => {
+        if (event.origin && event.origin !== self.origin) {
+            return;
+        }
+        listener(event);
+    });
+};
 
-self.addEventListener("install", event => {
+addSelfEventListener("install", event => {
     event.waitUntil(
         caches.open(cacheName)
             .then(cache => {
@@ -23,7 +31,7 @@ self.addEventListener("install", event => {
     );
 });
 
-self.addEventListener("fetch", event => {
+addSelfEventListener("fetch", event => {
     event.respondWith(
         caches.match(event.request)
             .then(response => {
@@ -38,7 +46,7 @@ self.addEventListener("fetch", event => {
     );
 });
 
-self.addEventListener("activate", event => {
+addSelfEventListener("activate", event => {
     event.waitUntil(
         caches.keys()
             .then(cacheNames => {
