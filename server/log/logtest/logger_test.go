@@ -53,11 +53,12 @@ func TestLoggerPrintf(t *testing.T) {
 		n := 10
 		var wg sync.WaitGroup
 		wg.Add(n)
+		logA := func() {
+			l.Printf("a")
+			wg.Done()
+		}
 		for i := 0; i < n; i++ {
-			go func() {
-				l.Printf("a")
-				wg.Done()
-			}()
+			go logA()
 		}
 		wg.Wait()
 		if want, got := "aaaaaaaaaa", buf.String(); want != got {

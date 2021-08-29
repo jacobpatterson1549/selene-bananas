@@ -81,7 +81,7 @@ func (l *Lobby) Run(ctx context.Context, wg *sync.WaitGroup) {
 	socketRunnerOut := l.socketRunner.Run(ctx, wg, socketRunnerIn, l.socketMessages)
 	gameRunnerOut := l.gameRunner.Run(ctx, wg, gameRunnerIn)
 	wg.Add(1)
-	go func() {
+	run := func() {
 		defer wg.Done()
 		defer l.log.Printf("lobby stopped")
 		defer close(socketRunnerIn)
@@ -102,7 +102,8 @@ func (l *Lobby) Run(ctx context.Context, wg *sync.WaitGroup) {
 				l.handleGameMessage(m, socketRunnerIn)
 			}
 		}
-	}()
+	}
+	go run()
 }
 
 // AddUser adds a user to the lobby, it opens a new websocket (player) for the username.

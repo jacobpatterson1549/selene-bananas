@@ -79,7 +79,7 @@ func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 	socketOut := make(chan message.Message)
 	out := make(chan message.Message)
 	wg.Add(1)
-	go func() {
+	run := func() {
 		defer wg.Done()
 		defer r.log.Printf("socket runner stopped")
 		defer close(out)
@@ -102,7 +102,8 @@ func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 				r.handleSocketMessage(ctx, m, out)
 			}
 		}
-	}()
+	}
+	go run()
 	return out
 }
 

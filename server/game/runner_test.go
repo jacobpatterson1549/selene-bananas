@@ -323,14 +323,15 @@ func TestGameDelete(t *testing.T) {
 		var wg sync.WaitGroup
 		out := r.Run(ctx, &wg, in)
 		messageHandled := false
-		go func() { // mock game
+		runMockGame := func() {
 			_, ok := <-gIn
 			if !ok {
 				return
 			}
 			messageHandled = true
 			close(in)
-		}()
+		}
+		go runMockGame()
 		in <- test.m
 		m2 := <-out
 		gotNumGames := len(r.games)
@@ -391,14 +392,15 @@ func TestHandleGameMessage(t *testing.T) {
 		var wg sync.WaitGroup
 		out := r.Run(ctx, &wg, in)
 		messageHandled := false
-		go func() { // mock game
+		handleGameMessage := func() {
 			_, ok := <-gIn
 			if !ok {
 				return
 			}
 			messageHandled = true
 			close(in)
-		}()
+		}
+		go handleGameMessage()
 		in <- test.m
 		m2 := <-out
 		switch {

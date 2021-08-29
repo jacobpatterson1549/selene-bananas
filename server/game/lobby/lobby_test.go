@@ -274,18 +274,20 @@ func TestHandleSocketMessage(t *testing.T) {
 			log: logtest.DiscardLogger,
 			socketRunner: mockSocketRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message, inSM <-chan message.Socket) <-chan message.Message {
 				wg.Add(1)
-				go func() {
+				handleSocketMessage := func() {
 					gotSocketM = <-in
 					wg.Done()
-				}()
+				}
+				go handleSocketMessage()
 				return socketRunnerOut
 			}),
 			gameRunner: mockGameRunner(func(ctx context.Context, wg *sync.WaitGroup, in <-chan message.Message) <-chan message.Message {
 				wg.Add(1)
-				go func() {
+				handleGameMessage := func() {
 					gotGameM = <-in
 					wg.Done()
-				}()
+				}
+				go handleGameMessage()
 				return nil
 			}),
 			games: map[game.ID]game.Info{

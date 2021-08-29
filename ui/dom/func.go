@@ -45,15 +45,15 @@ func NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		event := args[0]
 		event.Call("preventDefault")
-		switch {
-		case async:
-			go func() {
-				defer AlertOnPanic()
-				fn(event)
-			}()
-		default:
+		runFn := func() {
 			defer AlertOnPanic()
 			fn(event)
+		}
+		switch {
+		case async:
+			go runFn()
+		default:
+			runFn()
 		}
 		return nil
 	})

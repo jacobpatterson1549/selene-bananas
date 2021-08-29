@@ -72,7 +72,7 @@ func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 	ctx, cancelFunc := context.WithCancel(ctx)
 	out := make(chan message.Message)
 	wg.Add(1)
-	go func() {
+	run := func() {
 		defer wg.Done()
 		defer r.log.Printf("game runner stopped")
 		defer close(out)
@@ -88,7 +88,8 @@ func (r *Runner) Run(ctx context.Context, wg *sync.WaitGroup, in <-chan message.
 				r.handleMessage(ctx, wg, m, out)
 			}
 		}
-	}()
+	}
+	go run()
 	return out
 }
 
