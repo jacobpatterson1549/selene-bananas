@@ -377,12 +377,12 @@ func TestHTTPSHandler(t *testing.T) {
 		{
 			Request: httptest.NewRequest("GET", "/want-redirect", nil),
 			httpsRedirectHandler: func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(301301)
+				w.WriteHeader(301)
 			},
 			Config: Config{
 				NoTLSRedirect: true,
 			},
-			wantCode: 301301,
+			wantCode: 301,
 		},
 		{
 			Request: withSecHeader(httptest.NewRequest("GET", "/unknown", nil)),
