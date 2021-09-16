@@ -108,6 +108,7 @@ func (s *Server) tlsListener(l net.Listener) (net.Listener, error) {
 	tlsCfg := &tls.Config{}
 	tlsCfg.NextProtos = []string{"http/1.1"}
 	tlsCfg.Certificates = []tls.Certificate{certificate}
+	tlsCfg.MinVersion = tls.VersionTLS13
 	tlsListener := tls.NewListener(l, tlsCfg)
 	return tlsListener, nil
 }

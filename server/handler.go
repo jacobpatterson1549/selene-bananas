@@ -91,6 +91,8 @@ const (
 	HeaderContentType = "Content-Type"
 	// HeaderCacheControl is used to tell browsers how long to cache http responses.
 	HeaderCacheControl = "Cache-Control"
+	// HeaderStrictTransportSecurity is used to tell browsers the sit should only be accessed using HTTPS.
+	HeaderStrictTransportSecurity = "Strict-Transport-Security"
 	// HeaderLocation is used to tell browsers to request a different document.
 	HeaderLocation = "Location"
 	// HeaderAcceptEncoding is specified by the browser to tell the server what types of document encoding it can handle.
@@ -124,12 +126,16 @@ func (cfg Config) NewServer(p Parameters) (*Server, error) {
 		log:   p.Logger,
 		lobby: p.Lobby,
 		HTTPServer: &http.Server{
-			Addr:    httpAddr,
-			Handler: httpHandler,
+			Addr:         httpAddr,
+			Handler:      httpHandler,
+			ReadTimeout:  60 * time.Second,
+			WriteTimeout: 60 * time.Second,
 		},
 		HTTPSServer: &http.Server{
-			Addr:    httpsAddr,
-			Handler: httpsHandler,
+			Addr:         httpsAddr,
+			Handler:      httpsHandler,
+			ReadTimeout:  60 * time.Second,
+			WriteTimeout: 60 * time.Second,
 		},
 		Config: cfg,
 	}
@@ -342,6 +348,7 @@ func fileHandler(h http.Handler, cacheMaxAge string) http.HandlerFunc {
 			w.Header().Add(HeaderContentEncoding, "gzip")
 		}
 		w.Header().Set(HeaderCacheControl, cacheControl(r))
+		w.Header().Set(HeaderStrictTransportSecurity, cacheMaxAge)
 		addMimeType(r.URL.Path, w)
 		h.ServeHTTP(w, r)
 	}
@@ -374,7 +381,7 @@ func httpsRedirectHandler(httpsPort int) http.HandlerFunc {
 			host += fmt.Sprintf(":%d", httpsPort)
 		}
 		httpsURI := "https://" + host + r.URL.Path
-		http.Redirect(w, r, httpsURI, http.StatusTemporaryRedirect)
+		http.Redirect(w, r, httpsURI, http.StatusMovedPermanently)
 	}
 }
 

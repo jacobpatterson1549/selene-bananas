@@ -242,8 +242,9 @@ func TestFileHandler(t *testing.T) {
 		{
 			path: "/index.html",
 			wantHeader: http.Header{
-				"Cache-Control": {"no-store"},
-				"Content-Type":  {"text/html; charset=utf-8"},
+				"Cache-Control":             {"no-store"},
+				"Strict-Transport-Security": {cacheMaxAge},
+				"Content-Type":              {"text/html; charset=utf-8"},
 			},
 		},
 		{
@@ -253,16 +254,18 @@ func TestFileHandler(t *testing.T) {
 				"Content-Type":    {"text/html; charset=utf-8"},
 			},
 			wantHeader: http.Header{
-				"Cache-Control":    {"no-store"},
-				"Content-Encoding": {"gzip"},
-				"Content-Type":     {"text/html; charset=utf-8"},
+				"Cache-Control":             {"no-store"},
+				"Strict-Transport-Security": {cacheMaxAge},
+				"Content-Encoding":          {"gzip"},
+				"Content-Type":              {"text/html; charset=utf-8"},
 			},
 		},
 		{
 			path: "/file.html",
 			wantHeader: http.Header{
-				"Cache-Control": {cacheMaxAge},
-				"Content-Type":  {"text/html; charset=utf-8"},
+				"Cache-Control":             {cacheMaxAge},
+				"Strict-Transport-Security": {cacheMaxAge},
+				"Content-Type":              {"text/html; charset=utf-8"},
 			},
 		},
 	}
@@ -374,12 +377,12 @@ func TestHTTPSHandler(t *testing.T) {
 		{
 			Request: httptest.NewRequest("GET", "/want-redirect", nil),
 			httpsRedirectHandler: func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(307307)
+				w.WriteHeader(301301)
 			},
 			Config: Config{
 				NoTLSRedirect: true,
 			},
-			wantCode: 307307,
+			wantCode: 301301,
 		},
 		{
 			Request: withSecHeader(httptest.NewRequest("GET", "/unknown", nil)),
@@ -624,25 +627,25 @@ func TestHTTPSRedirectHandler(t *testing.T) {
 		{
 			httpURI:      "http://example.com/",
 			httpsPort:    443,
-			wantCode:     307,
+			wantCode:     301,
 			wantLocation: "https://example.com/",
 		},
 		{
 			httpURI:      "https://example.com/",
 			httpsPort:    443,
-			wantCode:     307,
+			wantCode:     301,
 			wantLocation: "https://example.com/",
 		},
 		{
 			httpURI:      "http://example.com:80/abc",
 			httpsPort:    443,
-			wantCode:     307,
+			wantCode:     301,
 			wantLocation: "https://example.com/abc",
 		},
 		{
 			httpURI:      "http://example.com:8001/abc/d",
 			httpsPort:    8000,
-			wantCode:     307,
+			wantCode:     301,
 			wantLocation: "https://example.com:8000/abc/d",
 		},
 	}
