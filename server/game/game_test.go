@@ -763,7 +763,7 @@ func TestHandleMessage(t *testing.T) {
 	}
 	for i, test := range handleMessageTests {
 		ctx := context.Background()
-		log := logtest.NewLogger()
+		log := new(logtest.Logger)
 		test.Game.log = log
 		gotSend := false
 		send := func(m message.Message) {
@@ -1593,7 +1593,7 @@ func TestHandleGameFinish(t *testing.T) {
 			}
 		}
 		userDaoCalled := false
-		log := logtest.NewLogger()
+		log := new(logtest.Logger)
 		test.Game.log = log
 		test.Game.userDao = mockUserDao{
 			UpdatePointsIncrementFunc: func(ctx context.Context, userPoints map[string]int) error {

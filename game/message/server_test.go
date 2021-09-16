@@ -17,7 +17,7 @@ func TestSend(t *testing.T) {
 	}
 	for i, test := range sendTests {
 		out := make(chan (Message), 1)
-		log := logtest.NewLogger()
+		log := new(logtest.Logger)
 		info := "TestSend"
 		m := Message{Info: info}
 		rand.Seed(0)

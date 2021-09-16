@@ -83,7 +83,7 @@ func TestLogServerStart(t *testing.T) {
 		},
 	}
 	for i, test := range logServerStartTests {
-		log := logtest.NewLogger()
+		log := new(logtest.Logger)
 		cfg := Config{
 			HTTPPort: test.HTTPPort,
 		}

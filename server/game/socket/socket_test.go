@@ -325,7 +325,7 @@ func TestReadMessagesSync(t *testing.T) {
 				setPongHandlerFuncCalled = true
 			},
 		}
-		log := logtest.NewLogger()
+		log := new(logtest.Logger)
 		s := Socket{
 			Conn: &conn,
 			log:  log,
@@ -475,7 +475,7 @@ func TestWriteMessagesSync(t *testing.T) {
 				return test.pingErr
 			},
 		}
-		log := logtest.NewLogger()
+		log := new(logtest.Logger)
 		s := Socket{
 			Conn: &conn,
 			log:  log,
@@ -542,7 +542,7 @@ func TestWriteMessage(t *testing.T) {
 		},
 	}
 	for i, test := range writeMessageTests {
-		log := logtest.NewLogger()
+		log := new(logtest.Logger)
 		s := Socket{
 			log: log,
 			Config: Config{
@@ -592,7 +592,7 @@ func TestWriteClose(t *testing.T) {
 		},
 	}
 	for i, test := range writeCloseTests {
-		log := logtest.NewLogger()
+		log := new(logtest.Logger)
 		s := Socket{
 			log: log,
 			Conn: &mockConn{

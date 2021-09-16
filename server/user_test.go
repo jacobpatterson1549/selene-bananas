@@ -136,7 +136,7 @@ func TestUserLoginHandler(t *testing.T) {
 				return wantToken, nil
 			},
 		}
-		log := logtest.NewLogger()
+		log := new(logtest.Logger)
 		r := httptest.NewRequest("", "/", nil)
 		r.Form = make(url.Values)
 		r.Form.Add("username", test.username)

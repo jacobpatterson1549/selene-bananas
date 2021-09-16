@@ -137,7 +137,7 @@ func TestRunRunnerHandleLobbyMessage(t *testing.T) {
 	var wg sync.WaitGroup
 	in := make(chan message.Message)
 	inSM := make(chan message.Socket)
-	log := logtest.NewLogger()
+	log := new(logtest.Logger)
 	r := Runner{
 		log: log,
 	}
@@ -158,7 +158,7 @@ func TestRunRunnerHandleLobbyModifyRequest(t *testing.T) {
 	var wg sync.WaitGroup
 	in := make(chan message.Message)
 	inSM := make(chan message.Socket)
-	log := logtest.NewLogger()
+	log := new(logtest.Logger)
 	r := Runner{
 		log: log,
 	}
@@ -186,7 +186,7 @@ func TestRunRunnerHandleSocketMessage(t *testing.T) {
 		PlayerName: pn,
 		Result:     result,
 	}
-	log := logtest.NewLogger()
+	log := new(logtest.Logger)
 	wantSocketMessage := message.Message{
 		Type:       message.CreateGame,
 		Game:       new(game.Info),
@@ -980,7 +980,7 @@ func TestRunnerHandleLobbyMessage(t *testing.T) {
 		},
 	}
 	for i, test := range handleLobbyMessageTests {
-		log := logtest.NewLogger()
+		log := new(logtest.Logger)
 		r := Runner{
 			log:           log,
 			playerSockets: test.playerSockets,
@@ -1226,7 +1226,7 @@ func TestRunnerHandleSocketMessage(t *testing.T) {
 		},
 	}
 	for i, test := range handleSocketMessageTests {
-		log := logtest.NewLogger()
+		log := new(logtest.Logger)
 		r := Runner{
 			log:           log,
 			playerSockets: test.playerSockets,
@@ -1339,7 +1339,7 @@ func TestSendMessageForGameBadRunnerState(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		log := logtest.NewLogger()
+		log := new(logtest.Logger)
 		r := Runner{
 			log:           log,
 			playerSockets: test.playerSockets,

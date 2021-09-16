@@ -498,7 +498,7 @@ func TestHTTPError(t *testing.T) {
 func TestWriteInternalError(t *testing.T) {
 	w := httptest.NewRecorder()
 	err := fmt.Errorf("mock error")
-	log := logtest.NewLogger()
+	log := new(logtest.Logger)
 	want := 500
 	writeInternalError(err, log, w)
 	got := w.Code
