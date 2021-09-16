@@ -12,11 +12,11 @@ COPY \
     go.sum \
     ./
 RUN apk add --no-cache \
-        make=4.3-r0 \
-        bash=5.1.0-r0 \
-        mailcap=2.1.49-r0 \
-        nodejs=14.17.6-r0 \
-        aspell=0.60.8-r1 \
+        make=~4.3 \
+        bash=~5.1 \
+        mailcap=~2.1 \
+        nodejs=~14 \
+        aspell=~0.60 \
         aspell-en=2020.12.07-r0 \
     && go mod download
 
