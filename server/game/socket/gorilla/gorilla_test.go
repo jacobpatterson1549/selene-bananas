@@ -16,7 +16,7 @@ func TestUpgraderUpgrade(t *testing.T) {
 		wantOk bool
 	}{
 		{
-			w: &httptest.ResponseRecorder{},
+			w: new(httptest.ResponseRecorder),
 			r: httptest.NewRequest("", "/", nil),
 		},
 		{

@@ -180,7 +180,7 @@ func TestUsedWords(t *testing.T) {
 			want: []string{"CON", "RUT", "CAR"},
 		},
 		{
-			want: []string{},
+			want: make([]string, 0),
 		},
 		{
 			usedTiles: map[tile.ID]tile.Position{
@@ -343,8 +343,6 @@ func TestMoveTiles(t *testing.T) {
 						2: {ID: 2},
 					},
 					UnusedTileIDs: []tile.ID{1, 2},
-					UsedTiles:     map[tile.ID]tile.Position{},
-					UsedTileLocs:  map[tile.X]map[tile.Y]tile.Tile{},
 				},
 			},
 			{ // tile already at desired location

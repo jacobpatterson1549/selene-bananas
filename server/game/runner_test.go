@@ -19,7 +19,7 @@ import (
 
 func TestNewRunner(t *testing.T) {
 	var wc mockWordValidator
-	userDao := mockUserDao{}
+	var userDao mockUserDao
 	testLog := logtest.DiscardLogger
 	newRunnerTests := []struct {
 		log log.Logger
@@ -57,7 +57,7 @@ func TestNewRunner(t *testing.T) {
 			wantOk: true,
 			want: &Runner{
 				log:           testLog,
-				games:         map[game.ID]chan<- message.Message{},
+				games:         make(map[game.ID]chan<- message.Message),
 				WordValidator: wc,
 				userDao:       userDao,
 				RunnerConfig: RunnerConfig{
@@ -76,7 +76,7 @@ func TestNewRunner(t *testing.T) {
 			wantOk: true,
 			want: &Runner{
 				log:           testLog,
-				games:         map[game.ID]chan<- message.Message{},
+				games:         make(map[game.ID]chan<- message.Message),
 				WordValidator: wc,
 				userDao:       userDao,
 				RunnerConfig: RunnerConfig{
@@ -194,7 +194,7 @@ func TestGameCreate(t *testing.T) {
 			m: message.Message{
 				Type:       message.CreateGame,
 				PlayerName: "selene",
-				Game:       &game.Info{},
+				Game:       new(game.Info),
 			},
 			RunnerConfig: RunnerConfig{
 				MaxGames: 1,
@@ -252,6 +252,7 @@ func TestGameCreate(t *testing.T) {
 		in <- test.m
 		gotM := <-out
 		gotNumGames := len(r.games)
+		var zeroGameConfig game.Config
 		switch {
 		case !test.wantOk:
 			if gotNumGames != 0 {
@@ -266,7 +267,7 @@ func TestGameCreate(t *testing.T) {
 			t.Errorf("Test %v: wanted game of id 4 to be created", i)
 		case gotM.Type != message.JoinGame, gotM.Game.ID != 4, gotM.PlayerName != "selene":
 			t.Errorf("Test %v: wanted join message for game 4 for player, got %v", i, gotM)
-		case r.RunnerConfig.GameConfig.Config != game.Config{}:
+		case r.RunnerConfig.GameConfig.Config != zeroGameConfig:
 			t.Errorf("Test %v: did not want the game's config to be stored in the runner", i)
 		case !reflect.DeepEqual(basicGameCfg, gotM.Game.Config):
 			t.Errorf("Test %v: game config not set to basic config:\nwanted: %#v\ngot:    %#v", i, basicGameCfg, gotM.Game.Config)

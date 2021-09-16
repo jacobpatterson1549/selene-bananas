@@ -417,8 +417,6 @@ func (c *Canvas) moveEnd(pp pixelPosition) {
 	case rect:
 		c.selection.tiles = c.calculateSelectedTiles()
 		c.selection.setMoveState(none)
-		c.selection.start = pixelPosition{}
-		c.selection.end = pixelPosition{}
 		c.Redraw()
 	case drag:
 		c.moveSelectedTiles()

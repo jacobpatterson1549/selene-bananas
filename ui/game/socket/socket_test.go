@@ -87,7 +87,6 @@ func TestMessageJSON(t *testing.T) {
 		{
 			ID:        9,
 			Status:    game.NotStarted,
-			Players:   []string{},
 			CreatedAt: 111,
 			Capacity:  11,
 		},

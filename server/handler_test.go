@@ -25,7 +25,7 @@ func TestNewServer(t *testing.T) {
 	var userDao mockUserDao
 	var lobby mockLobby
 	templateFS := fstest.MapFS{ // tests parseTemplate
-		"any-file": &fstest.MapFile{Data: []byte{}},
+		"any-file": new(fstest.MapFile),
 	}
 	var staticFS fstest.MapFS
 	newServerTests := []struct {
@@ -346,7 +346,7 @@ func TestHTTPSHandler(t *testing.T) {
 		t.Errorf("monitory called")
 	})
 	withTLS := func(r *http.Request) *http.Request {
-		r.TLS = &tls.ConnectionState{}
+		r.TLS = new(tls.ConnectionState)
 		return r
 	}
 	withSecHeader := func(r *http.Request) *http.Request {
@@ -760,7 +760,7 @@ func TestGetHandler(t *testing.T) {
 			var cfg Config
 			p := Parameters{
 				StaticFS: fstest.MapFS{
-					fileName: &fstest.MapFile{Data: []byte{}},
+					fileName: new(fstest.MapFile),
 				},
 			}
 			checkCode(t, path, p, cfg, nil, 200)
@@ -845,7 +845,7 @@ func TestPostHandler(t *testing.T) {
 			return nil
 		},
 		loginFunc: func(ctx context.Context, u user.User) (*user.User, error) {
-			return &user.User{}, nil
+			return new(user.User), nil
 		},
 		updatePasswordFunc: func(ctx context.Context, u user.User, newP string) error {
 			return nil

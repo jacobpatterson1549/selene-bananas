@@ -51,8 +51,7 @@ EKTcWGekdmdDPsHloRNtsiCa697B2O9IFA==
 			},
 		}
 		s := Server{
-			HTTPSServer: &http.Server{},
-			Config:      test.Config,
+			Config: test.Config,
 		}
 		got, err := s.tlsListener(innerListener)
 		switch {
@@ -90,8 +89,7 @@ func TestLogServerStart(t *testing.T) {
 		}
 		s := Server{
 			log:         log,
-			HTTPServer:  &http.Server{},
-			HTTPSServer: &http.Server{},
+			HTTPSServer: new(http.Server),
 			Config:      cfg,
 		}
 		s.logServerStart()

@@ -105,11 +105,12 @@ func (s *Server) tlsListener(l net.Listener) (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	tlsCfg := &tls.Config{}
-	tlsCfg.NextProtos = []string{"http/1.1"}
-	tlsCfg.Certificates = []tls.Certificate{certificate}
-	tlsCfg.MinVersion = tls.VersionTLS13
-	tlsListener := tls.NewListener(l, tlsCfg)
+	cfg := tls.Config{
+		NextProtos:   []string{"http/1.1"},
+		Certificates: []tls.Certificate{certificate},
+		MinVersion:   tls.VersionTLS13,
+	}
+	tlsListener := tls.NewListener(l, &cfg)
 	return tlsListener, nil
 }
 

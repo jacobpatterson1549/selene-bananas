@@ -10,13 +10,12 @@ import (
 )
 
 // DiscardLogger is a Logger that writes anything and everything to io.Discard.
-var DiscardLogger = &discardLogger{}
+var DiscardLogger = new(discardLogger)
 
 // NewLogger creates a Logger.
 func NewLogger() *Logger {
-	var buf bytes.Buffer
 	l := Logger{
-		buf: &buf,
+		buf: new(bytes.Buffer),
 	}
 	return &l
 }

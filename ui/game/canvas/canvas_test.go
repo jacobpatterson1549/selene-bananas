@@ -31,15 +31,11 @@ func TestDrawTile(t *testing.T) {
 			wantDrawn:     true,
 		},
 		{ // do NOT draw a tile if tiles from the selection are being drawn an the tile is NOT in the selection
-			s: selection{
-				tiles: map[tile.ID]tileSelection{},
-			},
 			fromSelection: true,
 			wantDrawn:     false,
 		},
 		{ // draw a tile if the user is dragging other tiles (the tile is not in the selection of tiles being dragged)
 			s: selection{
-				tiles:     map[tile.ID]tileSelection{},
 				moveState: drag,
 			},
 			fromSelection: false,

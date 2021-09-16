@@ -48,12 +48,12 @@ func TestNewWordValidator(t *testing.T) {
 func TestServerGetFiles(t *testing.T) {
 	ctx := context.Background()
 	log := logtest.DiscardLogger
-	db := db.Database{}
+	db := new(db.Database)
 	e := embeddedData(t)
 	f := main.Flags{
 		HTTPSPort: 8000, // not actually used, overridden by httptest
 	}
-	s, err := f.CreateServer(ctx, log, &db, e)
+	s, err := f.CreateServer(ctx, log, db, e)
 	if err != nil {
 		t.Fatalf("unwanted error: %v", err)
 	}

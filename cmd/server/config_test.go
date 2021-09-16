@@ -45,15 +45,17 @@ func TestCreateServer(t *testing.T) {
 	}
 	ctx := context.Background()
 	log := logtest.DiscardLogger
-	db := db.Database{}
+	db := new(db.Database)
 	wantVersion := "9d2ffad8e5e5383569d37ec381147f2d"
+	staticFS := new(fstest.MapFS)
+	dummyFile := new(fstest.MapFile)
 	e := EmbeddedData{
 		Version:    []byte(wantVersion + "\n"),
 		Words:      []byte("apple\nbanana\ncarrot"),
-		StaticFS:   fstest.MapFS{},
-		TemplateFS: fstest.MapFS{"file": &fstest.MapFile{}},
+		StaticFS:   staticFS,
+		TemplateFS: fstest.MapFS{"file": dummyFile},
 	}
-	s, err := f.CreateServer(ctx, log, &db, e)
+	s, err := f.CreateServer(ctx, log, db, e)
 	switch {
 	case err != nil:
 		t.Errorf("unwanted error: %v", err)

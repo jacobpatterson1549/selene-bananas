@@ -16,7 +16,7 @@ func TestNewDao(t *testing.T) {
 	}{
 		{},
 		{
-			db:     mockDatabase{},
+			db:     new(mockDatabase),
 			wantOk: true,
 		},
 	}

@@ -244,7 +244,7 @@ func TestValidateConfig(t *testing.T) {
 		for i, test := range setTileLettersTests {
 			log := logtest.DiscardLogger
 			wordValidator := mockWordValidator(func(word string) bool { return false })
-			userDao := mockUserDao{}
+			userDao := new(mockUserDao)
 			test.Config.validate(log, 1, wordValidator, userDao) // Ignore the error.  This test doesn't care about it.
 			got := test.Config
 			if test.wantTileLetters != got.TileLetters {
@@ -323,14 +323,14 @@ func TestRunSync(t *testing.T) {
 				PlayerName: "selene",
 				Game: &game.Info{
 					Status: game.Finished,
-					Board:  &board.Board{},
+					Board:  new(board.Board),
 				},
 			}
 			g := Game{
 				status: 0, // this should cause a gameWarning error
 				players: map[player.Name]*playerController.Player{
 					"selene": {
-						Board: &board.Board{},
+						Board: new(board.Board),
 					},
 				},
 			}
@@ -339,11 +339,12 @@ func TestRunSync(t *testing.T) {
 			var wg sync.WaitGroup
 			in := make(chan message.Message, 1)  // deleteGame will cause the run to stop before the second message is passed
 			out := make(chan message.Message, 2) // the second message might be handled, for an unknown message type
-			idleTicker := &time.Ticker{}
+			idleTicker := new(time.Ticker)
 			wg.Add(1)
 			go g.runSync(ctx, &wg, in, out, idleTicker)
 			in <- m
-			in <- message.Message{} // force the game to handle the first Message, this will cause a socketError message to be sent
+			var secondMessage message.Message
+			in <- secondMessage // force the game to handle the first Message, this will cause a socketError message to be sent
 			cancelFunc()
 			wg.Wait()
 			got := <-out
@@ -387,7 +388,8 @@ func TestRunSync(t *testing.T) {
 			case test.inClosed:
 				close(in)
 			case test.idleTick:
-				idleC <- time.Time{}
+				var zeroTime time.Time
+				idleC <- zeroTime
 			case test.gameDeleteMessage:
 				m := message.Message{
 					Type:       message.DeleteGame,
@@ -444,7 +446,8 @@ func TestRunSync(t *testing.T) {
 			PlayerName: pn,
 		}
 		<-out // error for unknown message type
-		idleC <- time.Time{}
+		var zeroTime time.Time
+		idleC <- zeroTime
 		cancelFunc()
 		wg.Wait()
 		numWaiting := len(out)
@@ -572,11 +575,11 @@ func TestUpdateUserPoints(t *testing.T) {
 			return want
 		},
 	}
-	alicePlayer, err := playerController.Config{WinPoints: 4}.New(&board.Board{})
+	alicePlayer, err := playerController.Config{WinPoints: 4}.New(new(board.Board))
 	if err != nil {
 		t.Errorf("unwanted error: %v", err)
 	}
-	selenePlayer, err := playerController.Config{WinPoints: 5}.New(&board.Board{})
+	selenePlayer, err := playerController.Config{WinPoints: 5}.New(new(board.Board))
 	if err != nil {
 		t.Errorf("unwanted error: %v", err)
 	}
@@ -798,13 +801,13 @@ func TestHandleGameJoin(t *testing.T) {
 			Message: message.Message{
 				PlayerName: "selene",
 				Game: &game.Info{
-					Board: &board.Board{},
+					Board: new(board.Board),
 				},
 			},
 			Game: Game{
 				players: map[player.Name]*playerController.Player{
 					"selene": {
-						Board: &board.Board{},
+						Board: new(board.Board),
 					},
 				},
 			},
@@ -931,7 +934,7 @@ func TestHandleAddPlayer(t *testing.T) {
 		{ // board config error
 			Message: message.Message{
 				Game: &game.Info{
-					Board: &board.Board{},
+					Board: new(board.Board),
 				},
 			},
 		},
@@ -1538,7 +1541,7 @@ func TestHandleGameFinish(t *testing.T) {
 						}),
 					},
 					"barney": {
-						Board: &board.Board{},
+						Board: new(board.Board),
 					},
 				},
 				WordValidator: mockWordValidator(func(word string) bool {
@@ -1561,7 +1564,7 @@ func TestHandleGameFinish(t *testing.T) {
 						}),
 					},
 					"barney": {
-						Board: &board.Board{},
+						Board: new(board.Board),
 					},
 				},
 				WordValidator: mockWordValidator(func(word string) bool {
@@ -1880,7 +1883,7 @@ func TestHandleGameSwap(t *testing.T) {
 		{ // no swap tile specified
 			Message: message.Message{
 				Game: &game.Info{
-					Board: &board.Board{},
+					Board: new(board.Board),
 				},
 			},
 			Game: Game{
@@ -1909,7 +1912,7 @@ func TestHandleGameSwap(t *testing.T) {
 				unusedTiles: []tile.Tile{{ID: 7}},
 				players: map[player.Name]*playerController.Player{
 					"alice": {
-						Board: &board.Board{},
+						Board: new(board.Board),
 					},
 				},
 			},
@@ -2176,7 +2179,7 @@ func TestHandleBoardRefresh(t *testing.T) {
 	g := Game{
 		players: map[player.Name]*playerController.Player{
 			"fred": {
-				Board: &board.Board{},
+				Board: new(board.Board),
 			},
 		},
 	}
@@ -2185,7 +2188,7 @@ func TestHandleBoardRefresh(t *testing.T) {
 		Type:       wantType,
 		PlayerName: "fred",
 		Game: &game.Info{
-			Board: &board.Board{},
+			Board: new(board.Board),
 		},
 	}
 	var got message.Message
@@ -2309,7 +2312,7 @@ func TestResizeBoard(t *testing.T) {
 				Game: &game.Info{
 					Board:   board.New([]tile.Tile{{ID: 1}}, nil),
 					Players: []string{"barney", "fred"},
-					Config:  &game.Config{},
+					Config:  new(game.Config),
 				},
 			},
 			wantInfo: true,
@@ -2328,7 +2331,7 @@ func TestResizeBoard(t *testing.T) {
 					Board:   board.New(nil, nil),
 					Status:  game.Finished,
 					Players: []string{"barney", "fred"},
-					Config:  &game.Config{},
+					Config:  new(game.Config),
 					FinalBoards: map[string]board.Board{
 						"fred":   {},
 						"barney": *barneyBoard,

@@ -51,7 +51,7 @@ func TestNewLobby(t *testing.T) {
 				log:          testLog,
 				socketRunner: &testSocketRunner,
 				gameRunner:   &testGameManeger,
-				games:        map[game.ID]game.Info{},
+				games:        make(map[game.ID]game.Info),
 			},
 		},
 		{ // ok with debug
@@ -66,7 +66,7 @@ func TestNewLobby(t *testing.T) {
 				log:          testLog,
 				socketRunner: &testSocketRunner,
 				gameRunner:   &testGameManeger,
-				games:        map[game.ID]game.Info{},
+				games:        make(map[game.ID]game.Info),
 				Config: Config{
 					Debug: true,
 				},
@@ -380,12 +380,12 @@ func TestHandleGameMessage(t *testing.T) {
 			},
 			wantM: message.Message{
 				Type:  message.GameInfos,
-				Games: []game.Info{},
+				Games: make([]game.Info, 0),
 			},
 			games: map[game.ID]game.Info{
 				1: {ID: 1, Status: game.Finished},
 			},
-			wantGames: map[game.ID]game.Info{},
+			wantGames: make(map[game.ID]game.Info),
 		},
 	}
 	for i, test := range handleGameMessageTests {

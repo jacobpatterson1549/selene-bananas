@@ -31,10 +31,10 @@ func TestNewDatabase(t *testing.T) {
 	}{
 		{},
 		{
-			DB: &sql.DB{},
+			DB: new(sql.DB),
 		},
 		{
-			DB:     &sql.DB{},
+			DB:     new(sql.DB),
 			wantOk: true,
 			Config: Config{
 				QueryPeriod: 1 * time.Hour,
@@ -45,7 +45,7 @@ func TestNewDatabase(t *testing.T) {
 		if testDriverName != name {
 			return nil, fmt.Errorf("driver names not equal: wanted %v, got %v", testDriverName, name)
 		}
-		return MockConn{}, nil
+		return new(MockConn), nil
 	}
 	for i, test := range newSQLDatabaseTests {
 		cfg := Config{

@@ -21,7 +21,7 @@ func TestNewSocket(t *testing.T) {
 	timeFunc := func() int64 { return 0 }
 	pn := player.Name("selene")
 	addr := mockAddr("selene.pc")
-	conn0 := &mockConn{}
+	conn0 := new(mockConn)
 	newSocketTests := []struct {
 		wantOk     bool
 		want       *Socket
@@ -299,7 +299,7 @@ func TestReadMessagesSync(t *testing.T) {
 					Info: normalMessageInfo,
 				}
 				if !test.gameMissing {
-					src.Game = &game.Info{}
+					src.Game = new(game.Info)
 				}
 				*m = src
 				j++
@@ -410,11 +410,9 @@ func TestWriteMessagesSync(t *testing.T) {
 			wantOk: true,
 		},
 		{ // normal message: setWriteDeadline  error
-			m:                   message.Message{},
 			setWriteDeadlineErr: errors.New("setWriteDeadline error"),
 		},
 		{ // write error
-			m:        message.Message{},
 			writeErr: errors.New("problem writing message"),
 		},
 		{ // websocket ping
@@ -491,9 +489,11 @@ func TestWriteMessagesSync(t *testing.T) {
 		case test.inClosed:
 			close(in)
 		case test.pingTick:
-			pingC <- time.Time{}
+			var zeroTime time.Time
+			pingC <- zeroTime
 		case test.httpPingTick:
-			httpPingC <- time.Time{}
+			var zeroTime time.Time
+			httpPingC <- zeroTime
 		case test.wantOk, test.writeErr != nil, test.setWriteDeadlineErr != nil:
 			in <- test.m
 		}
@@ -653,8 +653,9 @@ func TestWriteMessagesSkipSend(t *testing.T) {
 	}
 	wg.Add(1)
 	go s.writeMessagesSync(ctx, &wg, in, pingTicker, httpPingTicker)
+	var m message.Message
 	for i := 0; i < 3; i++ {
-		in <- message.Message{}
+		in <- m
 	}
 	cancelFunc()
 	wg.Wait()
