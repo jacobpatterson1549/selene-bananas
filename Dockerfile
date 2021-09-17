@@ -1,5 +1,5 @@
 # download dependencies:
-# make and bash to run the Makefile
+# make to run the Makefile
 # nodejs to run client wasm tests
 # aspell and aspell-en for game word list
 # download go dependencies for source code
