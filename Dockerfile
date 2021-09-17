@@ -1,6 +1,5 @@
 # download dependencies:
 # make and bash to run the Makefile
-# shared-mime-info to populate http mime types
 # nodejs to run client wasm tests
 # aspell and aspell-en for game word list
 # download go dependencies for source code
@@ -13,7 +12,6 @@ COPY \
     ./
 RUN apk add --no-cache \
         make=~4.3 \
-        shared-mime-info=~2.0 \
         nodejs=~14 \
         aspell=~0.60 \
         aspell-en=2020.12.07-r0 \

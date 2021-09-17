@@ -531,14 +531,15 @@ func TestHasSecHeader(t *testing.T) {
 }
 
 func TestAddMimeType(t *testing.T) {
+	// the commented-out lines have MIME types that vary by system
 	addMimeTypeTests := map[string]string{
-		"favicon.ico":   "image/vnd.microsoft.icon",
+		// "LICENSE":       "text/plain; charset=utf-8",
+		// "favicon.ico":   "image/vnd.microsoft.icon",
 		"favicon.png":   "image/png",
 		"favicon.svg":   "image/svg+xml",
 		"manifest.json": "application/json",
 		"main.wasm":     "application/wasm",
 		"init.js":       "text/javascript; charset=utf-8",
-		"LICENSE":       "text/plain; charset=utf-8",
 		"any.html":      "text/html; charset=utf-8",
 		"/index.html":   "text/html; charset=utf-8",
 	}
