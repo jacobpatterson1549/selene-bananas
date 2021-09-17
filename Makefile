@@ -1,4 +1,4 @@
-.PHONY: serve serve-tcp clean
+.PHONY: all test clean serve serve-tcp
 
 BUILD_DIR        := build
 RESOURCES_DIR    := resources
@@ -135,15 +135,19 @@ $(SERVER_EMBED_DIR):
 $(addprefix $(RESOURCES_DIR)/,$(TLS_CERT_FILE) $(TLS_KEY_FILE)):
 	touch $@
 
-serve: $(BUILD_DIR)/$(SERVER_OBJ)
-	$(SERVE_ARGS) $<
+all: $(BUILD_DIR)/$(SERVER_OBJ)
 
-serve-tcp: $(BUILD_DIR)/$(SERVER_OBJ)
-	sudo setcap cap_net_bind_service=+ep $<
-	$(SERVE_ARGS) HTTP_PORT=80 HTTPS_PORT=443 $<
+test: $(BUILD_DIR)/$(SERVER_TEST)
 
 clean:
 	rm -rf $(BUILD_DIR) $(SERVER_EMBED_DIR) $(GENERATE_SRC)
+
+serve: all
+	$(SERVE_ARGS) $<
+
+serve-tcp: all
+	sudo setcap cap_net_bind_service=+ep $<
+	$(SERVE_ARGS) HTTP_PORT=80 HTTPS_PORT=443 $<
 
 # list variables: https://stackoverflow.com/a/7144684/1330346
 # make -pn | grep -A1 "^# makefile"| grep -v "^#\|^--" | sort | uniq
