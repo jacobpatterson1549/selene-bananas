@@ -13,7 +13,6 @@ COPY \
     ./
 RUN apk add --no-cache \
         make=~4.3 \
-        bash=~5.1 \
         shared-mime-info=~2.0 \
         nodejs=~14 \
         aspell=~0.60 \

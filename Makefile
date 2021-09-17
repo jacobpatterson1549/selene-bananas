@@ -1,5 +1,4 @@
 .PHONY: serve serve-tcp clean
-SHELL := /bin/bash -eo pipefail
 
 BUILD_DIR        := build
 RESOURCES_DIR    := resources
@@ -25,6 +24,7 @@ GO_ARGS      :=
 GO_TEST_ARGS := # -v # -test.short # -race # -run TestFuncName 
 GO_WASM_ARGS := GOOS=js GOARCH=wasm
 GO_WASM_PATH := $(shell $(GO) env GOROOT)/misc/wasm
+NODE_EXEC    := node $(GO_WASM_PATH)/wasm_exec.js
 WASM_EXEC_JS := wasm_exec.js
 SERVER_OBJ  := main
 VERSION_OBJ := version.txt
@@ -67,7 +67,7 @@ $(BUILD_DIR)/$(SERVER_TEST): $(EMBED_FILES) $(SERVER_SRC) $(GENERATE_SRC) | $(BU
 $(BUILD_DIR)/$(CLIENT_TEST): $(CLIENT_SRC) $(GENERATE_SRC) | $(BUILD_DIR)
 	$(GO_WASM_ARGS) $(GO_LIST) $(GO_PACKAGES) | grep ui \
 		| $(GO_WASM_ARGS) xargs $(GO_TEST) $(GO_TEST_ARGS) \
-			-exec=$(GO_WASM_PATH)/go_js_wasm_exec \
+			-exec="$(NODE_EXEC)" \
 		| tee $@
 
 $(BUILD_DIR)/$(VERSION_OBJ): $(SERVER_SRC) $(CLIENT_SRC) $(RESOURCES_SRC) | $(BUILD_DIR)
