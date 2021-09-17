@@ -24,7 +24,7 @@ New dependencies are automatically added to [go.mod](go.mod) when the project is
 
 ## Build
 
-[Go 1.16](https://golang.org/dl/) is used to build the application.
+[Go 1.17](https://golang.org/dl/) is used to build the application.
 
 [Make](https://www.gnu.org/software/make/) is used to by [Makefile](Makefile) to build and runs the application. Run `make` without any arguments to build the server with the client and other resources embedded in it.  This will likely need to be done before using an IDE in order to generate some files and populate the embedded filesystem used by the the server.
 
