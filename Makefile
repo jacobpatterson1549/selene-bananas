@@ -24,8 +24,8 @@ GO_ARGS      :=
 GO_TEST_ARGS := # -v # -test.short # -race # -run TestFuncName 
 GO_WASM_ARGS := GOOS=js GOARCH=wasm
 GO_WASM_PATH := $(shell $(GO) env GOROOT)/misc/wasm
-NODE_EXEC    := node $(GO_WASM_PATH)/wasm_exec.js
 WASM_EXEC_JS := wasm_exec.js
+NODE_EXEC    := node $(GO_WASM_PATH)/$(WASM_EXEC_JS)
 SERVER_OBJ  := main
 VERSION_OBJ := version.txt
 CLIENT_OBJ  := main.wasm
