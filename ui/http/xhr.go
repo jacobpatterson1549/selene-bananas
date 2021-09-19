@@ -36,6 +36,8 @@ type (
 		Code int
 		// Body contains the response data.
 		Body string
+		// err is used internally and is set if the response has an error.
+		err error
 	}
 )
 
@@ -49,34 +51,32 @@ func (c Client) Do(req Request) (*Response, error) {
 		xhr.Call("setRequestHeader", k, v)
 	}
 	responseC := make(chan Response)
-	errC := make(chan error)
-	eventHandler := dom.NewJsEventFunc(handleEvent(xhr, responseC, errC))
+	eventHandler := dom.NewJsEventFunc(handleEvent(xhr, responseC))
 	defer eventHandler.Release()
 	xhrEventTypes := []string{"load", "timeout", "abort", "error"}
 	for _, event := range xhrEventTypes {
 		xhr.Call("addEventListener", event, eventHandler)
 	}
-	xhr.Call("send", req.Body)
-	select { // BLOCKING
-	case response := <-responseC:
-		return &response, nil
-	case err := <-errC:
-		return nil, err
+	go xhr.Call("send", req.Body)
+	response := <-responseC
+	if response.err != nil {
+		return nil, response.err
 	}
+	return &response, nil
 }
 
 // handleEvent handles an event for the XHR.
-func handleEvent(xhr js.Value, responseC chan<- Response, errC chan<- error) func(event js.Value) {
+func handleEvent(xhr js.Value, responseC chan<- Response) func(event js.Value) {
 	return func(event js.Value) {
 		eventType := event.Get("type").String()
-		if eventType != "load" {
-			errC <- errors.New("received event type: " + eventType)
+		var r Response
+		switch eventType {
+		case "load":
+			r.Code = xhr.Get("status").Int()
+			r.Body = xhr.Get("response").String()
+		default:
+			r.err = errors.New("received event type: " + eventType)
 		}
-		code := xhr.Get("status").Int()
-		body := xhr.Get("response").String()
-		responseC <- Response{
-			Code: code,
-			Body: body,
-		}
+		responseC <- r
 	}
 }
