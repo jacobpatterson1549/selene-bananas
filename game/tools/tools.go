@@ -1,4 +1,4 @@
-// +build tools
+//go:build tools
 
 // Package tools imports commands used to generate code.
 package tools

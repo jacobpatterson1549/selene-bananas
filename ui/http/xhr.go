@@ -1,4 +1,4 @@
-// +build js,wasm
+//go:build js && wasm
 
 // Package http makes XML HTTP Requests using native browser code.
 package http

@@ -1,4 +1,4 @@
-// +build js,wasm
+//go:build js && wasm
 
 // Package url replaces the standard net/url package for basic url operations
 package url

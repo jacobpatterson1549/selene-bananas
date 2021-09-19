@@ -1,4 +1,4 @@
-// +build js,wasm
+//go:build js && wasm
 
 // Package user contains code to create and edit users that can play games in the lobby.
 package user

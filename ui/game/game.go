@@ -1,4 +1,4 @@
-// +build js,wasm
+//go:build js && wasm
 
 // Package game has the ui game logic.
 package game

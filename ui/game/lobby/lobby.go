@@ -1,4 +1,4 @@
-// +build js,wasm
+//go:build js && wasm
 
 // Package lobby contains code to view available games and to close the websocket.
 package lobby

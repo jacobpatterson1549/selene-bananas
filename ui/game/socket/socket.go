@@ -1,4 +1,4 @@
-// +build js,wasm
+//go:build js && wasm
 
 // Package socket contains the logic to communicate with the server for the game via websocket communication
 package socket

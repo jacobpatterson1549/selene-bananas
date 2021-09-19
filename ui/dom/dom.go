@@ -1,4 +1,4 @@
-// +build js,wasm
+//go:build js && wasm
 
 // Package dom contains the javascript bindings for the site
 package dom
