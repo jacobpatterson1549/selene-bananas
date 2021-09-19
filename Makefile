@@ -142,10 +142,10 @@ test: $(BUILD_DIR)/$(SERVER_TEST)
 clean:
 	rm -rf $(BUILD_DIR) $(SERVER_EMBED_DIR) $(GENERATE_SRC)
 
-serve: all
+serve: $(BUILD_DIR)/$(SERVER_OBJ)
 	$(SERVE_ARGS) $<
 
-serve-tcp: all
+serve-tcp: $(BUILD_DIR)/$(SERVER_OBJ)
 	sudo setcap cap_net_bind_service=+ep $<
 	$(SERVE_ARGS) HTTP_PORT=80 HTTPS_PORT=443 $<
 
