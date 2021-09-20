@@ -27,7 +27,7 @@ type flags struct {
 // initDom creates, initializes, and links up dom components.
 func (f flags) initDom(ctx context.Context, wg *sync.WaitGroup) {
 	timeFunc := func() int64 {
-		return time.Now().UTC().Unix()
+		return time.Now().Unix()
 	}
 	log := f.log(ctx, wg, timeFunc)
 	user := f.user(ctx, wg, log)

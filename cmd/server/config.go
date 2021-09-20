@@ -48,7 +48,7 @@ func (f Flags) CreateDatabase(ctx context.Context, driverName string, e Embedded
 // CreateServer creates the server.
 func (f Flags) CreateServer(ctx context.Context, log log.Logger, db *db.Database, e EmbeddedData) (*server.Server, error) {
 	timeFunc := func() int64 {
-		return time.Now().UTC().Unix()
+		return time.Now().Unix()
 	}
 	key := make([]byte, 64)
 	if _, err := crypto_rand.Reader.Read(key); err != nil {
