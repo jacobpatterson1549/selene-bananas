@@ -3,21 +3,16 @@
 package log
 
 import (
-	"context"
-	"sync"
 	"syscall/js"
 	"testing"
 	"time"
 )
 
-func TestInitDom(t *testing.T) {
-	// TODO: test this in cmd/ui/config_test.go
-	ctx := context.Background()
-	var wg sync.WaitGroup
-	log := new(Log)
-	log.InitDom(ctx, &wg)
-	if js.Global().Get("log").Get("clear").Type() != js.TypeFunction {
-		t.Error("wanted clear func to be registered to dom")
+func TestNew(t *testing.T) {
+	timeFunc := func() int64 { return 0 }
+	log := New(timeFunc)
+	if log.TimeFunc == nil {
+		t.Error("wanted timeFunc to be set")
 	}
 }
 
