@@ -60,7 +60,7 @@ func SetButtonDisabled(query string, disabled bool) {
 
 // FormatTime formats a datetime to HH:MM:SS.
 func FormatTime(utcSeconds int64) string {
-	t := time.Unix(utcSeconds, 0) // uses local timezone
+	t := time.Unix(utcSeconds, 0).Local() // uses local timezone
 	return t.Format("15:04:05")
 }
 

@@ -7,13 +7,24 @@ import (
 	"context"
 	"sync"
 	"syscall/js"
-	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
 )
 
 // Log manages messages for the log div.
-type Log struct{}
+type Log struct {
+	// TimeFunc is a function which should supply the current time since the unix epoch.
+	// This is used for logging message timestamps
+	TimeFunc func() int64
+}
+
+// New creates a new socket.
+func New(timeFunc func() int64) *Log {
+	l := Log{
+		TimeFunc: timeFunc,
+	}
+	return &l
+}
 
 // InitDom registers log dom functions.
 func (l *Log) InitDom(ctx context.Context, wg *sync.WaitGroup) {
@@ -56,7 +67,7 @@ func (l *Log) add(class, text string) {
 	clone := dom.CloneElement(".log>template")
 	cloneChildren := clone.Get("children")
 	logItemElement := cloneChildren.Index(0)
-	time := dom.FormatTime(time.Now().UTC().Unix())
+	time := dom.FormatTime(l.TimeFunc())
 	textContent := time + " : " + text
 	logItemElement.Set("textContent", textContent)
 	logItemElement.Set("className", class)

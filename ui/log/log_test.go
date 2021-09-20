@@ -7,6 +7,7 @@ import (
 	"sync"
 	"syscall/js"
 	"testing"
+	"time"
 )
 
 func TestInitDom(t *testing.T) {
@@ -36,7 +37,13 @@ func TestClear(t *testing.T) {
 }
 
 func TestLogClass(t *testing.T) {
-	var log Log
+	oldTZ := time.Local
+	loc, _ := time.LoadLocation("America/Los_Angeles")
+	time.Local = loc
+	defer func() { time.Local = oldTZ }()
+	log := Log{
+		TimeFunc: func() int64 { return 1632078828 }, // 12:13:48 PDT 20121/09/19
+	}
 	tests := []struct {
 		fn        func(string)
 		wantClass string
@@ -60,19 +67,17 @@ func TestLogClass(t *testing.T) {
 	}
 	for i, test := range tests {
 		message := "log_message"
-		// TODO: pass mock time...
-		// wantMessage := "10:32:21 : " + message // default time
+		wantMessage := "12:13:48 : " + message
 		logFuncs := initLog(t)
 		test.fn(message)
-
 		hideLog := js.Global().Get("document").Call("querySelector", "#hide-log")
 		if want, got := false, hideLog.Get("checked").Bool(); want != got {
 			t.Errorf("wanted hide-log checked to be %v, got %v", want, got)
 		}
 		logItemElement := js.Global().Get("document").Call("querySelector", "TEST::APPENDED_LOG_ITEM")
-		// if want, got := wantMessage, logItemElement.Get("textContent").String(); want != got {
-		// 	t.Errorf("Test %v: messages not equal:\nwanted: %v\ngot:    %v", i, wantMessage, gotMessage)
-		// }
+		if want, got := wantMessage, logItemElement.Get("textContent").String(); want != got {
+			t.Errorf("Test %v: messages not equal:\nwanted: %v\ngot:    %v", i, want, got)
+		}
 		if want, got := test.wantClass, logItemElement.Get("className").String(); want != got {
 			t.Errorf("Test %v: classes not equal: wanted %v, got %v", i, want, got)
 		}

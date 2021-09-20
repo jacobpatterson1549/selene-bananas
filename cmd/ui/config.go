@@ -26,7 +26,10 @@ type flags struct {
 
 // initDom creates, initializes, and links up dom components.
 func (f flags) initDom(ctx context.Context, wg *sync.WaitGroup) {
-	log := f.log(ctx, wg)
+	timeFunc := func() int64 {
+		return time.Now().UTC().Unix()
+	}
+	log := f.log(ctx, wg, timeFunc)
 	user := f.user(ctx, wg, log)
 	board := new(board.Board)
 	canvas := f.canvas(ctx, wg, log, board)
@@ -40,8 +43,8 @@ func (f flags) initDom(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 // log creates and initializes the log component.
-func (flags) log(ctx context.Context, wg *sync.WaitGroup) *log.Log {
-	l := new(log.Log)
+func (flags) log(ctx context.Context, wg *sync.WaitGroup, timeFunc func() int64) *log.Log {
+	l := log.New(timeFunc)
 	l.InitDom(ctx, wg)
 	return l
 }
