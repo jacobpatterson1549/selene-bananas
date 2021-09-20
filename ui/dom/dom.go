@@ -86,19 +86,19 @@ func alert(message string) {
 	global.Call("alert", message)
 }
 
-// NewWebSocket creates a new WebSocket with the specified url.
-func NewWebSocket(url string) js.Value {
-	global := js.Global()
-	webSocket := global.Get("WebSocket")
-	return webSocket.New(url)
-}
-
 // Color returns the text color of the element after css has been applied.
 func Color(element js.Value) string {
 	global := js.Global()
 	computedStyle := global.Call("getComputedStyle", element)
 	color := computedStyle.Get("color")
 	return color.String()
+}
+
+// NewWebSocket creates a new WebSocket with the specified url.
+func NewWebSocket(url string) js.Value {
+	global := js.Global()
+	webSocket := global.Get("WebSocket")
+	return webSocket.New(url)
 }
 
 // NewXHR creates a new XML HTTP Request.
