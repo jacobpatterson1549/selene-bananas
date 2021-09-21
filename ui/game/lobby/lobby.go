@@ -11,16 +11,24 @@ import (
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
-	gameController "github.com/jacobpatterson1549/selene-bananas/ui/game"
-	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
 
 type (
 	// Lobby handles viewing, joining, and creating games on the server.
 	Lobby struct {
-		log    *log.Log
-		game   *gameController.Game
+		log    Log
+		game   Game
 		Socket Socket
+	}
+
+	// Log is used to store text about connection errors.
+	Log interface {
+		Error(text string)
+	}
+
+	// Game is held so the lobby can notify of it when the user leaves.
+	Game interface {
+		Leave()
 	}
 
 	// Socket is a structure that connects the server to the lobby.
@@ -31,7 +39,7 @@ type (
 )
 
 // New creates a lobby for games.
-func New(log *log.Log, game *gameController.Game) *Lobby {
+func New(log Log, game Game) *Lobby {
 	l := Lobby{
 		log:  log,
 		game: game,
