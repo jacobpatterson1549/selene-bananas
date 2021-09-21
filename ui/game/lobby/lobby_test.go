@@ -8,11 +8,11 @@ import (
 	"syscall/js"
 	"testing"
 
-	"github.com/jacobpatterson1549/selene-bananas/ui"
+	"github.com/jacobpatterson1549/selene-bananas/game"
 )
 
 func TestNew(t *testing.T) {
-	dom := new(ui.DOM)
+	dom := new(mockDOM)
 	log := new(mockLog)
 	game := new(mockGame)
 	l := New(dom, log, game)
@@ -86,6 +86,11 @@ func TestLeave(t *testing.T) {
 			gameLeft = true
 		},
 	}
+	dom := mockDOM{
+		QuerySelectorFunc: func(query string) js.Value {
+			return gameInfosTbodyElement
+		},
+	}
 	querySelector := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		query := args[0]
 		if want, got := ".game-infos>tbody", query.String(); want != got {
@@ -98,7 +103,7 @@ func TestLeave(t *testing.T) {
 	})
 	js.Global().Set("document", document)
 	l := Lobby{
-		dom:    new(ui.DOM), // TODO: use mock
+		dom:    &dom,
 		game:   game,
 		Socket: socket,
 	}
@@ -115,5 +120,120 @@ func TestLeave(t *testing.T) {
 }
 
 func TestSetGameInfos(t *testing.T) {
-	t.Skip("TODO")
+	t.Run("noGameInfo", func(t *testing.T) {
+		emptyGameInfoElement := js.ValueOf(1337)
+		gameInfoElementAppended := false
+		appendChild := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			element := args[0]
+			gameInfoElementAppended = true
+			if want, got := emptyGameInfoElement, element; !want.Equal(got) {
+				t.Errorf("wanted %v to be appended, got %v", want, got)
+			}
+			return nil
+		})
+		gameInfosTbodyElement := js.ValueOf(map[string]interface{}{
+			"innerHTML":   "existing game infos",
+			"appendChild": appendChild,
+		})
+		dom := mockDOM{
+			QuerySelectorFunc: func(query string) js.Value {
+				return gameInfosTbodyElement
+			},
+			CloneElementFunc: func(query string) js.Value {
+				return emptyGameInfoElement
+			},
+		}
+		gameInfos := make([]game.Info, 0)
+		l := Lobby{
+			dom: &dom,
+		}
+		l.SetGameInfos(gameInfos, "any-username")
+		if got := gameInfosTbodyElement.Get("innerHTML").String(); len(got) != 0 {
+			t.Error("wanted game infos table to be cleared")
+		}
+		if !gameInfoElementAppended {
+			t.Errorf("wanted gameInfoElement to be appended")
+		}
+		appendChild.Release()
+	})
+	t.Run("happy path", func(t *testing.T) {
+		numAppended := 0
+		newGameInfoRow := func(createdAt, players, capacityRatio, status string, id int, canJoin bool) js.Value {
+			return js.ValueOf(map[string]interface{}{ // gameInfoElement
+				"children": []interface{}{
+					map[string]interface{}{ //rowElement
+						"children": []interface{}{
+							map[string]interface{}{"innerHTML": createdAt},
+							map[string]interface{}{"innerHTML": players},
+							map[string]interface{}{"innerHTML": capacityRatio},
+							map[string]interface{}{"innerHTML": status},
+							map[string]interface{}{ // join column
+								"children": []interface{}{
+									map[string]interface{}{"value": id},
+									map[string]interface{}{"disabled": !canJoin},
+								},
+							},
+						},
+					},
+				},
+			})
+		}
+		wantAppends := []js.Value{
+			newGameInfoRow("A", "use, server, sort, order", "4/6", "In Progress", 3, false),
+			newGameInfoRow("B", "me", "1/1", "Finished", 2, true),
+		}
+		jsonString := func(v js.Value) string { // hack to get around js.Value.Equal using === (refs are different)
+			return js.Global().Get("JSON").Call("stringify", v).String()
+		}
+		appendChild := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			element := args[0]
+			if want, got := jsonString(wantAppends[numAppended]), jsonString(element); want != got {
+				t.Errorf("append %v not equal:\nwanted: %v\ngot:    %v", numAppended+1, want, got)
+			}
+			numAppended++
+			return nil
+		})
+		gameInfosTbodyElement := js.ValueOf(map[string]interface{}{
+			"innerHTML":   "existing game infos",
+			"appendChild": appendChild,
+		})
+		dom := mockDOM{
+			QuerySelectorFunc: func(query string) js.Value {
+				return gameInfosTbodyElement
+			},
+			CloneElementFunc: func(query string) js.Value {
+				return newGameInfoRow("", "", "", "", 0, true)
+			},
+			FormatTimeFunc: func(utcSeconds int64) string {
+				return string(rune(utcSeconds))
+			},
+		}
+		gameInfos := []game.Info{
+			{
+				ID:        3,
+				CreatedAt: 65,
+				Players:   []string{"use", "server", "sort", "order"},
+				Capacity:  6,
+				Status:    game.InProgress,
+			},
+			{
+				ID:        2,
+				CreatedAt: 66,
+				Players:   []string{"me"},
+				Capacity:  1,
+				Status:    game.Finished,
+			},
+		}
+		l := Lobby{
+			dom: &dom,
+		}
+		l.SetGameInfos(gameInfos, "me")
+		if got := gameInfosTbodyElement.Get("innerHTML").String(); len(got) != 0 {
+			t.Error("wanted game infos table to be cleared")
+		}
+		if numAppended != 2 {
+			t.Errorf("wanted 2 gameInfoElements to be appended, got %v", numAppended)
+		}
+		appendChild.Release()
+	})
 }

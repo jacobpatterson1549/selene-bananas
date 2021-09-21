@@ -10,13 +10,12 @@ import (
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
-	"github.com/jacobpatterson1549/selene-bananas/ui"
 )
 
 type (
 	// Lobby handles viewing, joining, and creating games on the server.
 	Lobby struct {
-		dom    *ui.DOM
+		dom    DOM
 		log    Log
 		game   Game
 		Socket Socket
@@ -37,10 +36,20 @@ type (
 		Connect(event js.Value) error
 		Close()
 	}
+
+	// DOM interacts with the page.
+	DOM interface {
+		QuerySelector(query string) js.Value
+		FormatTime(utcSeconds int64) string
+		CloneElement(query string) js.Value
+		RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func)
+		NewJsFunc(fn func()) js.Func
+		NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func
+	}
 )
 
 // New creates a lobby for games.
-func New(dom *ui.DOM, log Log, game Game) *Lobby {
+func New(dom DOM, log Log, game Game) *Lobby {
 	l := Lobby{
 		dom:  dom,
 		log:  log,
@@ -110,7 +119,7 @@ func (l *Lobby) gameInfoElement(gameInfo game.Info, username string) js.Value {
 	joinElements := rowElement.Get("children").Index(4)
 	joinElements.Get("children").Index(0).Set("value", int(gameInfo.ID)) // must cast ID to int for js.Value conversion
 	if !gameInfo.CanJoin(username) {
-		joinElements.Get("children").Index(1).Call("setAttribute", "disabled", true)
+		joinElements.Get("children").Index(1).Set("disabled", true)
 	}
 
 	return gameInfoElement
