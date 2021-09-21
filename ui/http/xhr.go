@@ -7,8 +7,6 @@ import (
 	"errors"
 	"syscall/js"
 	"time"
-
-	"github.com/jacobpatterson1549/selene-bananas/ui"
 )
 
 type (
@@ -39,10 +37,16 @@ type (
 		// err is used internally and is set if the response has an error.
 		err error
 	}
+
+	// DOM creates http requests
+	DOM interface {
+		NewXHR() js.Value
+		NewJsEventFunc(fn func(event js.Value)) js.Func
+	}
 )
 
 // Do makes a HTTP request.
-func (c Client) Do(dom *ui.DOM, req Request) (*Response, error) {
+func (c Client) Do(dom DOM, req Request) (*Response, error) {
 	if dom == nil {
 		return nil, errors.New("DOM not specified")
 	}
