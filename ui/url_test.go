@@ -15,7 +15,7 @@ func TestParse(t *testing.T) {
 	}{
 		{},
 		{
-			text: "noscheme.com",
+			text: "no_scheme.com",
 		},
 		{
 			text: "http:/no_authority",
@@ -88,11 +88,11 @@ func TestParse(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	v := make(Values)
-	if got := v.Get("a"); "" != got {
+	if got := v.Get("a"); len(got) != 0 {
 		t.Errorf("wanted empty string when value not present, got %v", got)
 	}
 	v.Add("a", "34")
-	if got := v.Get("a"); "34" != got {
+	if got := v.Get("a"); got != "34" {
 		t.Errorf("wanted 34, got %v", got)
 	}
 }
