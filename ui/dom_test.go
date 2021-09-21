@@ -138,7 +138,6 @@ func TestFormatTime(t *testing.T) {
 	loc, _ := time.LoadLocation("America/Los_Angeles")
 	time.Local = loc
 	defer func() { time.Local = oldTZ }()
-	// TODO: add helper func for above code, using t.Cleanup
 	var dom DOM
 	utcSeconds := int64(1632161703)
 	want := "11:15:03"

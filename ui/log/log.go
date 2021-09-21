@@ -7,23 +7,33 @@ import (
 	"context"
 	"sync"
 	"syscall/js"
-
-	"github.com/jacobpatterson1549/selene-bananas/ui"
 )
 
 // Log manages messages for the log div.
-type Log struct {
-	// DOM contains utilities for logging  messages
-	dom *ui.DOM
-	// TimeFunc is a function which should supply the current time since the unix epoch.
-	// This is used for logging message timestamps
-	TimeFunc func() int64
-}
+type (
+	Log struct {
+		// DOM contains utilities for logging  messages
+		dom DOM
+		// TimeFunc is a function which should supply the current time since the unix epoch.
+		// This is used for logging message timestamps
+		TimeFunc func() int64
+	}
+
+	// DOM interacts with the page.
+	DOM interface {
+		QuerySelector(query string) js.Value
+		SetChecked(query string, checked bool)
+		FormatTime(utcSeconds int64) string
+		CloneElement(query string) js.Value
+		RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func)
+		NewJsFunc(fn func()) js.Func
+	}
+)
 
 // New creates a new socket.
-func New(dom *ui.DOM, timeFunc func() int64) *Log {
+func New(dom DOM, timeFunc func() int64) *Log {
 	l := Log{
-		dom: dom,
+		dom:      dom,
 		TimeFunc: timeFunc,
 	}
 	return &l
