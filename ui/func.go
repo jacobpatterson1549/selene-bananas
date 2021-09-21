@@ -4,6 +4,7 @@ package ui
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync"
 	"syscall/js"
@@ -74,7 +75,7 @@ func (dom *DOM) ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, js
 // This function should be deferred as the first statement for each goroutine.
 func (dom *DOM) AlertOnPanic() {
 	if r := recover(); r != nil {
-		err := dom.RecoverError(r)
+		err := dom.recoverError(r)
 		f := []string{
 			"FATAL: site shutting down",
 			"See browser console for more information",
@@ -83,5 +84,18 @@ func (dom *DOM) AlertOnPanic() {
 		message := strings.Join(f, "\n")
 		dom.alert(message)
 		panic(err)
+	}
+}
+
+// RecoverError converts the recovery interface into a useful error.
+// Panics if the interface is not an error or a string.
+func (dom *DOM) recoverError(r interface{}) error {
+	switch v := r.(type) {
+	case error:
+		return v
+	case string:
+		return errors.New(v)
+	default:
+		panic([]interface{}{"unknown panic type", v, r})
 	}
 }

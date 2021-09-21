@@ -6,7 +6,6 @@
 package ui
 
 import (
-	"errors"
 	"syscall/js"
 	"time"
 )
@@ -111,19 +110,6 @@ func (dom *DOM) NewXHR() js.Value {
 	global := js.Global()
 	xhr := global.Get("XMLHttpRequest")
 	return xhr.New()
-}
-
-// RecoverError converts the recovery interface into a useful error.
-// Panics if the interface is not an error or a string.
-func (dom *DOM) RecoverError(r interface{}) error {
-	switch v := r.(type) {
-	case error:
-		return v
-	case string:
-		return errors.New(v)
-	default:
-		panic([]interface{}{"unknown panic type", v, r})
-	}
 }
 
 // Base64Decode decodes the ascii base-64 string to binary (atob).
