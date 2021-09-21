@@ -11,18 +11,20 @@ import (
 
 func TestNewForm(t *testing.T) {
 	t.Run("bad action", func(t *testing.T) {
+		dom := new(DOM) // TODO: use mock?
 		event := js.ValueOf(map[string]interface{}{
 			"target": map[string]interface{}{
 				"method": "POST",
 				"action": "bad_url",
 			},
 		})
-		_, err := NewForm(event)
+		_, err := NewForm(dom, event)
 		if err == nil {
 			t.Error("wanted error when creating form with bad url")
 		}
 	})
 	t.Run("happy path", func(t *testing.T) {
+		dom := new(DOM) // TODO: use mock?
 		Param1 := js.ValueOf(map[string]interface{}{
 			"name":  "A",
 			"value": "first param",
@@ -65,7 +67,7 @@ func TestNewForm(t *testing.T) {
 				"B": "2",
 			},
 		}
-		got, err := NewForm(event)
+		got, err := NewForm(dom, event)
 		querySelectorAll.Release()
 		switch {
 		case err != nil:
@@ -95,7 +97,11 @@ func TestResetForm(t *testing.T) {
 		"id":               "form_element",
 		"querySelectorAll": querySelectorAll,
 	})
-	f := Form{v: element}
+	dom := new(DOM) // TODO: use mock?
+	f := Form{
+		dom: dom,
+		v:   element,
+	}
 	f.Reset()
 	querySelectorAll.Release()
 	for i := 0; i < 3; i++ {

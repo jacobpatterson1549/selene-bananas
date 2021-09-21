@@ -98,7 +98,7 @@ func (s *Socket) Connect(event js.Value) error {
 	if s.isOpen() {
 		return nil
 	}
-	f, err := ui.NewForm(event)
+	f, err := ui.NewForm(s.dom, event)
 	if err != nil {
 		return err
 	}

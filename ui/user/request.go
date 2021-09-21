@@ -22,7 +22,7 @@ type request struct {
 
 // Request makes an BLOCKING request to the server using the fields in the form.
 func (u *User) request(event js.Value) {
-	f, err := ui.NewForm(event)
+	f, err := ui.NewForm(u.dom, event)
 	if err != nil {
 		u.log.Error(err.Error())
 		return

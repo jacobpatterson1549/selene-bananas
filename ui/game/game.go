@@ -198,7 +198,7 @@ func (g *Game) startTileSwap() {
 
 // sendChat sends a chat message from the form of the event.
 func (g *Game) sendChat(event js.Value) {
-	f, err := ui.NewForm(event)
+	f, err := ui.NewForm(g.dom, event)
 	if err != nil {
 		g.log.Error(err.Error())
 		return

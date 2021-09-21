@@ -9,6 +9,7 @@ import (
 
 // Form contains the fields needed to make a request to the server.
 type Form struct {
+	dom    *DOM
 	v      js.Value
 	Method string
 	URL    URL
@@ -16,8 +17,7 @@ type Form struct {
 }
 
 // NewForm creates a form from the target property of the event.  An error is returned if the url action is not successfully parsed.
-func NewForm(event js.Value) (*Form, error) {
-	var dom DOM
+func NewForm(dom *DOM, event js.Value) (*Form, error) {
 	form := event.Get("target")
 	method := form.Get("method").String()
 	action := form.Get("action").String()
@@ -43,8 +43,7 @@ func NewForm(event js.Value) (*Form, error) {
 
 // Reset clears the named inputs of the form.
 func (f *Form) Reset() {
-	var dom DOM
-	formInputs := dom.QuerySelectorAll(f.v, `input[name]:not([type="submit"])`)
+	formInputs := f.dom.QuerySelectorAll(f.v, `input[name]:not([type="submit"])`)
 	for _, formInput := range formInputs {
 		formInput.Set("value", "")
 	}
