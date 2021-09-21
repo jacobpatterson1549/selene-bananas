@@ -13,7 +13,6 @@ import (
 
 // request handles http communication with the server through forms.
 type request struct {
-	dom       *ui.DOM
 	user      *User
 	form      ui.Form
 	validator func() bool
@@ -68,11 +67,11 @@ func (r request) do() (*http.Response, error) {
 	default:
 		return nil, errors.New("unknown method: " + f.Method)
 	}
-	if r.dom.Checked("#has-login") {
+	if r.user.dom.Checked("#has-login") {
 		jwt := r.user.JWT()
 		req.Headers["Authorization"] = "Bearer " + jwt
 	}
-	return r.user.httpClient.Do(req)
+	return r.user.httpClient.Do(r.user.dom, req)
 }
 
 // responseHandler creates a response-handling function for the url and form.  Nil is returned if the url is unknown.Path
@@ -105,7 +104,6 @@ func (u *User) newRequest(f ui.Form) (*request, error) {
 		return nil, errors.New("Unknown action: " + f.URL.Path)
 	}
 	r := request{
-		dom:       u.dom, // TODO: ensure this is not nil in a test
 		user:      u,
 		form:      f,
 		validator: validator,

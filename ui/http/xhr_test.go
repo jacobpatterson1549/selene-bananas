@@ -12,6 +12,15 @@ import (
 )
 
 func TestDoRequest(t *testing.T) {
+	t.Run("nil DOM", func(t *testing.T) {
+		var dom *ui.DOM
+		var r Request
+		var c Client
+		_, err := c.Do(dom, r)
+		if err == nil {
+			t.Error("wanted error when dom is nil")
+		}
+	})
 	tests := []struct {
 		Client
 		Request
@@ -63,12 +72,12 @@ func TestDoRequest(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		test.Client.DOM = new(ui.DOM) // TODO: use mock
+		dom := new(ui.DOM) // TODO: use mock
 		xhr := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return test.mockXMLHttpRequest.jsValue(test.eventType)
 		})
 		js.Global().Set("XMLHttpRequest", xhr)
-		got, err := test.Client.Do(test.Request)
+		got, err := test.Client.Do(dom, test.Request)
 		xhr.Release()
 		test.mockXMLHttpRequest.Release()
 		test.mockXMLHttpRequest.checkCalls(t)
