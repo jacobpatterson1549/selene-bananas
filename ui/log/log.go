@@ -8,7 +8,7 @@ import (
 	"sync"
 	"syscall/js"
 
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 )
 
 // Log manages messages for the log div.
@@ -29,9 +29,9 @@ func New(timeFunc func() int64) *Log {
 // InitDom registers log dom functions.
 func (l *Log) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
-		"clear": dom.NewJsFunc(l.Clear),
+		"clear": ui.NewJsFunc(l.Clear),
 	}
-	dom.RegisterFuncs(ctx, wg, "log", jsFuncs)
+	ui.RegisterFuncs(ctx, wg, "log", jsFuncs)
 }
 
 // Info logs an info-styled message.
@@ -56,22 +56,22 @@ func (l *Log) Chat(text string) {
 
 // Clear clears the log.
 func (l *Log) Clear() {
-	dom.SetChecked("#hide-log", true)
-	logScrollElement := dom.QuerySelector(".log>.scroll")
+	ui.SetChecked("#hide-log", true)
+	logScrollElement := ui.QuerySelector(".log>.scroll")
 	logScrollElement.Set("innerHTML", "")
 }
 
 // add writes a log item with the specified class.
 func (l *Log) add(class, text string) {
-	dom.SetChecked("#hide-log", false)
-	clone := dom.CloneElement(".log>template")
+	ui.SetChecked("#hide-log", false)
+	clone := ui.CloneElement(".log>template")
 	cloneChildren := clone.Get("children")
 	logItemElement := cloneChildren.Index(0)
-	time := dom.FormatTime(l.TimeFunc())
+	time := ui.FormatTime(l.TimeFunc())
 	textContent := time + " : " + text
 	logItemElement.Set("textContent", textContent)
 	logItemElement.Set("className", class)
-	logScrollElement := dom.QuerySelector(".log>.scroll")
+	logScrollElement := ui.QuerySelector(".log>.scroll")
 	logScrollElement.Call("appendChild", logItemElement)
 	scrollHeight := logScrollElement.Get("scrollHeight")
 	clientHeight := logScrollElement.Get("clientHeight")

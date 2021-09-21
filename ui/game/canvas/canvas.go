@@ -13,7 +13,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
 
@@ -110,13 +110,13 @@ const (
 // New Creates a canvas from the config.
 func (cfg Config) New(log *log.Log, board *board.Board, canvasParentDivQuery string) *Canvas {
 	canvasQuery := canvasParentDivQuery + ">canvas"
-	parentDiv := dom.QuerySelector(canvasParentDivQuery)
-	element := dom.QuerySelector(canvasQuery)
+	parentDiv := ui.QuerySelector(canvasParentDivQuery)
+	element := ui.QuerySelector(canvasQuery)
 	contextElement := element.Call("getContext", "2d")
 	divColor := func(query string) string {
 		absoluteQuery := "#canvas-colors>" + query
-		div := dom.QuerySelector(absoluteQuery)
-		color := dom.Color(div)
+		div := ui.QuerySelector(absoluteQuery)
+		color := ui.Color(div)
 		return color
 	}
 	mainColor := divColor(".mainColor")
@@ -202,7 +202,7 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		jsFuncs[fnName] = jsFunc
 	}
 	wg.Add(1)
-	go dom.ReleaseJsFuncsOnDone(ctx, wg, jsFuncs)
+	go ui.ReleaseJsFuncsOnDone(ctx, wg, jsFuncs)
 }
 
 // createEventFuncs creates the event listener functions for mouse/touch interaction.
@@ -672,15 +672,15 @@ func (s *selection) setMoveState(ms moveState) {
 	s.moveState = ms
 	switch ms {
 	case none:
-		dom.SetChecked(".game>.canvas>.move-state.none", true)
+		ui.SetChecked(".game>.canvas>.move-state.none", true)
 	case swap:
-		dom.SetChecked(".game>.canvas>.move-state.swap", true)
+		ui.SetChecked(".game>.canvas>.move-state.swap", true)
 	case rect:
-		dom.SetChecked(".game>.canvas>.move-state.rect", true)
+		ui.SetChecked(".game>.canvas>.move-state.rect", true)
 	case drag:
-		dom.SetChecked(".game>.canvas>.move-state.drag", true)
+		ui.SetChecked(".game>.canvas>.move-state.drag", true)
 	case grab:
-		dom.SetChecked(".game>.canvas>.move-state.grab", true)
+		ui.SetChecked(".game>.canvas>.move-state.grab", true)
 	}
 }
 

@@ -8,7 +8,7 @@ import (
 	"syscall/js"
 	"time"
 
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 )
 
 type (
@@ -43,7 +43,7 @@ type (
 
 // Do makes a HTTP request.
 func (c Client) Do(req Request) (*Response, error) {
-	xhr := dom.NewXHR()
+	xhr := ui.NewXHR()
 	xhr.Call("open", req.Method, req.URL)
 	timeoutMillis := c.Timeout.Milliseconds()
 	xhr.Set("timeout", timeoutMillis)
@@ -51,7 +51,7 @@ func (c Client) Do(req Request) (*Response, error) {
 		xhr.Call("setRequestHeader", k, v)
 	}
 	responseC := make(chan Response)
-	eventHandler := dom.NewJsEventFunc(handleEvent(xhr, responseC))
+	eventHandler := ui.NewJsEventFunc(handleEvent(xhr, responseC))
 	defer eventHandler.Release()
 	xhrEventTypes := []string{"load", "timeout", "abort", "error"}
 	for _, event := range xhrEventTypes {

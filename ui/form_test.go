@@ -1,14 +1,12 @@
 //go:build js && wasm
 
-package dom
+package ui
 
 import (
 	"reflect"
 	"strings"
 	"syscall/js"
 	"testing"
-
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom/url"
 )
 
 func TestNewForm(t *testing.T) {
@@ -56,13 +54,13 @@ func TestNewForm(t *testing.T) {
 		want := Form{
 			v:      formValue,
 			Method: "POST",
-			URL: url.URL{
+			URL: URL{
 				Scheme:    "https",
 				Authority: "example.com",
 				Path:      "/hello",
 				RawQuery:  "wasm=true",
 			},
-			Params: url.Values{
+			Params: Values{
 				"A": "first param",
 				"B": "2",
 			},

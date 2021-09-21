@@ -12,7 +12,7 @@ import (
 	"sync"
 	"syscall/js"
 
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
@@ -59,25 +59,25 @@ func New(log *log.Log, httpClient http.Client) *User {
 // InitDom registers user dom functions.
 func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
-		"logout":               dom.NewJsEventFunc(u.logoutButtonClick),
-		"request":              dom.NewJsEventFuncAsync(u.request, true),
-		"updateConfirmPattern": dom.NewJsEventFunc(u.updateConfirmPassword),
+		"logout":               ui.NewJsEventFunc(u.logoutButtonClick),
+		"request":              ui.NewJsEventFuncAsync(u.request, true),
+		"updateConfirmPattern": ui.NewJsEventFunc(u.updateConfirmPassword),
 	}
-	dom.RegisterFuncs(ctx, wg, "user", jsFuncs)
+	ui.RegisterFuncs(ctx, wg, "user", jsFuncs)
 }
 
 // login handles requesting a login when the login button is clicked.
 func (u *User) login(jwt string) {
-	dom.SetValue(".jwt", jwt)
-	ui, err := u.info(jwt)
+	ui.SetValue(".jwt", jwt)
+	userInfo, err := u.info(jwt)
 	if err != nil {
 		u.log.Error("getting user from jwt: " + err.Error())
 		return
 	}
-	u.setUsernamesReadOnly(string(ui.Name))
-	dom.SetValue("input.points", strconv.Itoa(ui.Points))
-	dom.SetChecked("#tab-lobby", true)
-	dom.SetChecked("#has-login", true)
+	u.setUsernamesReadOnly(string(userInfo.Name))
+	ui.SetValue("input.points", strconv.Itoa(userInfo.Points))
+	ui.SetChecked("#tab-lobby", true)
+	ui.SetChecked("#has-login", true)
 }
 
 // logoutButtonClick handles logging out the user when the button has been clicked.
@@ -89,9 +89,9 @@ func (u *User) logoutButtonClick(event js.Value) {
 // Logout logs out the user.
 func (u *User) Logout() {
 	u.Socket.Close()
-	dom.SetChecked("#has-login", false)
+	ui.SetChecked("#has-login", false)
 	u.setUsernamesReadOnly("")
-	dom.SetChecked("#tab-login-user", true)
+	ui.SetChecked("#tab-login-user", true)
 }
 
 // info retrieves the user information from the token.
@@ -101,7 +101,7 @@ func (User) info(jwt string) (*userInfo, error) {
 		return nil, errors.New("wanted 3 jwt parts, got " + strconv.Itoa(len(parts)))
 	}
 	payload := parts[1]
-	jwtUserClaims := dom.Base64Decode(payload)
+	jwtUserClaims := ui.Base64Decode(payload)
 	var ui userInfo
 	if err := json.Unmarshal(jwtUserClaims, &ui); err != nil {
 		return nil, errors.New("parsing json: " + err.Error())
@@ -111,7 +111,7 @@ func (User) info(jwt string) (*userInfo, error) {
 
 // JWT gets the value of the jwt input.
 func (u User) JWT() string {
-	return dom.Value(".jwt")
+	return ui.Value(".jwt")
 }
 
 // Username returns the username of the logged in user.
@@ -144,8 +144,8 @@ func (u User) escapePassword(p string) string {
 
 // setUsernamesReadOnly sets all of the username inputs to readonly with the specified username if it is not empty, otherwise, it removes the readonly attribute.
 func (u *User) setUsernamesReadOnly(username string) {
-	body := dom.QuerySelector("body")
-	usernameElements := dom.QuerySelectorAll(body, "input.username")
+	body := ui.QuerySelector("body")
+	usernameElements := ui.QuerySelectorAll(body, "input.username")
 	for _, usernameElement := range usernameElements {
 		switch {
 		case len(username) == 0:

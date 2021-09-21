@@ -1,7 +1,6 @@
 //go:build js && wasm
 
-// Package url replaces the standard net/url package for basic url operations
-package url
+package ui
 
 import (
 	"errors"
@@ -93,7 +92,7 @@ func (v Values) Encode() string {
 	return strings.Join(queries, "&")
 }
 
-// encodeURIComponent escapes special characters for save use in URIs.
+// encodeURIComponent escapes special characters for safe use in URIs.
 func encodeURIComponent(str string) string {
 	global := js.Global()
 	fn := global.Get("encodeURIComponent")

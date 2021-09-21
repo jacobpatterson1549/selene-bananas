@@ -9,12 +9,12 @@ import (
 	"syscall/js"
 	"time"
 
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 )
 
 // main initializes the wasm code for the web dom and runs as long as the browser is open.
 func main() {
-	defer dom.AlertOnPanic()
+	defer ui.AlertOnPanic()
 	f := flags{
 		httpTimeout: 10 * time.Second,
 		tileLength:  25, // also in game.html
@@ -47,8 +47,8 @@ func initBeforeUnloadFn(cancelFunc context.CancelFunc, wg *sync.WaitGroup) {
 
 // enableInteraction removes the disabled attribute from all submit buttons, allowing users to sign in and send other forms.
 func enableInteraction() {
-	document := dom.QuerySelector("body")
-	submitButtons := dom.QuerySelectorAll(document, `input[type="submit"]`)
+	document := ui.QuerySelector("body")
+	submitButtons := ui.QuerySelectorAll(document, `input[type="submit"]`)
 	for _, submitButton := range submitButtons {
 		submitButton.Set("disabled", false)
 	}

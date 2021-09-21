@@ -7,21 +7,21 @@ import (
 	"strconv"
 	"syscall/js"
 
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 )
 
 // request handles http communication with the server through forms.
 type request struct {
 	user      *User
-	form      dom.Form
+	form      ui.Form
 	validator func() bool
 	handler   func(body string)
 }
 
 // Request makes an BLOCKING request to the server using the fields in the form.
 func (u *User) request(event js.Value) {
-	f, err := dom.NewForm(event)
+	f, err := ui.NewForm(event)
 	if err != nil {
 		u.log.Error(err.Error())
 		return
@@ -67,7 +67,7 @@ func (r request) do() (*http.Response, error) {
 	default:
 		return nil, errors.New("unknown method: " + f.Method)
 	}
-	if dom.Checked("#has-login") {
+	if ui.Checked("#has-login") {
 		jwt := r.user.JWT()
 		req.Headers["Authorization"] = "Bearer " + jwt
 	}
@@ -75,7 +75,7 @@ func (r request) do() (*http.Response, error) {
 }
 
 // responseHandler creates a response-handling function for the url and form.  Nil is returned if the url is unknown.Path
-func (u *User) newRequest(f dom.Form) (*request, error) {
+func (u *User) newRequest(f ui.Form) (*request, error) {
 	var validator func() bool
 	var handler func(body string)
 	switch f.URL.Path {
@@ -87,7 +87,7 @@ func (u *User) newRequest(f dom.Form) (*request, error) {
 	case "/user_delete":
 		validator = func() bool {
 			message := "Are you sure? All accumulated points will be lost"
-			ok := dom.Confirm(message)
+			ok := ui.Confirm(message)
 			return ok
 		}
 		handler = func(body string) {

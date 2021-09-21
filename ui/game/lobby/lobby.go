@@ -10,7 +10,7 @@ import (
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 )
 
 type (
@@ -50,10 +50,10 @@ func New(log Log, game Game) *Lobby {
 // InitDom registers lobby dom functions.
 func (l *Lobby) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
-		"connect": dom.NewJsEventFuncAsync(l.connect, true),
-		"leave":   dom.NewJsFunc(l.leave),
+		"connect": ui.NewJsEventFuncAsync(l.connect, true),
+		"leave":   ui.NewJsFunc(l.leave),
 	}
-	dom.RegisterFuncs(ctx, wg, "lobby", jsFuncs)
+	ui.RegisterFuncs(ctx, wg, "lobby", jsFuncs)
 }
 
 // connect makes a BLOCKING request to connect to the lobby.
@@ -69,16 +69,16 @@ func (l *Lobby) connect(event js.Value) {
 func (l *Lobby) leave() {
 	l.Socket.Close()
 	l.game.Leave()
-	tbodyElement := dom.QuerySelector(".game-infos>tbody")
+	tbodyElement := ui.QuerySelector(".game-infos>tbody")
 	tbodyElement.Set("innerHTML", "")
 }
 
 // SetGameInfos updates the game-infos table with the game infos for the username.
 func (l *Lobby) SetGameInfos(gameInfos []game.Info, username string) {
-	tbodyElement := dom.QuerySelector(".game-infos>tbody")
+	tbodyElement := ui.QuerySelector(".game-infos>tbody")
 	tbodyElement.Set("innerHTML", "")
 	if len(gameInfos) == 0 {
-		emptyGameInfoElement := dom.CloneElement(".no-game-info-row")
+		emptyGameInfoElement := ui.CloneElement(".no-game-info-row")
 		tbodyElement.Call("appendChild", emptyGameInfoElement)
 		return
 	}
@@ -89,11 +89,11 @@ func (l *Lobby) SetGameInfos(gameInfos []game.Info, username string) {
 }
 
 func gameInfoElement(gameInfo game.Info, username string) js.Value {
-	gameInfoElement := dom.CloneElement(".game-info-row")
+	gameInfoElement := ui.CloneElement(".game-info-row")
 
 	rowElement := gameInfoElement.Get("children").Index(0)
 
-	createdAtTimeText := dom.FormatTime(gameInfo.CreatedAt)
+	createdAtTimeText := ui.FormatTime(gameInfo.CreatedAt)
 	rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
 
 	players := strings.Join(gameInfo.Players, ", ")

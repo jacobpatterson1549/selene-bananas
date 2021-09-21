@@ -14,7 +14,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
-	"github.com/jacobpatterson1549/selene-bananas/ui/dom"
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game/canvas"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
@@ -55,41 +55,41 @@ func (cfg Config) NewGame(log *log.Log) *Game {
 // InitDom registers game dom functions.
 func (g *Game) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
-		"create":            dom.NewJsFunc(g.startCreate),
-		"createWithConfig":  dom.NewJsEventFunc(g.createWithConfig),
-		"join":              dom.NewJsEventFunc(g.join),
-		"leave":             dom.NewJsFunc(g.sendLeave),
-		"delete":            dom.NewJsFunc(g.delete),
-		"start":             dom.NewJsFunc(g.Start),
-		"finish":            dom.NewJsFunc(g.finish),
-		"snagTile":          dom.NewJsFunc(g.snagTile),
-		"swapTile":          dom.NewJsFunc(g.startTileSwap),
-		"sendChat":          dom.NewJsEventFunc(g.sendChat),
-		"resizeTiles":       dom.NewJsFunc(g.resizeTiles),
-		"refreshTileLength": dom.NewJsFunc(g.refreshTileLength),
-		"viewFinalBoard":    dom.NewJsFunc(g.viewFinalBoard),
+		"create":            ui.NewJsFunc(g.startCreate),
+		"createWithConfig":  ui.NewJsEventFunc(g.createWithConfig),
+		"join":              ui.NewJsEventFunc(g.join),
+		"leave":             ui.NewJsFunc(g.sendLeave),
+		"delete":            ui.NewJsFunc(g.delete),
+		"start":             ui.NewJsFunc(g.Start),
+		"finish":            ui.NewJsFunc(g.finish),
+		"snagTile":          ui.NewJsFunc(g.snagTile),
+		"swapTile":          ui.NewJsFunc(g.startTileSwap),
+		"sendChat":          ui.NewJsEventFunc(g.sendChat),
+		"resizeTiles":       ui.NewJsFunc(g.resizeTiles),
+		"refreshTileLength": ui.NewJsFunc(g.refreshTileLength),
+		"viewFinalBoard":    ui.NewJsFunc(g.viewFinalBoard),
 	}
-	dom.RegisterFuncs(ctx, wg, "game", jsFuncs)
+	ui.RegisterFuncs(ctx, wg, "game", jsFuncs)
 }
 
 // startCreate opens the game tab in create mode.
 func (g *Game) startCreate() {
 	g.hide(false)
-	dom.SetChecked("#hide-game-create", false)
-	dom.SetChecked("#tab-game", true)
+	ui.SetChecked("#hide-game-create", false)
+	ui.SetChecked("#tab-game", true)
 }
 
 // createWithConfig clears the tiles and asks the server for a new game to join with the create config.
 func (g *Game) createWithConfig(event js.Value) {
-	checkOnSnag := dom.Checked(".checkOnSnag")
-	penalize := dom.Checked(".penalize")
-	minLengthStr := dom.Value(".minLength")
+	checkOnSnag := ui.Checked(".checkOnSnag")
+	penalize := ui.Checked(".penalize")
+	minLengthStr := ui.Value(".minLength")
 	minLength, err := strconv.Atoi(minLengthStr)
 	if err != nil {
 		g.log.Error("retrieving minimum word length: " + err.Error())
 		return
 	}
-	prohibitDuplicates := dom.Checked(".prohibitDuplicates")
+	prohibitDuplicates := ui.Checked(".prohibitDuplicates")
 	m := message.Message{
 		Type: message.CreateGame,
 		Game: &game.Info{
@@ -123,7 +123,7 @@ func (g *Game) join(event js.Value) {
 
 // hide sets the #hide-game input.
 func (g *Game) hide(hideGame bool) {
-	dom.SetChecked("#hide-game", hideGame)
+	ui.SetChecked("#hide-game", hideGame)
 }
 
 // ID gets the ID of the game.
@@ -145,12 +145,12 @@ func (g *Game) Leave() {
 	g.id = 0
 	g.setFinalBoards(nil)
 	g.hide(true)
-	dom.SetChecked("#tab-lobby", true)
+	ui.SetChecked("#tab-lobby", true)
 }
 
 // delete removes everyone from the game and deletes it.
 func (g *Game) delete() {
-	if ok := dom.Confirm("Are you sure? Deleting the game will kick everyone out."); !ok {
+	if ok := ui.Confirm("Are you sure? Deleting the game will kick everyone out."); !ok {
 		return
 	}
 	m := message.Message{
@@ -196,7 +196,7 @@ func (g *Game) startTileSwap() {
 
 // sendChat sends a chat message from the form of the event.
 func (g *Game) sendChat(event js.Value) {
-	f, err := dom.NewForm(event)
+	f, err := ui.NewForm(event)
 	if err != nil {
 		g.log.Error(err.Error())
 		return
@@ -293,26 +293,26 @@ func (g *Game) updateStatus(m message.Message) {
 		return
 	}
 	g.setFinalBoards(m.Game.FinalBoards)
-	dom.SetValue(".game>.info .status", statusText)
-	dom.SetButtonDisabled(".game .actions>.snag", snagDisabled)
-	dom.SetButtonDisabled(".game .actions>.swap", swapDisabled)
-	dom.SetButtonDisabled(".game .actions>.start", startDisabled)
-	dom.SetButtonDisabled(".game .actions>.finish", finishDisabled)
+	ui.SetValue(".game>.info .status", statusText)
+	ui.SetButtonDisabled(".game .actions>.snag", snagDisabled)
+	ui.SetButtonDisabled(".game .actions>.swap", swapDisabled)
+	ui.SetButtonDisabled(".game .actions>.start", startDisabled)
+	ui.SetButtonDisabled(".game .actions>.finish", finishDisabled)
 	g.canvas.SetGameStatus(m.Game.Status)
 }
 
 // updateTilesLeft updates the TilesLeft label.  Other labels are updated if there are no tiles left.
 func (g *Game) updateTilesLeft(m message.Message) {
-	dom.SetValue(".game>.info .tiles-left", strconv.Itoa(m.Game.TilesLeft))
+	ui.SetValue(".game>.info .tiles-left", strconv.Itoa(m.Game.TilesLeft))
 	if m.Game.TilesLeft == 0 {
-		dom.SetButtonDisabled(".game .actions>.snag", true)
-		dom.SetButtonDisabled(".game .actions>.swap", true)
+		ui.SetButtonDisabled(".game .actions>.snag", true)
+		ui.SetButtonDisabled(".game .actions>.swap", true)
 		// enable the finish button if the game is not being started or is already finished
 		switch m.Game.Status {
 		case game.NotStarted, game.Finished:
 			// NOOP
 		default:
-			dom.SetButtonDisabled(".game .actions>.finish", false)
+			ui.SetButtonDisabled(".game .actions>.finish", false)
 		}
 	}
 }
@@ -323,7 +323,7 @@ func (g *Game) updatePlayers(m message.Message) {
 		return
 	}
 	players := strings.Join(m.Game.Players, ",")
-	dom.SetValue(".game>.info .players", players)
+	ui.SetValue(".game>.info .players", players)
 }
 
 // resetTiles clears the tiles on the board.
@@ -336,13 +336,13 @@ func (g *Game) resetTiles() {
 
 // refreshTileLength updates the displayed tile length number.
 func (g *Game) refreshTileLength() {
-	tileLengthStr := dom.Value(".tile-length-slider")
-	dom.SetValue(".tile-length-display", tileLengthStr)
+	tileLengthStr := ui.Value(".tile-length-slider")
+	ui.SetValue(".tile-length-display", tileLengthStr)
 }
 
 // resizeTiles changes the tile size of the board to be the value of the slider.
 func (g *Game) resizeTiles() {
-	tileLengthStr := dom.Value(".tile-length-slider")
+	tileLengthStr := ui.Value(".tile-length-slider")
 	tileLength, err := strconv.Atoi(tileLengthStr)
 	if err != nil {
 		g.log.Error("retrieving tile size: " + err.Error())
@@ -358,8 +358,8 @@ func (g *Game) resizeTiles() {
 // setTabActive performs the actions need to activate the game tab and create or join a game.
 func (g *Game) setTabActive(m message.Message) {
 	g.hide(false)
-	dom.SetChecked("#hide-game-create", true)
-	dom.SetChecked("#tab-game", true)
+	ui.SetChecked("#hide-game-create", true)
+	ui.SetChecked("#tab-game", true)
 	// the tab now has a size, so update the canvas and board
 	parentDivOffsetWidth := g.canvas.ParentDivOffsetWidth()
 	g.canvas.UpdateSize(parentDivOffsetWidth)
@@ -394,10 +394,10 @@ func (g *Game) setBoardSize(m message.Message) {
 
 // setRules replaces the rules for the game
 func (g *Game) setRules(rules []string) {
-	rulesList := dom.QuerySelector(".game .rules ul")
+	rulesList := ui.QuerySelector(".game .rules ul")
 	rulesList.Set("innerHTML", "")
 	for _, r := range rules {
-		clone := dom.CloneElement(".game .rules template")
+		clone := ui.CloneElement(".game .rules template")
 		cloneChildren := clone.Get("children")
 		li := cloneChildren.Index(0)
 		li.Set("innerHTML", r)
@@ -410,21 +410,21 @@ func (g *Game) setRules(rules []string) {
 // The board canvas is always cleared, requiring the user to select one, if any.
 func (g *Game) setFinalBoards(finalBoards map[string]board.Board) {
 	hideFinalBoards := len(finalBoards) == 0
-	dom.SetChecked("#hide-final-boards", hideFinalBoards)
-	playersList := dom.QuerySelector(".final-boards .player-list form")
+	ui.SetChecked("#hide-final-boards", hideFinalBoards)
+	playersList := ui.QuerySelector(".final-boards .player-list form")
 	playersList.Set("innerHTML", "")
 	g.finalBoards = finalBoards
 	for playerName := range finalBoards {
 		div := g.newFinalBoardDiv(playerName)
 		playersList.Call("appendChild", div)
 	}
-	canvas := dom.QuerySelector(".final-boards .canvas canvas")
+	canvas := ui.QuerySelector(".final-boards .canvas canvas")
 	canvas.Set("height", 0)
 }
 
 // newFinalBoardLi creates a new div to trigger drawing the board.
 func (g *Game) newFinalBoardDiv(playerName string) js.Value {
-	clone := dom.CloneElement(".final-boards .player-list template")
+	clone := ui.CloneElement(".final-boards .player-list template")
 	cloneChildren := clone.Get("children")
 	div := cloneChildren.Index(0)
 	divChildren := div.Get("children")
@@ -439,7 +439,7 @@ func (g *Game) newFinalBoardDiv(playerName string) js.Value {
 
 // viewFinalBoard draws the board for the clicked player on the .final-boards canvas.
 func (g *Game) viewFinalBoard() {
-	checkedLabel := dom.QuerySelector(".player-list input:checked+label")
+	checkedLabel := ui.QuerySelector(".player-list input:checked+label")
 	playerName := checkedLabel.Get("innerHTML").String()
 	b, ok := g.finalBoards[playerName]
 	if !ok {

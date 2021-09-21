@@ -1,7 +1,9 @@
 //go:build js && wasm
 
+// Package ui contains the client for the game.
+// It compiles to webassembly to allow users to play the game in their browsers.
 // Package dom contains the javascript bindings for the site
-package dom
+package ui
 
 import (
 	"errors"
