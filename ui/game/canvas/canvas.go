@@ -20,6 +20,7 @@ import (
 type (
 	// Canvas is the object which draws the game.
 	Canvas struct {
+		dom        *ui.DOM
 		log        *log.Log
 		ctx        Context
 		board      *board.Board
@@ -69,6 +70,7 @@ type (
 
 	// selection represents what the cursor has done for the current move.
 	selection struct {
+		dom       *ui.DOM
 		moveState moveState
 		tiles     map[tile.ID]tileSelection
 		start     pixelPosition
@@ -108,15 +110,15 @@ const (
 )
 
 // New Creates a canvas from the config.
-func (cfg Config) New(log *log.Log, board *board.Board, canvasParentDivQuery string) *Canvas {
+func (cfg Config) New(dom *ui.DOM, log *log.Log, board *board.Board, canvasParentDivQuery string) *Canvas {
 	canvasQuery := canvasParentDivQuery + ">canvas"
-	parentDiv := ui.QuerySelector(canvasParentDivQuery)
-	element := ui.QuerySelector(canvasQuery)
+	parentDiv := dom.QuerySelector(canvasParentDivQuery)
+	element := dom.QuerySelector(canvasQuery)
 	contextElement := element.Call("getContext", "2d")
 	divColor := func(query string) string {
 		absoluteQuery := "#canvas-colors>" + query
-		div := ui.QuerySelector(absoluteQuery)
-		color := ui.Color(div)
+		div := dom.QuerySelector(absoluteQuery)
+		color := dom.Color(div)
 		return color
 	}
 	mainColor := divColor(".mainColor")
@@ -127,10 +129,12 @@ func (cfg Config) New(log *log.Log, board *board.Board, canvasParentDivQuery str
 		ctx: &contextElement,
 	}
 	c := Canvas{
+		dom:   dom,
 		log:   log,
 		ctx:   &ctx,
 		board: board,
 		selection: selection{
+			dom:   dom,
 			tiles: make(map[tile.ID]tileSelection),
 		},
 		parentDiv: &parentDiv,
@@ -202,7 +206,7 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		jsFuncs[fnName] = jsFunc
 	}
 	wg.Add(1)
-	go ui.ReleaseJsFuncsOnDone(ctx, wg, jsFuncs)
+	go c.dom.ReleaseJsFuncsOnDone(ctx, wg, jsFuncs)
 }
 
 // createEventFuncs creates the event listener functions for mouse/touch interaction.
@@ -672,15 +676,15 @@ func (s *selection) setMoveState(ms moveState) {
 	s.moveState = ms
 	switch ms {
 	case none:
-		ui.SetChecked(".game>.canvas>.move-state.none", true)
+		s.dom.SetChecked(".game>.canvas>.move-state.none", true)
 	case swap:
-		ui.SetChecked(".game>.canvas>.move-state.swap", true)
+		s.dom.SetChecked(".game>.canvas>.move-state.swap", true)
 	case rect:
-		ui.SetChecked(".game>.canvas>.move-state.rect", true)
+		s.dom.SetChecked(".game>.canvas>.move-state.rect", true)
 	case drag:
-		ui.SetChecked(".game>.canvas>.move-state.drag", true)
+		s.dom.SetChecked(".game>.canvas>.move-state.drag", true)
 	case grab:
-		ui.SetChecked(".game>.canvas>.move-state.grab", true)
+		s.dom.SetChecked(".game>.canvas>.move-state.grab", true)
 	}
 }
 

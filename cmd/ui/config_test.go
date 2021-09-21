@@ -8,10 +8,13 @@ import (
 	"sync"
 	"syscall/js"
 	"testing"
+
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 )
 
 func TestInitDom_registeredFuncs(t *testing.T) {
 	var f flags
+	f.dom = new(ui.DOM) // TODO: use mock? or not? ?????
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
 	var wg sync.WaitGroup

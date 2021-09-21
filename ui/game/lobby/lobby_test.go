@@ -7,13 +7,18 @@ import (
 	"reflect"
 	"syscall/js"
 	"testing"
+
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 )
 
 func TestNew(t *testing.T) {
+	dom := new(ui.DOM)
 	log := new(mockLog)
 	game := new(mockGame)
-	l := New(log, game)
+	l := New(dom, log, game)
 	switch {
+	case !reflect.DeepEqual(dom, l.dom):
+		t.Errorf("doms not equal: wanted %v, got %v", dom, l.dom)
 	case !reflect.DeepEqual(log, l.log):
 		t.Errorf("logs not equal: wanted %v, got %v", log, l.log)
 	case !reflect.DeepEqual(game, l.game):
@@ -93,6 +98,7 @@ func TestLeave(t *testing.T) {
 	})
 	js.Global().Set("document", document)
 	l := Lobby{
+		dom:    new(ui.DOM), // TODO: use mock
 		game:   game,
 		Socket: socket,
 	}

@@ -19,6 +19,7 @@ import (
 type (
 	// Socket can be used to easily push and pull messages from the server.
 	Socket struct {
+		dom       *ui.DOM
 		log       *log.Log
 		webSocket js.Value
 		user      User
@@ -59,8 +60,9 @@ type (
 )
 
 // New creates a new socket.
-func New(log *log.Log, user User, game Game, lobby Lobby) *Socket {
+func New(dom *ui.DOM, log *log.Log, user User, game Game, lobby Lobby) *Socket {
 	s := Socket{
+		dom:   dom,
 		log:   log,
 		user:  user,
 		game:  game,
@@ -77,7 +79,7 @@ func (s *Socket) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 
 // releaseJsFuncsOnDone waits for the context to be done before releasing the event listener functions.
 func (s *Socket) releaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup) {
-	defer ui.AlertOnPanic()
+	defer s.dom.AlertOnPanic()
 	<-ctx.Done() // BLOCKING
 	s.releaseWebSocketJsFuncs()
 	wg.Done()
@@ -103,11 +105,11 @@ func (s *Socket) Connect(event js.Value) error {
 	url := s.webSocketURL(*f)
 	s.releaseWebSocketJsFuncs()
 	errC := make(chan error, 1)
-	s.jsFuncs.onOpen = ui.NewJsFunc(s.onOpen(errC))
-	s.jsFuncs.onClose = ui.NewJsEventFunc(s.onClose)
-	s.jsFuncs.onError = ui.NewJsFunc(s.onError(errC))
-	s.jsFuncs.onMessage = ui.NewJsEventFunc(s.onMessage)
-	s.webSocket = ui.NewWebSocket(url)
+	s.jsFuncs.onOpen = s.dom.NewJsFunc(s.onOpen(errC))
+	s.jsFuncs.onClose = s.dom.NewJsEventFunc(s.onClose)
+	s.jsFuncs.onError = s.dom.NewJsFunc(s.onError(errC))
+	s.jsFuncs.onMessage = s.dom.NewJsEventFunc(s.onMessage)
+	s.webSocket = s.dom.NewWebSocket(url)
 	s.webSocket.Set("onopen", s.jsFuncs.onOpen)
 	s.webSocket.Set("onclose", s.jsFuncs.onClose)
 	s.webSocket.Set("onerror", s.jsFuncs.onError)
@@ -132,7 +134,7 @@ func (s *Socket) webSocketURL(f ui.Form) string {
 // onMessage is called when the websocket opens.
 func (s *Socket) onOpen(errC chan<- error) func() {
 	return func() {
-		ui.SetChecked("#has-websocket", true)
+		s.dom.SetChecked("#has-websocket", true)
 		errC <- nil
 	}
 }
@@ -152,9 +154,9 @@ func (s *Socket) closeWebSocket() {
 	s.webSocket.Set("onerror", nil)
 	s.webSocket.Set("onmessage", nil)
 	s.releaseWebSocketJsFuncs()
-	ui.SetChecked("#has-websocket", false)
-	ui.SetChecked("#hide-game", true)
-	ui.SetChecked("#tab-lobby", true)
+	s.dom.SetChecked("#has-websocket", false)
+	s.dom.SetChecked("#hide-game", true)
+	s.dom.SetChecked("#tab-lobby", true)
 }
 
 // onMessage is called when the websocket encounters an unwanted error.
@@ -259,6 +261,6 @@ func (s *Socket) handleInfo(m message.Message) {
 
 // httpPing submits the small ping form to keep the server's http handling active.
 func (s *Socket) httpPing() {
-	pingFormElement := ui.QuerySelector("form.ping")
+	pingFormElement := s.dom.QuerySelector("form.ping")
 	pingFormElement.Call("requestSubmit")
 }

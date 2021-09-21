@@ -14,6 +14,8 @@ import (
 type (
 	// Client makes HTTP requests.
 	Client struct {
+		// DOM is used to create the HTTP request.
+		DOM *ui.DOM
 		// Timeout is the amount of time a request can take before being considered timed out.
 		Timeout time.Duration
 	}
@@ -43,7 +45,7 @@ type (
 
 // Do makes a HTTP request.
 func (c Client) Do(req Request) (*Response, error) {
-	xhr := ui.NewXHR()
+	xhr := c.DOM.NewXHR()
 	xhr.Call("open", req.Method, req.URL)
 	timeoutMillis := c.Timeout.Milliseconds()
 	xhr.Set("timeout", timeoutMillis)
@@ -51,7 +53,7 @@ func (c Client) Do(req Request) (*Response, error) {
 		xhr.Call("setRequestHeader", k, v)
 	}
 	responseC := make(chan Response)
-	eventHandler := ui.NewJsEventFunc(handleEvent(xhr, responseC))
+	eventHandler := c.DOM.NewJsEventFunc(handleEvent(xhr, responseC))
 	defer eventHandler.Release()
 	xhrEventTypes := []string{"load", "timeout", "abort", "error"}
 	for _, event := range xhrEventTypes {

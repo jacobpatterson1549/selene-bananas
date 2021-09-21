@@ -7,6 +7,8 @@ import (
 	"syscall/js"
 	"testing"
 	"time"
+
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 )
 
 func TestDoRequest(t *testing.T) {
@@ -61,6 +63,7 @@ func TestDoRequest(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
+		test.Client.DOM = new(ui.DOM) // TODO: use mock
 		xhr := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			return test.mockXMLHttpRequest.jsValue(test.eventType)
 		})

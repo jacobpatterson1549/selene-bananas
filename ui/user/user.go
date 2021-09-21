@@ -20,6 +20,7 @@ import (
 type (
 	// User is a http/login helper.
 	User struct {
+		dom        *ui.DOM
 		log        *log.Log
 		httpClient http.Client
 		escapeR    *strings.Replacer
@@ -39,7 +40,7 @@ type (
 )
 
 // New creates a http/login helper struct.
-func New(log *log.Log, httpClient http.Client) *User {
+func New(dom *ui.DOM, log *log.Log, httpClient http.Client) *User {
 	quoteLetters := `\^$*+?.()|[]{}`
 	escapePairs := make([]string, len(quoteLetters)*2)
 	for i := range quoteLetters {
@@ -49,6 +50,7 @@ func New(log *log.Log, httpClient http.Client) *User {
 	}
 	escapeR := strings.NewReplacer(escapePairs...)
 	u := User{
+		dom:        dom,
 		log:        log,
 		httpClient: httpClient,
 		escapeR:    escapeR,
@@ -59,25 +61,25 @@ func New(log *log.Log, httpClient http.Client) *User {
 // InitDom registers user dom functions.
 func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
-		"logout":               ui.NewJsEventFunc(u.logoutButtonClick),
-		"request":              ui.NewJsEventFuncAsync(u.request, true),
-		"updateConfirmPattern": ui.NewJsEventFunc(u.updateConfirmPassword),
+		"logout":               u.dom.NewJsEventFunc(u.logoutButtonClick),
+		"request":              u.dom.NewJsEventFuncAsync(u.request, true),
+		"updateConfirmPattern": u.dom.NewJsEventFunc(u.updateConfirmPassword),
 	}
-	ui.RegisterFuncs(ctx, wg, "user", jsFuncs)
+	u.dom.RegisterFuncs(ctx, wg, "user", jsFuncs)
 }
 
 // login handles requesting a login when the login button is clicked.
 func (u *User) login(jwt string) {
-	ui.SetValue(".jwt", jwt)
+	u.dom.SetValue(".jwt", jwt)
 	userInfo, err := u.info(jwt)
 	if err != nil {
 		u.log.Error("getting user from jwt: " + err.Error())
 		return
 	}
 	u.setUsernamesReadOnly(string(userInfo.Name))
-	ui.SetValue("input.points", strconv.Itoa(userInfo.Points))
-	ui.SetChecked("#tab-lobby", true)
-	ui.SetChecked("#has-login", true)
+	u.dom.SetValue("input.points", strconv.Itoa(userInfo.Points))
+	u.dom.SetChecked("#tab-lobby", true)
+	u.dom.SetChecked("#has-login", true)
 }
 
 // logoutButtonClick handles logging out the user when the button has been clicked.
@@ -89,19 +91,19 @@ func (u *User) logoutButtonClick(event js.Value) {
 // Logout logs out the user.
 func (u *User) Logout() {
 	u.Socket.Close()
-	ui.SetChecked("#has-login", false)
+	u.dom.SetChecked("#has-login", false)
 	u.setUsernamesReadOnly("")
-	ui.SetChecked("#tab-login-user", true)
+	u.dom.SetChecked("#tab-login-user", true)
 }
 
 // info retrieves the user information from the token.
-func (User) info(jwt string) (*userInfo, error) {
+func (u User) info(jwt string) (*userInfo, error) {
 	parts := strings.Split(jwt, ".")
 	if len(parts) != 3 {
 		return nil, errors.New("wanted 3 jwt parts, got " + strconv.Itoa(len(parts)))
 	}
 	payload := parts[1]
-	jwtUserClaims := ui.Base64Decode(payload)
+	jwtUserClaims := u.dom.Base64Decode(payload)
 	var ui userInfo
 	if err := json.Unmarshal(jwtUserClaims, &ui); err != nil {
 		return nil, errors.New("parsing json: " + err.Error())
@@ -111,7 +113,7 @@ func (User) info(jwt string) (*userInfo, error) {
 
 // JWT gets the value of the jwt input.
 func (u User) JWT() string {
-	return ui.Value(".jwt")
+	return u.dom.Value(".jwt")
 }
 
 // Username returns the username of the logged in user.
@@ -144,8 +146,8 @@ func (u User) escapePassword(p string) string {
 
 // setUsernamesReadOnly sets all of the username inputs to readonly with the specified username if it is not empty, otherwise, it removes the readonly attribute.
 func (u *User) setUsernamesReadOnly(username string) {
-	body := ui.QuerySelector("body")
-	usernameElements := ui.QuerySelectorAll(body, "input.username")
+	body := u.dom.QuerySelector("body")
+	usernameElements := u.dom.QuerySelectorAll(body, "input.username")
 	for _, usernameElement := range usernameElements {
 		switch {
 		case len(username) == 0:

@@ -17,6 +17,7 @@ type Form struct {
 
 // NewForm creates a form from the target property of the event.  An error is returned if the url action is not successfully parsed.
 func NewForm(event js.Value) (*Form, error) {
+	var dom DOM
 	form := event.Get("target")
 	method := form.Get("method").String()
 	action := form.Get("action").String()
@@ -24,7 +25,7 @@ func NewForm(event js.Value) (*Form, error) {
 	if err != nil {
 		return nil, errors.New("getting url from form action: " + err.Error())
 	}
-	formInputs := QuerySelectorAll(form, `input[name]:not([type="submit"])`)
+	formInputs := dom.QuerySelectorAll(form, `input[name]:not([type="submit"])`)
 	params := make(Values, len(formInputs))
 	for _, formInput := range formInputs {
 		name := formInput.Get("name").String()
@@ -42,7 +43,8 @@ func NewForm(event js.Value) (*Form, error) {
 
 // Reset clears the named inputs of the form.
 func (f *Form) Reset() {
-	formInputs := QuerySelectorAll(f.v, `input[name]:not([type="submit"])`)
+	var dom DOM
+	formInputs := dom.QuerySelectorAll(f.v, `input[name]:not([type="submit"])`)
 	for _, formInput := range formInputs {
 		formInput.Set("value", "")
 	}

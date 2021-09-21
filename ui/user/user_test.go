@@ -8,6 +8,7 @@ import (
 	"syscall/js"
 	"testing"
 
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 )
 
@@ -49,7 +50,9 @@ func TestGetUser(t *testing.T) {
 		},
 	}
 	for i, test := range getUserTests {
-		var u User
+		u := User{
+			dom: new(ui.DOM), // TODO: use mock
+		}
 		got, err := u.info(test.jwt)
 		switch {
 		case !test.wantOk:
@@ -68,7 +71,7 @@ func TestEscapePassword(t *testing.T) {
 	init := `ok characters are: ` + "`" + `'"<>%&_:;/, escaped are  \^$*+?.()|[]{} but snowman should be unescaped: ☃`
 	want := `ok characters are: ` + "`" + `'"<>%&_:;/, escaped are  \\\^\$\*\+\?\.\(\)\|\[\]\{\} but snowman should be unescaped: ☃`
 	var httpClient http.Client
-	u := New(nil, httpClient)
+	u := New(nil, nil, httpClient)
 	got := u.escapePassword(init)
 	if want != got {
 		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)

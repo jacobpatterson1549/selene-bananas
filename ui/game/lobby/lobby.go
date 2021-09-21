@@ -16,6 +16,7 @@ import (
 type (
 	// Lobby handles viewing, joining, and creating games on the server.
 	Lobby struct {
+		dom    *ui.DOM
 		log    Log
 		game   Game
 		Socket Socket
@@ -39,8 +40,9 @@ type (
 )
 
 // New creates a lobby for games.
-func New(log Log, game Game) *Lobby {
+func New(dom *ui.DOM, log Log, game Game) *Lobby {
 	l := Lobby{
+		dom:  dom,
 		log:  log,
 		game: game,
 	}
@@ -50,10 +52,10 @@ func New(log Log, game Game) *Lobby {
 // InitDom registers lobby dom functions.
 func (l *Lobby) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	jsFuncs := map[string]js.Func{
-		"connect": ui.NewJsEventFuncAsync(l.connect, true),
-		"leave":   ui.NewJsFunc(l.leave),
+		"connect": l.dom.NewJsEventFuncAsync(l.connect, true),
+		"leave":   l.dom.NewJsFunc(l.leave),
 	}
-	ui.RegisterFuncs(ctx, wg, "lobby", jsFuncs)
+	l.dom.RegisterFuncs(ctx, wg, "lobby", jsFuncs)
 }
 
 // connect makes a BLOCKING request to connect to the lobby.
@@ -69,31 +71,31 @@ func (l *Lobby) connect(event js.Value) {
 func (l *Lobby) leave() {
 	l.Socket.Close()
 	l.game.Leave()
-	tbodyElement := ui.QuerySelector(".game-infos>tbody")
+	tbodyElement := l.dom.QuerySelector(".game-infos>tbody")
 	tbodyElement.Set("innerHTML", "")
 }
 
 // SetGameInfos updates the game-infos table with the game infos for the username.
 func (l *Lobby) SetGameInfos(gameInfos []game.Info, username string) {
-	tbodyElement := ui.QuerySelector(".game-infos>tbody")
+	tbodyElement := l.dom.QuerySelector(".game-infos>tbody")
 	tbodyElement.Set("innerHTML", "")
 	if len(gameInfos) == 0 {
-		emptyGameInfoElement := ui.CloneElement(".no-game-info-row")
+		emptyGameInfoElement := l.dom.CloneElement(".no-game-info-row")
 		tbodyElement.Call("appendChild", emptyGameInfoElement)
 		return
 	}
 	for _, gameInfo := range gameInfos {
-		gameInfoElement := gameInfoElement(gameInfo, username)
+		gameInfoElement := l.gameInfoElement(gameInfo, username)
 		tbodyElement.Call("appendChild", gameInfoElement)
 	}
 }
 
-func gameInfoElement(gameInfo game.Info, username string) js.Value {
-	gameInfoElement := ui.CloneElement(".game-info-row")
+func (l *Lobby) gameInfoElement(gameInfo game.Info, username string) js.Value {
+	gameInfoElement := l.dom.CloneElement(".game-info-row")
 
 	rowElement := gameInfoElement.Get("children").Index(0)
 
-	createdAtTimeText := ui.FormatTime(gameInfo.CreatedAt)
+	createdAtTimeText := l.dom.FormatTime(gameInfo.CreatedAt)
 	rowElement.Get("children").Index(0).Set("innerHTML", createdAtTimeText)
 
 	players := strings.Join(gameInfo.Players, ", ")

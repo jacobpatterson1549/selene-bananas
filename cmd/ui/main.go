@@ -14,8 +14,10 @@ import (
 
 // main initializes the wasm code for the web dom and runs as long as the browser is open.
 func main() {
-	defer ui.AlertOnPanic()
+	dom := new(ui.DOM)
+	defer dom.AlertOnPanic()
 	f := flags{
+		dom:         dom,
 		httpTimeout: 10 * time.Second,
 		tileLength:  25, // also in game.html
 	}
@@ -23,7 +25,7 @@ func main() {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	var wg sync.WaitGroup
 	f.initDom(ctx, &wg)
-	enableInteraction()
+	enableInteraction(*dom)
 	initBeforeUnloadFn(cancelFunc, &wg)
 	wg.Wait() // BLOCKING
 }
@@ -46,9 +48,9 @@ func initBeforeUnloadFn(cancelFunc context.CancelFunc, wg *sync.WaitGroup) {
 }
 
 // enableInteraction removes the disabled attribute from all submit buttons, allowing users to sign in and send other forms.
-func enableInteraction() {
-	document := ui.QuerySelector("body")
-	submitButtons := ui.QuerySelectorAll(document, `input[type="submit"]`)
+func enableInteraction(dom ui.DOM) {
+	document := dom.QuerySelector("body")
+	submitButtons := dom.QuerySelectorAll(document, `input[type="submit"]`)
 	for _, submitButton := range submitButtons {
 		submitButton.Set("disabled", false)
 	}

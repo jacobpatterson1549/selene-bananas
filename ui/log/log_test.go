@@ -6,11 +6,17 @@ import (
 	"syscall/js"
 	"testing"
 	"time"
+
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 )
 
 func TestNew(t *testing.T) {
+	dom := new(ui.DOM)
 	timeFunc := func() int64 { return 0 }
-	log := New(timeFunc)
+	log := New(dom, timeFunc)
+	if log.dom == nil {
+		t.Errorf("wanted dom to be set")
+	}
 	if log.TimeFunc == nil {
 		t.Error("wanted timeFunc to be set")
 	}
@@ -18,7 +24,9 @@ func TestNew(t *testing.T) {
 
 func TestClear(t *testing.T) {
 	logFuncs := initLog(t)
-	log := new(Log)
+	log := Log{
+		dom: new(ui.DOM), // TODO: use mock
+	}
 	log.Clear()
 	hideLog := js.Global().Get("document").Call("querySelector", "#hide-log")
 	if want, got := true, hideLog.Get("checked").Bool(); want != got {
@@ -37,6 +45,7 @@ func TestLogClass(t *testing.T) {
 	time.Local = loc
 	defer func() { time.Local = oldTZ }()
 	log := Log{
+		dom:      new(ui.DOM),                        // TODO: use mock
 		TimeFunc: func() int64 { return 1632078828 }, // 12:13:48 PDT 20121/09/19
 	}
 	tests := []struct {

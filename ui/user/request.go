@@ -13,6 +13,7 @@ import (
 
 // request handles http communication with the server through forms.
 type request struct {
+	dom       *ui.DOM
 	user      *User
 	form      ui.Form
 	validator func() bool
@@ -67,7 +68,7 @@ func (r request) do() (*http.Response, error) {
 	default:
 		return nil, errors.New("unknown method: " + f.Method)
 	}
-	if ui.Checked("#has-login") {
+	if r.dom.Checked("#has-login") {
 		jwt := r.user.JWT()
 		req.Headers["Authorization"] = "Bearer " + jwt
 	}
@@ -87,7 +88,7 @@ func (u *User) newRequest(f ui.Form) (*request, error) {
 	case "/user_delete":
 		validator = func() bool {
 			message := "Are you sure? All accumulated points will be lost"
-			ok := ui.Confirm(message)
+			ok := u.dom.Confirm(message)
 			return ok
 		}
 		handler = func(body string) {
@@ -104,6 +105,7 @@ func (u *User) newRequest(f ui.Form) (*request, error) {
 		return nil, errors.New("Unknown action: " + f.URL.Path)
 	}
 	r := request{
+		dom:       u.dom, // TODO: ensure this is not nil in a test
 		user:      u,
 		form:      f,
 		validator: validator,

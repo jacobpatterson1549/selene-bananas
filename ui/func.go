@@ -11,7 +11,7 @@ import (
 
 // RegisterFuncs sets the function as fields on the parent.
 // The parent object is created if it does not exist.
-func RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func) {
+func (dom *DOM) RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func) {
 	global := js.Global()
 	parent := global.Get(parentName)
 	if parent.IsUndefined() {
@@ -22,13 +22,13 @@ func RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, j
 		parent.Set(fnName, fn)
 	}
 	wg.Add(1)
-	go ReleaseJsFuncsOnDone(ctx, wg, jsFuncs)
+	go dom.ReleaseJsFuncsOnDone(ctx, wg, jsFuncs)
 }
 
 // NewJsFunc creates a new javascript function from the provided function.
-func NewJsFunc(fn func()) js.Func {
+func (dom *DOM) NewJsFunc(fn func()) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		defer AlertOnPanic()
+		defer dom.AlertOnPanic()
 		fn()
 		return nil
 	})
@@ -36,17 +36,17 @@ func NewJsFunc(fn func()) js.Func {
 
 // NewJsEventFunc creates a new javascript function from the provided function that processes an event and returns nothing.
 // PreventDefault is called on the event before applying the function
-func NewJsEventFunc(fn func(event js.Value)) js.Func {
-	return NewJsEventFuncAsync(fn, false)
+func (dom *DOM) NewJsEventFunc(fn func(event js.Value)) js.Func {
+	return dom.NewJsEventFuncAsync(fn, false)
 }
 
 // NewJsEventFuncAsync performs similarly to NewJsEventFunc, but calls the event-handling function asynchronously if async is true.
-func NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
+func (dom *DOM) NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		event := args[0]
 		event.Call("preventDefault")
 		runFn := func() {
-			defer AlertOnPanic()
+			defer dom.AlertOnPanic()
 			fn(event)
 		}
 		switch {
@@ -61,8 +61,8 @@ func NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
 
 // ReleaseJsFuncsOnDone releases the jsFuncs and decrements the waitgroup when the context is done.
 // This function should be called on a separate goroutine.
-func ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func) {
-	defer AlertOnPanic()
+func (dom *DOM) ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func) {
+	defer dom.AlertOnPanic()
 	<-ctx.Done() // BLOCKING
 	for _, f := range jsFuncs {
 		f.Release()
@@ -72,16 +72,16 @@ func ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[s
 
 // AlertOnPanic checks to see if a panic has occurred.
 // This function should be deferred as the first statement for each goroutine.
-func AlertOnPanic() {
+func (dom *DOM) AlertOnPanic() {
 	if r := recover(); r != nil {
-		err := RecoverError(r)
+		err := dom.RecoverError(r)
 		f := []string{
 			"FATAL: site shutting down",
 			"See browser console for more information",
 			"Message: " + err.Error(),
 		}
 		message := strings.Join(f, "\n")
-		alert(message)
+		dom.alert(message)
 		panic(err)
 	}
 }

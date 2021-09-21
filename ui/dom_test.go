@@ -12,10 +12,11 @@ import (
 )
 
 func TestQuerySelector(t *testing.T) {
+	var dom DOM
 	wantQuery := "some sort of a query"
 	wantValue := js.ValueOf(1337)
 	querySelector := MockQuerySelector(t, wantQuery, wantValue)
-	gotValue := QuerySelector(wantQuery)
+	gotValue := dom.QuerySelector(wantQuery)
 	if !wantValue.Equal(gotValue) {
 		t.Errorf("wanted different value")
 	}
@@ -23,6 +24,7 @@ func TestQuerySelector(t *testing.T) {
 }
 
 func TestQuerySelectorAll(t *testing.T) {
+	var dom DOM
 	wantQuery := "some sort of a query ALL"
 	one, two, three := js.ValueOf(1), js.ValueOf("two"), js.ValueOf(true)
 	all := js.ValueOf([]interface{}{one, two, three})
@@ -31,7 +33,7 @@ func TestQuerySelectorAll(t *testing.T) {
 		"querySelectorAll": querySelectorAll,
 	})
 	wantValue := []js.Value{one, two, three}
-	gotValue := QuerySelectorAll(target, wantQuery)
+	gotValue := dom.QuerySelectorAll(target, wantQuery)
 	if !reflect.DeepEqual(wantValue, gotValue) {
 		t.Errorf("wanted different value")
 	}
@@ -41,12 +43,13 @@ func TestQuerySelectorAll(t *testing.T) {
 func TestChecked(t *testing.T) {
 	tests := []bool{true, false}
 	for i, want := range tests {
+		var dom DOM
 		wantQuery := "some sort of a query checked"
 		value := js.ValueOf(map[string]interface{}{
 			"checked": want,
 		})
 		querySelector := MockQuerySelector(t, wantQuery, value)
-		got := Checked(wantQuery)
+		got := dom.Checked(wantQuery)
 		querySelector.Release()
 		if want != got {
 			t.Errorf("Test %v: wanted %v, got %v", i, want, got)
@@ -73,10 +76,11 @@ func TestSetChecked(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
+		var dom DOM
 		wantQuery := "some sort of a query setChecked"
 		gotValue := js.ValueOf(map[string]interface{}{})
 		querySelector := MockQuerySelector(t, wantQuery, gotValue)
-		SetChecked(wantQuery, test.checked)
+		dom.SetChecked(wantQuery, test.checked)
 		querySelector.Release()
 		if want, got := test.wantValue.Get("checked").Bool(), gotValue.Get("checked").Bool(); want != got {
 			t.Errorf("Test %v: wanted %v, got %v", i, want, got)
@@ -85,13 +89,14 @@ func TestSetChecked(t *testing.T) {
 }
 
 func TestValue(t *testing.T) {
+	var dom DOM
 	wantQuery := "some sort of a query value"
 	want := "[[TOP SECRET VALUE]]"
 	value := js.ValueOf(map[string]interface{}{
 		"value": want,
 	})
 	querySelector := MockQuerySelector(t, wantQuery, value)
-	got := Value(wantQuery)
+	got := dom.Value(wantQuery)
 	querySelector.Release()
 	if want != got {
 		t.Errorf("wanted %v, got %v", want, got)
@@ -99,6 +104,7 @@ func TestValue(t *testing.T) {
 }
 
 func TestSetValue(t *testing.T) {
+	var dom DOM
 	wantQuery := "some sort of a query SETvalue"
 	value := "[[TOP SECRET VALUE]]"
 	wantValue := js.ValueOf(map[string]interface{}{
@@ -106,7 +112,7 @@ func TestSetValue(t *testing.T) {
 	})
 	gotValue := js.ValueOf(map[string]interface{}{})
 	querySelector := MockQuerySelector(t, wantQuery, gotValue)
-	SetValue(wantQuery, value)
+	dom.SetValue(wantQuery, value)
 	querySelector.Release()
 	if want, got := wantValue.Get("value").String(), gotValue.Get("value").String(); want != got {
 		t.Errorf("wanted %v, got %v", want, got)
@@ -116,10 +122,11 @@ func TestSetValue(t *testing.T) {
 func TestSetButtonDisabled(t *testing.T) {
 	tests := []bool{true, false}
 	for i, want := range tests {
+		var dom DOM
 		wantQuery := "some sort of a query setChecked"
 		value := js.ValueOf(map[string]interface{}{})
 		querySelector := MockQuerySelector(t, wantQuery, value)
-		SetButtonDisabled(wantQuery, want)
+		dom.SetButtonDisabled(wantQuery, want)
 		querySelector.Release()
 		got := value.Get("disabled").Bool()
 		if want != got {
@@ -134,15 +141,17 @@ func TestFormatTime(t *testing.T) {
 	time.Local = loc
 	defer func() { time.Local = oldTZ }()
 	// TODO: add helper func for above code, using t.Cleanup
+	var dom DOM
 	utcSeconds := int64(1632161703)
 	want := "11:15:03"
-	got := FormatTime(utcSeconds)
+	got := dom.FormatTime(utcSeconds)
 	if want != got {
 		t.Errorf("wanted %v, got %v", want, got)
 	}
 }
 
 func TestCloneElement(t *testing.T) {
+	var dom DOM
 	query := "some sort of a query cloneElement"
 	want := "value from result of cloneNode"
 	wantValue := js.ValueOf(want)
@@ -156,7 +165,7 @@ func TestCloneElement(t *testing.T) {
 		"content": content,
 	})
 	querySelector := MockQuerySelector(t, query, value)
-	gotValue := CloneElement(query)
+	gotValue := dom.CloneElement(query)
 	querySelector.Release()
 	cloneNode.Release()
 	got := gotValue.String()
@@ -168,6 +177,7 @@ func TestCloneElement(t *testing.T) {
 func TestConfirm(t *testing.T) {
 	tests := []bool{true, false}
 	for i, want := range tests {
+		var dom DOM
 		message := "some sort of a confirm message"
 		confirmFn := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			gotMessage := args[0].String()
@@ -177,7 +187,7 @@ func TestConfirm(t *testing.T) {
 			return want
 		})
 		js.Global().Set("confirm", confirmFn)
-		got := Confirm(message)
+		got := dom.Confirm(message)
 		confirmFn.Release()
 		if want != got {
 			t.Errorf("Test %v: wanted %v, got %v", i, want, got)
@@ -186,6 +196,7 @@ func TestConfirm(t *testing.T) {
 }
 
 func TestAlert(t *testing.T) {
+	var dom DOM
 	message := "some sort of a alert message"
 	alerted := false
 	alertFn := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -197,7 +208,7 @@ func TestAlert(t *testing.T) {
 		return nil
 	})
 	js.Global().Set("alert", alertFn)
-	alert(message)
+	dom.alert(message)
 	alertFn.Release()
 	if !alerted {
 		t.Errorf("wanted alert")
@@ -205,6 +216,7 @@ func TestAlert(t *testing.T) {
 }
 
 func TestColor(t *testing.T) {
+	var dom DOM
 	want := "cyan"
 	computedStyle := js.ValueOf(map[string]interface{}{
 		"color": want,
@@ -218,7 +230,7 @@ func TestColor(t *testing.T) {
 		return computedStyle
 	})
 	js.Global().Set("getComputedStyle", getComputedStyle)
-	got := Color(wantElement)
+	got := dom.Color(wantElement)
 	getComputedStyle.Release()
 	if want != got {
 		t.Errorf("colors not equal: wanted %v, got %v", want, got)
@@ -226,6 +238,7 @@ func TestColor(t *testing.T) {
 }
 
 func TestNewWebSocket(t *testing.T) {
+	var dom DOM
 	want := js.ValueOf(map[string]interface{}{
 		"key": "the new websocket",
 	})
@@ -238,7 +251,7 @@ func TestNewWebSocket(t *testing.T) {
 		return want
 	})
 	js.Global().Set("WebSocket", websocketFn)
-	got := NewWebSocket(wantURL)
+	got := dom.NewWebSocket(wantURL)
 	websocketFn.Release()
 	if !want.Equal(got) {
 		wantS, gotS := want.Get("key").String(), got.Get("key").String()
@@ -247,6 +260,7 @@ func TestNewWebSocket(t *testing.T) {
 }
 
 func TestNewXHR(t *testing.T) {
+	var dom DOM
 	want := js.ValueOf(map[string]interface{}{
 		"key": "the new xhr",
 	})
@@ -254,7 +268,7 @@ func TestNewXHR(t *testing.T) {
 		return want
 	})
 	js.Global().Set("XMLHttpRequest", xhrFn)
-	got := NewXHR()
+	got := dom.NewXHR()
 	xhrFn.Release()
 	if !want.Equal(got) {
 		wantS, gotS := want.Get("key").String(), got.Get("key").String()
@@ -283,6 +297,7 @@ func TestRecoverError(t *testing.T) {
 	}
 	for i, test := range tests {
 		t.Run(fmt.Sprintf("test %v", i), func(t *testing.T) {
+			var dom DOM
 			defer func() {
 				r := recover()
 				switch {
@@ -292,7 +307,7 @@ func TestRecoverError(t *testing.T) {
 					t.Error("unwanted panic")
 				}
 			}()
-			got := RecoverError(test.r)
+			got := dom.RecoverError(test.r)
 			switch {
 			case test.wantPanic:
 				t.Error("wanted panic A")
@@ -304,6 +319,7 @@ func TestRecoverError(t *testing.T) {
 }
 
 func TestBase64Decode(t *testing.T) {
+	var dom DOM
 	a := `SGVsbG8gV29ybGQh`
 	want := `Hello World!`
 	atobFn := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -314,7 +330,7 @@ func TestBase64Decode(t *testing.T) {
 		return want
 	})
 	js.Global().Set("atob", atobFn)
-	got := Base64Decode(a)
+	got := dom.Base64Decode(a)
 	atobFn.Release()
 	if want != string(got) {
 		t.Errorf("decoded strings not equal: wanted %q, got %q", want, got)

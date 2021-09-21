@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
+	"github.com/jacobpatterson1549/selene-bananas/ui"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game/canvas"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game/lobby"
@@ -20,6 +21,7 @@ import (
 
 // flags contains options for the the ui.
 type flags struct {
+	dom         *ui.DOM
 	httpTimeout time.Duration
 	tileLength  int
 }
@@ -43,8 +45,8 @@ func (f flags) initDom(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 // log creates and initializes the log component.
-func (flags) log(ctx context.Context, wg *sync.WaitGroup, timeFunc func() int64) *log.Log {
-	l := log.New(timeFunc)
+func (f flags) log(ctx context.Context, wg *sync.WaitGroup, timeFunc func() int64) *log.Log {
+	l := log.New(f.dom, timeFunc)
 	l.InitDom(ctx, wg)
 	return l
 }
@@ -54,7 +56,7 @@ func (f flags) user(ctx context.Context, wg *sync.WaitGroup, log *log.Log) *user
 	httpClient := http.Client{
 		Timeout: f.httpTimeout,
 	}
-	u := user.New(log, httpClient)
+	u := user.New(f.dom, log, httpClient)
 	u.InitDom(ctx, wg)
 	return u
 }
@@ -64,32 +66,32 @@ func (f flags) canvas(ctx context.Context, wg *sync.WaitGroup, log *log.Log, boa
 	cfg := canvas.Config{
 		TileLength: f.tileLength,
 	}
-	c := cfg.New(log, board, ".game>.canvas")
+	c := cfg.New(f.dom, log, board, ".game>.canvas")
 	c.InitDom(ctx, wg)
 	return c
 }
 
 // game creates and initializes the game component.
-func (flags) game(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *board.Board, canvas *canvas.Canvas) *game.Game {
+func (f flags) game(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *board.Board, canvas *canvas.Canvas) *game.Game {
 	cfg := game.Config{
 		Board:  board,
 		Canvas: canvas,
 	}
-	game := cfg.NewGame(log)
+	game := cfg.NewGame(f.dom, log)
 	game.InitDom(ctx, wg)
 	return game
 }
 
 // lobby creates and initializes the game lobby component.
-func (flags) lobby(ctx context.Context, wg *sync.WaitGroup, log *log.Log, game *game.Game) *lobby.Lobby {
-	lobby := lobby.New(log, game)
+func (f flags) lobby(ctx context.Context, wg *sync.WaitGroup, log *log.Log, game *game.Game) *lobby.Lobby {
+	lobby := lobby.New(f.dom, log, game)
 	lobby.InitDom(ctx, wg)
 	return lobby
 }
 
 // socket creates and initializes the player socket component for connection to the lobby.
-func (flags) socket(ctx context.Context, wg *sync.WaitGroup, log *log.Log, user *user.User, game *game.Game, lobby *lobby.Lobby) *socket.Socket {
-	socket := socket.New(log, user, game, lobby)
+func (f flags) socket(ctx context.Context, wg *sync.WaitGroup, log *log.Log, user *user.User, game *game.Game, lobby *lobby.Lobby) *socket.Socket {
+	socket := socket.New(f.dom, log, user, game, lobby)
 	socket.InitDom(ctx, wg)
 	return socket
 }
