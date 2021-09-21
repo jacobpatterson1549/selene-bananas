@@ -31,7 +31,6 @@ func New(dom *ui.DOM, timeFunc func() int64) *Log {
 
 // InitDom registers log dom functions.
 func (l *Log) InitDom(ctx context.Context, wg *sync.WaitGroup) {
-	// TODO: should ui/main or ui/config call InitDom on all that implement DomInitializer: InitDom(ctx, wg)?
 	jsFuncs := map[string]js.Func{
 		"clear": l.dom.NewJsFunc(l.Clear),
 	}

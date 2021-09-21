@@ -19,79 +19,83 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/ui/user"
 )
 
-// flags contains options for the the ui.
-type flags struct {
-	dom         *ui.DOM
-	httpTimeout time.Duration
-	tileLength  int
-}
+type (
+	// flags contains options for the the ui.
+	flags struct {
+		dom         *ui.DOM
+		httpTimeout time.Duration
+		tileLength  int
+	}
+
+	// domInitializer adds functions to the the dom
+	domInitializer interface {
+		InitDom(ctx context.Context, wg *sync.WaitGroup)
+	}
+)
 
 // initDom creates, initializes, and links up dom components.
-func (f flags) initDom(ctx context.Context, wg *sync.WaitGroup) {
+func (f *flags) initDom(ctx context.Context, wg *sync.WaitGroup) {
+	domInitializers := f.createDomInitializers()
+	for _, di := range domInitializers {
+		di.InitDom(ctx, wg)
+	}
+}
+
+func (f *flags) createDomInitializers() []domInitializer {
 	timeFunc := func() int64 {
 		return time.Now().Unix()
 	}
-	log := f.log(ctx, wg, timeFunc)
-	user := f.user(ctx, wg, log)
+	log := f.log(timeFunc)
+	user := f.user(log)
 	board := new(board.Board)
-	canvas := f.canvas(ctx, wg, log, board)
-	game := f.game(ctx, wg, log, board, canvas)
-	lobby := f.lobby(ctx, wg, log, game)
-	socket := f.socket(ctx, wg, log, user, game, lobby)
+	canvas := f.canvas(log, board)
+	game := f.game(log, board, canvas)
+	lobby := f.lobby(log, game)
+	socket := f.socket(log, user, game, lobby)
 	user.Socket = socket   // [circular reference]
 	canvas.Socket = socket // [circular reference]
 	game.Socket = socket   // [circular reference]
 	lobby.Socket = socket  // [circular reference]
+	// TODO: canvas is the only complex domInitializer.  Could it be made normal?  If so, domInitializer could just return map[string]jsFunc
+	return []domInitializer{log, user, canvas, game, lobby, socket}
 }
 
 // log creates and initializes the log component.
-func (f flags) log(ctx context.Context, wg *sync.WaitGroup, timeFunc func() int64) *log.Log {
-	l := log.New(f.dom, timeFunc)
-	l.InitDom(ctx, wg)
-	return l
+func (f flags) log(timeFunc func() int64) *log.Log {
+	return log.New(f.dom, timeFunc)
 }
 
 // user creates and initializes the user/form/http component.
-func (f flags) user(ctx context.Context, wg *sync.WaitGroup, log *log.Log) *user.User {
+func (f flags) user(log *log.Log) *user.User {
 	httpClient := http.Client{
 		Timeout: f.httpTimeout,
 	}
-	u := user.New(f.dom, log, httpClient)
-	u.InitDom(ctx, wg)
-	return u
+	return user.New(f.dom, log, httpClient)
 }
 
 // canvas creates and initializes the game drawing component with elements from the dom.
-func (f flags) canvas(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *board.Board) *canvas.Canvas {
+func (f flags) canvas(log *log.Log, board *board.Board) *canvas.Canvas {
 	cfg := canvas.Config{
 		TileLength: f.tileLength,
 	}
-	c := cfg.New(f.dom, log, board, ".game>.canvas")
-	c.InitDom(ctx, wg)
-	return c
+	return cfg.New(f.dom, log, board, ".game>.canvas")
 }
 
 // game creates and initializes the game component.
-func (f flags) game(ctx context.Context, wg *sync.WaitGroup, log *log.Log, board *board.Board, canvas *canvas.Canvas) *game.Game {
+func (f flags) game(log *log.Log, board *board.Board, canvas *canvas.Canvas) *game.Game {
 	cfg := game.Config{
 		Board:  board,
 		Canvas: canvas,
 	}
-	game := cfg.NewGame(f.dom, log)
-	game.InitDom(ctx, wg)
-	return game
+	return cfg.NewGame(f.dom, log)
 }
 
 // lobby creates and initializes the game lobby component.
-func (f flags) lobby(ctx context.Context, wg *sync.WaitGroup, log *log.Log, game *game.Game) *lobby.Lobby {
-	lobby := lobby.New(f.dom, log, game)
-	lobby.InitDom(ctx, wg)
-	return lobby
+func (f flags) lobby(log *log.Log, game *game.Game) *lobby.Lobby {
+	return lobby.New(f.dom, log, game)
 }
 
 // socket creates and initializes the player socket component for connection to the lobby.
-func (f flags) socket(ctx context.Context, wg *sync.WaitGroup, log *log.Log, user *user.User, game *game.Game, lobby *lobby.Lobby) *socket.Socket {
-	socket := socket.New(f.dom, log, user, game, lobby)
-	socket.InitDom(ctx, wg)
-	return socket
+func (f flags) socket(log *log.Log, user *user.User, game *game.Game, lobby *lobby.Lobby) *socket.Socket {
+	return socket.New(f.dom, log, user, game, lobby)
 }

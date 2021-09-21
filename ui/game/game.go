@@ -44,7 +44,7 @@ type (
 )
 
 // NewGame creates a new game controller with references to the board and canvas.
-func (cfg Config) NewGame(dom *ui.DOM, log *log.Log) *Game {
+func (cfg Config) NewGame(dom *ui.DOM, log *log.Log) *Game { // TODO: rename to New() (*Game)
 	g := Game{
 		dom:    dom,
 		log:    log,
