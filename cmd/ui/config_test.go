@@ -14,7 +14,7 @@ import (
 
 func TestInitDom_registeredFuncs(t *testing.T) {
 	var f flags
-	f.dom = new(ui.DOM) // TODO: use mock? or not? ?????
+	f.dom = new(ui.DOM)
 	ctx := context.Background()
 	ctx, cancelFunc := context.WithCancel(ctx)
 	var wg sync.WaitGroup
@@ -75,6 +75,7 @@ var wantRegisteredFuncs = map[string][]string{
 }
 
 func initGlobal(t *testing.T) []js.Func {
+	t.Helper()
 	getCanvasContext := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		return nil
 	})
