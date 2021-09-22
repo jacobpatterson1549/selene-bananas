@@ -22,7 +22,7 @@ import (
 type (
 	// Game handles managing the state of the board and drawing it on the canvas.
 	Game struct {
-		dom         *ui.DOM
+		dom         DOM
 		id          game.ID
 		log         *log.Log
 		board       *board.Board
@@ -41,10 +41,28 @@ type (
 	Socket interface {
 		Send(m message.Message)
 	}
+
+	// DOM interacts with the page.
+	DOM interface {
+		QuerySelector(query string) js.Value
+		QuerySelectorAll(document js.Value, query string) []js.Value
+		Checked(query string) bool
+		SetChecked(query string, checked bool)
+		Value(query string) string
+		SetValue(query, value string)
+		SetButtonDisabled(query string, disabled bool)
+		CloneElement(query string) js.Value
+		Confirm(message string) bool
+		Color(element js.Value) string
+		RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func)
+		NewJsFunc(fn func()) js.Func
+		NewJsEventFunc(fn func(event js.Value)) js.Func
+		ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func)
+	}
 )
 
-// NewGame creates a new game controller with references to the board and canvas.
-func (cfg Config) NewGame(dom *ui.DOM, log *log.Log) *Game { // TODO: rename to New() (*Game)
+// New creates a new game controller with references to the board and canvas.
+func (cfg Config) New(dom DOM, log *log.Log) *Game {
 	g := Game{
 		dom:    dom,
 		log:    log,
@@ -198,7 +216,7 @@ func (g *Game) startTileSwap() {
 
 // sendChat sends a chat message from the form of the event.
 func (g *Game) sendChat(event js.Value) {
-	f, err := ui.NewForm(g.dom, event)
+	f, err := ui.NewForm(g.dom.QuerySelectorAll, event)
 	if err != nil {
 		g.log.Error(err.Error())
 		return

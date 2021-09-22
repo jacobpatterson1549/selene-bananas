@@ -10,21 +10,34 @@ import (
 )
 
 func TestNewForm(t *testing.T) {
+	t.Run("no querier", func(t *testing.T) {
+		event := js.ValueOf(map[string]interface{}{
+			"target": map[string]interface{}{
+				"method": "POST",
+				"action": "http://example.com",
+			},
+		})
+		_, err := NewForm(nil, event)
+		if err == nil {
+			t.Error("wanted error when creating form with bad url")
+		}
+	})
 	t.Run("bad action", func(t *testing.T) {
-		dom := new(DOM) // TODO: use mock?
+		querier := func(form js.Value, query string) (noValues []js.Value) {
+			return noValues
+		}
 		event := js.ValueOf(map[string]interface{}{
 			"target": map[string]interface{}{
 				"method": "POST",
 				"action": "bad_url",
 			},
 		})
-		_, err := NewForm(dom, event)
+		_, err := NewForm(querier, event)
 		if err == nil {
 			t.Error("wanted error when creating form with bad url")
 		}
 	})
 	t.Run("happy path", func(t *testing.T) {
-		dom := new(DOM) // TODO: use mock?
 		Param1 := js.ValueOf(map[string]interface{}{
 			"name":  "A",
 			"value": "first param",
@@ -33,29 +46,27 @@ func TestNewForm(t *testing.T) {
 			"name":  "B",
 			"value": "2",
 		})
-		all := js.ValueOf([]interface{}{Param1, param2})
-		querySelectorAll := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			query := args[0] // query
-			if this.Get("id").String() != "event" {
-				t.Errorf("wanted event to be queried for inputs")
+		all := []js.Value{Param1, param2}
+		querier := func(form js.Value, query string) []js.Value {
+			if form.Get("id").String() != "form_value" {
+				t.Errorf("wanted form element to be queried for inputs")
 			}
-			if query.Type() != js.TypeString || !strings.HasPrefix(query.String(), "input") {
-				t.Errorf("wanted query to be string for inputs: got %v, (%v)", query.String(), query.Type())
+			if !strings.HasPrefix(query, "input") {
+				t.Errorf("wanted query to be string for inputs: got %v", query)
 			}
 			return all
-		})
+		}
 		formValue := js.ValueOf(map[string]interface{}{ // form
-			"method":           "POST",
-			"action":           "https://example.com/hello?wasm=true",
-			"id":               "event",
-			"querySelectorAll": querySelectorAll,
+			"method": "POST",
+			"action": "https://example.com/hello?wasm=true",
+			"id":     "form_value",
 		})
 		event := js.ValueOf(map[string]interface{}{
 			"target": formValue,
 		})
 		want := Form{
-			v:      formValue,
-			Method: "POST",
+			element: js.Undefined(),
+			Method:  "POST",
 			URL: URL{
 				Scheme:    "https",
 				Authority: "example.com",
@@ -67,13 +78,20 @@ func TestNewForm(t *testing.T) {
 				"B": "2",
 			},
 		}
-		got, err := NewForm(dom, event)
-		querySelectorAll.Release()
+		got, err := NewForm(querier, event)
 		switch {
 		case err != nil:
 			t.Errorf("unwanted error: %v", err)
-		case !reflect.DeepEqual(want, *got):
-			t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, *got)
+		case got == nil, !formValue.Equal(got.element):
+			t.Error("form values not equal")
+		case got.querier == nil:
+			t.Error("querier not set")
+		default:
+			got.element = js.Undefined()
+			got.querier = nil
+			if !reflect.DeepEqual(want, *got) {
+				t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, *got)
+			}
 		}
 	})
 }
@@ -82,30 +100,25 @@ func TestResetForm(t *testing.T) {
 	one := js.ValueOf(map[string]interface{}{"value": "first value"})
 	two := js.ValueOf(map[string]interface{}{"value": 2})
 	three := js.ValueOf(map[string]interface{}{"value": true})
-	all := js.ValueOf([]interface{}{one, two, three})
-	querySelectorAll := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		query := args[0] // query
-		if this.Get("id").String() != "form_element" {
-			t.Errorf("wanted reset form to be called on form element")
+	all := []js.Value{one, two, three}
+	querier := func(form js.Value, query string) []js.Value {
+		if want, got := "form_element", form.Get("id").String(); want != got {
+			t.Errorf("wanted reset form to be called on form element (%v), got %v", want, got)
 		}
-		if query.Type() != js.TypeString || len(query.String()) == 0 {
-			t.Errorf("wanted query to be string with length: got %v, (%v)", query.String(), query.Type())
+		if !strings.HasPrefix(query, "input") {
+			t.Errorf("wanted query to be string for inputs: got %v", query)
 		}
 		return all
-	})
+	}
 	element := js.ValueOf(map[string]interface{}{
-		"id":               "form_element",
-		"querySelectorAll": querySelectorAll,
+		"id": "form_element",
 	})
-	dom := new(DOM) // TODO: use mock?
 	f := Form{
-		dom: dom,
-		v:   element,
+		element: element,
+		querier: querier,
 	}
 	f.Reset()
-	querySelectorAll.Release()
-	for i := 0; i < 3; i++ {
-		v := all.Index(i)
+	for i, v := range all {
 		got := v.Get("value").String()
 		if len(got) != 0 {
 			t.Errorf("wanted value %v to have empty value, got %q", i, got)
@@ -146,7 +159,7 @@ func TestStoreFormCredentials(t *testing.T) {
 		})
 		js.Global().Set("PasswordCredential", passwordCredential)
 		js.Global().Set("navigator", navigator)
-		f := Form{v: element}
+		f := Form{element: element}
 		f.StoreCredentials()
 		passwordCredential.Release()
 		store.Release()

@@ -13,14 +13,13 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
-	"github.com/jacobpatterson1549/selene-bananas/ui"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
 
 type (
 	// Canvas is the object which draws the game.
 	Canvas struct {
-		dom        *ui.DOM
+		dom        DOM
 		log        *log.Log
 		ctx        Context
 		board      *board.Board
@@ -70,7 +69,7 @@ type (
 
 	// selection represents what the cursor has done for the current move.
 	selection struct {
-		dom       *ui.DOM
+		dom       DOM
 		moveState moveState
 		tiles     map[tile.ID]tileSelection
 		start     pixelPosition
@@ -98,6 +97,14 @@ type (
 	Socket interface {
 		Send(m message.Message)
 	}
+
+	// DOM interacts with the page.
+	DOM interface {
+		QuerySelector(query string) js.Value
+		SetChecked(query string, checked bool)
+		Color(element js.Value) string
+		ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func)
+	}
 )
 
 const (
@@ -110,7 +117,7 @@ const (
 )
 
 // New Creates a canvas from the config.
-func (cfg Config) New(dom *ui.DOM, log *log.Log, board *board.Board, canvasParentDivQuery string) *Canvas {
+func (cfg Config) New(dom DOM, log *log.Log, board *board.Board, canvasParentDivQuery string) *Canvas {
 	canvasQuery := canvasParentDivQuery + ">canvas"
 	parentDiv := dom.QuerySelector(canvasParentDivQuery)
 	element := dom.QuerySelector(canvasQuery)

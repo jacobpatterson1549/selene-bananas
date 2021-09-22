@@ -12,7 +12,6 @@ import (
 	"sync"
 	"syscall/js"
 
-	"github.com/jacobpatterson1549/selene-bananas/ui"
 	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
@@ -20,7 +19,7 @@ import (
 type (
 	// User is a http/login helper.
 	User struct {
-		dom        *ui.DOM
+		dom        DOM
 		log        *log.Log
 		httpClient http.Client
 		escapeR    *strings.Replacer
@@ -37,10 +36,26 @@ type (
 	Socket interface {
 		Close()
 	}
+
+	// DOM interacts with the page.
+	DOM interface {
+		QuerySelector(query string) js.Value
+		QuerySelectorAll(document js.Value, query string) []js.Value
+		Checked(query string) bool
+		SetChecked(query string, checked bool)
+		Value(query string) string
+		SetValue(query, value string)
+		Confirm(message string) bool
+		NewXHR() js.Value
+		Base64Decode(a string) []byte
+		RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func)
+		NewJsEventFunc(fn func(event js.Value)) js.Func
+		NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func
+	}
 )
 
 // New creates a http/login helper struct.
-func New(dom *ui.DOM, log *log.Log, httpClient http.Client) *User {
+func New(dom DOM, log *log.Log, httpClient http.Client) *User {
 	quoteLetters := `\^$*+?.()|[]{}`
 	escapePairs := make([]string, len(quoteLetters)*2)
 	for i := range quoteLetters {

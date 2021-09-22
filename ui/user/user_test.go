@@ -3,27 +3,19 @@
 package user
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"reflect"
-	"syscall/js"
 	"testing"
 
-	"github.com/jacobpatterson1549/selene-bananas/ui"
 	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 )
 
 func TestGetUser(t *testing.T) {
-	global := js.Global()
-	atobNodeJS := func(this js.Value, args []js.Value) interface{} {
-		encodedData := args[0].String()
-		buffer := global.Get("Buffer")
-		buf := buffer.Call("from", encodedData, "base64")
-		decodedData := buf.Call("toString")
-		return decodedData
+	atob := func(a string) []byte {
+		b, _ := base64.RawURLEncoding.DecodeString(a)
+		return b
 	}
-	atob := js.FuncOf(atobNodeJS)
-	global.Set("atob", atob)
-	defer atob.Release()
 	getUserTests := []struct {
 		jwt    string
 		want   userInfo
@@ -50,8 +42,11 @@ func TestGetUser(t *testing.T) {
 		},
 	}
 	for i, test := range getUserTests {
+		dom := mockDOM{
+			Base64DecodeFunc: atob,
+		}
 		u := User{
-			dom: new(ui.DOM), // TODO: use mock
+			dom: &dom,
 		}
 		got, err := u.info(test.jwt)
 		switch {

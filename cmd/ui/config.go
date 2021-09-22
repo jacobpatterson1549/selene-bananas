@@ -87,7 +87,7 @@ func (f flags) game(log *log.Log, board *board.Board, canvas *canvas.Canvas) *ga
 		Board:  board,
 		Canvas: canvas,
 	}
-	return cfg.NewGame(f.dom, log)
+	return cfg.New(f.dom, log)
 }
 
 // lobby creates and initializes the game lobby component.

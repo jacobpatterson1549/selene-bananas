@@ -19,7 +19,7 @@ import (
 type (
 	// Socket can be used to easily push and pull messages from the server.
 	Socket struct {
-		dom       *ui.DOM
+		dom       DOM
 		log       *log.Log
 		webSocket js.Value
 		user      User
@@ -57,10 +57,21 @@ type (
 	Lobby interface {
 		SetGameInfos(gameInfos []game.Info, username string)
 	}
+
+	// DOM interacts with the page.
+	DOM interface {
+		QuerySelector(query string) js.Value
+		QuerySelectorAll(document js.Value, query string) []js.Value
+		SetChecked(query string, checked bool)
+		NewWebSocket(url string) js.Value
+		NewJsFunc(fn func()) js.Func
+		NewJsEventFunc(fn func(event js.Value)) js.Func
+		AlertOnPanic()
+	}
 )
 
 // New creates a new socket.
-func New(dom *ui.DOM, log *log.Log, user User, game Game, lobby Lobby) *Socket {
+func New(dom DOM, log *log.Log, user User, game Game, lobby Lobby) *Socket {
 	s := Socket{
 		dom:   dom,
 		log:   log,
@@ -98,7 +109,7 @@ func (s *Socket) Connect(event js.Value) error {
 	if s.isOpen() {
 		return nil
 	}
-	f, err := ui.NewForm(s.dom, event)
+	f, err := ui.NewForm(s.dom.QuerySelectorAll, event)
 	if err != nil {
 		return err
 	}
