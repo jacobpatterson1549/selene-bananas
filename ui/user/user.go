@@ -13,14 +13,13 @@ import (
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/http"
-	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
 
 type (
 	// User is a http/login helper.
 	User struct {
 		dom        DOM
-		log        *log.Log
+		log        Log
 		httpClient http.Client
 		escapeR    *strings.Replacer
 		Socket     Socket
@@ -30,11 +29,6 @@ type (
 	userInfo struct {
 		Name   string `json:"sub"`    // the JWT subject
 		Points int    `json:"points"` // custom JWT field
-	}
-
-	// Socket is a structure that the user interacts with for the lobby and game.
-	Socket interface {
-		Close()
 	}
 
 	// DOM interacts with the page.
@@ -52,10 +46,22 @@ type (
 		NewJsEventFunc(fn func(event js.Value)) js.Func
 		NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func
 	}
+
+	// Log is used to store text about connection errors.
+	Log interface {
+		Error(text string)
+		Warning(text string)
+		Clear()
+	}
+
+	// Socket is a structure that the user interacts with for the lobby and game.
+	Socket interface {
+		Close()
+	}
 )
 
 // New creates a http/login helper struct.
-func New(dom DOM, log *log.Log, httpClient http.Client) *User {
+func New(dom DOM, log Log, httpClient http.Client) *User {
 	quoteLetters := `\^$*+?.()|[]{}`
 	escapePairs := make([]string, len(quoteLetters)*2)
 	for i := range quoteLetters {
@@ -85,8 +91,7 @@ func (u *User) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 
 // login handles requesting a login when the login button is clicked.
 func (u *User) login(jwt string) {
-	u.dom.SetValue(".jwt", jwt)
-	userInfo, err := u.info(jwt)
+	userInfo, err := u.setInfo(jwt)
 	if err != nil {
 		u.log.Error("getting user from jwt: " + err.Error())
 		return
@@ -111,8 +116,8 @@ func (u *User) Logout() {
 	u.dom.SetChecked("#tab-login-user", true)
 }
 
-// info retrieves the user information from the token.
-func (u User) info(jwt string) (*userInfo, error) {
+// setInfo retrieves the user information from the token.
+func (u *User) setInfo(jwt string) (*userInfo, error) {
 	parts := strings.Split(jwt, ".")
 	if len(parts) != 3 {
 		return nil, errors.New("wanted 3 jwt parts, got " + strconv.Itoa(len(parts)))
@@ -123,6 +128,7 @@ func (u User) info(jwt string) (*userInfo, error) {
 	if err := json.Unmarshal(jwtUserClaims, &ui); err != nil {
 		return nil, errors.New("parsing json: " + err.Error())
 	}
+	u.dom.SetValue(".jwt", jwt)
 	return &ui, nil
 }
 
@@ -135,7 +141,7 @@ func (u User) JWT() string {
 // If any problem occurs, an empty string is returned.
 func (u User) Username() string {
 	jwt := u.JWT()
-	ui, err := u.info(jwt)
+	ui, err := u.setInfo(jwt)
 	if err != nil {
 		return ""
 	}

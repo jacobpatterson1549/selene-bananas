@@ -6,6 +6,24 @@ import (
 	"syscall/js"
 )
 
+type mockLog struct {
+	ErrorFunc   func(text string)
+	WarningFunc func(text string)
+	ClearFunc   func()
+}
+
+func (m *mockLog) Error(text string) {
+	m.ErrorFunc(text)
+}
+
+func (m *mockLog) Warning(text string) {
+	m.WarningFunc(text)
+}
+
+func (m mockLog) Clear() {
+	m.ClearFunc()
+}
+
 type mockDOM struct {
 	QuerySelectorFunc       func(query string) js.Value
 	QuerySelectorAllFunc    func(document js.Value, query string) []js.Value
@@ -67,4 +85,12 @@ func (m *mockDOM) NewJsEventFunc(fn func(event js.Value)) js.Func {
 
 func (m *mockDOM) NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
 	return m.NewJsEventFuncAsyncFunc(fn, async)
+}
+
+type mockSocket struct {
+	CloseFunc func()
+}
+
+func (m *mockSocket) Close() {
+	m.CloseFunc()
 }
