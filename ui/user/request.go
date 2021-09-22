@@ -81,7 +81,7 @@ func (u *User) newRequest(f ui.Form) (*request, error) {
 	switch f.URL.Path {
 	case "/user_create", "/user_update_password":
 		handler = func(body string) {
-			f.StoreCredentials()
+			u.dom.StoreCredentials(f.Element)
 			u.Logout()
 		}
 	case "/user_delete":
@@ -95,7 +95,7 @@ func (u *User) newRequest(f ui.Form) (*request, error) {
 		}
 	case "/user_login":
 		handler = func(body string) {
-			f.StoreCredentials()
+			u.dom.StoreCredentials(f.Element)
 			u.login(body)
 		}
 	case "/ping":

@@ -119,3 +119,15 @@ func (dom DOM) Base64Decode(a string) []byte {
 	s := global.Call("atob", a)
 	return []byte(s.String())
 }
+
+// StoreCredentials attempts to save the credentials for the login, if browser wants to.
+func (dom *DOM) StoreCredentials(form js.Value) {
+	global := js.Global()
+	passwordCredential := global.Get("PasswordCredential")
+	if passwordCredential.Truthy() {
+		c := passwordCredential.New(form)
+		navigator := global.Get("navigator")
+		credentials := navigator.Get("credentials")
+		credentials.Call("store", c)
+	}
+}

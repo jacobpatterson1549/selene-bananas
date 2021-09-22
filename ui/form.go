@@ -10,7 +10,7 @@ import (
 type (
 	// Form contains the fields needed to make a request to the server.
 	Form struct {
-		element js.Value
+		Element js.Value
 		Method  string
 		URL     URL
 		Params  Values
@@ -34,7 +34,7 @@ func NewForm(querier Querier, event js.Value) (*Form, error) {
 		return nil, errors.New("getting url from form action: " + err.Error())
 	}
 	f := Form{
-		element: form,
+		Element: form,
 		Method:  method,
 		URL:     *u,
 		querier: querier,
@@ -51,25 +51,13 @@ func NewForm(querier Querier, event js.Value) (*Form, error) {
 
 // Reset clears the named inputs of the form.
 func (f *Form) Reset() {
-	formInputs := f.querier(f.element, `input[name]:not([type="submit"])`)
+	formInputs := f.querier(f.Element, `input[name]:not([type="submit"])`)
 	for _, formInput := range formInputs {
 		formInput.Set("value", "")
 	}
 }
 
-// StoreCredentials attempts to save the credentials for the login, if browser wants to.
-func (f *Form) StoreCredentials() {
-	global := js.Global()
-	passwordCredential := global.Get("PasswordCredential")
-	if passwordCredential.Truthy() {
-		c := passwordCredential.New(f.element)
-		navigator := global.Get("navigator")
-		credentials := navigator.Get("credentials")
-		credentials.Call("store", c)
-	}
-}
-
 // NonSubmitInputs uses the querier to get named inputs on the form that do not have a type of submit.
 func (f Form) NonSubmitInputs() []js.Value {
-	return f.querier(f.element, `input[name]:not([type="submit"])`)
+	return f.querier(f.Element, `input[name]:not([type="submit"])`)
 }

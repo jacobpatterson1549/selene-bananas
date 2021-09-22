@@ -291,3 +291,48 @@ func TestBase64Decode(t *testing.T) {
 		t.Errorf("decoded strings not equal: wanted %q, got %q", want, got)
 	}
 }
+
+func TestStoreFormCredentials(t *testing.T) {
+	t.Run("no PasswordCredential", func(t *testing.T) {
+		dom := new(DOM)
+		var form js.Value
+		dom.StoreCredentials(form)
+		// [ should not cause error ]
+	})
+	t.Run("with PasswordCredential", func(t *testing.T) {
+		dom := new(DOM)
+		form := js.ValueOf(map[string]interface{}{"a": 1})
+		cred := js.ValueOf(map[string]interface{}{"b": 2})
+		credentialsStored := false
+		store := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			want := cred
+			got := args[0]
+			if !want.Equal(got) {
+				t.Errorf("wanted %v to be stored as credentials, got %v", cred, got)
+			}
+			credentialsStored = true
+			return nil
+		})
+		passwordCredential := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			want := form
+			got := args[0]
+			if !want.Equal(got) {
+				t.Errorf("wanted new password credential to be created with %v, got %v", want, got)
+			}
+			return cred
+		})
+		navigator := js.ValueOf(map[string]interface{}{
+			"credentials": js.ValueOf(map[string]interface{}{
+				"store": store,
+			}),
+		})
+		js.Global().Set("PasswordCredential", passwordCredential)
+		js.Global().Set("navigator", navigator)
+		dom.StoreCredentials(form)
+		passwordCredential.Release()
+		store.Release()
+		if !credentialsStored {
+			t.Error("wanted credentials to be stored")
+		}
+	})
+}

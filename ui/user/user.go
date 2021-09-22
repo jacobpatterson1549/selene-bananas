@@ -42,6 +42,7 @@ type (
 		Confirm(message string) bool
 		NewXHR() js.Value
 		Base64Decode(a string) []byte
+		StoreCredentials(form js.Value)
 		RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func)
 		NewJsEventFunc(fn func(event js.Value)) js.Func
 		NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func
