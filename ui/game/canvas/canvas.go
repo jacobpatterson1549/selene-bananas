@@ -13,14 +13,13 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
-	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
 
 type (
 	// Canvas is the object which draws the game.
 	Canvas struct {
 		dom        DOM
-		log        *log.Log
+		log        Log
 		ctx        Context
 		board      *board.Board
 		draw       drawMetrics
@@ -78,7 +77,7 @@ type (
 
 	// pixelPosition represents a location on the canvas.
 	pixelPosition struct {
-		log *log.Log
+		log Log
 		x   int
 		y   int
 	}
@@ -105,6 +104,12 @@ type (
 		Color(element js.Value) string
 		ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func)
 	}
+
+	// Log is notify users about changes to the game.
+	Log interface {
+		Error(text string)
+		Info(text string)
+	}
 )
 
 const (
@@ -117,7 +122,7 @@ const (
 )
 
 // New Creates a canvas from the config.
-func (cfg Config) New(dom DOM, log *log.Log, board *board.Board, canvasParentDivQuery string) *Canvas {
+func (cfg Config) New(dom DOM, log Log, board *board.Board, canvasParentDivQuery string) *Canvas {
 	canvasQuery := canvasParentDivQuery + ">canvas"
 	parentDiv := dom.QuerySelector(canvasParentDivQuery)
 	element := dom.QuerySelector(canvasQuery)

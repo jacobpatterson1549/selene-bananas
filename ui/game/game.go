@@ -16,7 +16,6 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/ui"
 	"github.com/jacobpatterson1549/selene-bananas/ui/game/canvas"
-	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
 
 type (
@@ -24,7 +23,7 @@ type (
 	Game struct {
 		dom         DOM
 		id          game.ID
-		log         *log.Log
+		log         Log
 		board       *board.Board
 		canvas      *canvas.Canvas
 		Socket      Socket
@@ -59,10 +58,16 @@ type (
 		NewJsEventFunc(fn func(event js.Value)) js.Func
 		ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func)
 	}
+
+	// Log is notify users about changes to the game.
+	Log interface {
+		Error(text string)
+		Info(text string)
+	}
 )
 
 // New creates a new game controller with references to the board and canvas.
-func (cfg Config) New(dom DOM, log *log.Log) *Game {
+func (cfg Config) New(dom DOM, log Log) *Game {
 	g := Game{
 		dom:    dom,
 		log:    log,
