@@ -56,17 +56,11 @@ func (r request) do() (*http.Response, error) {
 		Method:  f.Method,
 		Headers: make(map[string]string),
 	}
-	switch f.Method {
-	case "get":
-		f.URL.RawQuery = f.Params.Encode()
-		req.URL = f.URL.String()
-	case "post":
-		req.URL = f.URL.String()
-		req.Body = f.Params.Encode()
-		req.Headers["Content-Type"] = "application/x-www-form-urlencoded"
-	default:
-		return nil, errors.New("unknown method: " + f.Method)
-	}
+	// method on form is assumed to be "post":
+	req.URL = f.URL.String()
+	req.Body = f.Params.Encode()
+	req.Headers["Content-Type"] = "application/x-www-form-urlencoded"
+	// auth handling:
 	if r.user.dom.Checked("#has-login") {
 		jwt := r.user.JWT()
 		req.Headers["Authorization"] = "Bearer " + jwt

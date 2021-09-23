@@ -180,6 +180,9 @@ func TestRequest(t *testing.T) {
 			},
 			httpClient: mockHTTPRequester{
 				DoFunc: func(dom http.DOM, req http.Request) (*http.Response, error) {
+					if want, got := "post", req.Method; want != got {
+						t.Errorf("test %v: wanted %v, got %v", i, want, got)
+					}
 					if test.hasJWT {
 						if _, ok := req.Headers["Authorization"]; !ok {
 							t.Errorf("Test %v: wanted authorization header, got %v", i, req.Headers)
