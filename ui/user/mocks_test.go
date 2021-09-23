@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"syscall/js"
+
+	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 )
 
 type mockLog struct {
@@ -98,4 +100,12 @@ type mockSocket struct {
 
 func (m *mockSocket) Close() {
 	m.CloseFunc()
+}
+
+type mockHTTPRequester struct {
+	DoFunc func(dom http.DOM, req http.Request) (*http.Response, error)
+}
+
+func (m mockHTTPRequester) Do(dom http.DOM, req http.Request) (*http.Response, error) {
+	return m.DoFunc(dom, req)
 }

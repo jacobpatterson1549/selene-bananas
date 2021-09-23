@@ -20,7 +20,7 @@ type (
 	User struct {
 		dom        DOM
 		log        Log
-		httpClient http.Client
+		httpClient HTTPRequester
 		escapeR    *strings.Replacer
 		Socket     Socket
 	}
@@ -59,10 +59,15 @@ type (
 	Socket interface {
 		Close()
 	}
+
+	// HTTPRequester does HTTP requests.
+	HTTPRequester interface {
+		Do(dom http.DOM, req http.Request) (*http.Response, error)
+	}
 )
 
 // New creates a http/login helper struct.
-func New(dom DOM, log Log, httpClient http.Client) *User {
+func New(dom DOM, log Log, httpClient HTTPRequester) *User {
 	quoteLetters := `\^$*+?.()|[]{}`
 	escapePairs := make([]string, len(quoteLetters)*2)
 	for i := range quoteLetters {
