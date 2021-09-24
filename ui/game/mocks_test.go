@@ -5,6 +5,7 @@ import (
 	"sync"
 	"syscall/js"
 
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 )
 
@@ -131,4 +132,52 @@ type mockSocket struct {
 
 func (ms *mockSocket) Send(m message.Message) {
 	ms.SendFunc(m)
+}
+
+type mockCanvas struct {
+	StartSwapFunc            func()
+	RedrawFunc               func()
+	SetGameStatusFunc        func(s game.Status)
+	TileLengthFunc           func() int
+	SetTileLengthFunc        func(tileLength int)
+	ParentDivOffsetWidthFunc func() int
+	UpdateSizeFunc           func(width int)
+	NumRowsFunc              func() int
+	NumColsFunc              func() int
+}
+
+func (m *mockCanvas) StartSwap() {
+	m.StartSwapFunc()
+}
+
+func (m *mockCanvas) Redraw() {
+	m.RedrawFunc()
+}
+
+func (m *mockCanvas) SetGameStatus(s game.Status) {
+	m.SetGameStatusFunc(s)
+}
+
+func (m mockCanvas) TileLength() int {
+	return m.TileLengthFunc()
+}
+
+func (m *mockCanvas) SetTileLength(tileLength int) {
+	m.SetTileLengthFunc(tileLength)
+}
+
+func (m mockCanvas) ParentDivOffsetWidth() int {
+	return m.ParentDivOffsetWidthFunc()
+}
+
+func (m *mockCanvas) UpdateSize(width int) {
+	m.UpdateSizeFunc(width)
+}
+
+func (m mockCanvas) NumRows() int {
+	return m.NumRowsFunc()
+}
+
+func (m mockCanvas) NumCols() int {
+	return m.NumColsFunc()
 }

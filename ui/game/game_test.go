@@ -52,11 +52,145 @@ func TestStartCreate(t *testing.T) {
 }
 
 func TestCreateWithConfig(t *testing.T) {
-	t.Skip("TODO")
+	tests := []struct {
+		MinLength string
+		wantErr   bool
+		numRows   int
+		numCols   int
+	}{
+		{
+			MinLength: "NaN",
+			wantErr:   true,
+		},
+		{
+			MinLength: "5",
+			numRows:   0,
+			numCols:   0,
+			wantErr:   true,
+		},
+	}
+	for i, test := range tests {
+		errorLogged := false
+		g := Game{
+			dom: &mockDOM{
+				QuerySelectorFunc: func(query string) js.Value {
+					return js.ValueOf(map[string]interface{}{})
+				},
+				CheckedFunc: func(query string) bool {
+					return true
+				},
+				SetCheckedFunc: func(query string, checked bool) {
+					// NOOP
+				},
+				ValueFunc: func(query string) string {
+					return test.MinLength
+				},
+			},
+			log: &mockLog{
+				ErrorFunc: func(text string) {
+					errorLogged = true
+				},
+			},
+			canvas: &mockCanvas{
+				ParentDivOffsetWidthFunc: func() int {
+					return 120
+				},
+				UpdateSizeFunc: func(width int) {
+					if want, got := 120, width; want != got {
+						t.Errorf("Test %v: widths not equal: wanted %v, got %v", i, want, got)
+					}
+				},
+				NumColsFunc: func() int {
+					return test.numCols
+				},
+				NumRowsFunc: func() int {
+					return test.numRows
+				},
+			},
+		}
+		var event js.Value
+		g.createWithConfig(event)
+		if want, got := test.wantErr, errorLogged; want != got {
+			t.Errorf("Test %v: error logged not equal: wanted %v, got %v", i, want, got)
+		}
+	}
 }
 
 func TestJoin(t *testing.T) {
-	t.Skip("TODO")
+	tests := []struct {
+		gameID          string
+		wantErr         bool
+		wantGameID      game.ID
+		wantMessageSent bool
+	}{
+		{
+			gameID:  "NaN",
+			wantErr: true,
+		},
+		{
+			gameID:          "7",
+			wantGameID:      7,
+			wantMessageSent: true,
+		},
+	}
+	for i, test := range tests {
+		errorLogged := false
+		messageSent := false
+		g := Game{
+			board: &board.Board{},
+			dom: &mockDOM{
+				SetCheckedFunc: func(query string, checked bool) {
+					// NOOP
+				},
+			},
+			log: &mockLog{
+				ErrorFunc: func(text string) {
+					errorLogged = true
+				},
+			},
+			canvas: &mockCanvas{
+				ParentDivOffsetWidthFunc: func() int {
+					return 120
+				},
+				UpdateSizeFunc: func(width int) {
+					if want, got := 120, width; want != got {
+						t.Errorf("Test %v: widths not equal: wanted %v, got %v", i, want, got)
+					}
+				},
+				NumColsFunc: func() int {
+					return 15
+				},
+				NumRowsFunc: func() int {
+					return 15
+				},
+			},
+			Socket: &mockSocket{
+				SendFunc: func(m message.Message) {
+					if want, got := message.JoinGame, m.Type; want != got {
+						t.Errorf("Test %v: message types not equal: wanted %v, got %v", i, want, got)
+					}
+					messageSent = true
+				},
+			},
+		}
+		event := js.ValueOf(map[string]interface{}{
+			"srcElement": map[string]interface{}{ // joinGameButton
+				"previousElementSibling": map[string]interface{}{ // gameIDInput
+					"value": test.gameID,
+				},
+			},
+		})
+		g.join(event)
+		if want, got := test.wantErr, errorLogged; want != got {
+			t.Errorf("Test %v: error logged not equal: wanted %v, got %v", i, want, got)
+		}
+		if want, got := test.wantMessageSent, messageSent; want != got {
+			t.Errorf("Test %v: messagedSent not equal: wanted %v, got %v", i, want, got)
+		}
+		if want, got := test.wantGameID, g.id; want != got {
+			t.Errorf("Test %v: wanted gameID to be set to %v, got %v", i, want, got)
+		}
+	}
 }
 
 func TestHide(t *testing.T) {
@@ -236,7 +370,18 @@ func TestSnagTile(t *testing.T) {
 }
 
 func TestStartTileSwap(t *testing.T) {
-	t.Skip("TODO")
+	swapStarted := false
+	g := Game{
+		canvas: &mockCanvas{
+			StartSwapFunc: func() {
+				swapStarted = true
+			},
+		},
+	}
+	g.startTileSwap()
+	if !swapStarted {
+		t.Error("wanted canvas swap to be started")
+	}
 }
 
 func TestSendChat(t *testing.T) {
@@ -468,11 +613,167 @@ func TestAddUnusedTiles(t *testing.T) {
 }
 
 func TestUpdateInfo(t *testing.T) {
-	t.Skip("TODO")
+	tests := []struct {
+		m          message.Message
+		wantGameID game.ID
+	}{
+		{
+			m: message.Message{
+				Game: &game.Info{
+					Board: &board.Board{},
+				},
+			},
+			wantGameID: 6,
+		},
+		{ // replaceGameTiles
+			m: message.Message{
+				Game: &game.Info{
+					Board: &board.Board{
+						UsedTiles: map[tile.ID]tile.Position{1: {}},
+					},
+				},
+			},
+			wantGameID: 6,
+		},
+		{ // addUnusedTiles
+			m: message.Message{
+				Game: &game.Info{
+					Board: &board.Board{
+						UnusedTiles: map[tile.ID]tile.Tile{2: {}},
+					},
+				},
+			},
+			wantGameID: 6,
+		},
+		{ // join game
+			m: message.Message{
+				Type: message.JoinGame,
+				Game: &game.Info{
+					ID:     7,
+					Status: game.InProgress,
+					Config: &game.Config{},
+				},
+			},
+			wantGameID: 7,
+		},
+	}
+	for i, test := range tests {
+		canvasRedrawn := false
+		appendChild := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+		g := Game{
+			board: &board.Board{},
+			id:    6,
+			dom: &mockDOM{
+				SetButtonDisabledFunc: func(query string, disabled bool) {
+					// NOOP
+				},
+				SetValueFunc: func(query, value string) {
+					// NOOP
+				},
+				SetCheckedFunc: func(query string, checked bool) {
+					// NOOP
+				},
+				QuerySelectorFunc: func(query string) js.Value {
+					return js.ValueOf(map[string]interface{}{
+						// setFinalBoards' playersList
+						"appendChild": appendChild, // rulesList
+					})
+				},
+				CloneElementFunc: func(query string) js.Value {
+					return js.ValueOf(map[string]interface{}{
+						"children": []interface{}{ // game rules
+							map[string]interface{}{},
+						},
+					})
+				},
+			},
+			log: &mockLog{
+				InfoFunc: func(text string) {
+					// NOOP
+				},
+			},
+			canvas: &mockCanvas{
+				RedrawFunc: func() {
+					canvasRedrawn = true
+				},
+				SetGameStatusFunc: func(s game.Status) {
+					if want, got := test.m.Game.Status, s; want != got {
+						t.Errorf("Test %v: game statuses not equal: wanted %v, got %v", i, want, got)
+					}
+				},
+			},
+		}
+		g.UpdateInfo(test.m)
+		appendChild.Release()
+		if !canvasRedrawn {
+			t.Errorf("Test %v: wanted canvas to be redrawn", i)
+		}
+		if want, got := test.wantGameID, g.id; want != got {
+			t.Errorf("Test %v: game ids not equal: wanted %v, got %v", i, want, got)
+		}
+	}
 }
 
 func TestUpdateStatus(t *testing.T) {
-	t.Skip("TODO")
+	tests := []struct {
+		s              game.Status
+		wantStatusText string
+	}{
+		{
+			s: game.Deleted, // do not set status
+		},
+		{
+			s:              game.NotStarted,
+			wantStatusText: "Not Started",
+		},
+		{
+			s:              game.InProgress,
+			wantStatusText: "In Progress",
+		},
+		{
+			s:              game.Finished,
+			wantStatusText: "Finished",
+		},
+	}
+	for i, test := range tests {
+		wantStatusSet := len(test.wantStatusText) > 0
+		statusSet := false
+		g := Game{
+			dom: &mockDOM{
+				QuerySelectorFunc: func(query string) js.Value {
+					return js.ValueOf(map[string]interface{}{})
+				},
+				SetCheckedFunc: func(query string, checked bool) {
+					// NOOP
+				},
+				SetValueFunc: func(query, value string) {
+					if want, got := test.wantStatusText, value; want != got {
+						t.Errorf("Test %v: set statuses not equal: wanted %q, got %q", i, want, got)
+					}
+					statusSet = true
+				},
+				SetButtonDisabledFunc: func(query string, disabled bool) {
+					// NOOP - too lazy to check all values
+				},
+			},
+			canvas: &mockCanvas{
+				SetGameStatusFunc: func(s game.Status) {
+					if want, got := test.s, s; want != got {
+						t.Errorf("Test %v: canvas status should be same as game: wanted %v, got %v", i, want, got)
+					}
+				},
+			},
+		}
+		m := message.Message{
+			Game: &game.Info{
+				Status: test.s,
+			},
+		}
+		g.updateStatus(m)
+		if want, got := wantStatusSet, statusSet; want != got {
+			t.Errorf("Test %v: statusSet not as desired: wanted %v, got %v", i, want, got)
+		}
+	}
 }
 
 func TestUpdateTilesLeft(t *testing.T) {
@@ -628,15 +929,230 @@ func TestRefreshTileLength(t *testing.T) {
 }
 
 func TestResizeTiles(t *testing.T) {
-	t.Skip("TODO")
+	tests := []struct {
+		tileLengthStr  string
+		wantTileLength int
+		wantErr        bool
+	}{
+		{
+			tileLengthStr: "NaN",
+			wantErr:       true,
+		},
+		{
+			tileLengthStr:  "48",
+			wantTileLength: 48,
+		},
+	}
+	for i, test := range tests {
+		errorLogged := false
+		tileLengthSet := false
+		messageSent := false
+		g := Game{
+			board: &board.Board{},
+			log: &mockLog{
+				ErrorFunc: func(text string) {
+					errorLogged = true
+				},
+			},
+			dom: &mockDOM{
+				ValueFunc: func(query string) string {
+					return test.tileLengthStr
+				},
+			},
+			canvas: &mockCanvas{
+				SetTileLengthFunc: func(tileLength int) {
+					if want, got := test.wantTileLength, tileLength; want != got {
+						t.Errorf("Test %v: tile lengths not equal: wanted %v, got %v", i, want, got)
+					}
+					tileLengthSet = true
+				},
+				NumRowsFunc: func() int { return 15 },
+				NumColsFunc: func() int { return 15 },
+			},
+			Socket: &mockSocket{
+				SendFunc: func(m message.Message) {
+					if want, got := message.RefreshGameBoard, m.Type; want != got {
+						t.Errorf("Test %v: message types not equal: wanted %v, got %v", i, want, got)
+					}
+					messageSent = true
+				},
+			},
+		}
+		g.resizeTiles()
+		if want, got := test.wantErr, errorLogged; want != got {
+			t.Errorf("Test %v: errorLogged values not equal: wanted %v, got %v", i, want, got)
+		}
+		if want, got := !test.wantErr, tileLengthSet; want != got {
+			t.Errorf("Test %v: tileLengthSet values not equal: wanted %v, got %v", i, want, got)
+		}
+		if want, got := !test.wantErr, messageSent; want != got {
+			t.Errorf("Test %v: messageSent values not equal: wanted %v, got %v", i, want, got)
+		}
+	}
 }
 
 func TestSetTabActive(t *testing.T) {
-	t.Skip("TODO")
+	tests := []struct {
+		canvasLength int
+		wantErr      bool
+	}{
+		{
+			canvasLength: -1,
+			wantErr:      true,
+		},
+		{
+			canvasLength: 133,
+		},
+	}
+	for i, test := range tests {
+		errorLogged := false
+		messageSent := false
+		g := Game{
+			board: &board.Board{},
+			log: &mockLog{
+				ErrorFunc: func(text string) {
+					errorLogged = true
+				},
+			},
+			dom: &mockDOM{
+				QuerySelectorFunc: func(query string) js.Value {
+					return js.ValueOf(map[string]interface{}{})
+				},
+				SetCheckedFunc: func(query string, checked bool) {
+					// NOOP
+				},
+			},
+			canvas: &mockCanvas{
+				ParentDivOffsetWidthFunc: func() int {
+					return test.canvasLength
+				},
+				UpdateSizeFunc: func(width int) {
+					if want, got := test.canvasLength, width; want != got {
+						t.Errorf("Test %v: widths not equal: wanted %v, got %v", i, want, got)
+					}
+				},
+				NumRowsFunc: func() int { return test.canvasLength },
+				NumColsFunc: func() int { return test.canvasLength },
+			},
+			Socket: &mockSocket{
+				SendFunc: func(m message.Message) {
+					if want, got := message.ChangeGameStatus, m.Type; want != got {
+						t.Errorf("Test %v: message types not equal: wanted %v, got %v", i, want, got)
+					}
+					messageSent = true
+				},
+			},
+		}
+		m := message.Message{
+			Type: message.ChangeGameStatus, // for test fun
+		}
+		g.setTabActive(m)
+		if want, got := test.wantErr, errorLogged; want != got {
+			t.Errorf("Test %v: errorLogged values not equal: wanted %v, got %v", i, want, got)
+		}
+		if want, got := !test.wantErr, messageSent; want != got {
+			t.Errorf("Test %v: messageSent values not equal: wanted %v, got %v", i, want, got)
+		}
+	}
 }
 
 func TestSetBoardSize(t *testing.T) {
-	t.Skip("TODO")
+	tests := []struct {
+		m    message.Message
+		want message.Message
+	}{
+		{ // no game or board in message
+			want: message.Message{
+				Game: &game.Info{
+					Board: &board.Board{
+						Config: board.Config{
+							NumRows: 11,
+							NumCols: 12,
+						},
+					},
+				},
+			},
+		},
+		{ // no board in message
+			m: message.Message{
+				Game: &game.Info{
+					ID: 9,
+				},
+			},
+			want: message.Message{
+				Game: &game.Info{
+					ID: 9,
+					Board: &board.Board{
+						Config: board.Config{
+							NumRows: 11,
+							NumCols: 12,
+						},
+					},
+				},
+			},
+		},
+		{ // happy path
+			m: message.Message{
+				Game: &game.Info{
+					ID: 10,
+					Board: &board.Board{
+						UnusedTileIDs: []tile.ID{7},
+					},
+				},
+			},
+			want: message.Message{
+				Game: &game.Info{
+					ID: 10,
+					Board: &board.Board{
+						UnusedTileIDs: []tile.ID{7},
+						Config: board.Config{
+							NumRows: 11,
+							NumCols: 12,
+						},
+					},
+				},
+			},
+		},
+	}
+	for i, test := range tests {
+		messageSent := false
+		g := Game{
+			board: &board.Board{
+				Config:        board.Config{},
+				UnusedTileIDs: []tile.ID{6},
+			},
+			canvas: &mockCanvas{
+				NumRowsFunc: func() int {
+					return 11
+				},
+				NumColsFunc: func() int {
+					return 12
+				},
+			},
+			Socket: &mockSocket{
+				SendFunc: func(m message.Message) {
+					if want, got := test.want, m; !reflect.DeepEqual(want, got) {
+						t.Errorf("Test %v: sent messages not equal:\nwanted: %#v\ngot:    %#v", i, want, got)
+						t.Errorf("\tboards:\n\twanted: %v\n\tgot:    %v", want.Game.Board, got.Game.Board)
+					}
+					messageSent = true
+				},
+			},
+		}
+		g.setBoardSize(test.m)
+		if want, got := 11, g.board.Config.NumRows; want != got {
+			t.Errorf("Test %v: board rows not equal: wanted %v, got %v", i, want, got)
+		}
+		if want, got := 12, g.board.Config.NumCols; want != got {
+			t.Errorf("Test %v: board rows not equal: wanted %v, got %v", i, want, got)
+		}
+		if want, got := 0, len(g.board.UnusedTiles); want != got {
+			t.Errorf("Test %v: wanted board to be reset with number of unused tiles = %v, got %v", i, want, got)
+		}
+		if !messageSent {
+			t.Error("wanted message to be sent")
+		}
+	}
 }
 
 func TestSetRules(t *testing.T) {
@@ -676,7 +1192,45 @@ func TestSetRules(t *testing.T) {
 }
 
 func TestSetFinalBoards(t *testing.T) {
-	t.Skip("TODO")
+	appendCount := 0
+	appendChild := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		appendCount++
+		return nil
+	})
+	g := Game{
+		dom: &mockDOM{
+			QuerySelectorFunc: func(query string) js.Value {
+				return js.ValueOf(map[string]interface{}{
+					"appendChild": appendChild,
+				})
+			},
+			CloneElementFunc: func(query string) js.Value {
+				return js.ValueOf(map[string]interface{}{
+					"children": []interface{}{
+						map[string]interface{}{
+							"children": []interface{}{
+								map[string]interface{}{}, // radio
+								map[string]interface{}{}, // label
+							},
+						},
+					},
+				})
+			},
+			SetCheckedFunc: func(query string, checked bool) {
+				// NOOP
+			},
+		},
+	}
+	finalBoards := map[string]board.Board{
+		"a": {},
+		"b": {},
+		"c": {},
+	}
+	g.setFinalBoards(finalBoards)
+	appendChild.Release()
+	if want, got := len(finalBoards), appendCount; want != got {
+		t.Errorf("final board append counts not equal: wanted %v, got %v", want, got)
+	}
 }
 
 func TestNewFinalBoardDiv(t *testing.T) {
@@ -704,5 +1258,81 @@ func TestNewFinalBoardDiv(t *testing.T) {
 }
 
 func TestViewFinalBoard(t *testing.T) {
-	t.Skip("TODO")
+	tests := []struct {
+		playerName string
+		wantErr    bool
+	}{
+		{
+			playerName: "PLAYER_NOT_IN_GAME",
+			wantErr:    true,
+		},
+		{
+			playerName: "curly",
+		},
+	}
+	for i, test := range tests {
+		errorLogged := false
+		canvasRedrawn := false
+		clearRect := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+		strokestyle := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+		fillText := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+		strokeRect := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+		getContext := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			canvasRedrawn = true                      // sloppy, but redraw only happens when a canvas is created
+			return js.ValueOf(map[string]interface{}{ // canvas contextElement
+				"clearRect":   clearRect,
+				"strokestyle": strokestyle,
+				"fillText":    fillText,
+				"strokeRect":  strokeRect,
+			})
+		})
+		g := Game{
+			dom: &mockDOM{
+				QuerySelectorFunc: func(query string) js.Value {
+					return js.ValueOf(map[string]interface{}{
+						"innerHTML":  test.playerName, // player selector
+						"getContext": getContext,      // canvas
+					})
+				},
+				ColorFunc: func(element js.Value) string {
+					return "black"
+				},
+			},
+			canvas: &mockCanvas{
+				UpdateSizeFunc: func(width int) {
+					// NOOP
+				},
+				TileLengthFunc: func() int {
+					return 50
+				},
+			},
+			log: &mockLog{
+				ErrorFunc: func(text string) {
+					errorLogged = true
+				},
+			},
+			finalBoards: map[string]board.Board{
+				"larry": {},
+				"curly": {
+					Config: board.Config{
+						NumCols: 15,
+					},
+				},
+				"moe": {},
+			},
+		}
+		g.viewFinalBoard()
+		getContext.Release()
+		clearRect.Release()
+		strokestyle.Release()
+		fillText.Release()
+		strokeRect.Release()
+		getContext.Release()
+		if want, got := test.wantErr, errorLogged; want != got {
+			t.Errorf("Test %v: errorLogged not equal: wanted %v, got %v", i, want, got)
+		}
+		if want, got := !test.wantErr, canvasRedrawn; want != got {
+			t.Errorf("Test %v: canvasRedrawn not equal: wanted %v, got %v", i, want, got)
+		}
+	}
 }
