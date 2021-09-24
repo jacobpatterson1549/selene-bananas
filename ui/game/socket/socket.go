@@ -13,14 +13,13 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/ui"
-	"github.com/jacobpatterson1549/selene-bananas/ui/log"
 )
 
 type (
 	// Socket can be used to easily push and pull messages from the server.
 	Socket struct {
 		dom       DOM
-		log       *log.Log
+		log       Log
 		webSocket js.Value
 		user      User
 		game      Game
@@ -68,10 +67,18 @@ type (
 		NewJsEventFunc(fn func(event js.Value)) js.Func
 		AlertOnPanic()
 	}
+
+	// Log is notify users about changes to the game.
+	Log interface {
+		Info(text string)
+		Warning(text string)
+		Error(text string)
+		Chat(text string)
+	}
 )
 
 // New creates a new socket.
-func New(dom DOM, log *log.Log, user User, game Game, lobby Lobby) *Socket {
+func New(dom DOM, log Log, user User, game Game, lobby Lobby) *Socket {
 	s := Socket{
 		dom:   dom,
 		log:   log,
