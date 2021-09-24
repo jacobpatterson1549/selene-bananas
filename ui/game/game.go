@@ -25,7 +25,7 @@ type (
 		id          game.ID
 		log         Log
 		board       *board.Board
-		canvas      *canvas.Canvas
+		canvas      Canvas
 		Socket      Socket
 		finalBoards map[string]board.Board
 	}
@@ -33,7 +33,7 @@ type (
 	// Config contains the parameters to create a Game.
 	Config struct {
 		Board  *board.Board
-		Canvas *canvas.Canvas
+		Canvas Canvas
 	}
 
 	// Socket sends messages to the server.
@@ -63,6 +63,19 @@ type (
 	Log interface {
 		Error(text string)
 		Info(text string)
+	}
+
+	// Canvas is the element the game is drawn on
+	Canvas interface {
+		StartSwap()
+		Redraw()
+		SetGameStatus(s game.Status)
+		TileLength() int
+		SetTileLength(tileLength int)
+		ParentDivOffsetWidth() int
+		UpdateSize(width int)
+		NumRows() int
+		NumCols() int
 	}
 )
 
