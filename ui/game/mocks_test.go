@@ -1,3 +1,5 @@
+//go:build js && wasm
+
 package game
 
 import (
@@ -10,16 +12,16 @@ import (
 )
 
 type mockDOM struct {
-	QuerySelectorFunc     func(query string) js.Value
-	QuerySelectorAllFunc  func(document js.Value, query string) []js.Value
-	CheckedFunc           func(query string) bool
-	SetCheckedFunc        func(query string, checked bool)
-	ValueFunc             func(query string) string
-	SetValueFunc          func(query, value string)
-	SetButtonDisabledFunc func(query string, disabled bool)
-	CloneElementFunc      func(query string) js.Value
-	ConfirmFunc           func(message string) bool
-	ColorFunc             func(element js.Value) string
+	QuerySelectorFunc        func(query string) js.Value
+	QuerySelectorAllFunc     func(document js.Value, query string) []js.Value
+	CheckedFunc              func(query string) bool
+	SetCheckedFunc           func(query string, checked bool)
+	ValueFunc                func(query string) string
+	SetValueFunc             func(query, value string)
+	SetButtonDisabledFunc    func(query string, disabled bool)
+	CloneElementFunc         func(query string) js.Value
+	ConfirmFunc              func(message string) bool
+	ColorFunc                func(element js.Value) string
 	RegisterFuncsFunc        func(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func)
 	NewJsFuncFunc            func(fn func()) js.Func
 	NewJsEventFuncFunc       func(fn func(event js.Value)) js.Func

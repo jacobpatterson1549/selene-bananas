@@ -1,3 +1,5 @@
+//go:build js && wasm
+
 package canvas
 
 import "github.com/jacobpatterson1549/selene-bananas/game/message"
