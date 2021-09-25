@@ -433,6 +433,8 @@ func (c *Canvas) moveEnd(pp pixelPosition) {
 	case rect:
 		c.selection.tiles = c.calculateSelectedTiles()
 		c.selection.setMoveState(none)
+		c.selection.start.clear()
+		c.selection.end.clear()
 		c.Redraw()
 	case drag:
 		c.moveSelectedTiles()
@@ -702,9 +704,7 @@ func (s *selection) setMoveState(ms moveState) {
 
 // newPixelPosition creates a new PixelPosition with the log of the canvas.
 func (c *Canvas) newPixelPosition() *pixelPosition {
-	pp := pixelPosition{
-		log: c.log,
-	}
+	pp := pixelPosition{}
 	return &pp
 }
 
@@ -728,6 +728,12 @@ func (pp *pixelPosition) fromTouch(event js.Value) pixelPosition {
 	pp.x = touch.Get("clientX").Int() - canvasRect.Get("left").Int()
 	pp.y = touch.Get("clientY").Int() - canvasRect.Get("top").Int()
 	return *pp
+}
+
+// clear zeroes out the x and y
+func (pp *pixelPosition) clear() {
+	pp.x = 0
+	pp.y = 0
 }
 
 // sort returns the elements in increasing order.
