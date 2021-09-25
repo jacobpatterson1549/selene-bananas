@@ -2,7 +2,7 @@ package ui
 
 import (
 	"errors"
-	"fmt"
+	"strconv"
 	"testing"
 )
 
@@ -26,7 +26,7 @@ func TestRecoverError(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		t.Run(fmt.Sprintf("test %v", i), func(t *testing.T) {
+		t.Run("test "+strconv.Itoa(i), func(t *testing.T) {
 			dom := new(DOM)
 			defer func() {
 				r := recover()
