@@ -132,12 +132,10 @@ func TestRequest(t *testing.T) {
 			},
 			dom: &mockDOM{
 				QuerySelectorFunc: func(query string) (v js.Value) {
-					// TODO
-					return
+					return // setUsernamesReadOnly
 				},
 				QuerySelectorAllFunc: func(document js.Value, query string) (all []js.Value) {
-					// TODO
-					return
+					return // no inputs on form, setUsernamesReadOnly
 				},
 				ValueFunc: func(query string) string {
 					if want, got := ".jwt", query; want != got {
