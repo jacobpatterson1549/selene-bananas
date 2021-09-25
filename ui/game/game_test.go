@@ -716,23 +716,49 @@ func TestUpdateInfo(t *testing.T) {
 
 func TestUpdateStatus(t *testing.T) {
 	tests := []struct {
-		s              game.Status
-		wantStatusText string
+		s                        game.Status
+		gameTilesLeft            int
+		wantStatusText           string
+		wantSnagButtonDisabled   bool
+		wantSwapButtonDisabled   bool
+		wantStartButtonDisabled  bool
+		wantFinishButtonDisabled bool
 	}{
 		{
 			s: game.Deleted, // do not set status
 		},
 		{
-			s:              game.NotStarted,
-			wantStatusText: "Not Started",
+			s:                        game.NotStarted,
+			wantStatusText:           "Not Started",
+			wantSnagButtonDisabled:   true,
+			wantSwapButtonDisabled:   true,
+			wantStartButtonDisabled:  false,
+			wantFinishButtonDisabled: true,
 		},
 		{
-			s:              game.InProgress,
-			wantStatusText: "In Progress",
+			s:                        game.InProgress,
+			wantStatusText:           "In Progress",
+			wantSnagButtonDisabled:   false,
+			wantSwapButtonDisabled:   false,
+			wantStartButtonDisabled:  true,
+			wantFinishButtonDisabled: false,
 		},
 		{
-			s:              game.Finished,
-			wantStatusText: "Finished",
+			s:                        game.InProgress,
+			gameTilesLeft:            1,
+			wantStatusText:           "In Progress",
+			wantSnagButtonDisabled:   false,
+			wantSwapButtonDisabled:   false,
+			wantStartButtonDisabled:  true,
+			wantFinishButtonDisabled: true,
+		},
+		{
+			s:                        game.Finished,
+			wantStatusText:           "Finished",
+			wantSnagButtonDisabled:   true,
+			wantSwapButtonDisabled:   true,
+			wantStartButtonDisabled:  true,
+			wantFinishButtonDisabled: true,
 		},
 	}
 	for i, test := range tests {
@@ -754,6 +780,26 @@ func TestUpdateStatus(t *testing.T) {
 				},
 				SetButtonDisabledFunc: func(query string, disabled bool) {
 					// NOOP - too lazy to check all values
+					switch {
+					case strings.Contains(query, "snag"):
+						if want, got := test.wantSnagButtonDisabled, disabled; want != got {
+							t.Errorf("Test %v: snag button not disabled correctly: wanted %v, got %v", i, want, got)
+						}
+					case strings.Contains(query, "swap"):
+						if want, got := test.wantSwapButtonDisabled, disabled; want != got {
+							t.Errorf("Test %v: swap button not disabled correctly: wanted %v, got %v", i, want, got)
+						}
+					case strings.Contains(query, "start"):
+						if want, got := test.wantStartButtonDisabled, disabled; want != got {
+							t.Errorf("Test %v: start button not disabled correctly: wanted %v, got %v", i, want, got)
+						}
+					case strings.Contains(query, "finish"):
+						if want, got := test.wantFinishButtonDisabled, disabled; want != got {
+							t.Errorf("Test %v: finish button not disabled correctly: wanted %v, got %v", i, want, got)
+						}
+					default:
+						t.Errorf("Test %v: unwanted button disabled (%v): %v", i, disabled, query)
+					}
 				},
 			},
 			canvas: &mockCanvas{
@@ -766,7 +812,8 @@ func TestUpdateStatus(t *testing.T) {
 		}
 		m := message.Message{
 			Game: &game.Info{
-				Status: test.s,
+				Status:    test.s,
+				TilesLeft: test.gameTilesLeft,
 			},
 		}
 		g.updateStatus(m)
