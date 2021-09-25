@@ -7,6 +7,8 @@ import (
 	"strings"
 	"syscall/js"
 	"testing"
+
+	"github.com/jacobpatterson1549/selene-bananas/ui/url"
 )
 
 func TestNewForm(t *testing.T) {
@@ -67,13 +69,13 @@ func TestNewForm(t *testing.T) {
 		want := Form{
 			Element: js.Undefined(),
 			Method:  "POST",
-			URL: URL{
+			URL: url.URL{
 				Scheme:    "https",
 				Authority: "example.com",
 				Path:      "/hello",
 				RawQuery:  "wasm=true",
 			},
-			Params: Values{
+			Params: url.Values{
 				"A": "first param",
 				"B": "2",
 			},

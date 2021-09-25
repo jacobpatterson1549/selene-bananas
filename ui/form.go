@@ -5,6 +5,8 @@ package ui
 import (
 	"errors"
 	"syscall/js"
+
+	"github.com/jacobpatterson1549/selene-bananas/ui/url"
 )
 
 type (
@@ -12,8 +14,8 @@ type (
 	Form struct {
 		Element js.Value
 		Method  string
-		URL     URL
-		Params  Values
+		URL     url.URL
+		Params  url.Values
 		querier Querier
 	}
 
@@ -29,7 +31,7 @@ func NewForm(querier Querier, event js.Value) (*Form, error) {
 	form := event.Get("target")
 	method := form.Get("method").String()
 	action := form.Get("action").String()
-	u, err := Parse(action)
+	u, err := url.Parse(action)
 	if err != nil {
 		return nil, errors.New("getting url from form action: " + err.Error())
 	}
@@ -40,7 +42,7 @@ func NewForm(querier Querier, event js.Value) (*Form, error) {
 		querier: querier,
 	}
 	formInputs := f.NonSubmitInputs()
-	f.Params = make(Values, len(formInputs))
+	f.Params = make(url.Values, len(formInputs))
 	for _, formInput := range formInputs {
 		name := formInput.Get("name").String()
 		value := formInput.Get("value").String()

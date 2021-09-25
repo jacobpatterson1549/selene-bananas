@@ -17,6 +17,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/ui"
+	"github.com/jacobpatterson1549/selene-bananas/ui/url"
 )
 
 func TestReleaseWebSocketJsFuncs(t *testing.T) {
@@ -44,14 +45,14 @@ func TestWebSocketURL(t *testing.T) {
 		},
 	}
 	for i, test := range getWebSocketURLTests {
-		u, err := ui.Parse(test.url)
+		u, err := url.Parse(test.url)
 		if err != nil {
 			t.Errorf("Test %v: %v", i, err)
 			continue
 		}
 		f := ui.Form{
 			URL:    *u,
-			Params: make(ui.Values, 1),
+			Params: make(url.Values, 1),
 		}
 		s := Socket{
 			user: &mockUser{

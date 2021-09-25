@@ -1,6 +1,7 @@
 //go:build js && wasm
 
-package ui
+// Package url replaces the standard net/url package for basic url operations
+package url
 
 import (
 	"errors"

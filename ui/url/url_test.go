@@ -1,6 +1,6 @@
 //go:build js && wasm
 
-package ui
+package url
 
 import (
 	"reflect"
