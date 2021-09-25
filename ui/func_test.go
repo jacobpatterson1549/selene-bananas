@@ -49,6 +49,68 @@ func TestRegisterFuncs(t *testing.T) {
 	}
 }
 
+func TestNewJsFunc(t *testing.T) {
+	invoked := false
+	fn := func() {
+		invoked = true
+	}
+	dom := new(DOM)
+	jsFunc := dom.NewJsFunc(fn)
+	defer jsFunc.Release()
+	jsFunc.Invoke()
+	if !invoked {
+		t.Error("wanted function to be invoked")
+	}
+}
+
+func TestNewJsEventFunc(t *testing.T) {
+	defaultPrevented, invoked := false, false
+	preventDefault := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		defaultPrevented = true
+		return nil
+	})
+	event := js.ValueOf(map[string]interface{}{
+		"preventDefault": preventDefault,
+	})
+	fn := func(event js.Value) {
+		invoked = true
+	}
+	dom := new(DOM)
+	jsFunc := dom.NewJsEventFunc(fn)
+	defer jsFunc.Release()
+	jsFunc.Invoke(event)
+	if !defaultPrevented {
+		t.Error("wanted preventDefault to be called")
+	}
+	if !invoked {
+		t.Error("wanted function to be invoked")
+	}
+}
+
+func TestNewJsEventFuncAsync(t *testing.T) {
+	defaultPrevented, invoked := false, false
+	preventDefault := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		defaultPrevented = true
+		return nil
+	})
+	event := js.ValueOf(map[string]interface{}{
+		"preventDefault": preventDefault,
+	})
+	fn := func(event js.Value) {
+		invoked = true
+	}
+	dom := new(DOM)
+	jsFunc := dom.NewJsEventFuncAsync(fn, true)
+	defer jsFunc.Release()
+	jsFunc.Invoke(event)
+	if !defaultPrevented {
+		t.Error("wanted preventDefault to be called")
+	}
+	if !invoked {
+		t.Error("wanted function to be invoked")
+	}
+}
+
 func TestReleaseJsFuncsOnDone(t *testing.T) {
 	jsFuncs := map[string]js.Func{
 		"a": {},
