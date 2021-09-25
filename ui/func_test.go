@@ -1,10 +1,62 @@
+//go:build js && wasm
+
 package ui
 
 import (
 	"errors"
 	"strconv"
+	"syscall/js"
 	"testing"
 )
+
+func TestAlertOnPanic(t *testing.T) {
+	tests := []struct {
+		name      string
+		invokeFn  func()
+		wantPanic bool
+	}{
+		{
+			name: "safe",
+			invokeFn: func() {
+				// NOOP
+			},
+		},
+		{
+			name: "with panic",
+			invokeFn: func() {
+				panic("TEST: panic should cause dom alert")
+			},
+			wantPanic: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			panicked, alerted := false, false
+			alertFn := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				alerted = true
+				return nil
+			})
+			defer alertFn.Release()
+			js.Global().Set("alert", alertFn)
+			t.Cleanup(func() {
+				if want, got := test.wantPanic, panicked; want != got {
+					t.Errorf("panic states not equal: wanted %v, got %v", want, got)
+				}
+				if want, got := test.wantPanic, alerted; want != got {
+					t.Errorf("alert should only be fired on panic: wanted %v, got %v", want, got)
+				}
+			})
+			dom := new(DOM)
+			defer func() { // AlertOnPanic should re-panic on a panic
+				if r := recover(); r != nil {
+					panicked = true
+				}
+			}()
+			defer dom.AlertOnPanic()
+			test.invokeFn()
+		})
+	}
+}
 
 func TestRecoverError(t *testing.T) {
 	tests := []struct {
