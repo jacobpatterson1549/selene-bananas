@@ -97,7 +97,7 @@ func TestValue(t *testing.T) {
 	got := dom.Value(wantQuery)
 	querySelector.Release()
 	if want != got {
-		t.Errorf("wanted %v, got %v", want, got)
+		t.Errorf("values not equal: wanted %v, got %v", want, got)
 	}
 }
 
@@ -113,7 +113,7 @@ func TestSetValue(t *testing.T) {
 	dom.SetValue(wantQuery, value)
 	querySelector.Release()
 	if want, got := wantValue.Get("value").String(), gotValue.Get("value").String(); want != got {
-		t.Errorf("wanted %v, got %v", want, got)
+		t.Errorf("set value not expected: wanted %v, got %v", want, got)
 	}
 }
 
@@ -143,7 +143,7 @@ func TestFormatTime(t *testing.T) {
 	want := "11:15:03"
 	got := dom.FormatTime(utcSeconds)
 	if want != got {
-		t.Errorf("wanted %v, got %v", want, got)
+		t.Errorf("formatted time not expected: wanted %v, got %v", want, got)
 	}
 }
 

@@ -141,7 +141,7 @@ func TestLogin(t *testing.T) {
 			dom: &mockDOM{
 				Base64DecodeFunc: func(a string) []byte {
 					if want, got := "payload", a; want != got {
-						t.Errorf("wanted %v, got %v", want, got)
+						t.Errorf("unexpected payload: wanted %v, got %v", want, got)
 					}
 					return []byte(`{"points":42}`)
 				},
@@ -151,7 +151,7 @@ func TestLogin(t *testing.T) {
 					switch query {
 					case ".jwt":
 						if want, got := ".payload.", value; want != got {
-							t.Errorf("wanted %v, got %v", want, got)
+							t.Errorf("unexpected set of jwt: wanted %v, got %v", want, got)
 						}
 					case "input.points":
 						if want, got := "42", value; want != got {

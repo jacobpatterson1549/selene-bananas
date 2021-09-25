@@ -15,7 +15,7 @@ func TestContextSetFont(t *testing.T) {
 	j.SetFont(want)
 	got := ctx.Get("font").String()
 	if want != got {
-		t.Errorf("wanted %v, got %v", want, got)
+		t.Errorf("unexpected value: wanted %v, got %v", want, got)
 	}
 }
 
@@ -26,7 +26,7 @@ func TestContextSetLineWidth(t *testing.T) {
 	j.SetLineWidth(want)
 	got := ctx.Get("lineWidth").Float()
 	if want != got {
-		t.Errorf("wanted %v, got %v", want, got)
+		t.Errorf("unexpected value: wanted %v, got %v", want, got)
 	}
 }
 
@@ -37,7 +37,7 @@ func TestContextSetFillColor(t *testing.T) {
 	j.SetFillColor(want)
 	got := ctx.Get("fillStyle").String()
 	if want != got {
-		t.Errorf("wanted %v, got %v", want, got)
+		t.Errorf("unexpected value: wanted %v, got %v", want, got)
 	}
 }
 
@@ -48,7 +48,7 @@ func TestContextStrokeColor(t *testing.T) {
 	j.SetStrokeColor(want)
 	got := ctx.Get("strokeStyle").String()
 	if want != got {
-		t.Errorf("wanted %v, got %v", want, got)
+		t.Errorf("unexpected value: wanted %v, got %v", want, got)
 	}
 }
 
@@ -61,7 +61,7 @@ func TestContextFillText(t *testing.T) {
 	}
 	f := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if got := args; !reflect.DeepEqual(want, got) {
-			t.Errorf("wanted %v, got %v", want, got)
+			t.Errorf("unexpected value: wanted %v, got %v", want, got)
 		}
 		funcCalled = true
 		return nil
@@ -87,7 +87,7 @@ func TestContextClearRect(t *testing.T) {
 	}
 	f := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if got := args; !reflect.DeepEqual(want, got) {
-			t.Errorf("wanted %v, got %v", want, got)
+			t.Errorf("unexpected value: wanted %v, got %v", want, got)
 		}
 		funcCalled = true
 		return nil
@@ -113,7 +113,7 @@ func TestContextFillRect(t *testing.T) {
 	}
 	f := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if got := args; !reflect.DeepEqual(want, got) {
-			t.Errorf("wanted %v, got %v", want, got)
+			t.Errorf("unexpected value: wanted %v, got %v", want, got)
 		}
 		funcCalled = true
 		return nil
@@ -139,7 +139,7 @@ func TestContextStrokeRect(t *testing.T) {
 	}
 	f := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if got := args; !reflect.DeepEqual(want, got) {
-			t.Errorf("wanted %v, got %v", want, got)
+			t.Errorf("unexpected value: wanted %v, got %v", want, got)
 		}
 		funcCalled = true
 		return nil

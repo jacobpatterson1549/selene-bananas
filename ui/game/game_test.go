@@ -221,7 +221,7 @@ func TestID(t *testing.T) {
 	}
 	got := g.ID()
 	if want != got {
-		t.Errorf("wanted %v, got %v", want, got)
+		t.Errorf("id not expected: wanted %v, got %v", want, got)
 	}
 }
 
@@ -916,7 +916,7 @@ func TestRefreshTileLength(t *testing.T) {
 			},
 			SetValueFunc: func(query, value string) {
 				if want, got := "37", value; want != got {
-					t.Errorf("wanted %v, got %v", want, got)
+					t.Errorf("tile length set value not expected: wanted %v, got %v", want, got)
 				}
 				setValueCalled = true
 			},
@@ -1253,7 +1253,7 @@ func TestNewFinalBoardDiv(t *testing.T) {
 	playerName := "playerX"
 	got := g.newFinalBoardDiv(playerName)
 	if want, got := playerName, got.Get("children").Index(1).Get("innerHTML").String(); want != got {
-		t.Errorf("wanted %v, got %v", want, got)
+		t.Errorf(" final board inner html not expected: wanted %v, got %v", want, got)
 	}
 }
 
