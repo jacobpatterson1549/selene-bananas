@@ -17,20 +17,13 @@ type mockDOM struct {
 	ValueFunc             func(query string) string
 	SetValueFunc          func(query, value string)
 	SetButtonDisabledFunc func(query string, disabled bool)
-	FormatTimeFunc        func(utcSeconds int64) string
 	CloneElementFunc      func(query string) js.Value
 	ConfirmFunc           func(message string) bool
 	ColorFunc             func(element js.Value) string
-	NewWebSocketFunc      func(url string) js.Value
-	NewXHRFunc            func() js.Value
-	Base64DecodeFunc      func(a string) []byte
-	// funcs
 	RegisterFuncsFunc        func(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func)
 	NewJsFuncFunc            func(fn func()) js.Func
 	NewJsEventFuncFunc       func(fn func(event js.Value)) js.Func
-	NewJsEventFuncAsyncFunc  func(fn func(event js.Value), async bool) js.Func
 	ReleaseJsFuncsOnDoneFunc func(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func)
-	AlertOnPanicFunc         func()
 }
 
 func (m mockDOM) QuerySelector(query string) js.Value {
@@ -61,10 +54,6 @@ func (m *mockDOM) SetButtonDisabled(query string, disabled bool) {
 	m.SetButtonDisabledFunc(query, disabled)
 }
 
-func (m mockDOM) FormatTime(utcSeconds int64) string {
-	return m.FormatTimeFunc(utcSeconds)
-}
-
 func (m mockDOM) CloneElement(query string) js.Value {
 	return m.CloneElementFunc(query)
 }
@@ -75,18 +64,6 @@ func (m *mockDOM) Confirm(message string) bool {
 
 func (m mockDOM) Color(element js.Value) string {
 	return m.ColorFunc(element)
-}
-
-func (m *mockDOM) NewWebSocket(url string) js.Value {
-	return m.NewWebSocketFunc(url)
-}
-
-func (m *mockDOM) NewXHR() js.Value {
-	return m.NewXHRFunc()
-}
-
-func (m *mockDOM) Base64Decode(a string) []byte {
-	return m.Base64DecodeFunc(a)
 }
 
 func (m *mockDOM) RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func) {
@@ -101,16 +78,8 @@ func (m *mockDOM) NewJsEventFunc(fn func(event js.Value)) js.Func {
 	return m.NewJsEventFuncFunc(fn)
 }
 
-func (m *mockDOM) NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
-	return m.NewJsEventFuncAsyncFunc(fn, async)
-}
-
 func (m *mockDOM) ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func) {
 	m.ReleaseJsFuncsOnDoneFunc(ctx, wg, jsFuncs)
-}
-
-func (m *mockDOM) AlertOnPanic() {
-	m.AlertOnPanicFunc()
 }
 
 type mockLog struct {
