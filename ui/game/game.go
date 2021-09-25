@@ -309,20 +309,16 @@ func (g *Game) UpdateInfo(m message.Message) {
 
 // updateStatus sets the statusText and enables or disables the snag, swap, start, and finish buttons.
 func (g *Game) updateStatus(m message.Message) {
-	var statusText string
 	var snagDisabled, swapDisabled, startDisabled, finishDisabled bool
 	switch m.Game.Status {
 	case game.NotStarted:
-		statusText = "Not Started"
 		snagDisabled = true
 		swapDisabled = true
 		finishDisabled = true
 	case game.InProgress:
-		statusText = "In Progress"
 		startDisabled = true
 		finishDisabled = m.Game.TilesLeft > 0
 	case game.Finished:
-		statusText = "Finished"
 		snagDisabled = true
 		swapDisabled = true
 		startDisabled = true
@@ -330,6 +326,7 @@ func (g *Game) updateStatus(m message.Message) {
 	default:
 		return
 	}
+	statusText := m.Game.Status.String()
 	g.setFinalBoards(m.Game.FinalBoards)
 	g.dom.SetValue(".game>.info .status", statusText)
 	g.dom.SetButtonDisabled(".game .actions>.snag", snagDisabled)
