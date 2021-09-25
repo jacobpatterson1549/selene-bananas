@@ -56,7 +56,6 @@ func (f *flags) createDomInitializers() []domInitializer {
 	canvas.Socket = socket // [circular reference]
 	game.Socket = socket   // [circular reference]
 	lobby.Socket = socket  // [circular reference]
-	// TODO: canvas is the only complex domInitializer.  Could it be made normal?  If so, domInitializer could just return map[string]jsFunc
 	return []domInitializer{log, user, canvas, game, lobby, socket}
 }
 
