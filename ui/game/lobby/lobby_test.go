@@ -91,24 +91,12 @@ func TestLeave(t *testing.T) {
 			return gameInfosTbodyElement
 		},
 	}
-	querySelector := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		query := args[0]
-		if want, got := ".game-infos>tbody", query.String(); want != got {
-			t.Errorf("wanted query to be %v, got %v", want, got)
-		}
-		return gameInfosTbodyElement
-	})
-	document := js.ValueOf(map[string]interface{}{
-		"querySelector": querySelector,
-	})
-	js.Global().Set("document", document)
 	l := Lobby{
 		dom:    &dom,
 		game:   game,
 		Socket: socket,
 	}
 	l.leave()
-	querySelector.Release()
 	switch {
 	case !socketClosed:
 		t.Error("close not called on socket")
