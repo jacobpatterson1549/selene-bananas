@@ -119,78 +119,90 @@ func TestRequest(t *testing.T) {
 			event: event("http://example.com/ping"),
 		},
 	}
+	createMockLog := func(result *requestResult) *mockLog {
+		return &mockLog{
+			ErrorFunc: func(text string) {
+				result.errorLogged = true
+			},
+			WarningFunc: func(text string) {
+				result.warningLogged = true
+			},
+		}
+	}
+	createMockDom := func(result *requestResult, i int, testHasJWT, testConfirmOk bool) *mockDOM {
+		return &mockDOM{
+			QuerySelectorFunc: func(query string) (v js.Value) {
+				return // setUsernamesReadOnly
+			},
+			QuerySelectorAllFunc: func(document js.Value, query string) (all []js.Value) {
+				return // no inputs on form, setUsernamesReadOnly
+			},
+			ValueFunc: func(query string) string {
+				if want, got := ".jwt", query; want != got {
+					t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+				}
+				return "browser.jwt.token"
+			},
+			SetValueFunc: func(query, value string) {
+				if query == ".jwt" {
+					if want, got := ".login_payload.", value; want != got {
+						t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+					}
+					result.loggedIn = true
+				}
+			},
+			CheckedFunc: func(query string) bool {
+				if query != "#has-login" {
+					t.Errorf("Test %v: unwanted call checked: %v", i, query)
+				}
+				return testHasJWT
+			},
+			SetCheckedFunc: func(query string, checked bool) {
+				// NOOP
+			},
+			ConfirmFunc: func(message string) bool {
+				return testConfirmOk
+			},
+			Base64DecodeFunc: func(a string) []byte {
+				if want, got := "login_payload", a; want != got {
+					t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+				}
+				return []byte(`{}`)
+			},
+			StoreCredentialsFunc: func(form js.Value) {
+				result.credentialsStored = true
+			},
+		}
+	}
+	createMockSocket := func(result *requestResult) *mockSocket {
+		return &mockSocket{
+			CloseFunc: func() {
+				result.loggedOut = true
+			},
+		}
+	}
+	createMockHTTPRequester := func(i int, testHasJWT bool, testHTTPResponse *http.Response, testHTTPResponseErr error) *mockHTTPRequester {
+		return &mockHTTPRequester{
+			DoFunc: func(dom http.DOM, req http.Request) (*http.Response, error) {
+				if want, got := "post", req.Method; want != got {
+					t.Errorf("test %v: wanted %v, got %v", i, want, got)
+				}
+				if testHasJWT {
+					if _, ok := req.Headers["Authorization"]; !ok {
+						t.Errorf("Test %v: wanted authorization header, got %v", i, req.Headers)
+					}
+				}
+				return testHTTPResponse, testHTTPResponseErr
+			},
+		}
+	}
 	for i, test := range tests {
 		var result requestResult
 		u := User{
-			log: &mockLog{
-				ErrorFunc: func(text string) {
-					result.errorLogged = true
-				},
-				WarningFunc: func(text string) {
-					result.warningLogged = true
-				},
-			},
-			dom: &mockDOM{
-				QuerySelectorFunc: func(query string) (v js.Value) {
-					return // setUsernamesReadOnly
-				},
-				QuerySelectorAllFunc: func(document js.Value, query string) (all []js.Value) {
-					return // no inputs on form, setUsernamesReadOnly
-				},
-				ValueFunc: func(query string) string {
-					if want, got := ".jwt", query; want != got {
-						t.Errorf("Test %v: wanted %v, got %v", i, want, got)
-					}
-					return "browser.jwt.token"
-				},
-				SetValueFunc: func(query, value string) {
-					if query == ".jwt" {
-						if want, got := ".login_payload.", value; want != got {
-							t.Errorf("Test %v: wanted %v, got %v", i, want, got)
-						}
-						result.loggedIn = true
-					}
-				},
-				CheckedFunc: func(query string) bool {
-					if query != "#has-login" {
-						t.Errorf("Test %v: unwanted call checked: %v", i, query)
-					}
-					return test.hasJWT
-				},
-				SetCheckedFunc: func(query string, checked bool) {
-					// NOOP
-				},
-				ConfirmFunc: func(message string) bool {
-					return test.confirmOk
-				},
-				Base64DecodeFunc: func(a string) []byte {
-					if want, got := "login_payload", a; want != got {
-						t.Errorf("Test %v: wanted %v, got %v", i, want, got)
-					}
-					return []byte(`{}`)
-				},
-				StoreCredentialsFunc: func(form js.Value) {
-					result.credentialsStored = true
-				},
-			},
-			Socket: &mockSocket{
-				CloseFunc: func() {
-					result.loggedOut = true
-				},
-			},
-			httpClient: mockHTTPRequester{
-				DoFunc: func(dom http.DOM, req http.Request) (*http.Response, error) {
-					if want, got := "post", req.Method; want != got {
-						t.Errorf("test %v: wanted %v, got %v", i, want, got)
-					}
-					if test.hasJWT {
-						if _, ok := req.Headers["Authorization"]; !ok {
-							t.Errorf("Test %v: wanted authorization header, got %v", i, req.Headers)
-						}
-					}
-					return &test.httpResponse, test.httpResponseErr
-				},
-			},
+			log:        createMockLog(&result),
+			dom:        createMockDom(&result, i, test.hasJWT, test.confirmOk),
+			Socket:     createMockSocket(&result),
+			httpClient: createMockHTTPRequester(i, test.hasJWT, &test.httpResponse, test.httpResponseErr),
 		}
 		u.request(test.event)
 		if want, got := test.want, result; want != got {

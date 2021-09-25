@@ -214,205 +214,203 @@ func TestSend(t *testing.T) {
 	})
 }
 
-func TestOnMessage(t *testing.T) {
-	t.Run("setGameInfos", func(t *testing.T) {
-		mt := strconv.Itoa(int(message.GameInfos))
-		eventM := map[string]interface{}{
-			"data": `{"type":` + mt + `,"games":[{"id":8}]}`,
-		}
-		event := js.ValueOf(eventM)
-		gameInfosSet := false
-		lobby := mockLobby{
-			SetGameInfosFunc: func(gameInfos []game.Info, username string) {
-				switch {
-				case len(gameInfos) != 1, gameInfos[0].ID != 8, username != "fred":
-					t.Errorf("wanted infos for game 8 for fred, got: %v, %v", gameInfos, username)
-				}
-				gameInfosSet = true
-			},
-		}
-		user := &mockUser{
-			UsernameFunc: func() string {
-				return "fred"
-			},
-		}
-		s := Socket{
-			lobby: lobby,
-			user:  user,
-		}
-		s.onMessage(event)
-		if !gameInfosSet {
-			t.Errorf("wanted game infos set")
-		}
+func TestOnMessage_setGameInfos(t *testing.T) {
+	mt := strconv.Itoa(int(message.GameInfos))
+	eventM := map[string]interface{}{
+		"data": `{"type":` + mt + `,"games":[{"id":8}]}`,
+	}
+	event := js.ValueOf(eventM)
+	gameInfosSet := false
+	lobby := mockLobby{
+		SetGameInfosFunc: func(gameInfos []game.Info, username string) {
+			switch {
+			case len(gameInfos) != 1, gameInfos[0].ID != 8, username != "fred":
+				t.Errorf("wanted infos for game 8 for fred, got: %v, %v", gameInfos, username)
+			}
+			gameInfosSet = true
+		},
+	}
+	user := &mockUser{
+		UsernameFunc: func() string {
+			return "fred"
+		},
+	}
+	s := Socket{
+		lobby: lobby,
+		user:  user,
+	}
+	s.onMessage(event)
+	if !gameInfosSet {
+		t.Errorf("wanted game infos set")
+	}
+}
+func TestOnMessage_badJSON(t *testing.T) {
+	event := js.ValueOf(map[string]interface{}{
+		"data": `{bad json}`,
 	})
-	t.Run("bad message json", func(t *testing.T) {
+	errorLogged := false
+	s := Socket{
+		log: &mockLog{
+			ErrorFunc: func(text string) {
+				errorLogged = true
+			},
+		},
+	}
+	s.onMessage(event)
+	if !errorLogged {
+		t.Error("wanted error to be logged")
+	}
+}
+func TestOnMessage_logging(t *testing.T) {
+	tests := []struct {
+		messageType message.Type
+		want        int
+	}{
+		{
+			messageType: -1, // bad type => error
+			want:        1,
+		},
+		{
+			messageType: message.SocketError,
+			want:        1,
+		},
+		{
+			messageType: message.SocketWarning,
+			want:        2,
+		},
+		{
+			messageType: message.GameChat,
+			want:        3,
+		},
+	}
+	for i, test := range tests {
 		event := js.ValueOf(map[string]interface{}{
-			"data": `{bad json}`,
+			"data": `{"type":` + strconv.Itoa(int(test.messageType)) + `}`,
 		})
-		errorLogged := false
+		got := 0
 		s := Socket{
 			log: &mockLog{
 				ErrorFunc: func(text string) {
-					errorLogged = true
+					got = 1
+				},
+				WarningFunc: func(text string) {
+					got = 2
+				},
+				ChatFunc: func(text string) {
+					got = 3
 				},
 			},
 		}
 		s.onMessage(event)
-		if !errorLogged {
-			t.Error("wanted error to be logged")
+		if test.want != got {
+			t.Errorf("Test %v: wanted log type %v to be called, got %v", i, test.want, got)
 		}
-	})
-	t.Run("logging", func(t *testing.T) {
-		tests := []struct {
-			messageType message.Type
-			want        int
-		}{
-			{
-				messageType: -1, // bad type => error
-				want:        1,
-			},
-			{
-				messageType: message.SocketError,
-				want:        1,
-			},
-			{
-				messageType: message.SocketWarning,
-				want:        2,
-			},
-			{
-				messageType: message.GameChat,
-				want:        3,
-			},
-		}
-		for i, test := range tests {
-			event := js.ValueOf(map[string]interface{}{
-				"data": `{"type":` + strconv.Itoa(int(test.messageType)) + `}`,
-			})
-			got := 0
-			s := Socket{
-				log: &mockLog{
-					ErrorFunc: func(text string) {
-						got = 1
-					},
-					WarningFunc: func(text string) {
-						got = 2
-					},
-					ChatFunc: func(text string) {
-						got = 3
-					},
-				},
-			}
-			s.onMessage(event)
-			if test.want != got {
-				t.Errorf("Test %v: wanted log type %v to be called, got %v", i, test.want, got)
-			}
-		}
-	})
-	t.Run("handlers", func(t *testing.T) {
-		tests := []struct {
-			messageType     message.Type
-			wantActionType  int
-			wantSocketClose bool
-		}{
-			{
-				messageType:     message.PlayerRemove,
-				wantActionType:  1,
-				wantSocketClose: true,
-			},
-			{
-				messageType:    message.LeaveGame,
-				wantActionType: 1,
-			},
-			{
-				messageType:    message.JoinGame,
-				wantActionType: 2,
-			},
-			{
-				messageType:    message.ChangeGameStatus,
-				wantActionType: 2,
-			},
-			{
-				messageType:    message.ChangeGameTiles,
-				wantActionType: 2,
-			},
-			{
-				messageType:    message.RefreshGameBoard,
-				wantActionType: 2,
-			},
-		}
-		for i, test := range tests {
-			event := js.ValueOf(map[string]interface{}{
-				"data": `{"info":"any","type":` + strconv.Itoa(int(test.messageType)) + `}`,
-			})
-			infoLogged := false
-			socketClosed := false
-			gotAction := 0
-			closeWebSocket := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				socketClosed = true
-				return nil
-			})
-			s := Socket{
-				webSocket: js.ValueOf(map[string]interface{}{
-					"readyState": 1,
-					"close":      closeWebSocket,
-				}),
-				log: &mockLog{
-					InfoFunc: func(text string) {
-						infoLogged = true
-					},
-				},
-				game: &mockGame{
-					LeaveFunc: func() {
-						gotAction = 1
-					},
-					UpdateInfoFunc: func(msg message.Message) {
-						gotAction = 2
-					},
-				},
-				dom: &mockDOM{
-					SetCheckedFunc: func(query string, checked bool) {
-						if !test.wantSocketClose {
-							t.Errorf("Test %v: dom should only be used when removing player", i)
-						}
-					},
-				},
-			}
-			s.onMessage(event)
-			closeWebSocket.Release()
-			if !infoLogged {
-				t.Error("wanted info to be logged")
-			}
-			if want, got := test.wantActionType, gotAction; want != got {
-				t.Errorf("Test %v: action types not equal: wanted %v, got %v", i, want, got)
-			}
-			if want, got := test.wantSocketClose, socketClosed; want != got {
-				t.Errorf("Test %v: socket closed calls not equal: wanted %v, got %v", i, want, got)
-			}
-		}
-		t.Run("httpPing", func(t *testing.T) {
-			event := js.ValueOf(map[string]interface{}{
-				"data": `{"type":` + strconv.Itoa(int(message.SocketHTTPPing)) + `}`,
-			})
-			pingHandled := false
-			requestSubmit := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				pingHandled = true
-				return nil
-			})
-			s := Socket{
-				dom: &mockDOM{
-					QuerySelectorFunc: func(query string) js.Value {
-						return js.ValueOf(map[string]interface{}{
-							"requestSubmit": requestSubmit,
-						})
-					},
-				},
-			}
-			s.onMessage(event)
-			requestSubmit.Release()
-			if !pingHandled {
-				t.Error("wanted ping to be handled")
-			}
+	}
+}
+func TestOnMessage_handlers(t *testing.T) {
+	tests := []struct {
+		messageType     message.Type
+		wantActionType  int
+		wantSocketClose bool
+	}{
+		{
+			messageType:     message.PlayerRemove,
+			wantActionType:  1,
+			wantSocketClose: true,
+		},
+		{
+			messageType:    message.LeaveGame,
+			wantActionType: 1,
+		},
+		{
+			messageType:    message.JoinGame,
+			wantActionType: 2,
+		},
+		{
+			messageType:    message.ChangeGameStatus,
+			wantActionType: 2,
+		},
+		{
+			messageType:    message.ChangeGameTiles,
+			wantActionType: 2,
+		},
+		{
+			messageType:    message.RefreshGameBoard,
+			wantActionType: 2,
+		},
+	}
+	for i, test := range tests {
+		event := js.ValueOf(map[string]interface{}{
+			"data": `{"info":"any","type":` + strconv.Itoa(int(test.messageType)) + `}`,
 		})
+		infoLogged := false
+		socketClosed := false
+		gotAction := 0
+		closeWebSocket := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			socketClosed = true
+			return nil
+		})
+		s := Socket{
+			webSocket: js.ValueOf(map[string]interface{}{
+				"readyState": 1,
+				"close":      closeWebSocket,
+			}),
+			log: &mockLog{
+				InfoFunc: func(text string) {
+					infoLogged = true
+				},
+			},
+			game: &mockGame{
+				LeaveFunc: func() {
+					gotAction = 1
+				},
+				UpdateInfoFunc: func(msg message.Message) {
+					gotAction = 2
+				},
+			},
+			dom: &mockDOM{
+				SetCheckedFunc: func(query string, checked bool) {
+					if !test.wantSocketClose {
+						t.Errorf("Test %v: dom should only be used when removing player", i)
+					}
+				},
+			},
+		}
+		s.onMessage(event)
+		closeWebSocket.Release()
+		if !infoLogged {
+			t.Error("wanted info to be logged")
+		}
+		if want, got := test.wantActionType, gotAction; want != got {
+			t.Errorf("Test %v: action types not equal: wanted %v, got %v", i, want, got)
+		}
+		if want, got := test.wantSocketClose, socketClosed; want != got {
+			t.Errorf("Test %v: socket closed calls not equal: wanted %v, got %v", i, want, got)
+		}
+	}
+	t.Run("httpPing", func(t *testing.T) {
+		event := js.ValueOf(map[string]interface{}{
+			"data": `{"type":` + strconv.Itoa(int(message.SocketHTTPPing)) + `}`,
+		})
+		pingHandled := false
+		requestSubmit := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			pingHandled = true
+			return nil
+		})
+		s := Socket{
+			dom: &mockDOM{
+				QuerySelectorFunc: func(query string) js.Value {
+					return js.ValueOf(map[string]interface{}{
+						"requestSubmit": requestSubmit,
+					})
+				},
+			},
+		}
+		s.onMessage(event)
+		requestSubmit.Release()
+		if !pingHandled {
+			t.Error("wanted ping to be handled")
+		}
 	})
 }
 
@@ -637,71 +635,65 @@ func TestClose(t *testing.T) {
 // TestHandle tests handleGameLeave, handlePlayerRemove and handleInfo
 func TestHandle(t *testing.T) {
 	socketTests := []struct {
-		name       string
 		handle     func(s Socket, m message.Message)
 		wantCallID int
 	}{
 		{
-			name:       "TestHandleGameLeave",
 			handle:     func(s Socket, m message.Message) { s.handleGameLeave(m) },
 			wantCallID: 1,
 		},
 		{
-			name:       "TestHandlePlayerRemove",
 			handle:     func(s Socket, m message.Message) { s.handlePlayerRemove(m) },
 			wantCallID: 1,
 		},
 		{
-			name:       "TestHandleInfo",
 			handle:     func(s Socket, m message.Message) { s.handleInfo(m) },
 			wantCallID: 2,
 		},
 	}
 	for _, subTest := range socketTests {
-		t.Run(subTest.name, func(t *testing.T) {
-			handleTests := []struct {
-				info    string
-				wantLog bool
-			}{
-				{},
-				{
-					info:    "stuff to log",
-					wantLog: true,
+		handleTests := []struct {
+			info    string
+			wantLog bool
+		}{
+			{},
+			{
+				info:    "stuff to log",
+				wantLog: true,
+			},
+		}
+		for i, test := range handleTests {
+			callID := 0
+			infoLogged := false
+			m := message.Message{
+				Info: test.info,
+			}
+			s := Socket{
+				game: &mockGame{
+					LeaveFunc: func() {
+						callID = 1
+					},
+					UpdateInfoFunc: func(msg message.Message) {
+						callID = 2
+					},
+				},
+				log: &mockLog{
+					InfoFunc: func(text string) {
+						if want, got := test.info, text; want != got {
+							t.Errorf("Test %v: logged info not equal: wanted %v, got %v", i, want, got)
+						}
+						infoLogged = true
+					},
 				},
 			}
-			for i, test := range handleTests {
-				callID := 0
-				infoLogged := false
-				m := message.Message{
-					Info: test.info,
-				}
-				s := Socket{
-					game: &mockGame{
-						LeaveFunc: func() {
-							callID = 1
-						},
-						UpdateInfoFunc: func(msg message.Message) {
-							callID = 2
-						},
-					},
-					log: &mockLog{
-						InfoFunc: func(text string) {
-							if want, got := test.info, text; want != got {
-								t.Errorf("Test %v: logged info not equal: wanted %v, got %v", i, want, got)
-							}
-							infoLogged = true
-						},
-					},
-				}
-				subTest.handle(s, m)
-				if want, got := subTest.wantCallID, callID; want != got {
-					t.Errorf("Test %v: wanted call %v to be made, got %v", i, want, got)
-				}
-				if want, got := test.wantLog, infoLogged; want != got {
-					t.Errorf("Test %v: log.info() call not equal: wanted %v, got %v", i, want, got)
-				}
+			subTest.handle(s, m)
+			if want, got := subTest.wantCallID, callID; want != got {
+				t.Errorf("Test %v: wanted call %v to be made, got %v", i, want, got)
 			}
-		})
+			if want, got := test.wantLog, infoLogged; want != got {
+				t.Errorf("Test %v: log.info() call not equal: wanted %v, got %v", i, want, got)
+			}
+		}
 	}
 }
 
