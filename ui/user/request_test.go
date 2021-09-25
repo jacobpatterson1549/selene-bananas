@@ -157,7 +157,9 @@ func TestRequest(t *testing.T) {
 					}
 					return test.hasJWT
 				},
-				SetCheckedFunc: func(query string, checked bool) {},
+				SetCheckedFunc: func(query string, checked bool) {
+					// NOOP
+				},
 				ConfirmFunc: func(message string) bool {
 					return test.confirmOk
 				},

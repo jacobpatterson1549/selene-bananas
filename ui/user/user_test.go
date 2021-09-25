@@ -174,7 +174,9 @@ func TestLogin(t *testing.T) {
 	}{
 		{
 			log: &mockLog{
-				ErrorFunc: func(text string) {},
+				ErrorFunc: func(text string) {
+					// NOOP
+				},
 			},
 		},
 		{
@@ -231,10 +233,14 @@ func TestLogoutButtonClick(t *testing.T) {
 		dom: &mockDOM{
 			QuerySelectorFunc:    func(query string) (v js.Value) { return },
 			QuerySelectorAllFunc: func(document js.Value, query string) (all []js.Value) { return },
-			SetCheckedFunc:       func(query string, checked bool) {},
+			SetCheckedFunc: func(query string, checked bool) {
+				// NOOP
+			},
 		},
 		Socket: &mockSocket{
-			CloseFunc: func() {},
+			CloseFunc: func() {
+				// NOOP
+			},
 		},
 	}
 	var event js.Value
@@ -250,7 +256,9 @@ func TestLogout(t *testing.T) {
 		dom: &mockDOM{
 			QuerySelectorFunc:    func(query string) (v js.Value) { return },
 			QuerySelectorAllFunc: func(document js.Value, query string) (all []js.Value) { return },
-			SetCheckedFunc:       func(query string, checked bool) {},
+			SetCheckedFunc: func(query string, checked bool) {
+				// NOOP
+			},
 		},
 		Socket: &mockSocket{
 			CloseFunc: func() {
@@ -314,7 +322,9 @@ func TestUsername(t *testing.T) {
 					}
 					return []byte(`{"sub":"selene"}`)
 				},
-				SetValueFunc: func(query, value string) {},
+				SetValueFunc: func(query, value string) {
+					// NOOP
+				},
 			},
 		}
 		got := u.Username()
