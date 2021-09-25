@@ -29,29 +29,33 @@ func TestReleaseWebSocketJsFuncs(t *testing.T) {
 
 func TestWebSocketURL(t *testing.T) {
 	getWebSocketURLTests := []struct {
-		url  string
+		url  url.URL
 		jwt  string
 		want string
 	}{
 		{
-			url:  "http://127.0.0.1:8000/user_join_lobby",
+			// url:  "http://127.0.0.1:8000/user_join_lobby",
+			url: url.URL{
+				Scheme: "http",
+				Authority: "127.0.0.1:8000",
+				Path: "/user_join_lobby",
+			},
 			jwt:  "a.jwt.token",
 			want: "ws://127.0.0.1:8000/user_join_lobby?access_token=a.jwt.token",
 		},
 		{
-			url:  "https://example.com",
+			// url:  "https://example.com",
+			url: url.URL{
+				Scheme: "https",
+				Authority: "example.com",
+			},
 			jwt:  "XYZ",
 			want: "wss://example.com?access_token=XYZ",
 		},
 	}
 	for i, test := range getWebSocketURLTests {
-		u, err := url.Parse(test.url)
-		if err != nil {
-			t.Errorf("Test %v: %v", i, err)
-			continue
-		}
 		f := ui.Form{
-			URL:    *u,
+			URL:    test.url,
 			Params: make(url.Values, 1),
 		}
 		s := Socket{
