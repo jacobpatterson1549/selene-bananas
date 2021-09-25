@@ -3,11 +3,66 @@
 package ui
 
 import (
+	"context"
 	"errors"
 	"strconv"
+	"sync"
 	"syscall/js"
 	"testing"
 )
+
+func TestRegisterFuncs(t *testing.T) {
+	tests := []struct {
+		parentName string
+		jsFuncs    map[string]js.Func
+	}{
+		{
+			parentName: "testregisterfuncs",
+			jsFuncs: map[string]js.Func{
+				"funcA": js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil }),
+			},
+		},
+		{
+			parentName: "testregisterfuncs", // same name
+			jsFuncs: map[string]js.Func{
+				"funcB": js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil }),
+				"funcC": js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil }),
+			},
+		},
+	}
+	for i, test := range tests {
+		ctx := context.Background()
+		ctx, cancelFunc := context.WithCancel(ctx)
+		var wg sync.WaitGroup
+		dom := new(DOM)
+		go cancelFunc()
+		dom.RegisterFuncs(ctx, &wg, test.parentName, test.jsFuncs)
+		global := js.Global()
+		parent := global.Get(test.parentName)
+		for jsFuncName := range test.jsFuncs {
+			jsFunc := parent.Get(jsFuncName)
+			if !jsFunc.Truthy() || jsFunc.Type() != js.TypeFunction {
+				t.Errorf("Test %v: wanted %v.%v to be a jsFunc, got %v", i, test.parentName, jsFuncName, jsFunc)
+			}
+		}
+		wg.Wait() // should release funcs
+	}
+}
+
+func TestReleaseJsFuncsOnDone(t *testing.T) {
+	jsFuncs := map[string]js.Func{
+		"a": {},
+		"b": {},
+	}
+	ctx := context.Background()
+	ctx, cancelFunc := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	wg.Add(1) // mock registration of functions
+	dom := new(DOM)
+	go cancelFunc()
+	dom.ReleaseJsFuncsOnDone(ctx, &wg, jsFuncs)
+	wg.Wait() // will block if ReleaseJsFuncsOnDone does not call Done
+}
 
 func TestAlertOnPanic(t *testing.T) {
 	tests := []struct {
