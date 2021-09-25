@@ -3,15 +3,56 @@
 package user
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"reflect"
 	"strings"
+	"sync"
 	"syscall/js"
 	"testing"
 
 	"github.com/jacobpatterson1549/selene-bananas/ui/http"
 )
+
+func TestInitDom(t *testing.T) {
+	wantJsFuncNames := []string{
+		"logout",
+		"request",
+		"updateConfirmPattern",
+	}
+	u := User{
+		dom: &mockDOM{
+			RegisterFuncsFunc: func(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func) {
+				if want, got := "user", parentName; want != got {
+					t.Errorf("wanted parent name to be %v, got %v", want, got)
+				}
+				switch len(jsFuncs) {
+				case len(wantJsFuncNames):
+					for _, jsFuncName := range wantJsFuncNames {
+						if _, ok := jsFuncs[jsFuncName]; !ok {
+							t.Errorf("wanted jsFunc named %q", jsFuncName)
+						}
+					}
+				default:
+					t.Errorf("wanted %v jsFuncs, got %v", len(wantJsFuncNames), len(jsFuncs))
+				}
+				wg.Done()
+			},
+			NewJsEventFuncFunc: func(fn func(event js.Value)) js.Func {
+				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+			},
+			NewJsEventFuncAsyncFunc: func(fn func(event js.Value), async bool) js.Func {
+				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+			},
+		},
+	}
+	ctx := context.Background()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	u.InitDom(ctx, &wg)
+	wg.Wait()
+}
 
 func TestGetUser(t *testing.T) {
 	atob := func(a string) []byte {

@@ -3,8 +3,10 @@
 package game
 
 import (
+	"context"
 	"reflect"
 	"strings"
+	"sync"
 	"syscall/js"
 	"testing"
 
@@ -31,6 +33,55 @@ func TestNewConfig(t *testing.T) {
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
 	}
+}
+
+func TestInitDom(t *testing.T) {
+	wantJsFuncNames := []string{
+		"create",
+		"createWithConfig",
+		"join",
+		"leave",
+		"delete",
+		"start",
+		"finish",
+		"snagTile",
+		"swapTile",
+		"sendChat",
+		"resizeTiles",
+		"refreshTileLength",
+		"viewFinalBoard",
+	}
+	g := Game{
+		dom: &mockDOM{
+			RegisterFuncsFunc: func(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func) {
+				if want, got := "game", parentName; want != got {
+					t.Errorf("wanted parent name to be %v, got %v", want, got)
+				}
+				switch len(jsFuncs) {
+				case len(wantJsFuncNames):
+					for _, jsFuncName := range wantJsFuncNames {
+						if _, ok := jsFuncs[jsFuncName]; !ok {
+							t.Errorf("wanted jsFunc named %q", jsFuncName)
+						}
+					}
+				default:
+					t.Errorf("wanted %v jsFuncs, got %v", len(wantJsFuncNames), len(jsFuncs))
+				}
+				wg.Done()
+			},
+			NewJsFuncFunc: func(fn func()) js.Func {
+				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+			},
+			NewJsEventFuncFunc: func(fn func(event js.Value)) js.Func {
+				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+			},
+		},
+	}
+	ctx := context.Background()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	g.InitDom(ctx, &wg)
+	wg.Wait()
 }
 
 func TestStartCreate(t *testing.T) {

@@ -3,8 +3,10 @@
 package lobby
 
 import (
+	"context"
 	"errors"
 	"reflect"
+	"sync"
 	"syscall/js"
 	"testing"
 
@@ -26,6 +28,44 @@ func TestNew(t *testing.T) {
 	case l.Socket != nil:
 		t.Errorf("wanted nil lobby socket when new is called, got %v", l.Socket)
 	}
+}
+
+func TestInitDom(t *testing.T) {
+	wantJsFuncNames := []string{
+		"connect",
+		"leave",
+	}
+	u := Lobby{
+		dom: &mockDOM{
+			RegisterFuncsFunc: func(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func) {
+				if want, got := "lobby", parentName; want != got {
+					t.Errorf("wanted parent name to be %v, got %v", want, got)
+				}
+				switch len(jsFuncs) {
+				case len(wantJsFuncNames):
+					for _, jsFuncName := range wantJsFuncNames {
+						if _, ok := jsFuncs[jsFuncName]; !ok {
+							t.Errorf("wanted jsFunc named %q", jsFuncName)
+						}
+					}
+				default:
+					t.Errorf("wanted %v jsFuncs, got %v", len(wantJsFuncNames), len(jsFuncs))
+				}
+				wg.Done()
+			},
+			NewJsFuncFunc: func(fn func()) js.Func {
+				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+			},
+			NewJsEventFuncAsyncFunc: func(fn func(event js.Value), async bool) js.Func {
+				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+			},
+		},
+	}
+	ctx := context.Background()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	u.InitDom(ctx, &wg)
+	wg.Wait()
 }
 
 func TestConnect(t *testing.T) {

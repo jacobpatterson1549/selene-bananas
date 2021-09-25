@@ -3,10 +3,12 @@
 package socket
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall/js"
 	"testing"
 
@@ -63,6 +65,22 @@ func TestWebSocketURL(t *testing.T) {
 			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
 		}
 	}
+}
+
+func TestInitDom(t *testing.T) {
+	ctx := context.Background()
+	ctx, cancelFunc := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	s := Socket{
+		dom: &mockDOM{
+			AlertOnPanicFunc: func() {
+				// NOOP
+			},
+		},
+	}
+	s.InitDom(ctx, &wg)
+	cancelFunc()
+	wg.Wait()
 }
 
 func TestMessageJSON(t *testing.T) {
