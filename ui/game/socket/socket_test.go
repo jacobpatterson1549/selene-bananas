@@ -36,9 +36,9 @@ func TestWebSocketURL(t *testing.T) {
 		{
 			// url:  "http://127.0.0.1:8000/user_join_lobby",
 			url: url.URL{
-				Scheme: "http",
+				Scheme:    "http",
 				Authority: "127.0.0.1:8000",
-				Path: "/user_join_lobby",
+				Path:      "/user_join_lobby",
 			},
 			jwt:  "a.jwt.token",
 			want: "ws://127.0.0.1:8000/user_join_lobby?access_token=a.jwt.token",
@@ -46,7 +46,7 @@ func TestWebSocketURL(t *testing.T) {
 		{
 			// url:  "https://example.com",
 			url: url.URL{
-				Scheme: "https",
+				Scheme:    "https",
 				Authority: "example.com",
 			},
 			jwt:  "XYZ",
