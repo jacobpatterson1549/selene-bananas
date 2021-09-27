@@ -237,7 +237,7 @@ func TestNewServer(t *testing.T) {
 func TestFileHandler(t *testing.T) {
 	const (
 		cacheMaxAge = "max-age=???"
-		textHTML = "text/html; charset=utf-8"
+		textHTML    = "text/html; charset=utf-8"
 		// header constants are duplicated here
 		headerCacheControl            = "Cache-Control"
 		headerAcceptEncoding          = "Accept-Encoding"
@@ -251,7 +251,7 @@ func TestFileHandler(t *testing.T) {
 		requestHeader http.Header
 	}{
 		{
-			path: "/"+indexHTML,
+			path: "/" + indexHTML,
 			wantHeader: http.Header{
 				headerCacheControl:            {"no-store"},
 				headerStrictTransportSecurity: {cacheMaxAge},
@@ -259,7 +259,7 @@ func TestFileHandler(t *testing.T) {
 			},
 		},
 		{
-			path: "/"+indexHTML,
+			path: "/" + indexHTML,
 			requestHeader: http.Header{
 				headerAcceptEncoding: {"gzip"},
 				headerContentType:    {textHTML},
@@ -553,7 +553,7 @@ func TestAddMimeType(t *testing.T) {
 		"main.wasm":     "application/wasm",
 		"init.js":       "text/javascript; charset=utf-8",
 		"any.html":      textHTML,
-		"/"+indexHTML:   textHTML,
+		"/" + indexHTML: textHTML,
 	}
 	for fileName, want := range addMimeTypeTests {
 		w := httptest.NewRecorder()
@@ -576,7 +576,7 @@ func TestTemplateHandler(t *testing.T) {
 	}{
 		{
 			templateName: indexHTML,
-			path:         "/"+indexHTML,
+			path:         "/" + indexHTML,
 			templateText: "stuff",
 			wantCode:     200,
 			wantBody:     "stuff",
@@ -745,7 +745,7 @@ func TestGetHandler(t *testing.T) {
 	})
 	t.Run("templates", func(t *testing.T) {
 		templates := []string{
-			"/"+indexHTML,
+			"/" + indexHTML,
 			"/manifest.json",
 			"/serviceWorker.js",
 			"/favicon.svg",
