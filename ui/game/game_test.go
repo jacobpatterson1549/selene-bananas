@@ -768,7 +768,7 @@ func TestUpdateInfo(t *testing.T) {
 }
 
 func TestUpdateStatus(t *testing.T) {
-	tests := []struct {
+	type updateStatusTest struct {
 		s                        game.Status
 		gameTilesLeft            int
 		wantStatusText           string
@@ -776,7 +776,30 @@ func TestUpdateStatus(t *testing.T) {
 		wantSwapButtonDisabled   bool
 		wantStartButtonDisabled  bool
 		wantFinishButtonDisabled bool
-	}{
+	}
+	checkSetButtonDisabled := func(i int, test updateStatusTest, query string, disabled bool) {
+		switch {
+		case strings.Contains(query, "snag"):
+			if want, got := test.wantSnagButtonDisabled, disabled; want != got {
+				t.Errorf("Test %v: snag button not disabled correctly: wanted %v, got %v", i, want, got)
+			}
+		case strings.Contains(query, "swap"):
+			if want, got := test.wantSwapButtonDisabled, disabled; want != got {
+				t.Errorf("Test %v: swap button not disabled correctly: wanted %v, got %v", i, want, got)
+			}
+		case strings.Contains(query, "start"):
+			if want, got := test.wantStartButtonDisabled, disabled; want != got {
+				t.Errorf("Test %v: start button not disabled correctly: wanted %v, got %v", i, want, got)
+			}
+		case strings.Contains(query, "finish"):
+			if want, got := test.wantFinishButtonDisabled, disabled; want != got {
+				t.Errorf("Test %v: finish button not disabled correctly: wanted %v, got %v", i, want, got)
+			}
+		default:
+			t.Errorf("Test %v: unwanted button disabled (%v): %v", i, disabled, query)
+		}
+	}
+	tests := []updateStatusTest{
 		{
 			s: game.Deleted, // do not set status
 		},
@@ -832,27 +855,7 @@ func TestUpdateStatus(t *testing.T) {
 					statusSet = true
 				},
 				SetButtonDisabledFunc: func(query string, disabled bool) {
-					// NOOP - too lazy to check all values
-					switch {
-					case strings.Contains(query, "snag"):
-						if want, got := test.wantSnagButtonDisabled, disabled; want != got {
-							t.Errorf("Test %v: snag button not disabled correctly: wanted %v, got %v", i, want, got)
-						}
-					case strings.Contains(query, "swap"):
-						if want, got := test.wantSwapButtonDisabled, disabled; want != got {
-							t.Errorf("Test %v: swap button not disabled correctly: wanted %v, got %v", i, want, got)
-						}
-					case strings.Contains(query, "start"):
-						if want, got := test.wantStartButtonDisabled, disabled; want != got {
-							t.Errorf("Test %v: start button not disabled correctly: wanted %v, got %v", i, want, got)
-						}
-					case strings.Contains(query, "finish"):
-						if want, got := test.wantFinishButtonDisabled, disabled; want != got {
-							t.Errorf("Test %v: finish button not disabled correctly: wanted %v, got %v", i, want, got)
-						}
-					default:
-						t.Errorf("Test %v: unwanted button disabled (%v): %v", i, disabled, query)
-					}
+					checkSetButtonDisabled(i, test, query, disabled)
 				},
 			},
 			canvas: &mockCanvas{

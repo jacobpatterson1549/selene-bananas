@@ -387,6 +387,19 @@ func TestSetUsernamesReadOnly(t *testing.T) {
 		return nil
 	})
 	defer setAttribute.Release()
+	usernameInputs := []js.Value{
+		js.ValueOf(map[string]interface{}{
+			"value":           "jermaine",
+			"removeAttribute": removeAttribute,
+			"setAttribute":    setAttribute,
+		}),
+		js.ValueOf(map[string]interface{}{
+			"value":           "murray",
+			"readonly":        "readonly",
+			"removeAttribute": removeAttribute,
+			"setAttribute":    setAttribute,
+		}),
+	}
 	tests := []struct {
 		username                 string
 		wantReadOnly             bool
@@ -412,19 +425,6 @@ func TestSetUsernamesReadOnly(t *testing.T) {
 	}
 	for i, test := range tests {
 		bodyElement := js.ValueOf("__body__")
-		usernameInputs := []js.Value{
-			js.ValueOf(map[string]interface{}{
-				"value":           "jermaine",
-				"removeAttribute": removeAttribute,
-				"setAttribute":    setAttribute,
-			}),
-			js.ValueOf(map[string]interface{}{
-				"value":           "murray",
-				"readonly":        "readonly",
-				"removeAttribute": removeAttribute,
-				"setAttribute":    setAttribute,
-			}),
-		}
 		setAttributeCalls = nil
 		removeAttributeCalls = nil
 		u := User{
