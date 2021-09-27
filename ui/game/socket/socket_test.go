@@ -59,6 +59,11 @@ func TestWebSocketURL(t *testing.T) {
 			Params: make(url.Values, 1),
 		}
 		s := Socket{
+			dom: &mockDOM{
+				EncodeURIComponentFunc: func(str string) string {
+					return str
+				},
+			},
 			user: &mockUser{
 				JWTFunc: func() string {
 					return test.jwt

@@ -63,6 +63,7 @@ type (
 		QuerySelectorAll(document js.Value, query string) []js.Value
 		SetChecked(query string, checked bool)
 		NewWebSocket(url string) js.Value
+		EncodeURIComponent(str string) string
 		NewJsFunc(fn func()) js.Func
 		NewJsEventFunc(fn func(event js.Value)) js.Func
 		AlertOnPanic()
@@ -145,7 +146,7 @@ func (s *Socket) webSocketURL(f ui.Form) string {
 	}
 	jwt := s.user.JWT()
 	f.Params.Add("access_token", jwt)
-	f.URL.RawQuery = f.Params.Encode()
+	f.URL.RawQuery = f.Params.Encode(s.dom)
 	return f.URL.String()
 }
 

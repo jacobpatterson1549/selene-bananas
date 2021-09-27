@@ -6,7 +6,6 @@ package url
 import (
 	"errors"
 	"strings"
-	"syscall/js"
 )
 
 type (
@@ -24,6 +23,11 @@ type (
 
 	// Values is the query params contain options for the url.
 	Values map[string]string
+
+	// URIComponentEncoder encodes strings to be safely used in URIs.
+	URIComponentEncoder interface {
+		EncodeURIComponent(str string) string
+	}
 )
 
 // Parse creates a URL out of the text.
@@ -84,19 +88,11 @@ func (v Values) Add(key, value string) {
 }
 
 // Encode concatenates the values together
-func (v Values) Encode() string {
+func (v Values) Encode(e URIComponentEncoder) string {
 	queries := make([]string, 0, len(v))
 	for key, value := range v {
-		value = encodeURIComponent(value)
+		value = e.EncodeURIComponent(value)
 		queries = append(queries, key+"="+value)
 	}
 	return strings.Join(queries, "&")
-}
-
-// encodeURIComponent escapes special characters for safe use in URIs.
-func encodeURIComponent(str string) string {
-	global := js.Global()
-	fn := global.Get("encodeURIComponent")
-	encodedURIValue := fn.Invoke(str)
-	return encodedURIValue.String()
 }

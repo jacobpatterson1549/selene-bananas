@@ -38,6 +38,7 @@ type mockDOM struct {
 	ConfirmFunc             func(message string) bool
 	NewXHRFunc              func() js.Value
 	StoreCredentialsFunc    func(form js.Value)
+	EncodeURIComponentFunc  func(str string) string
 	RegisterFuncsFunc       func(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func)
 	Base64DecodeFunc        func(a string) []byte
 	NewJsEventFuncFunc      func(fn func(event js.Value)) js.Func
@@ -82,6 +83,10 @@ func (m *mockDOM) Base64Decode(a string) []byte {
 
 func (m *mockDOM) StoreCredentials(form js.Value) {
 	m.StoreCredentialsFunc(form)
+}
+
+func (m mockDOM) EncodeURIComponent(str string) string {
+	return m.EncodeURIComponentFunc(str)
 }
 
 func (m *mockDOM) RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func) {

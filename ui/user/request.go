@@ -58,7 +58,7 @@ func (r request) do() (*http.Response, error) {
 	}
 	// method on form is assumed to be "post":
 	req.URL = f.URL.String()
-	req.Body = f.Params.Encode()
+	req.Body = f.Params.Encode(r.user.dom)
 	req.Headers["Content-Type"] = "application/x-www-form-urlencoded"
 	// auth handling:
 	if r.user.dom.Checked("#has-login") {

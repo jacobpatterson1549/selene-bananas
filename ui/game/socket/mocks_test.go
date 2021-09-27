@@ -54,13 +54,14 @@ func (m mockLobby) SetGameInfos(gameInfos []game.Info, username string) {
 }
 
 type mockDOM struct {
-	QuerySelectorFunc    func(query string) js.Value
-	QuerySelectorAllFunc func(document js.Value, query string) []js.Value
-	SetCheckedFunc       func(query string, checked bool)
-	NewWebSocketFunc     func(url string) js.Value
-	NewJsFuncFunc        func(fn func()) js.Func
-	NewJsEventFuncFunc   func(fn func(event js.Value)) js.Func
-	AlertOnPanicFunc     func()
+	QuerySelectorFunc      func(query string) js.Value
+	QuerySelectorAllFunc   func(document js.Value, query string) []js.Value
+	SetCheckedFunc         func(query string, checked bool)
+	NewWebSocketFunc       func(url string) js.Value
+	EncodeURIComponentFunc func(str string) string
+	NewJsFuncFunc          func(fn func()) js.Func
+	NewJsEventFuncFunc     func(fn func(event js.Value)) js.Func
+	AlertOnPanicFunc       func()
 }
 
 func (m mockDOM) QuerySelector(query string) js.Value {
@@ -77,6 +78,10 @@ func (m *mockDOM) SetChecked(query string, checked bool) {
 
 func (m *mockDOM) NewWebSocket(url string) js.Value {
 	return m.NewWebSocketFunc(url)
+}
+
+func (m mockDOM) EncodeURIComponent(str string) string {
+	return m.EncodeURIComponentFunc(str)
 }
 
 func (m *mockDOM) NewJsFunc(fn func()) js.Func {

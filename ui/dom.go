@@ -131,3 +131,11 @@ func (dom *DOM) StoreCredentials(form js.Value) {
 		credentials.Call("store", c)
 	}
 }
+
+// EncodeURIComponent escapes special characters for safe use in URIs.
+func (dom DOM) EncodeURIComponent(str string) string {
+	global := js.Global()
+	fn := global.Get("encodeURIComponent")
+	encodedURIValue := fn.Invoke(str)
+	return encodedURIValue.String()
+}

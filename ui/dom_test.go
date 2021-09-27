@@ -336,3 +336,21 @@ func TestStoreFormCredentials(t *testing.T) {
 		}
 	})
 }
+
+// TestEncodeURIComponent ensures encodeURIComponent is called.
+// tests copied from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
+func TestEncodeURIComponent(t *testing.T) {
+	encodeEscapeTests := map[string]string{
+		";,/?:@&=+$":  "%3B%2C%2F%3F%3A%40%26%3D%2B%24",
+		"-_.!~*'()":   "-_.!~*'()",
+		"#":           "%23",
+		"ABC abc 123": "ABC%20abc%20123",
+	}
+	for text, want := range encodeEscapeTests {
+		var dom DOM
+		got := dom.EncodeURIComponent(text)
+		if want != got {
+			t.Errorf("did not encode properly\nwanted: %v\ngot:    %v", want, got)
+		}
+	}
+}
