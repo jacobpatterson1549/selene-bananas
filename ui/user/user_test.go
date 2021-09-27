@@ -21,6 +21,7 @@ func TestInitDom(t *testing.T) {
 		"request",
 		"updateConfirmPattern",
 	}
+	functionsRegistered := false
 	u := User{
 		dom: &mockDOM{
 			RegisterFuncsFunc: func(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func) {
@@ -37,7 +38,7 @@ func TestInitDom(t *testing.T) {
 				default:
 					t.Errorf("wanted %v jsFuncs, got %v", len(wantJsFuncNames), len(jsFuncs))
 				}
-				wg.Done()
+				functionsRegistered = true
 			},
 			NewJsEventFuncFunc: func(fn func(event js.Value)) js.Func {
 				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
@@ -51,7 +52,9 @@ func TestInitDom(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	u.InitDom(ctx, &wg)
-	wg.Wait()
+	if !functionsRegistered {
+		t.Error("wanted functions to be registered when dom is initialized")
+	}
 }
 
 func TestGetUser(t *testing.T) {

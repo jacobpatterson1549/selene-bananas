@@ -51,6 +51,7 @@ func TestInitDom(t *testing.T) {
 		"refreshTileLength",
 		"viewFinalBoard",
 	}
+	functionsRegistered := false
 	g := Game{
 		dom: &mockDOM{
 			RegisterFuncsFunc: func(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func) {
@@ -67,7 +68,7 @@ func TestInitDom(t *testing.T) {
 				default:
 					t.Errorf("wanted %v jsFuncs, got %v", len(wantJsFuncNames), len(jsFuncs))
 				}
-				wg.Done()
+				functionsRegistered = true
 			},
 			NewJsFuncFunc: func(fn func()) js.Func {
 				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
@@ -79,9 +80,10 @@ func TestInitDom(t *testing.T) {
 	}
 	ctx := context.Background()
 	var wg sync.WaitGroup
-	wg.Add(1)
 	g.InitDom(ctx, &wg)
-	wg.Wait()
+	if !functionsRegistered {
+		t.Error("wanted functions to be registered when dom is initialized")
+	}
 }
 
 func TestStartCreate(t *testing.T) {

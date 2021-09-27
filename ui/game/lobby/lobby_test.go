@@ -35,6 +35,7 @@ func TestInitDom(t *testing.T) {
 		"connect",
 		"leave",
 	}
+	functionsRegistered := false
 	u := Lobby{
 		dom: &mockDOM{
 			RegisterFuncsFunc: func(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func) {
@@ -51,7 +52,7 @@ func TestInitDom(t *testing.T) {
 				default:
 					t.Errorf("wanted %v jsFuncs, got %v", len(wantJsFuncNames), len(jsFuncs))
 				}
-				wg.Done()
+				functionsRegistered = true
 			},
 			NewJsFuncFunc: func(fn func()) js.Func {
 				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
@@ -63,9 +64,10 @@ func TestInitDom(t *testing.T) {
 	}
 	ctx := context.Background()
 	var wg sync.WaitGroup
-	wg.Add(1)
 	u.InitDom(ctx, &wg)
-	wg.Wait()
+	if !functionsRegistered {
+		t.Error("wanted functions to be registered when dom is initialized")
+	}
 }
 
 func TestConnect(t *testing.T) {
