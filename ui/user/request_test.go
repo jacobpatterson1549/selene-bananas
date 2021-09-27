@@ -26,6 +26,13 @@ func TestRequest(t *testing.T) {
 		loggedIn          bool
 		loggedOut         bool
 	}
+	const (
+		exampleUserCreateURL = "http://example.com/user_create"
+		exampleUserUpdatePasswordURL = "http://example.com/user_update_password"
+		exampleUserDeleteURL = "http://example.com/user_delete"
+		exampleUserLoginURL = "http://example.com/user_login"
+		examplePingURL = "http://example.com/ping"
+	)
 	tests := []struct {
 		event           js.Value
 		hasJWT          bool
@@ -47,7 +54,7 @@ func TestRequest(t *testing.T) {
 			},
 		},
 		{
-			event: event("http://example.com/ping"),
+			event: event(examplePingURL),
 			httpResponse: http.Response{
 				Code: 401,
 			},
@@ -56,7 +63,7 @@ func TestRequest(t *testing.T) {
 			},
 		},
 		{
-			event: event("http://example.com/ping"),
+			event: event(examplePingURL),
 			httpResponse: http.Response{
 				Code: 403,
 			},
@@ -66,7 +73,7 @@ func TestRequest(t *testing.T) {
 			},
 		},
 		{
-			event:           event("http://example.com/ping"),
+			event:           event(examplePingURL),
 			httpResponseErr: errors.New("httpResponseErr"),
 			want: requestResult{
 				errorLogged: true,
@@ -74,31 +81,31 @@ func TestRequest(t *testing.T) {
 		},
 		// normal cases:
 		{
-			event: event("http://example.com/user_create"),
+			event: event(exampleUserCreateURL),
 			want: requestResult{
 				credentialsStored: true,
 				loggedOut:         true,
 			},
 		},
 		{
-			event: event("http://example.com/user_update_password"),
+			event: event(exampleUserUpdatePasswordURL),
 			want: requestResult{
 				credentialsStored: true,
 				loggedOut:         true,
 			},
 		},
 		{
-			event: event("http://example.com/user_delete"),
+			event: event(exampleUserDeleteURL),
 		},
 		{
-			event:     event("http://example.com/user_delete"),
+			event:     event(exampleUserDeleteURL),
 			confirmOk: true,
 			want: requestResult{
 				loggedOut: true,
 			},
 		},
 		{
-			event:     event("http://example.com/user_delete"),
+			event:     event(exampleUserDeleteURL),
 			hasJWT:    true,
 			confirmOk: true,
 			want: requestResult{
@@ -106,7 +113,7 @@ func TestRequest(t *testing.T) {
 			},
 		},
 		{
-			event: event("http://example.com/user_login"),
+			event: event(exampleUserLoginURL),
 			httpResponse: http.Response{
 				Body: ".login_payload.",
 			},
@@ -116,7 +123,7 @@ func TestRequest(t *testing.T) {
 			},
 		},
 		{
-			event: event("http://example.com/ping"),
+			event: event(examplePingURL),
 		},
 	}
 	createMockLog := func(result *requestResult) *mockLog {
@@ -139,14 +146,14 @@ func TestRequest(t *testing.T) {
 			},
 			ValueFunc: func(query string) string {
 				if want, got := ".jwt", query; want != got {
-					t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+					t.Errorf("Test %v: queries not equal: wanted %v, got %v", i, want, got)
 				}
 				return "browser.jwt.token"
 			},
 			SetValueFunc: func(query, value string) {
 				if query == ".jwt" {
 					if want, got := ".login_payload.", value; want != got {
-						t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+						t.Errorf("Test %v: values set not equal: wanted %v, got %v", i, want, got)
 					}
 					result.loggedIn = true
 				}
@@ -165,7 +172,7 @@ func TestRequest(t *testing.T) {
 			},
 			Base64DecodeFunc: func(a string) []byte {
 				if want, got := "login_payload", a; want != got {
-					t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+					t.Errorf("Test %v: encoded strings not equal: wanted %v, got %v", i, want, got)
 				}
 				return []byte(`{}`)
 			},
@@ -185,7 +192,7 @@ func TestRequest(t *testing.T) {
 		return &mockHTTPRequester{
 			DoFunc: func(dom http.DOM, req http.Request) (*http.Response, error) {
 				if want, got := "post", req.Method; want != got {
-					t.Errorf("test %v: wanted %v, got %v", i, want, got)
+					t.Errorf("Test %v: methods not equal: wanted %v, got %v", i, want, got)
 				}
 				if testHasJWT {
 					if _, ok := req.Headers["Authorization"]; !ok {

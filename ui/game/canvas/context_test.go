@@ -15,7 +15,7 @@ func TestContextSetFont(t *testing.T) {
 	j.SetFont(want)
 	got := ctx.Get("font").String()
 	if want != got {
-		t.Errorf("unexpected value: wanted %v, got %v", want, got)
+		t.Errorf("unexpected set font value: wanted %v, got %v", want, got)
 	}
 }
 
@@ -26,7 +26,7 @@ func TestContextSetLineWidth(t *testing.T) {
 	j.SetLineWidth(want)
 	got := ctx.Get("lineWidth").Float()
 	if want != got {
-		t.Errorf("unexpected value: wanted %v, got %v", want, got)
+		t.Errorf("unexpected set line width value: wanted %v, got %v", want, got)
 	}
 }
 
@@ -37,7 +37,7 @@ func TestContextSetFillColor(t *testing.T) {
 	j.SetFillColor(want)
 	got := ctx.Get("fillStyle").String()
 	if want != got {
-		t.Errorf("unexpected value: wanted %v, got %v", want, got)
+		t.Errorf("unexpected set fill color value: wanted %v, got %v", want, got)
 	}
 }
 
@@ -48,7 +48,7 @@ func TestContextStrokeColor(t *testing.T) {
 	j.SetStrokeColor(want)
 	got := ctx.Get("strokeStyle").String()
 	if want != got {
-		t.Errorf("unexpected value: wanted %v, got %v", want, got)
+		t.Errorf("unexpected stroke color value: wanted %v, got %v", want, got)
 	}
 }
 
@@ -61,7 +61,7 @@ func TestContextFillText(t *testing.T) {
 	}
 	f := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if got := args; !reflect.DeepEqual(want, got) {
-			t.Errorf("unexpected value: wanted %v, got %v", want, got)
+			t.Errorf("unexpected fill text args: wanted %v, got %v", want, got)
 		}
 		funcCalled = true
 		return nil
@@ -72,7 +72,7 @@ func TestContextFillText(t *testing.T) {
 	j := jsContext{&ctx}
 	j.FillText("Hello, World!", 5, 10)
 	if !funcCalled {
-		t.Error("func not called")
+		t.Error("fillText not called")
 	}
 	f.Release()
 }
@@ -87,7 +87,7 @@ func TestContextClearRect(t *testing.T) {
 	}
 	f := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if got := args; !reflect.DeepEqual(want, got) {
-			t.Errorf("unexpected value: wanted %v, got %v", want, got)
+			t.Errorf("unexpected clear rect args: wanted %v, got %v", want, got)
 		}
 		funcCalled = true
 		return nil
@@ -98,7 +98,7 @@ func TestContextClearRect(t *testing.T) {
 	j := jsContext{&ctx}
 	j.ClearRect(1, 2, 3, 4)
 	if !funcCalled {
-		t.Error("func not called")
+		t.Error("clearRect not called")
 	}
 	f.Release()
 }
@@ -113,7 +113,7 @@ func TestContextFillRect(t *testing.T) {
 	}
 	f := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if got := args; !reflect.DeepEqual(want, got) {
-			t.Errorf("unexpected value: wanted %v, got %v", want, got)
+			t.Errorf("unexpected fill rect args: wanted %v, got %v", want, got)
 		}
 		funcCalled = true
 		return nil
@@ -124,7 +124,7 @@ func TestContextFillRect(t *testing.T) {
 	j := jsContext{&ctx}
 	j.FillRect(5, 6, 7, 8)
 	if !funcCalled {
-		t.Error("func not called")
+		t.Error("fillRect not called")
 	}
 	f.Release()
 }
@@ -139,7 +139,7 @@ func TestContextStrokeRect(t *testing.T) {
 	}
 	f := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		if got := args; !reflect.DeepEqual(want, got) {
-			t.Errorf("unexpected value: wanted %v, got %v", want, got)
+			t.Errorf("unexpected stroke rect args: wanted %v, got %v", want, got)
 		}
 		funcCalled = true
 		return nil
@@ -150,7 +150,7 @@ func TestContextStrokeRect(t *testing.T) {
 	j := jsContext{&ctx}
 	j.StrokeRect(9, 10, 11, 12)
 	if !funcCalled {
-		t.Error("func not called")
+		t.Error("strokeRect not called")
 	}
 	f.Release()
 }

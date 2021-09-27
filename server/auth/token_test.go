@@ -86,7 +86,7 @@ func TestReadUsername(t *testing.T) {
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case test.want != got:
-			t.Errorf("Test %v: wanted %v, got %v", i, test.want, got)
+			t.Errorf("Test %v: read usernames not equal: wanted %v, got %v", i, test.want, got)
 		}
 	}
 }
@@ -166,7 +166,7 @@ func TestCreateReadWithTime(t *testing.T) {
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case want != got:
-			t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+			t.Errorf("Test %v: read usernames not equal: wanted %v, got %v", i, want, got)
 		}
 	}
 }

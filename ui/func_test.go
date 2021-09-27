@@ -59,7 +59,7 @@ func TestNewJsFunc(t *testing.T) {
 	defer jsFunc.Release()
 	jsFunc.Invoke()
 	if !invoked {
-		t.Error("wanted function to be invoked")
+		t.Error("wanted plain js function to be invoked")
 	}
 }
 
@@ -83,7 +83,7 @@ func TestNewJsEventFunc(t *testing.T) {
 		t.Error("wanted preventDefault to be called")
 	}
 	if !invoked {
-		t.Error("wanted function to be invoked")
+		t.Error("wanted event js function to be invoked")
 	}
 }
 
@@ -107,7 +107,7 @@ func TestNewJsEventFuncAsync(t *testing.T) {
 		t.Error("wanted preventDefault to be called")
 	}
 	if !invoked {
-		t.Error("wanted function to be invoked")
+		t.Error("wanted async event js function to be invoked")
 	}
 }
 

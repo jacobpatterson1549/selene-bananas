@@ -332,7 +332,7 @@ func TestUsername(t *testing.T) {
 		}
 		got := u.Username()
 		if test.want != got {
-			t.Errorf("Test %v: wanted %v, got %v", i, test.want, got)
+			t.Errorf("Test %v: usernames not equal: wanted %v, got %v", i, test.want, got)
 		}
 	}
 }
@@ -431,13 +431,13 @@ func TestSetUsernamesReadOnly(t *testing.T) {
 			dom: &mockDOM{
 				QuerySelectorFunc: func(query string) js.Value {
 					if want, got := "body", query; want != got {
-						t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+						t.Errorf("Test %v: queries not equal: wanted %v, got %v", i, want, got)
 					}
 					return bodyElement
 				},
 				QuerySelectorAllFunc: func(document js.Value, query string) []js.Value {
 					if want, got := bodyElement, document; !want.Equal(got) {
-						t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+						t.Errorf("Test %v: queryAll documents not equal: wanted %v, got %v", i, want, got)
 					}
 					return usernameInputs
 				},

@@ -92,7 +92,7 @@ func TestStartCreate(t *testing.T) {
 		dom: &mockDOM{
 			SetCheckedFunc: func(query string, checked bool) {
 				if want, got := !strings.Contains(query, "hide"), checked; want != got {
-					t.Errorf("wanted setChecked(%v) to be called with %v, got %v", query, want, got)
+					t.Errorf("wanted setChecked(%v) to be called with %v for start-create, got %v", query, want, got)
 				}
 				n++
 			},
@@ -150,7 +150,7 @@ func TestCreateWithConfig(t *testing.T) {
 				},
 				UpdateSizeFunc: func(width int) {
 					if want, got := 120, width; want != got {
-						t.Errorf("Test %v: widths not equal: wanted %v, got %v", i, want, got)
+						t.Errorf("Test %v: create-with-config canvas widths not equal: wanted %v, got %v", i, want, got)
 					}
 				},
 				NumColsFunc: func() int {
@@ -207,7 +207,7 @@ func TestJoin(t *testing.T) {
 				},
 				UpdateSizeFunc: func(width int) {
 					if want, got := 120, width; want != got {
-						t.Errorf("Test %v: widths not equal: wanted %v, got %v", i, want, got)
+						t.Errorf("Test %v: join canvas widths not equal: wanted %v, got %v", i, want, got)
 					}
 				},
 				NumColsFunc: func() int {
@@ -220,7 +220,7 @@ func TestJoin(t *testing.T) {
 			Socket: &mockSocket{
 				SendFunc: func(m message.Message) {
 					if want, got := message.JoinGame, m.Type; want != got {
-						t.Errorf("Test %v: message types not equal: wanted %v, got %v", i, want, got)
+						t.Errorf("Test %v: join message types not equal: wanted %v, got %v", i, want, got)
 					}
 					messageSent = true
 				},
@@ -254,7 +254,7 @@ func TestHide(t *testing.T) {
 			dom: &mockDOM{
 				SetCheckedFunc: func(query string, checked bool) {
 					if want, got := want, checked; want != got {
-						t.Errorf("Test %v: wanted setChecked to be called with %v, got %v", i, want, got)
+						t.Errorf("Test %v: wanted setChecked to be called with %v for hide, got %v", i, want, got)
 					}
 					setCheckedCalled = true
 				},
@@ -287,14 +287,14 @@ func TestSendLeave(t *testing.T) {
 			},
 			SetCheckedFunc: func(query string, checked bool) {
 				if want, got := true, checked; want != got {
-					t.Errorf("wanted setChecked(%v) to be called with %v, got %v", query, want, got)
+					t.Errorf("wanted setChecked(%v) to be called with %v for send-leave, got %v", query, want, got)
 				}
 			},
 		},
 		Socket: &mockSocket{
 			SendFunc: func(m message.Message) {
 				if want, got := message.LeaveGame, m.Type; want != got {
-					t.Errorf("not equal: wanted %v, got %v", want, got)
+					t.Errorf("leave message types not equal: wanted %v, got %v", want, got)
 				}
 				messageSent = true
 			},
@@ -302,7 +302,7 @@ func TestSendLeave(t *testing.T) {
 	}
 	g.sendLeave()
 	if !messageSent {
-		t.Error("wanted message to be sent")
+		t.Error("wanted leave message to be sent")
 	}
 }
 
@@ -316,7 +316,7 @@ func TestLeave(t *testing.T) {
 			},
 			SetCheckedFunc: func(query string, checked bool) {
 				if want, got := true, checked; want != got {
-					t.Errorf("wanted setChecked(%v) to be called with %v, got %v", query, want, got)
+					t.Errorf("wanted setChecked(%v) to be called with %v for leave, got %v", query, want, got)
 				}
 				setCheckedCallCount++
 			},
@@ -346,7 +346,7 @@ func TestDelete(t *testing.T) {
 			Socket: &mockSocket{
 				SendFunc: func(m message.Message) {
 					if want, got := message.DeleteGame, m.Type; want != got {
-						t.Errorf("not equal: wanted %v, got %v", want, got)
+						t.Errorf("delete message types not equal: wanted %v, got %v", want, got)
 					}
 					messageSent = true
 				},
@@ -357,7 +357,7 @@ func TestDelete(t *testing.T) {
 			t.Errorf("Test %v: wanted confirm to be called", i)
 		}
 		if want, got := want, messageSent; want != got {
-			t.Errorf("Test %v: wanted message to be sent: %v, got %v", i, want, got)
+			t.Errorf("Test %v: wanted delete message to be sent: %v, got %v", i, want, got)
 		}
 	}
 }
@@ -368,10 +368,10 @@ func TestStart(t *testing.T) {
 		Socket: &mockSocket{
 			SendFunc: func(m message.Message) {
 				if want, got := message.ChangeGameStatus, m.Type; want != got {
-					t.Errorf("not equal: wanted %v, got %v", want, got)
+					t.Errorf("change game status message types not equal: wanted %v, got %v", want, got)
 				}
 				if want, got := game.InProgress, m.Game.Status; want != got {
-					t.Errorf("not equal: wanted %v, got %v", want, got)
+					t.Errorf("game start statuses not equal: wanted %v, got %v", want, got)
 				}
 				messageSent = true
 			},
@@ -379,7 +379,7 @@ func TestStart(t *testing.T) {
 	}
 	g.Start()
 	if !messageSent {
-		t.Error("wanted message to be sent")
+		t.Error("wanted start message to be sent")
 	}
 }
 
@@ -389,10 +389,10 @@ func TestFinish(t *testing.T) {
 		Socket: &mockSocket{
 			SendFunc: func(m message.Message) {
 				if want, got := message.ChangeGameStatus, m.Type; want != got {
-					t.Errorf("not equal: wanted %v, got %v", want, got)
+					t.Errorf("change game status message types not equal: wanted %v, got %v", want, got)
 				}
 				if want, got := game.Finished, m.Game.Status; want != got {
-					t.Errorf("not equal: wanted %v, got %v", want, got)
+					t.Errorf("game finish statuses not equal: wanted %v, got %v", want, got)
 				}
 				messageSent = true
 			},
@@ -400,7 +400,7 @@ func TestFinish(t *testing.T) {
 	}
 	g.finish()
 	if !messageSent {
-		t.Error("wanted message to be sent")
+		t.Error("wanted finish message to be sent")
 	}
 }
 
@@ -410,7 +410,7 @@ func TestSnagTile(t *testing.T) {
 		Socket: &mockSocket{
 			SendFunc: func(m message.Message) {
 				if want, got := message.SnagGameTile, m.Type; want != got {
-					t.Errorf("not equal: wanted %v, got %v", want, got)
+					t.Errorf("snag-tile message types not equal: wanted %v, got %v", want, got)
 				}
 				messageSent = true
 			},
@@ -418,7 +418,7 @@ func TestSnagTile(t *testing.T) {
 	}
 	g.snagTile()
 	if !messageSent {
-		t.Error("wanted message to be sent")
+		t.Error("wanted snag-tile message to be sent")
 	}
 }
 
@@ -972,7 +972,7 @@ func TestUpdatePlayers(t *testing.T) {
 			dom: &mockDOM{
 				SetValueFunc: func(query, value string) {
 					if want, got := test.want, value; want != got {
-						t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+						t.Errorf("Test %v: set query values not equal:  wanted %v, got %v", i, want, got)
 					}
 					setValueCalled = true
 				},
@@ -1072,7 +1072,7 @@ func TestResizeTiles(t *testing.T) {
 			Socket: &mockSocket{
 				SendFunc: func(m message.Message) {
 					if want, got := message.RefreshGameBoard, m.Type; want != got {
-						t.Errorf("Test %v: message types not equal: wanted %v, got %v", i, want, got)
+						t.Errorf("Test %v: refresh board message types not equal: wanted %v, got %v", i, want, got)
 					}
 					messageSent = true
 				},
@@ -1128,7 +1128,7 @@ func TestSetTabActive(t *testing.T) {
 				},
 				UpdateSizeFunc: func(width int) {
 					if want, got := test.canvasLength, width; want != got {
-						t.Errorf("Test %v: widths not equal: wanted %v, got %v", i, want, got)
+						t.Errorf("Test %v: set-tab-active canvas widths not equal: wanted %v, got %v", i, want, got)
 					}
 				},
 				NumRowsFunc: func() int { return test.canvasLength },
@@ -1136,15 +1136,15 @@ func TestSetTabActive(t *testing.T) {
 			},
 			Socket: &mockSocket{
 				SendFunc: func(m message.Message) {
-					if want, got := message.ChangeGameStatus, m.Type; want != got {
-						t.Errorf("Test %v: message types not equal: wanted %v, got %v", i, want, got)
+					if want, got := message.Type(-1), m.Type; want != got {
+						t.Errorf("Test %v: tab activation message types not equal: wanted %v, got %v", i, want, got)
 					}
 					messageSent = true
 				},
 			},
 		}
 		m := message.Message{
-			Type: message.ChangeGameStatus, // for test fun
+			Type: -1, // ensures the type is not alered, that it is passed through
 		}
 		g.setTabActive(m)
 		if want, got := test.wantErr, errorLogged; want != got {
@@ -1250,7 +1250,7 @@ func TestSetBoardSize(t *testing.T) {
 			t.Errorf("Test %v: wanted board to be reset with number of unused tiles = %v, got %v", i, want, got)
 		}
 		if !messageSent {
-			t.Error("wanted message to be sent")
+			t.Error("wanted set-board-size message to be sent")
 		}
 	}
 }

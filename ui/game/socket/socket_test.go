@@ -224,7 +224,7 @@ func TestSend(t *testing.T) {
 	})
 }
 
-func TestOnMessage_setGameInfos(t *testing.T) {
+func TestOnMessageWithSetGameInfos(t *testing.T) {
 	mt := strconv.Itoa(int(message.GameInfos))
 	eventM := map[string]interface{}{
 		"data": `{"type":` + mt + `,"games":[{"id":8}]}`,
@@ -254,7 +254,7 @@ func TestOnMessage_setGameInfos(t *testing.T) {
 		t.Errorf("wanted game infos set")
 	}
 }
-func TestOnMessage_badJSON(t *testing.T) {
+func TestOnMessageWithBadJSON(t *testing.T) {
 	event := js.ValueOf(map[string]interface{}{
 		"data": `{bad json}`,
 	})
@@ -271,7 +271,7 @@ func TestOnMessage_badJSON(t *testing.T) {
 		t.Error("wanted error to be logged")
 	}
 }
-func TestOnMessage_logging(t *testing.T) {
+func TestOnMessageWithLogging(t *testing.T) {
 	tests := []struct {
 		messageType message.Type
 		want        int
@@ -317,7 +317,7 @@ func TestOnMessage_logging(t *testing.T) {
 		}
 	}
 }
-func TestOnMessage_handlers(t *testing.T) {
+func TestOnMessageWithHandlers(t *testing.T) {
 	tests := []struct {
 		messageType     message.Type
 		wantActionType  int

@@ -288,7 +288,7 @@ func TestCanBeFinished(t *testing.T) {
 		}
 		got := b.CanBeFinished()
 		if test.want != got {
-			t.Errorf("Test %v: wanted: %v, got: %v", i, test.want, got)
+			t.Errorf("Test %v boardCanBeFinished not equal: wanted: %v, got: %v", i, test.want, got)
 		}
 	}
 }

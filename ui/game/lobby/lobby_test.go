@@ -116,7 +116,7 @@ func TestLeave(t *testing.T) {
 	socketClosed := false
 	gameLeft := false
 	gameInfosTbodyElement := js.ValueOf(map[string]interface{}{
-		"innerHTML": "existing game infos",
+		"innerHTML": "existing game infos 1",
 	})
 	socket := mockSocket{
 		closeFunc: func() {
@@ -162,7 +162,7 @@ func TestSetGameInfos(t *testing.T) {
 			return nil
 		})
 		gameInfosTbodyElement := js.ValueOf(map[string]interface{}{
-			"innerHTML":   "existing game infos",
+			"innerHTML":   "existing game infos 2",
 			"appendChild": appendChild,
 		})
 		dom := mockDOM{
@@ -224,7 +224,7 @@ func TestSetGameInfos(t *testing.T) {
 			return nil
 		})
 		gameInfosTbodyElement := js.ValueOf(map[string]interface{}{
-			"innerHTML":   "existing game infos",
+			"innerHTML":   "existing game infos 3",
 			"appendChild": appendChild,
 		})
 		dom := mockDOM{

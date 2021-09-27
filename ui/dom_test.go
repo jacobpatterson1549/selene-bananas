@@ -59,7 +59,7 @@ func TestChecked(t *testing.T) {
 		got := dom.Checked(wantQuery)
 		querySelector.Release()
 		if want != got {
-			t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+			t.Errorf("Test %v: checked values not equal: wanted %v, got %v", i, want, got)
 		}
 	}
 }
@@ -90,7 +90,7 @@ func TestSetChecked(t *testing.T) {
 		dom.SetChecked(wantQuery, test.checked)
 		querySelector.Release()
 		if want, got := test.wantValue.Get("checked").Bool(), gotValue.Get("checked").Bool(); want != got {
-			t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+			t.Errorf("Test %v: checked state not set correctly: wanted %v, got %v", i, want, got)
 		}
 	}
 }
@@ -137,7 +137,7 @@ func TestSetButtonDisabled(t *testing.T) {
 		querySelector.Release()
 		got := value.Get("disabled").Bool()
 		if want != got {
-			t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+			t.Errorf("Test %v: button disabled values not equal: wanted %v, got %v", i, want, got)
 		}
 	}
 }
@@ -195,7 +195,7 @@ func TestConfirm(t *testing.T) {
 		got := dom.Confirm(message)
 		confirmFn.Release()
 		if want != got {
-			t.Errorf("Test %v: wanted %v, got %v", i, want, got)
+			t.Errorf("Test %v: dom.confirm results not equal: wanted %v, got %v", i, want, got)
 		}
 	}
 }

@@ -234,6 +234,15 @@ func TestNewServer(t *testing.T) {
 
 func TestFileHandler(t *testing.T) {
 	cacheMaxAge := "max-age=???"
+	const (
+		textHTML = "text/html; charset=utf-8"
+		// header constants are duplicated here
+		headerCacheControl            = "Cache-Control"
+		headerAcceptEncoding          = "Accept-Encoding"
+		headerStrictTransportSecurity = "Strict-Transport-Security"
+		headerContentEncoding         = "Content-Encoding"
+		headerContentType             = "Content-Type"
+	)
 	handleFileHeadersTests := []struct {
 		path          string
 		wantHeader    http.Header
@@ -242,30 +251,30 @@ func TestFileHandler(t *testing.T) {
 		{
 			path: "/index.html",
 			wantHeader: http.Header{
-				"Cache-Control":             {"no-store"},
-				"Strict-Transport-Security": {cacheMaxAge},
-				"Content-Type":              {"text/html; charset=utf-8"},
+				headerCacheControl:            {"no-store"},
+				headerStrictTransportSecurity: {cacheMaxAge},
+				headerContentType:             {textHTML},
 			},
 		},
 		{
 			path: "/index.html",
 			requestHeader: http.Header{
-				"Accept-Encoding": {"gzip"},
-				"Content-Type":    {"text/html; charset=utf-8"},
+				headerAcceptEncoding: {"gzip"},
+				headerContentType:    {textHTML},
 			},
 			wantHeader: http.Header{
-				"Cache-Control":             {"no-store"},
-				"Strict-Transport-Security": {cacheMaxAge},
-				"Content-Encoding":          {"gzip"},
-				"Content-Type":              {"text/html; charset=utf-8"},
+				headerCacheControl:            {"no-store"},
+				headerStrictTransportSecurity: {cacheMaxAge},
+				headerContentEncoding:         {"gzip"},
+				headerContentType:             {textHTML},
 			},
 		},
 		{
 			path: "/file.html",
 			wantHeader: http.Header{
-				"Cache-Control":             {cacheMaxAge},
-				"Strict-Transport-Security": {cacheMaxAge},
-				"Content-Type":              {"text/html; charset=utf-8"},
+				headerCacheControl:            {cacheMaxAge},
+				headerStrictTransportSecurity: {cacheMaxAge},
+				headerContentType:             {textHTML},
 			},
 		},
 	}
@@ -532,6 +541,7 @@ func TestHasSecHeader(t *testing.T) {
 
 func TestAddMimeType(t *testing.T) {
 	// the commented-out lines have MIME types that vary by system
+	const textHTML = "text/html; charset=utf-8"
 	addMimeTypeTests := map[string]string{
 		// "LICENSE":       "text/plain; charset=utf-8",
 		// "favicon.ico":   "image/vnd.microsoft.icon",
@@ -540,8 +550,8 @@ func TestAddMimeType(t *testing.T) {
 		"manifest.json": "application/json",
 		"main.wasm":     "application/wasm",
 		"init.js":       "text/javascript; charset=utf-8",
-		"any.html":      "text/html; charset=utf-8",
-		"/index.html":   "text/html; charset=utf-8",
+		"any.html":      textHTML,
+		"/index.html":   textHTML,
 	}
 	for fileName, want := range addMimeTypeTests {
 		w := httptest.NewRecorder()
