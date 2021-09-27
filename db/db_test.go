@@ -55,10 +55,10 @@ func TestNewDatabase(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error creating new database", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error creating new database: %v", i, err)
 		case sqlDB == nil:
 			t.Errorf("Test %v: wanted database to be set", i)
 		}
@@ -68,7 +68,7 @@ func TestNewDatabase(t *testing.T) {
 func TestDatabaseSetup(t *testing.T) {
 	sqlDB, err := sql.Open(testDriverName, testDatabaseURL)
 	if err != nil {
-		t.Fatalf("unwanted error: %v", err)
+		t.Fatalf("unwanted error opening db to setup: %v", err)
 	}
 	setupTests := []struct {
 		cancelled bool
@@ -155,10 +155,10 @@ func TestDatabaseSetup(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error setting up database", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error setting up database: %v", i, err)
 		}
 		cancelFunc()
 	}
@@ -167,7 +167,7 @@ func TestDatabaseSetup(t *testing.T) {
 func TestDatabaseQuery(t *testing.T) {
 	sqlDB, err := sql.Open(testDriverName, testDatabaseURL)
 	if err != nil {
-		t.Fatalf("unwanted error: %v", err)
+		t.Fatalf("unwanted error opening database for query: %v", err)
 	}
 	queryTests := []struct {
 		cancelled bool
@@ -238,10 +238,10 @@ func TestDatabaseQuery(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error quering database", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error quering database: %v", i, err)
 		case want != got:
 			t.Errorf("Test %v: value not set correctly, wanted %v, got %v", i, want, got)
 		}
@@ -252,7 +252,7 @@ func TestDatabaseQuery(t *testing.T) {
 func TestDatabaseExec(t *testing.T) {
 	sqlDB, err := sql.Open(testDriverName, testDatabaseURL)
 	if err != nil {
-		t.Fatalf("unwanted error: %v", err)
+		t.Fatalf("unwanted error opening database for exec: %v", err)
 	}
 	execTests := []struct {
 		cancelled       bool
@@ -364,10 +364,10 @@ func TestDatabaseExec(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
+				t.Errorf("Test %v: unwanted error executing query: %v", i, err)
 			}
 		case err != nil:
-			t.Errorf("Test %v: wanted error", i)
+			t.Errorf("Test %v: wanted error executing query", i)
 		}
 		cancelFunc()
 	}

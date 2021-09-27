@@ -57,10 +57,10 @@ func TestUserCreateHandler(t *testing.T) {
 		gotCode := w.Code
 		switch {
 		case test.wantCode != gotCode:
-			t.Errorf("Test %v: response codes not equal: wanted: %v, got: %v", i, test.wantCode, gotCode)
+			t.Errorf("Test %v: response codes not equal after user create: wanted: %v, got: %v", i, test.wantCode, gotCode)
 		case w.Body.Len() == 0:
 			if gotCode != 200 {
-				t.Errorf("Test %v: response body should not be empty", i)
+				t.Errorf("Test %v: response body should not be empty after user create", i)
 			}
 		}
 	}
@@ -148,7 +148,7 @@ func TestUserLoginHandler(t *testing.T) {
 		gotLog := !log.Empty()
 		switch {
 		case test.wantCode != gotCode:
-			t.Errorf("Test %v: response codes not equal: wanted: %v, got: %v", i, test.wantCode, gotCode)
+			t.Errorf("Test %v: response codes not equal after user login: wanted: %v, got: %v", i, test.wantCode, gotCode)
 		case test.wantLog != gotLog:
 			t.Errorf("Test %v: wanted or did not want log states not equal: wanted %v, got: %v - '%v'", i, test.wantLog, gotLog, log.String())
 		}
@@ -207,10 +207,10 @@ func TestUserLobbyConnectHandler(t *testing.T) {
 		gotCode := w.Code
 		switch {
 		case test.wantCode != gotCode:
-			t.Errorf("Test %v: response codes not equal: wanted: %v, got: %v", i, test.wantCode, gotCode)
+			t.Errorf("Test %v: response codes not equal after user lobby connect: wanted: %v, got: %v", i, test.wantCode, gotCode)
 		case w.Body.Len() == 0:
 			if gotCode != 200 { // connecting to the lobby will normally keep the connection open until the user leaves the lobby
-				t.Errorf("Test %v: response body should not be empty", i)
+				t.Errorf("Test %v: response body should not be empty after user lobby connect", i)
 			}
 		}
 	}
@@ -231,22 +231,22 @@ func TestUserUpdatePasswordHandler(t *testing.T) {
 		},
 		{
 			username:     "selene",
-			password:     "TOP_s3cret!",
-			newPassword:  "MoR&_sCr3T",
+			password:     "TOP_s3cret!1",
+			newPassword:  "MoR&_sCr3T1",
 			daoUpdateErr: user.ErrIncorrectLogin,
 			wantCode:     401,
 		},
 		{
 			username:     "selene",
-			password:     "TOP_s3cret!",
-			newPassword:  "MoR&_sCr3T",
+			password:     "TOP_s3cret!2",
+			newPassword:  "MoR&_sCr3T2",
 			daoUpdateErr: fmt.Errorf("error updating user password"),
 			wantCode:     500,
 		},
 		{
 			username:        "selene",
-			password:        "TOP_s3cret!",
-			newPassword:     "MoR&_sCr3T",
+			password:        "TOP_s3cret!3",
+			newPassword:     "MoR&_sCr3T3",
 			wantCode:        200,
 			wantLobbyRemove: true,
 		},
@@ -284,10 +284,10 @@ func TestUserUpdatePasswordHandler(t *testing.T) {
 		gotCode := w.Code
 		switch {
 		case test.wantCode != gotCode:
-			t.Errorf("Test %v: response codes not equal: wanted: %v, got: %v", i, test.wantCode, gotCode)
+			t.Errorf("Test %v: response codes not equal after user password update: wanted: %v, got: %v", i, test.wantCode, gotCode)
 		case w.Body.Len() == 0:
 			if gotCode != 200 {
-				t.Errorf("Test %v: response body should not be empty", i)
+				t.Errorf("Test %v: response body should not be empty after user password update", i)
 			}
 		case test.wantLobbyRemove != gotLobbyRemove:
 			t.Errorf("Test %v: wanted lobby.RemoveUser to be called %v, got %v", i, test.wantLobbyRemove, gotLobbyRemove)
@@ -309,19 +309,19 @@ func TestUserDeleteHandler(t *testing.T) {
 		},
 		{
 			username:     "selene",
-			password:     "TOP_s3cret!",
+			password:     "TOP_s3cret!i",
 			daoDeleteErr: user.ErrIncorrectLogin,
 			wantCode:     401,
 		},
 		{
 			username:     "selene",
-			password:     "TOP_s3cret!",
+			password:     "TOP_s3cret!ii",
 			daoDeleteErr: fmt.Errorf("error deleting user from dao"),
 			wantCode:     500,
 		},
 		{
 			username:        "selene",
-			password:        "TOP_s3cret!",
+			password:        "TOP_s3cret!iii",
 			wantCode:        200,
 			wantLobbyRemove: true,
 		},
@@ -355,10 +355,10 @@ func TestUserDeleteHandler(t *testing.T) {
 		gotCode := w.Code
 		switch {
 		case test.wantCode != gotCode:
-			t.Errorf("Test %v: response codes not equal: wanted: %v, got: %v", i, test.wantCode, gotCode)
+			t.Errorf("Test %v: response codes not equal after user delete: wanted: %v, got: %v", i, test.wantCode, gotCode)
 		case w.Body.Len() == 0:
 			if gotCode != 200 {
-				t.Errorf("Test %v: response body should not be empty", i)
+				t.Errorf("Test %v: response body should not be empty after user delete", i)
 			}
 		case test.wantLobbyRemove != gotLobbyRemove:
 			t.Errorf("Test %v: wanted lobby.RemoveUser to be called %v, got %v", i, test.wantLobbyRemove, gotLobbyRemove)

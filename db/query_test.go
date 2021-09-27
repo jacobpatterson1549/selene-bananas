@@ -24,7 +24,7 @@ func TestNewQueryFunction(t *testing.T) {
 		[]string{"first_name", "last_name"},
 		"baggins", "gamgee", "brandybuck", "took")
 	if !reflect.DeepEqual(want, got) {
-		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
+		t.Errorf("queries not equal\nwanted %v\ngot    %v", want, got)
 	}
 }
 
@@ -43,7 +43,7 @@ func TestNewExecFunction(t *testing.T) {
 		"dwarf",
 		"man")
 	if !reflect.DeepEqual(want, got) {
-		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
+		t.Errorf("exec functions not equal\nwanted %v\ngot    %v", want, got)
 	}
 }
 
@@ -62,7 +62,7 @@ func TestQueryFunctionCmd(t *testing.T) {
 	want := "SELECT whole_name, age FROM read_hobbits($1, $2)"
 	got := q.Cmd()
 	if want != got {
-		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
+		t.Errorf("cmd functions not equal\nwanted %v\ngot    %v", want, got)
 	}
 }
 
@@ -78,16 +78,16 @@ func TestExecFunctionCmd(t *testing.T) {
 	want := "SELECT kill_orcs($1, $2, $3)"
 	got := e.Cmd()
 	if want != got {
-		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
+		t.Errorf("exec function commands not equal\nwanted %v\ngot    %v", want, got)
 	}
 }
 
 func TestRawQueryCmd(t *testing.T) {
-	r := RawQuery("DELETE FROM rings")
-	want := "DELETE FROM rings"
+	r := RawQuery("DELETE FROM wings")
+	want := "DELETE FROM wings"
 	got := r.Cmd()
 	if want != got {
-		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
+		t.Errorf("raw query commands not equal\nwanted %v\ngot    %v", want, got)
 	}
 }
 
@@ -104,7 +104,7 @@ func TestQueryFunctionArgs(t *testing.T) {
 	}
 	got := q.Args()
 	if !reflect.DeepEqual(want, got) {
-		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
+		t.Errorf("query args not equal\nwanted %v\ngot    %v", want, got)
 	}
 }
 
@@ -123,7 +123,7 @@ func TestExecFunctionArgs(t *testing.T) {
 	}
 	got := e.Args()
 	if !reflect.DeepEqual(want, got) {
-		t.Errorf("not equal\nwanted %v\ngot    %v", want, got)
+		t.Errorf("exec function args not equal\nwanted %v\ngot    %v", want, got)
 	}
 }
 

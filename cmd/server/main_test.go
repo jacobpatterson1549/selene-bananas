@@ -33,7 +33,7 @@ func TestNewWordValidator(t *testing.T) {
 	r := bytes.NewReader(e.Words)
 	validator, err := word.NewValidator(r)
 	if err != nil {
-		t.Fatalf("unwanted error: %v", err)
+		t.Fatalf("unwanted new word validate error: %v", err)
 	}
 	want := 77976
 	got := len(*validator)
@@ -55,7 +55,7 @@ func TestServerGetFiles(t *testing.T) {
 	}
 	s, err := f.CreateServer(ctx, log, db, e)
 	if err != nil {
-		t.Fatalf("unwanted error: %v", err)
+		t.Fatalf("unwanted create server error: %v", err)
 	}
 	getHandler := s.HTTPSServer.Handler
 	ts := httptest.NewTLSServer(getHandler)
@@ -70,7 +70,7 @@ func TestServerGetFiles(t *testing.T) {
 		res, err := c.Get(url)
 		switch {
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted server get error: %v", i, err)
 		case res.StatusCode != 200:
 			body, err := io.ReadAll(res.Body)
 			res.Body.Close()
@@ -91,6 +91,6 @@ func TestDatabaseFilesExist(t *testing.T) {
 	ctx := context.Background()
 	e := embeddedData(t)
 	if _, err := f.CreateDatabase(ctx, "TestDatabaseFilesExistDriver", e); err != nil {
-		t.Errorf("unwanted error: %v", err)
+		t.Errorf("unwanted create database error: %v", err)
 	}
 }

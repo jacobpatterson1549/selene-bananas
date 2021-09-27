@@ -25,10 +25,10 @@ func TestNewDao(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error creating new dao", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error creating new dao: %v", i, err)
 		case d.db == nil:
 			t.Errorf("Test %v: db not set", i)
 		}
@@ -72,10 +72,10 @@ func TestDaoCreate(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error creating user", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error creating user: %v", i, err)
 		}
 	}
 }
@@ -131,15 +131,15 @@ func TestDaoLogin(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: unwanted error: %v", i, err)
+				t.Errorf("Test %v: unwanted error logging in user: %v", i, err)
 			}
 			if test.wantIncorrectLogin && err != ErrIncorrectLogin {
 				t.Errorf("Test %v: errs not equal when the db has no rows: wanted %v, got: %v", i, ErrIncorrectLogin, err)
 			}
 		case err != nil:
-			t.Errorf("Test %v: wanted error", i)
+			t.Errorf("Test %v: wanted error logging in user", i)
 		case test.want != *got:
-			t.Errorf("Test %v:\nwanted: %v\ngot:    : %v", i, test.want, got)
+			t.Errorf("Test %v: users not equal:\nwanted: %v\ngot:    : %v", i, test.want, got)
 		}
 	}
 }
@@ -162,36 +162,36 @@ func TestDaoUpdatePassword(t *testing.T) {
 			hashPasswordErr: fmt.Errorf("problem hashing password"),
 		},
 		{
-			oldP: "homer_S!mps0n",
-			dbP:  "el+bart0_rulZ",
+			oldP: "homer_S!mps0n1",
+			dbP:  "el+bart0_rulZ1",
 			newP: "TOP_s3cr3t",
 		},
 		{
-			oldP: "homer_S!mps0n", // ensure the old password is compared to what is in the database
-			dbP:  "el+bart0_rulZ",
-			newP: "el+bart0_rulZ",
+			oldP: "homer_S!mps0n2", // ensure the old password is compared to what is in the database
+			dbP:  "el+bart0_rulZ2",
+			newP: "el+bart0_rulZ2",
 		},
 		{
-			oldP:       "homer_S!mps0n",
-			dbP:        "homer_S!mps0n",
+			oldP:       "homer_S!mps0n3",
+			dbP:        "homer_S!mps0n3",
 			newP:       "TOP_s3cr3t",
 			dbQueryErr: fmt.Errorf("problem reading user"),
 		},
 		{
-			oldP:       "homer_S!mps0n",
-			dbP:        "homer_S!mps0n",
+			oldP:       "homer_S!mps0n4",
+			dbP:        "homer_S!mps0n4",
 			newP:       "TOP_s3cr3t",
 			dbQueryErr: ErrIncorrectLogin,
 		},
 		{
-			oldP:      "homer_S!mps0n",
-			dbP:       "homer_S!mps0n",
+			oldP:      "homer_S!mps0n5",
+			dbP:       "homer_S!mps0n5",
 			newP:      "TOP_s3cr3t",
 			dbExecErr: fmt.Errorf("problem updating password"),
 		},
 		{
-			oldP:   "homer_S!mps0n",
-			dbP:    "homer_S!mps0n",
+			oldP:   "homer_S!mps0n6",
+			dbP:    "homer_S!mps0n6",
 			newP:   "TOP_s3cr3t",
 			wantOk: true,
 		},
@@ -228,13 +228,13 @@ func TestDaoUpdatePassword(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error updating user passwords", i)
 			}
 			if test.dbQueryErr == ErrIncorrectLogin && err != ErrIncorrectLogin {
 				t.Errorf("Test %v: error not passed through:\nwanted: %v\ngot:    %v", i, ErrIncorrectLogin, err)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error updating user passwords: %v", i, err)
 		}
 	}
 }
@@ -283,10 +283,10 @@ func TestDaoUpdatePointsIncrement(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error incrementing user points", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error incrementing user points: %v", i, err)
 		}
 	}
 }
@@ -333,13 +333,13 @@ func TestDaoDelete(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error deleting user", i)
 			}
 			if test.dbQueryErr == ErrIncorrectLogin && err != ErrIncorrectLogin {
 				t.Errorf("Test %v: error not passed through:\nwanted: %v\ngot:    %v", i, ErrIncorrectLogin, err)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error deleting user: %v", i, err)
 		}
 	}
 }

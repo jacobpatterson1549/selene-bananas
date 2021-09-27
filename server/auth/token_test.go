@@ -67,7 +67,7 @@ func TestReadUsername(t *testing.T) {
 		}
 		tokenString, err := creationTokenizer.Create(test.username, 0)
 		if err != nil {
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error creating tokenizer to read username: %v", i, err)
 			continue
 		}
 		var readTokenizer = JwtTokenizer{
@@ -81,10 +81,10 @@ func TestReadUsername(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error reading username", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error reading username: %v", i, err)
 		case test.want != got:
 			t.Errorf("Test %v: read usernames not equal: wanted %v, got %v", i, test.want, got)
 		}
@@ -155,16 +155,16 @@ func TestCreateReadWithTime(t *testing.T) {
 		want := "selene"
 		tokenString, err := tokenizer.Create(want, 32)
 		if err != nil {
-			t.Errorf("unwanted error: %v", err)
+			t.Errorf("unwanted error creating tokenizer for creating with read time limit: %v", err)
 		}
 		got, err := tokenizer.ReadUsername(tokenString)
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error creating with read time limit", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error creating with read time limit: %v", i, err)
 		case want != got:
 			t.Errorf("Test %v: read usernames not equal: wanted %v, got %v", i, want, got)
 		}
@@ -211,10 +211,10 @@ func TestNewTokenizer(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error creating new tokenizer", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error creating new tokenizer: %v", i, err)
 		case got.TimeFunc == nil:
 			t.Errorf("Test %v: time func not set", i)
 		default:

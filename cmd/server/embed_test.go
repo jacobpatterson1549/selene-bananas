@@ -24,6 +24,16 @@ func TestUnembedFS(t *testing.T) {
 		}
 		return dir
 	}
+	const (
+		// useful constants for ensuring tests test similar areas
+		embedVersion    = "embed/version.txt"
+		embedWords      = "embed/words.txt"
+		embedTLSCertPEM = "embed/tls-cert.pem"
+		embedTLSKeyPEM  = "embed/tls-key.pem"
+		embedStaticFS   = "embed/static"
+		embedTemplateFS = "embed/template"
+		embedSQLFS      = "embed/sql"
+	)
 	unembedFSTests := []struct {
 		fs.FS
 		wantOk bool
@@ -39,47 +49,47 @@ func TestUnembedFS(t *testing.T) {
 		},
 		{ // no words
 			FS: fstest.MapFS{
-				"embed/version.txt": &fstest.MapFile{Data: version},
+				embedVersion: &fstest.MapFile{Data: version},
 			},
 		},
 		{ // no tls cert
 			FS: fstest.MapFS{
-				"embed/version.txt": &fstest.MapFile{Data: version},
-				"embed/words.txt":   &fstest.MapFile{Data: words},
+				embedVersion: &fstest.MapFile{Data: version},
+				embedWords:   &fstest.MapFile{Data: words},
 			},
 		},
 		{ // no tls key
 			FS: fstest.MapFS{
-				"embed/version.txt":  &fstest.MapFile{Data: version},
-				"embed/words.txt":    &fstest.MapFile{Data: words},
-				"embed/tls-cert.pem": &fstest.MapFile{Data: tlsCert},
+				embedVersion:    &fstest.MapFile{Data: version},
+				embedWords:      &fstest.MapFile{Data: words},
+				embedTLSCertPEM: &fstest.MapFile{Data: tlsCert},
 			},
 		},
 		{ // no static fs
 			FS: fstest.MapFS{
-				"embed/version.txt":  &fstest.MapFile{Data: version},
-				"embed/words.txt":    &fstest.MapFile{Data: words},
-				"embed/tls-cert.pem": &fstest.MapFile{Data: tlsCert},
-				"embed/tls-key.pem":  &fstest.MapFile{Data: tlsKey},
+				embedVersion:    &fstest.MapFile{Data: version},
+				embedWords:      &fstest.MapFile{Data: words},
+				embedTLSCertPEM: &fstest.MapFile{Data: tlsCert},
+				embedTLSKeyPEM:  &fstest.MapFile{Data: tlsKey},
 			},
 		},
 		{ // no template fs
 			FS: fstest.MapFS{
-				"embed/version.txt":  &fstest.MapFile{Data: version},
-				"embed/words.txt":    &fstest.MapFile{Data: words},
-				"embed/tls-cert.pem": &fstest.MapFile{Data: tlsCert},
-				"embed/tls-key.pem":  &fstest.MapFile{Data: tlsKey},
-				"embed/static":       &fstest.MapFile{},
+				embedVersion:    &fstest.MapFile{Data: version},
+				embedWords:      &fstest.MapFile{Data: words},
+				embedTLSCertPEM: &fstest.MapFile{Data: tlsCert},
+				embedTLSKeyPEM:  &fstest.MapFile{Data: tlsKey},
+				embedStaticFS:   &fstest.MapFile{},
 			},
 		},
 		{ // no SQL fs
 			FS: fstest.MapFS{
-				"embed/version.txt":  &fstest.MapFile{Data: version},
-				"embed/words.txt":    &fstest.MapFile{Data: words},
-				"embed/tls-cert.pem": &fstest.MapFile{Data: tlsCert},
-				"embed/tls-key.pem":  &fstest.MapFile{Data: tlsKey},
-				"embed/static":       &fstest.MapFile{},
-				"embed/template":     &fstest.MapFile{},
+				embedVersion:    &fstest.MapFile{Data: version},
+				embedWords:      &fstest.MapFile{Data: words},
+				embedTLSCertPEM: &fstest.MapFile{Data: tlsCert},
+				embedTLSKeyPEM:  &fstest.MapFile{Data: tlsKey},
+				embedStaticFS:   &fstest.MapFile{},
+				embedTemplateFS: &fstest.MapFile{},
 			},
 		},
 		{ // happy path

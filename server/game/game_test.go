@@ -69,10 +69,10 @@ func TestNewGame(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error creating new game", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error creating new game: %v", i, err)
 		case !reflect.DeepEqual(log, got.log),
 			got.id != id,
 			got.createdAt != 47,
@@ -219,10 +219,10 @@ func TestValidateConfig(t *testing.T) {
 			switch {
 			case !test.wantOk:
 				if err == nil {
-					t.Errorf("Test %v: wanted error", i)
+					t.Errorf("Test %v: wanted error validating config", i)
 				}
 			case err != nil:
-				t.Errorf("Test %v: unwanted error: %v", i, err)
+				t.Errorf("Test %v: unwanted error validating config: %v", i, err)
 			}
 		}
 	})
@@ -546,10 +546,10 @@ func TestInitializeUnusedTiles(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error initializing unused tiles", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error initializing unused tiles: %v", i, err)
 		case !reflect.DeepEqual(test.want, g.unusedTiles):
 			t.Errorf("Test %v: unusedTiles not equal:\nwanted: %v\ngot:    %v", i, test.want, g.unusedTiles)
 		}
@@ -577,11 +577,11 @@ func TestUpdateUserPoints(t *testing.T) {
 	}
 	alicePlayer, err := playerController.Config{WinPoints: 4}.New(new(board.Board))
 	if err != nil {
-		t.Errorf("unwanted error: %v", err)
+		t.Errorf("unwanted error adding alice player: %v", err)
 	}
 	selenePlayer, err := playerController.Config{WinPoints: 5}.New(new(board.Board))
 	if err != nil {
-		t.Errorf("unwanted error: %v", err)
+		t.Errorf("unwanted error adding selene player: %v", err)
 	}
 	g := Game{
 		players: map[player.Name]*playerController.Player{
@@ -901,10 +901,10 @@ func TestHandleGameJoin(t *testing.T) {
 			t.Errorf("Test %v: wanted at least one message sent after a join-game attempt", i)
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error joining game", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error joining game: %v", i, err)
 		case test.wantNumPlayers != len(test.Game.players):
 			t.Errorf("Test %v: wanted %v players in game after join/rejoin, got %v", i, test.wantNumPlayers, len(test.Game.players))
 		}
@@ -1008,10 +1008,10 @@ func TestHandleAddPlayer(t *testing.T) {
 			}
 			pn := m.PlayerName
 			if _, ok := test.Game.players[pn]; !ok {
-				t.Errorf("message sent to unknown player: %v", m)
+				t.Errorf("message sent to unknown player when adding player: %v", m)
 			}
 			if _, ok := gotMessages[pn]; ok {
-				t.Errorf("extra message sent to %v: %v", pn, m)
+				t.Errorf("extra message sent to when adding player %v: %v", pn, m)
 			}
 			gotMessages[pn] = struct{}{}
 			switch {
@@ -1027,10 +1027,10 @@ func TestHandleAddPlayer(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error adding player", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error adding player: %v", i, err)
 		case len(test.Game.players) != len(gotMessages):
 			t.Errorf("Test %v: wanted messages sent to all players but the new one (%v total), got %v", i, len(test.Game.players), len(gotMessages))
 		case !gotInfoChanged:
@@ -1067,10 +1067,10 @@ func TestHandleGameDelete(t *testing.T) {
 		}
 		pn := m.PlayerName
 		if _, ok := g.players[pn]; !ok {
-			t.Errorf("message sent to unknown player: %v", m)
+			t.Errorf("message sent to unknown player when deleting game: %v", m)
 		}
 		if _, ok := gotMessages[pn]; ok {
-			t.Errorf("extra message sent to %v: %v", pn, m)
+			t.Errorf("extra message sent to %v when deleting game: %v", pn, m)
 		}
 		gotMessages[pn] = struct{}{}
 	}
@@ -1079,7 +1079,7 @@ func TestHandleGameDelete(t *testing.T) {
 	case err != nil:
 		t.Errorf("unwanted error: %v", err)
 	case len(gotMessages) != 3:
-		t.Errorf("wanted messages sent to all players (%v), got %v", len(g.players), len(gotMessages))
+		t.Errorf("wanted messages sent to all players (%v) when deleting game, got %v", len(g.players), len(gotMessages))
 	case g.status != game.Deleted:
 		t.Errorf("wanted game status to be deleted, got %v", g.status)
 	case !gotInfoChanged:
@@ -1180,12 +1180,12 @@ func TestHandleGameStatusChange(t *testing.T) {
 		case !test.wantOk:
 			switch {
 			case err == nil:
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error changing game status", i)
 			case !test.wantInfos && gotInfoChanged:
 				t.Errorf("Test %v: did not want infos changed", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error change game status: %v", i, err)
 		case !gotInfoChanged:
 			t.Errorf("Test %v: wanted to get message to change game info", i)
 		case test.wantStatus != test.Game.status:
@@ -1225,10 +1225,10 @@ func TestHandleGameStart(t *testing.T) {
 		send := func(m message.Message) {
 			pn := m.PlayerName
 			if _, ok := test.Game.players[pn]; !ok {
-				t.Errorf("Test %v: message sent to unknown player: %v", i, m)
+				t.Errorf("Test %v: message sent to unknown player when starting game: %v", i, m)
 			}
 			if _, ok := gotMessages[pn]; ok {
-				t.Errorf("Test %v: extra message sent to %v: %v", i, pn, m)
+				t.Errorf("Test %v: extra message sent to %v when starting game: %v", i, pn, m)
 			}
 			gotMessages[pn] = struct{}{}
 			switch {
@@ -1242,12 +1242,12 @@ func TestHandleGameStart(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error starting game", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error starting game: %v", i, err)
 		case len(test.Game.players) != len(gotMessages):
-			t.Errorf("Test %v: wanted messages sent to all players (%v), got %v", i, len(test.Game.players), len(gotMessages))
+			t.Errorf("Test %v: wanted messages sent to all players (%v) when starting game, got %v", i, len(test.Game.players), len(gotMessages))
 		}
 	}
 }
@@ -1355,10 +1355,10 @@ func TestCheckPlayerBoard(t *testing.T) {
 			t.Errorf("Test %v: wanted player win points to be %v after check, got %v", i, test.wantWinPoints, g.players[pn].WinPoints)
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error checking player board", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error checking player board: %v", i, err)
 		case !reflect.DeepEqual(test.wantUsedWords, gotUsedWords):
 			t.Errorf("Test % v: used words not equal:\nwanted: %v\ngot:    %v", i, test.wantUsedWords, gotUsedWords)
 		}
@@ -1486,10 +1486,10 @@ func TestCheckWords(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error checking words", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error checking words: %v", i, err)
 		case !reflect.DeepEqual(test.wantUsedWords, gotUsedWords):
 			t.Errorf("Test % v: used words not equal:\nwanted: %v\ngot:    %v", i, test.wantUsedWords, gotUsedWords)
 		}
@@ -1581,10 +1581,10 @@ func TestHandleGameFinish(t *testing.T) {
 		send := func(m message.Message) {
 			pn := m.PlayerName
 			if _, ok := test.Game.players[pn]; !ok {
-				t.Errorf("Test %v: message sent to unknown player: %v", i, m)
+				t.Errorf("Test %v: message sent to unknown player when finishing game: %v", i, m)
 			}
 			if _, ok := gotMessages[pn]; ok {
-				t.Errorf("Test %v: extra message sent to %v: %v", i, pn, m)
+				t.Errorf("Test %v: extra message sent to %v when finishing game: %v", i, pn, m)
 			}
 			gotMessages[pn] = struct{}{}
 			switch {
@@ -1609,12 +1609,12 @@ func TestHandleGameFinish(t *testing.T) {
 			t.Errorf("Test %v: wanted log message (%v) if and only if user dao fails (%v)", i, !log.Empty(), test.userDaoErr != nil)
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error finishing game", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error finishing game: %v", i, err)
 		case len(test.Game.players) != len(gotMessages):
-			t.Errorf("Test %v: wanted messages sent to all players (%v), got %v", i, len(test.Game.players), len(gotMessages))
+			t.Errorf("Test %v: wanted messages sent to all players (%v) when finishing game, got %v", i, len(test.Game.players), len(gotMessages))
 		case test.Game.status != game.Finished:
 			t.Errorf("Test %v: wanted game to be finished, got %v", i, test.Game.status)
 		}
@@ -1832,10 +1832,10 @@ func TestHandleGameSnag(t *testing.T) {
 		send := func(m message.Message) {
 			pn := m.PlayerName
 			if _, ok := test.Game.players[pn]; !ok {
-				t.Errorf("Test %v: message sent to unknown player: %v", i, m)
+				t.Errorf("Test %v: message sent to unknown player when snagging tile: %v", i, m)
 			}
 			if _, ok := gotMessages[pn]; ok {
-				t.Errorf("Test %v: extra message sent to %v: %v", i, pn, m)
+				t.Errorf("Test %v: extra message sent to %v when snagging tile: %v", i, pn, m)
 			}
 			gotMessages[pn] = struct{}{}
 			switch {
@@ -1861,12 +1861,12 @@ func TestHandleGameSnag(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error snagging tile", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error snagging tile: %v", i, err)
 		case len(test.Game.players) != len(gotMessages):
-			t.Errorf("Test %v: wanted messages sent to all players (%v), got %v", i, len(test.Game.players), len(gotMessages))
+			t.Errorf("Test %v: wanted messages sent to all players (%v) when snagging tile, got %v", i, len(test.Game.players), len(gotMessages))
 		}
 	}
 }
@@ -2036,10 +2036,10 @@ func TestHandleGameSwap(t *testing.T) {
 		send := func(m message.Message) {
 			pn := m.PlayerName
 			if _, ok := test.Game.players[pn]; !ok {
-				t.Errorf("Test %v: message sent to unknown player: %v", i, m)
+				t.Errorf("Test %v: message sent to unknown player when swapping tile: %v", i, m)
 			}
 			if _, ok := gotMessages[pn]; ok {
-				t.Errorf("Test %v: extra message sent to %v: %v", i, pn, m)
+				t.Errorf("Test %v: extra message sent to %v when swapping tile: %v", i, pn, m)
 			}
 			gotMessages[pn] = struct{}{}
 			switch {
@@ -2071,12 +2071,12 @@ func TestHandleGameSwap(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error swapping tile", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error swapping tile: %v", i, err)
 		case len(test.Game.players) != len(gotMessages):
-			t.Errorf("Test %v: wanted messages sent to all players (%v), got %v", i, len(test.Game.players), len(gotMessages))
+			t.Errorf("Test %v: wanted messages sent to all players (%v) when swapping tile, got %v", i, len(test.Game.players), len(gotMessages))
 		}
 	}
 }
@@ -2164,10 +2164,10 @@ func TestHandleGameTilesMoved(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error moving tiles", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error moving tiles: %v", i, err)
 		case !reflect.DeepEqual(test.want, got):
 			t.Errorf("Test %v: boards not equal:\nwanted: %v\ngot:    %v", i, test.want, got)
 		}
@@ -2198,9 +2198,9 @@ func TestHandleBoardRefresh(t *testing.T) {
 	err := g.handleBoardRefresh(ctx, m, send)
 	switch {
 	case err != nil:
-		t.Errorf("unwanted error: %v", err)
+		t.Errorf("unwanted error refreshing board : %v", err)
 	case wantType != got.Type:
-		t.Errorf("types not equal: wanted %v, got %v", wantType, got.Type)
+		t.Errorf("refreshing board message types not equal: wanted %v, got %v", wantType, got.Type)
 	}
 }
 
@@ -2360,7 +2360,7 @@ func TestResizeBoard(t *testing.T) {
 		got, err := g.resizeBoard(test.Message)
 		switch {
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error resizing board: %v", i, err)
 		case test.wantInfo != (len(got.Info) > 0):
 			t.Errorf("Test %v: wanted info (%v), got: '%v", i, test.wantInfo, got.Info)
 		default:

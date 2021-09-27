@@ -286,7 +286,7 @@ func TestRunnerHandleAddSocketCheckResult(t *testing.T) {
 					return mockAddr(addr)
 				},
 				SetReadDeadlineFunc: func(t time.Time) error {
-					return errors.New("stop run for test")
+					return errors.New("stop run for add socket test #0")
 				},
 				ReadMessageFunc: func(m *message.Message) error {
 					return nil
@@ -409,7 +409,7 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 				SetReadDeadlineFunc: func(t time.Time) error {
 					socketRun = true
 					wg.Done()
-					return errors.New("stop run for test")
+					return errors.New("stop run for test #1")
 				},
 				WriteCloseFunc: func(reason string) error {
 					return nil
@@ -465,6 +465,8 @@ func TestRunnerHandleAddSocket(t *testing.T) {
 }
 
 func TestRunnerHandleAddSocketSecond(t *testing.T) {
+	name1 := "fred"
+	socket1Addr := "fred.pc"
 	runnerAddSecondSocketTests := []struct {
 		maxSockets            int
 		maxPlayerSockets      int
@@ -488,7 +490,7 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 			maxSockets:       2,
 			maxPlayerSockets: 2,
 			name2:            "fred",
-			socket2Addr:      "fred.pc",
+			socket2Addr:      socket1Addr,
 		},
 		{
 			maxSockets:            2,
@@ -503,7 +505,7 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 			maxSockets:       2,
 			maxPlayerSockets: 1,
 			name2:            "barney",
-			socket2Addr:      "fred.pc",
+			socket2Addr:      socket1Addr,
 		},
 		{
 			maxSockets:            2,
@@ -516,8 +518,6 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 		},
 	}
 	for i, test := range runnerAddSecondSocketTests {
-		name1 := "fred"
-		socket1Addr := "fred.pc"
 		j := 0
 		upgradeFunc := func(w http.ResponseWriter, r *http.Request) (Conn, error) {
 			j++
@@ -535,7 +535,7 @@ func TestRunnerHandleAddSocketSecond(t *testing.T) {
 					return mockAddr(addr)
 				},
 				SetReadDeadlineFunc: func(t time.Time) error {
-					return errors.New("stop run for test")
+					return errors.New("stop run for add socket test #2")
 				},
 				WriteCloseFunc: func(reason string) error {
 					return nil
@@ -1362,22 +1362,23 @@ func TestSendMessageForGameBadRunnerState(t *testing.T) {
 func TestRemoveSocket(t *testing.T) {
 	socketIn := make(chan message.Message)
 	pn := player.Name("fred")
+	addr := message.Addr("fred.pc")
 	r := Runner{
 		playerSockets: map[player.Name]map[message.Addr]chan<- message.Message{
 			pn: {
-				"fred.pc": socketIn,
+				addr: socketIn,
 			},
 		},
 		playerGames: map[player.Name]map[game.ID]message.Addr{
 			pn: {
-				1: "fred.pc",
+				1: addr,
 			},
 		},
 	}
 	ctx := context.Background()
 	m := message.Message{
 		PlayerName: pn,
-		Addr:       "fred.pc",
+		Addr:       addr,
 	}
 	r.removeSocket(ctx, m)
 	<-socketIn // removing a socket should close it's in channel

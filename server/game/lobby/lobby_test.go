@@ -78,7 +78,7 @@ func TestNewLobby(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error creating new lobby", i)
 			}
 		case got.socketMessages == nil:
 			t.Errorf("Test %v: socketModifyRequests channel not created", i)
@@ -194,10 +194,10 @@ func TestAddUser(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error adding user", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: wanted error", i)
+			t.Errorf("Test %v: wanted error adding user", i)
 			// other testing done above in mock socket runner
 		}
 		cancelFunc()

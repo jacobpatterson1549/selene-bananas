@@ -19,6 +19,8 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/server/log/logtest"
 )
 
+const indexHTML = "index.html"
+
 func TestNewServer(t *testing.T) {
 	testLog := logtest.DiscardLogger
 	var tokenizer mockTokenizer
@@ -233,8 +235,8 @@ func TestNewServer(t *testing.T) {
 }
 
 func TestFileHandler(t *testing.T) {
-	cacheMaxAge := "max-age=???"
 	const (
+		cacheMaxAge = "max-age=???"
 		textHTML = "text/html; charset=utf-8"
 		// header constants are duplicated here
 		headerCacheControl            = "Cache-Control"
@@ -249,7 +251,7 @@ func TestFileHandler(t *testing.T) {
 		requestHeader http.Header
 	}{
 		{
-			path: "/index.html",
+			path: "/"+indexHTML,
 			wantHeader: http.Header{
 				headerCacheControl:            {"no-store"},
 				headerStrictTransportSecurity: {cacheMaxAge},
@@ -257,7 +259,7 @@ func TestFileHandler(t *testing.T) {
 			},
 		},
 		{
-			path: "/index.html",
+			path: "/"+indexHTML,
 			requestHeader: http.Header{
 				headerAcceptEncoding: {"gzip"},
 				headerContentType:    {textHTML},
@@ -363,7 +365,7 @@ func TestHTTPSHandler(t *testing.T) {
 		return r
 	}
 	withAuthorization := func(r *http.Request) *http.Request {
-		r.Header.Add("Authorization", "Bearer GOOD")
+		r.Header.Add("Authorization", "Bearer GOOD1")
 		r.Form = url.Values{"username": {username}}
 		return r
 	}
@@ -394,23 +396,23 @@ func TestHTTPSHandler(t *testing.T) {
 			wantCode: 301,
 		},
 		{
-			Request: withSecHeader(httptest.NewRequest("GET", "/unknown", nil)),
+			Request: withSecHeader(httptest.NewRequest("GET", "/unknown1", nil)),
 			Config: Config{
 				NoTLSRedirect: true,
 			},
 			wantCode: 404,
 		},
 		{
-			Request:  withTLS(httptest.NewRequest("GET", "/unknown", nil)),
+			Request:  withTLS(httptest.NewRequest("GET", "/unknown2", nil)),
 			wantCode: 404,
 		},
 		{
 			Request:  withTLS(httptest.NewRequest("GET", "/", nil)),
-			Template: template.Must(template.New("index.html").Parse("")),
+			Template: template.Must(template.New(indexHTML).Parse("")),
 			wantCode: 200,
 		},
 		{
-			Request: withTLS(withAuthorization(httptest.NewRequest("POST", "/unknown", nil))),
+			Request: withTLS(withAuthorization(httptest.NewRequest("POST", "/unknown3", nil))),
 			Parameters: Parameters{
 				Tokenizer: mockTokenizer{
 					ReadUsernameFunc: func(tokenString string) (string, error) {
@@ -453,15 +455,15 @@ func TestCheckTokenUsername(t *testing.T) {
 			authorizationHeader: "Bearer EVIL",
 		},
 		{
-			authorizationHeader:  "Bearer GOOD",
+			authorizationHeader:  "Bearer GOOD2",
 			readTokenUsernameErr: fmt.Errorf("tokenizer error"),
 		},
 		{
-			authorizationHeader: "Bearer GOOD",
+			authorizationHeader: "Bearer GOOD3",
 			formUsername:        "alice",
 		},
 		{
-			authorizationHeader: "Bearer GOOD",
+			authorizationHeader: "Bearer GOOD4",
 			formUsername:        want,
 			wantOk:              true,
 		},
@@ -551,7 +553,7 @@ func TestAddMimeType(t *testing.T) {
 		"main.wasm":     "application/wasm",
 		"init.js":       "text/javascript; charset=utf-8",
 		"any.html":      textHTML,
-		"/index.html":   textHTML,
+		"/"+indexHTML:   textHTML,
 	}
 	for fileName, want := range addMimeTypeTests {
 		w := httptest.NewRecorder()
@@ -573,8 +575,8 @@ func TestTemplateHandler(t *testing.T) {
 		wantBody     string
 	}{
 		{
-			templateName: "index.html",
-			path:         "/index.html",
+			templateName: indexHTML,
+			path:         "/"+indexHTML,
 			templateText: "stuff",
 			wantCode:     200,
 			wantBody:     "stuff",
@@ -585,25 +587,25 @@ func TestTemplateHandler(t *testing.T) {
 			wantCode:     200,
 		},
 		{
-			templateName: "name.html",
+			templateName: "name1.html",
 			templateText: "template for {{ . }}",
-			path:         "/name.html",
+			path:         "/name1.html",
 			data:         "selene",
 			wantBody:     "template for selene",
 			wantCode:     200,
 		},
 		{
-			templateName: "name.html",
+			templateName: "name2.html",
 			templateText: "template for {{ .Name }}",
-			path:         "/name.html",
+			path:         "/name2.html",
 			data:         struct{ Name string }{Name: "selene"},
 			wantBody:     "template for selene",
 			wantCode:     200,
 		},
 		{
-			templateName: "name.html",
+			templateName: "name3.html",
 			templateText: "template for {{ .NameINVALID }}",
-			path:         "/name.html",
+			path:         "/name3.html",
 			data:         struct{ Name string }{Name: "selene"},
 			wantCode:     500,
 		},
@@ -636,28 +638,28 @@ func TestHTTPSRedirectHandler(t *testing.T) {
 		wantLocation string
 	}{
 		{
-			httpURI:      "http://example.com/",
+			httpURI:      "http://example1.com/",
 			httpsPort:    443,
 			wantCode:     301,
-			wantLocation: "https://example.com/",
+			wantLocation: "https://example1.com/",
 		},
 		{
-			httpURI:      "https://example.com/",
+			httpURI:      "https://example2.com/",
 			httpsPort:    443,
 			wantCode:     301,
-			wantLocation: "https://example.com/",
+			wantLocation: "https://example2.com/",
 		},
 		{
-			httpURI:      "http://example.com:80/abc",
+			httpURI:      "http://example3.com:80/abc",
 			httpsPort:    443,
 			wantCode:     301,
-			wantLocation: "https://example.com/abc",
+			wantLocation: "https://example3.com/abc",
 		},
 		{
-			httpURI:      "http://example.com:8001/abc/d",
+			httpURI:      "http://example4.com:8001/abc/d",
 			httpsPort:    8000,
 			wantCode:     301,
-			wantLocation: "https://example.com:8000/abc/d",
+			wantLocation: "https://example4.com:8000/abc/d",
 		},
 	}
 	for i, test := range httpsRedirectHandlerTests {
@@ -743,7 +745,7 @@ func TestGetHandler(t *testing.T) {
 	})
 	t.Run("templates", func(t *testing.T) {
 		templates := []string{
-			"/index.html",
+			"/"+indexHTML,
 			"/manifest.json",
 			"/serviceWorker.js",
 			"/favicon.svg",
@@ -800,8 +802,7 @@ func TestGetHandler(t *testing.T) {
 		checkCode(t, "/monitor", p, cfg, nil, 200)
 	})
 	t.Run("rootHandler", func(t *testing.T) {
-		fileName := "index.html"
-		template := template.Must(template.New(fileName).Parse(""))
+		template := template.Must(template.New(indexHTML).Parse(""))
 		var p Parameters
 		var cfg Config
 		checkCode(t, "/", p, cfg, template, 200)
@@ -818,7 +819,7 @@ func TestPostHandler(t *testing.T) {
 	for _, path := range []string{"/", "/invalid/post/path"} {
 		handlePostTests = append(handlePostTests,
 			handlePostTest{path: path, wantCode: 403},
-			handlePostTest{path: path, wantCode: 404, authorization: "Bearer GOOD"},
+			handlePostTest{path: path, wantCode: 404, authorization: "Bearer GOOD5"},
 		)
 	}
 	for _, path := range []string{"/user_create", "/user_login"} {
@@ -829,7 +830,7 @@ func TestPostHandler(t *testing.T) {
 	for _, path := range []string{"/user_update_password", "/user_delete", "/ping"} {
 		handlePostTests = append(handlePostTests,
 			handlePostTest{path: path, wantCode: 403},
-			handlePostTest{path: path, wantCode: 200, authorization: "Bearer GOOD"},
+			handlePostTest{path: path, wantCode: 200, authorization: "Bearer GOOD6"},
 		)
 	}
 	u := "selene"

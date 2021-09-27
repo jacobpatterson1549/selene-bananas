@@ -39,7 +39,7 @@ func TestNewFromConfig(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error creating new board", i)
 			}
 		case err != nil:
 			t.Fatalf("Test %v: unwanted error: %v", i, err)
@@ -69,7 +69,7 @@ func TestAddTile(t *testing.T) {
 	tl := tile.Tile{ID: 1}
 	err := b.AddTile(tl)
 	if err != nil {
-		t.Errorf("unwanted error: %v", err)
+		t.Errorf("unwanted error adding tile: %v", err)
 	}
 	err = b.AddTile(tl)
 	if err == nil {
@@ -78,7 +78,7 @@ func TestAddTile(t *testing.T) {
 	tp := tile.Position{Tile: tl}
 	err = b.MoveTiles(map[tile.ID]tile.Position{tl.ID: tp})
 	if err != nil {
-		t.Errorf("unwanted error: %v", err)
+		t.Errorf("unwanted error moving tile: %v", err)
 	}
 	err = b.AddTile(tl)
 	if err == nil {
@@ -203,7 +203,7 @@ func TestUsedWords(t *testing.T) {
 		}
 		got := b.UsedTileWords()
 		if !reflect.DeepEqual(test.want, got) {
-			t.Errorf("Test %v:\nwanted: %v\ngot:    %v", i, test.want, got)
+			t.Errorf("Test %v: used words not equal:\nwanted: %v\ngot:    %v", i, test.want, got)
 		}
 	}
 }
@@ -319,7 +319,7 @@ func TestMoveTiles(t *testing.T) {
 		})
 		want, got := 2, len(b.UsedTileLocs)
 		if want != got {
-			t.Errorf("wanted %v, got %v", want, got)
+			t.Errorf("number of used tiles not equal after swap: wanted %v, got %v", want, got)
 		}
 	})
 	t.Run("errorChecks", func(t *testing.T) {
@@ -399,10 +399,10 @@ func TestMoveTiles(t *testing.T) {
 			switch {
 			case !test.wantOk:
 				if err == nil {
-					t.Errorf("Test %v: wanted error", i)
+					t.Errorf("Test %v: wanted error moving tiles", i)
 				}
 			case err != nil:
-				t.Errorf("Test %v: unwanted error: %v", i, err)
+				t.Errorf("Test %v: unwanted error moving tiles: %v", i, err)
 			}
 		}
 	})
@@ -459,10 +459,10 @@ func TestRemoveTile(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error", i)
+				t.Errorf("Test %v: wanted error removing tile", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error removing tile: %v", i, err)
 		case !(reflect.DeepEqual(test.want.UnusedTiles, test.board.UnusedTiles) || (test.want.UnusedTiles == nil && len(test.board.UnusedTiles) == 0)),
 			!(reflect.DeepEqual(test.want.UnusedTileIDs, test.board.UnusedTileIDs) || (test.want.UnusedTileIDs == nil && len(test.board.UnusedTileIDs) == 0)),
 			!(reflect.DeepEqual(test.want.UsedTiles, test.board.UsedTiles) || (test.want.UsedTiles == nil && len(test.board.UsedTiles) == 0)),
@@ -539,17 +539,17 @@ func TestResize(t *testing.T) {
 		}
 		b, err := cfg.New(unusedTiles)
 		if err != nil {
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error creating board to resize: %v", i, err)
 		}
 		if err = b.MoveTiles(tilePositionsM); err != nil {
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error moving tiles before board resize: %v", i, err)
 		}
 		cfg.NumCols += test.deltaNumCols
 		cfg.NumRows += test.deltaNumRows
 		m, err := b.Resize(cfg)
 		switch {
 		case err != nil:
-			t.Errorf("Test %v: unwanted error: %v", i, err)
+			t.Errorf("Test %v: unwanted error resizing board: %v", i, err)
 		case b.Config.NumCols != cfg.NumCols, b.Config.NumRows != cfg.NumRows:
 			t.Errorf("resizing should update max board dimensions, wanted %v, got %v", cfg, b)
 		case test.wantTile2Unused:

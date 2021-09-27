@@ -32,11 +32,11 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			text:   "https://example.com/",
+			text:   "https://example.org/",
 			wantOk: true,
 			want: URL{
 				Scheme:    "https",
-				Authority: "example.com",
+				Authority: "example.org",
 				Path:      "/",
 			},
 		},
@@ -60,11 +60,11 @@ func TestParse(t *testing.T) {
 			},
 		},
 		{
-			text:   "http://example.com?hello=world",
+			text:   "http://example.net?hello=world",
 			wantOk: true,
 			want: URL{
 				Scheme:    "http",
-				Authority: "example.com",
+				Authority: "example.net",
 				RawQuery:  "hello=world",
 			},
 		},

@@ -576,14 +576,14 @@ func TestWriteClose(t *testing.T) {
 	}{
 		{},
 		{
-			connCloseErr: errors.New("cannot write message to connection"),
+			connCloseErr: errors.New("cannot write close message to connection"),
 		},
 		{
 			reasonErr: errSocketClosed,
 		},
 		{
 			reasonErr:    errServerShuttingDown,
-			connCloseErr: errors.New("cannot write message to connection"),
+			connCloseErr: errors.New("cannot write close message to connection"),
 			wantLog:      true, // should still log to server logs
 		},
 		{
