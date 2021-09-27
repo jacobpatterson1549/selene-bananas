@@ -11,12 +11,21 @@ import (
 )
 
 // DOM represents common functions on the Document Object Model.
-type DOM struct{}
+type DOM struct {
+	global js.Value
+}
+
+// NewDOM creates a new DOM that is backed by the 'global' value.
+func NewDOM(global js.Value) *DOM {
+	dom := DOM{
+		global: global,
+	}
+	return &dom
+}
 
 // QuerySelector returns the first element returned by the query from root of the document.
 func (dom DOM) QuerySelector(query string) js.Value {
-	global := js.Global()
-	document := global.Get("document")
+	document := dom.global.Get("document")
 	return document.Call("querySelector", query)
 }
 
@@ -79,54 +88,47 @@ func (dom DOM) CloneElement(query string) js.Value {
 // Confirm shows a popup asking the user a yes/no question.
 // The true return value implies the "yes" choice.
 func (dom *DOM) Confirm(message string) bool {
-	global := js.Global()
-	result := global.Call("confirm", message)
+	result := dom.global.Call("confirm", message)
 	return result.Bool()
 }
 
 // alert shows a popup in the browser.
 func (dom *DOM) alert(message string) {
-	global := js.Global()
-	global.Call("alert", message)
+	dom.global.Call("alert", message)
 }
 
 // Color returns the text color of the element after css has been applied.
 func (dom DOM) Color(element js.Value) string {
-	global := js.Global()
-	computedStyle := global.Call("getComputedStyle", element)
+	computedStyle := dom.global.Call("getComputedStyle", element)
 	color := computedStyle.Get("color")
 	return color.String()
 }
 
 // NewWebSocket creates a new WebSocket with the specified url.
 func (dom *DOM) NewWebSocket(url string) js.Value {
-	global := js.Global()
-	webSocket := global.Get("WebSocket")
+	webSocket := dom.global.Get("WebSocket")
 	return webSocket.New(url)
 }
 
 // NewXHR creates a new XML HTTP Request.
 func (dom *DOM) NewXHR() js.Value {
-	global := js.Global()
-	xhr := global.Get("XMLHttpRequest")
+	xhr := dom.global.Get("XMLHttpRequest")
 	return xhr.New()
 }
 
 // Base64Decode decodes the ascii base-64 string to binary (atob).
 // Panics if the encodedData is not a valid url encoded base64 string.
 func (dom DOM) Base64Decode(a string) []byte {
-	global := js.Global()
-	s := global.Call("atob", a)
+	s := dom.global.Call("atob", a)
 	return []byte(s.String())
 }
 
 // StoreCredentials attempts to save the credentials for the login, if browser wants to.
 func (dom *DOM) StoreCredentials(form js.Value) {
-	global := js.Global()
-	passwordCredential := global.Get("PasswordCredential")
+	passwordCredential := dom.global.Get("PasswordCredential")
 	if passwordCredential.Truthy() {
 		c := passwordCredential.New(form)
-		navigator := global.Get("navigator")
+		navigator := dom.global.Get("navigator")
 		credentials := navigator.Get("credentials")
 		credentials.Call("store", c)
 	}
@@ -134,8 +136,7 @@ func (dom *DOM) StoreCredentials(form js.Value) {
 
 // EncodeURIComponent escapes special characters for safe use in URIs.
 func (dom DOM) EncodeURIComponent(str string) string {
-	global := js.Global()
-	fn := global.Get("encodeURIComponent")
+	fn := dom.global.Get("encodeURIComponent")
 	encodedURIValue := fn.Invoke(str)
 	return encodedURIValue.String()
 }

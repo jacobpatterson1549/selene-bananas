@@ -34,10 +34,10 @@ func TestRegisterFuncs(t *testing.T) {
 		ctx := context.Background()
 		ctx, cancelFunc := context.WithCancel(ctx)
 		var wg sync.WaitGroup
-		dom := new(DOM)
 		go cancelFunc()
+		global := js.ValueOf(map[string]interface{}{})
+		dom := DOM{global}
 		dom.RegisterFuncs(ctx, &wg, test.parentName, test.jsFuncs)
-		global := js.Global()
 		parent := global.Get(test.parentName)
 		for jsFuncName := range test.jsFuncs {
 			jsFunc := parent.Get(jsFuncName)
@@ -154,7 +154,7 @@ func TestAlertOnPanic(t *testing.T) {
 				return nil
 			})
 			defer alertFn.Release()
-			js.Global().Set("alert", alertFn)
+			dom := DOM{js.ValueOf(map[string]interface{}{"alert": alertFn})}
 			t.Cleanup(func() {
 				if want, got := test.wantPanic, panicked; want != got {
 					t.Errorf("panic states not equal: wanted %v, got %v", want, got)
@@ -163,7 +163,6 @@ func TestAlertOnPanic(t *testing.T) {
 					t.Errorf("alert should only be fired on panic: wanted %v, got %v", want, got)
 				}
 			})
-			dom := new(DOM)
 			defer func() { // AlertOnPanic should re-panic on a panic
 				if r := recover(); r != nil {
 					panicked = true

@@ -13,11 +13,10 @@ import (
 // RegisterFuncs sets the function as fields on the parent.
 // The parent object is created if it does not exist.
 func (dom *DOM) RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func) {
-	global := js.Global()
-	parent := global.Get(parentName)
+	parent := dom.global.Get(parentName)
 	if parent.IsUndefined() {
 		parent = js.ValueOf(make(map[string]interface{}))
-		global.Set(parentName, parent)
+		dom.global.Set(parentName, parent)
 	}
 	for fnName, fn := range jsFuncs {
 		parent.Set(fnName, fn)

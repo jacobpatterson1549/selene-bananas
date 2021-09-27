@@ -14,7 +14,8 @@ import (
 
 // main initializes the wasm code for the web dom and runs as long as the browser is open.
 func main() {
-	dom := new(ui.DOM)
+	global := js.Global()
+	dom := ui.NewDOM(global)
 	defer dom.AlertOnPanic()
 	f := flags{
 		dom:         dom,
@@ -26,13 +27,13 @@ func main() {
 	var wg sync.WaitGroup
 	f.initDom(ctx, &wg)
 	enableInteraction(*dom)
-	initBeforeUnloadFn(cancelFunc, &wg)
+	initBeforeUnloadFn(cancelFunc, &wg, global)
 	wg.Wait() // BLOCKING
 }
 
 // initBeforeUnloadFn registers a function to cancel the context when the browser is about to close.
 // This should trigger other dom functions to release.
-func initBeforeUnloadFn(cancelFunc context.CancelFunc, wg *sync.WaitGroup) {
+func initBeforeUnloadFn(cancelFunc context.CancelFunc, wg *sync.WaitGroup, global js.Value) {
 	wg.Add(1)
 	var fn js.Func
 	fn = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -43,7 +44,6 @@ func initBeforeUnloadFn(cancelFunc context.CancelFunc, wg *sync.WaitGroup) {
 		wg.Done()
 		return nil
 	})
-	global := js.Global()
 	global.Call("addEventListener", "beforeunload", fn)
 }
 

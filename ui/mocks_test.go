@@ -7,13 +7,13 @@ import (
 	"testing"
 )
 
-func MockQuerySelector(t *testing.T, wantQuery string, wantValue js.Value) js.Func {
+func MockQuerySelector(t *testing.T, wantQuery string, wantValue js.Value, dom *DOM) js.Func {
 	t.Helper()
 	querySelector := MockQuery(t, wantQuery, wantValue)
 	document := js.ValueOf(map[string]interface{}{
 		"querySelector": querySelector,
 	})
-	js.Global().Set("document", document)
+	dom.global.Set("document", document)
 	return querySelector
 }
 

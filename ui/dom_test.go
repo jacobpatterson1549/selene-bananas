@@ -4,16 +4,25 @@ package ui
 
 import (
 	"reflect"
+	"strconv"
+	"strings"
 	"syscall/js"
 	"testing"
 	"time"
 )
 
+func TestNewDOM(t *testing.T) {
+	global := js.ValueOf("42")
+	dom := NewDOM(global)
+	if want, got := global, dom.global; !want.Equal(got) {
+		t.Errorf("dom global values not equal: wanted %v, got %v", want, got)
+	}
+}
 func TestQuerySelector(t *testing.T) {
-	var dom DOM
 	wantQuery := "some sort of a query"
 	wantValue := js.ValueOf(1337)
-	querySelector := MockQuerySelector(t, wantQuery, wantValue)
+	dom := DOM{js.ValueOf(map[string]interface{}{})}
+	querySelector := MockQuerySelector(t, wantQuery, wantValue, &dom)
 	gotValue := dom.QuerySelector(wantQuery)
 	if !wantValue.Equal(gotValue) {
 		t.Errorf("wanted different value")
@@ -41,12 +50,12 @@ func TestQuerySelectorAll(t *testing.T) {
 func TestChecked(t *testing.T) {
 	tests := []bool{true, false}
 	for i, want := range tests {
-		var dom DOM
 		wantQuery := "some sort of a query checked"
 		value := js.ValueOf(map[string]interface{}{
 			"checked": want,
 		})
-		querySelector := MockQuerySelector(t, wantQuery, value)
+		dom := DOM{js.ValueOf(map[string]interface{}{})}
+		querySelector := MockQuerySelector(t, wantQuery, value, &dom)
 		got := dom.Checked(wantQuery)
 		querySelector.Release()
 		if want != got {
@@ -74,10 +83,10 @@ func TestSetChecked(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		var dom DOM
 		wantQuery := "some sort of a query setChecked"
 		gotValue := js.ValueOf(map[string]interface{}{})
-		querySelector := MockQuerySelector(t, wantQuery, gotValue)
+		dom := DOM{js.ValueOf(map[string]interface{}{})}
+		querySelector := MockQuerySelector(t, wantQuery, gotValue, &dom)
 		dom.SetChecked(wantQuery, test.checked)
 		querySelector.Release()
 		if want, got := test.wantValue.Get("checked").Bool(), gotValue.Get("checked").Bool(); want != got {
@@ -87,13 +96,13 @@ func TestSetChecked(t *testing.T) {
 }
 
 func TestValue(t *testing.T) {
-	var dom DOM
 	wantQuery := "some sort of a query value"
 	want := "[[TOP SECRET VALUE]]"
 	value := js.ValueOf(map[string]interface{}{
 		"value": want,
 	})
-	querySelector := MockQuerySelector(t, wantQuery, value)
+	dom := DOM{js.ValueOf(map[string]interface{}{})}
+	querySelector := MockQuerySelector(t, wantQuery, value, &dom)
 	got := dom.Value(wantQuery)
 	querySelector.Release()
 	if want != got {
@@ -102,14 +111,14 @@ func TestValue(t *testing.T) {
 }
 
 func TestSetValue(t *testing.T) {
-	var dom DOM
 	wantQuery := "some sort of a query SETvalue"
 	value := "[[TOP SECRET VALUE]]"
 	wantValue := js.ValueOf(map[string]interface{}{
 		"value": value,
 	})
 	gotValue := js.ValueOf(map[string]interface{}{})
-	querySelector := MockQuerySelector(t, wantQuery, gotValue)
+	dom := DOM{js.ValueOf(map[string]interface{}{})}
+	querySelector := MockQuerySelector(t, wantQuery, gotValue, &dom)
 	dom.SetValue(wantQuery, value)
 	querySelector.Release()
 	if want, got := wantValue.Get("value").String(), gotValue.Get("value").String(); want != got {
@@ -120,10 +129,10 @@ func TestSetValue(t *testing.T) {
 func TestSetButtonDisabled(t *testing.T) {
 	tests := []bool{true, false}
 	for i, want := range tests {
-		var dom DOM
 		wantQuery := "some sort of a query setChecked"
 		value := js.ValueOf(map[string]interface{}{})
-		querySelector := MockQuerySelector(t, wantQuery, value)
+		dom := DOM{js.ValueOf(map[string]interface{}{})}
+		querySelector := MockQuerySelector(t, wantQuery, value, &dom)
 		dom.SetButtonDisabled(wantQuery, want)
 		querySelector.Release()
 		got := value.Get("disabled").Bool()
@@ -148,7 +157,6 @@ func TestFormatTime(t *testing.T) {
 }
 
 func TestCloneElement(t *testing.T) {
-	var dom DOM
 	query := "some sort of a query cloneElement"
 	want := "value from result of cloneNode"
 	wantValue := js.ValueOf(want)
@@ -161,7 +169,8 @@ func TestCloneElement(t *testing.T) {
 	value := js.ValueOf(map[string]interface{}{
 		"content": content,
 	})
-	querySelector := MockQuerySelector(t, query, value)
+	dom := DOM{js.ValueOf(map[string]interface{}{})}
+	querySelector := MockQuerySelector(t, query, value, &dom)
 	gotValue := dom.CloneElement(query)
 	querySelector.Release()
 	cloneNode.Release()
@@ -174,7 +183,6 @@ func TestCloneElement(t *testing.T) {
 func TestConfirm(t *testing.T) {
 	tests := []bool{true, false}
 	for i, want := range tests {
-		var dom DOM
 		message := "some sort of a confirm message"
 		confirmFn := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 			gotMessage := args[0].String()
@@ -183,7 +191,7 @@ func TestConfirm(t *testing.T) {
 			}
 			return want
 		})
-		js.Global().Set("confirm", confirmFn)
+		dom := DOM{js.ValueOf(map[string]interface{}{"confirm": confirmFn})}
 		got := dom.Confirm(message)
 		confirmFn.Release()
 		if want != got {
@@ -193,7 +201,6 @@ func TestConfirm(t *testing.T) {
 }
 
 func TestAlert(t *testing.T) {
-	var dom DOM
 	message := "some sort of a alert message"
 	alerted := false
 	alertFn := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -204,7 +211,7 @@ func TestAlert(t *testing.T) {
 		alerted = true
 		return nil
 	})
-	js.Global().Set("alert", alertFn)
+	dom := DOM{js.ValueOf(map[string]interface{}{"alert": alertFn})}
 	dom.alert(message)
 	alertFn.Release()
 	if !alerted {
@@ -213,7 +220,6 @@ func TestAlert(t *testing.T) {
 }
 
 func TestColor(t *testing.T) {
-	var dom DOM
 	want := "cyan"
 	computedStyle := js.ValueOf(map[string]interface{}{
 		"color": want,
@@ -226,7 +232,7 @@ func TestColor(t *testing.T) {
 		}
 		return computedStyle
 	})
-	js.Global().Set("getComputedStyle", getComputedStyle)
+	dom := DOM{js.ValueOf(map[string]interface{}{"getComputedStyle": getComputedStyle})}
 	got := dom.Color(wantElement)
 	getComputedStyle.Release()
 	if want != got {
@@ -235,7 +241,6 @@ func TestColor(t *testing.T) {
 }
 
 func TestNewWebSocket(t *testing.T) {
-	var dom DOM
 	want := js.ValueOf(map[string]interface{}{
 		"key": "the new websocket",
 	})
@@ -247,7 +252,7 @@ func TestNewWebSocket(t *testing.T) {
 		}
 		return want
 	})
-	js.Global().Set("WebSocket", websocketFn)
+	dom := DOM{js.ValueOf(map[string]interface{}{"WebSocket": websocketFn})}
 	got := dom.NewWebSocket(wantURL)
 	websocketFn.Release()
 	if !want.Equal(got) {
@@ -257,14 +262,13 @@ func TestNewWebSocket(t *testing.T) {
 }
 
 func TestNewXHR(t *testing.T) {
-	var dom DOM
 	want := js.ValueOf(map[string]interface{}{
 		"key": "the new xhr",
 	})
 	xhrFn := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		return want
 	})
-	js.Global().Set("XMLHttpRequest", xhrFn)
+	dom := DOM{js.ValueOf(map[string]interface{}{"XMLHttpRequest": xhrFn})}
 	got := dom.NewXHR()
 	xhrFn.Release()
 	if !want.Equal(got) {
@@ -274,7 +278,6 @@ func TestNewXHR(t *testing.T) {
 }
 
 func TestBase64Decode(t *testing.T) {
-	var dom DOM
 	a := `SGVsbG8gV29ybGQh`
 	want := `Hello World!`
 	atobFn := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
@@ -284,7 +287,7 @@ func TestBase64Decode(t *testing.T) {
 		}
 		return want
 	})
-	js.Global().Set("atob", atobFn)
+	dom := DOM{js.ValueOf(map[string]interface{}{"atob": atobFn})}
 	got := dom.Base64Decode(a)
 	atobFn.Release()
 	if want != string(got) {
@@ -294,13 +297,12 @@ func TestBase64Decode(t *testing.T) {
 
 func TestStoreFormCredentials(t *testing.T) {
 	t.Run("no PasswordCredential", func(t *testing.T) {
-		dom := new(DOM)
+		dom := DOM{js.ValueOf(map[string]interface{}{})}
 		var form js.Value
 		dom.StoreCredentials(form)
 		// [ should not cause error ]
 	})
 	t.Run("with PasswordCredential", func(t *testing.T) {
-		dom := new(DOM)
 		form := js.ValueOf(map[string]interface{}{"a": 1})
 		cred := js.ValueOf(map[string]interface{}{"b": 2})
 		credentialsStored := false
@@ -326,8 +328,10 @@ func TestStoreFormCredentials(t *testing.T) {
 				"store": store,
 			}),
 		})
-		js.Global().Set("PasswordCredential", passwordCredential)
-		js.Global().Set("navigator", navigator)
+		dom := DOM{js.ValueOf(map[string]interface{}{
+			"PasswordCredential": passwordCredential,
+			"navigator":          navigator,
+		})}
 		dom.StoreCredentials(form)
 		passwordCredential.Release()
 		store.Release()
@@ -346,8 +350,24 @@ func TestEncodeURIComponent(t *testing.T) {
 		"#":           "%23",
 		"ABC abc 123": "ABC%20abc%20123",
 	}
+	encodeURIComponent := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		str := args[0].String()
+		e := ""
+		for _, r := range str {
+			switch {
+			case strings.ContainsRune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()", r):
+				e += string(r)
+			default:
+				e += "%" + strings.ToUpper(strconv.FormatInt(int64(r), 16))
+			}
+		}
+		return e
+	})
+	defer encodeURIComponent.Release()
 	for text, want := range encodeEscapeTests {
-		var dom DOM
+		dom := DOM{js.ValueOf(map[string]interface{}{
+			"encodeURIComponent": encodeURIComponent,
+		})}
 		got := dom.EncodeURIComponent(text)
 		if want != got {
 			t.Errorf("did not encode properly\nwanted: %v\ngot:    %v", want, got)
