@@ -24,6 +24,14 @@ New dependencies are automatically added to [go.mod](go.mod) when the project is
 
 ## Build
 
+### Running the application
+
+* Run `make serve` to build and run the application.
+
+* Run `make serve-tcp` to build and run on port 80 for HTTP and port 443 for HTTPS (default TCP ports).  Using these ports requires `sudo` (root) access.
+
+### Build dependencies
+
 [Go 1.17](https://golang.org/dl/) is used to build the application.
 
 [Make](https://www.gnu.org/software/make/) is used to by [Makefile](Makefile) to build and runs the application. Run `make` without any arguments to build the server with the client and other resources embedded in it.  This will likely need to be done before using an IDE in order to generate some files and populate the embedded filesystem used by the the server.
@@ -41,8 +49,6 @@ New dependencies are automatically added to [go.mod](go.mod) when the project is
    ```
 
 [Node](https://github.com/nodejs) is needed to run WebAssembly tests.
-
-Run `make serve` to build and run the application.
 
 ### Docker
 
@@ -129,7 +135,3 @@ The server can verify its identity over HTTP to pass a Automatic Certificate Man
 ACME_CHALLENGE_TOKEN=token123
 ACME_CHALLENGE_KEY=s3cr3t_key
 ```
-
-##### Serve on Default TCP HTTP Ports
-
-Run `make serve-tcp` to run on port 80 for HTTP and port 443 for HTTPS (default TCP ports).  Using these ports requires `sudo` (root) access.
