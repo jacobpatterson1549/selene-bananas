@@ -5,7 +5,7 @@ const assets = [
     "./favicon.svg",
     "./manifest.json",
     "./wasm_exec.js",
-    "./main.wasm",
+    "./selene-bananas.wasm",
     "./network_check.html",
     "./robots.txt",
     "./LICENSE",

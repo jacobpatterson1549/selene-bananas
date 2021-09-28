@@ -16,12 +16,12 @@ RUN apk add --no-cache \
 
 # build the server, delete build cache
 COPY . ./
-RUN make build/main \
+RUN make build/selene-bananas \
         GO_ARGS="CGO_ENABLED=0" \
     && go clean -cache
 
 # copy the server to a minimal build image
 FROM scratch
 WORKDIR /app
-COPY --from=BUILDER app/build/main ./
-ENTRYPOINT [ "/app/main" ]
+COPY --from=BUILDER app/build/selene-bananas ./
+ENTRYPOINT [ "/app/selene-bananas" ]

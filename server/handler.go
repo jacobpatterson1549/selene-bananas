@@ -260,7 +260,7 @@ func (p Parameters) getHandler(cfg Config, template *template.Template, monitor 
 	templateHandler := fileHandler(http.HandlerFunc(templateFileHandler), cacheMaxAge)
 	staticHandler := fileHandler(staticFileHandler, cacheMaxAge)
 	templatePatterns := []string{rootTemplatePath, "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html"}
-	staticPatterns := []string{"/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/favicon.ico", "/LICENSE"}
+	staticPatterns := []string{"/wasm_exec.js", "/selene-bananas.wasm", "/robots.txt", "/favicon.png", "/favicon.ico", "/LICENSE"}
 
 	getMux := http.NewServeMux()
 	for _, p := range templatePatterns {

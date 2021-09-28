@@ -4,7 +4,7 @@ window.addEventListener("load", () => {
     }
     const go = new Go();
     WebAssembly.instantiateStreaming(
-            fetch("/main.wasm"),
+            fetch("/selene-bananas.wasm"),
             go.importObject)
         .then(async (result) => {
             await go.run(result.instance);

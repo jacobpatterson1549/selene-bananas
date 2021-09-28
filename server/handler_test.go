@@ -547,13 +547,13 @@ func TestAddMimeType(t *testing.T) {
 	addMimeTypeTests := map[string]string{
 		// "LICENSE":       "text/plain; charset=utf-8",
 		// "favicon.ico":   "image/vnd.microsoft.icon",
-		"favicon.png":   "image/png",
-		"favicon.svg":   "image/svg+xml",
-		"manifest.json": "application/json",
-		"main.wasm":     "application/wasm",
-		"init.js":       "text/javascript; charset=utf-8",
-		"any.html":      textHTML,
-		"/" + indexHTML: textHTML,
+		"favicon.png":         "image/png",
+		"favicon.svg":         "image/svg+xml",
+		"manifest.json":       "application/json",
+		"selene-bananas.wasm": "application/wasm",
+		"init.js":             "text/javascript; charset=utf-8",
+		"any.html":            textHTML,
+		"/" + indexHTML:       textHTML,
 	}
 	for fileName, want := range addMimeTypeTests {
 		w := httptest.NewRecorder()
@@ -762,7 +762,7 @@ func TestGetHandler(t *testing.T) {
 	t.Run("staticFiles", func(t *testing.T) {
 		staticFiles := []string{
 			"/wasm_exec.js",
-			"/main.wasm",
+			"/selene-bananas.wasm",
 			"/robots.txt",
 			"/favicon.png",
 			"/favicon.ico",

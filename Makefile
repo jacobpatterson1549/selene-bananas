@@ -27,9 +27,9 @@ GO_WASM_ARGS := GOOS=js GOARCH=wasm
 GO_WASM_PATH := $(shell $(GO) env GOROOT)/misc/wasm
 WASM_EXEC_JS := wasm_exec.js
 NODE_EXEC    := node $(GO_WASM_PATH)/$(WASM_EXEC_JS)
-SERVER_OBJ  := main
+SERVER_OBJ  := selene-bananas
 VERSION_OBJ := version.txt
-CLIENT_OBJ  := main.wasm
+CLIENT_OBJ  := $(SERVER_OBJ).wasm
 WORDS_OBJ   := words.txt
 SERVER_TEST := server.test
 CLIENT_TEST := client.test

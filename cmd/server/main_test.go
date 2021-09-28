@@ -62,7 +62,7 @@ func TestServerGetFiles(t *testing.T) {
 	defer ts.Close()
 	c := ts.Client()
 	getFilePaths := []string{
-		"/wasm_exec.js", "/main.wasm", "/robots.txt", "/favicon.png", "/favicon.ico", "/LICENSE", // static files
+		"/wasm_exec.js", "/selene-bananas.wasm", "/robots.txt", "/favicon.png", "/favicon.ico", "/LICENSE", // static files
 		"/", "/manifest.json", "/serviceWorker.js", "/favicon.svg", "/network_check.html", // templates
 	}
 	for i, p := range getFilePaths {
