@@ -4,6 +4,7 @@ package canvas
 
 import (
 	"reflect"
+	"syscall/js"
 	"testing"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
@@ -175,4 +176,87 @@ func TestSwap(t *testing.T) {
 	case len(c.selection.tiles) != 0:
 		t.Error("wanted no selected tiles after swap")
 	}
+}
+
+func TestPixelPositionFromMouse(t *testing.T) {
+	parent := pixelPosition{
+		x: 1,
+		y: 2,
+	}
+	event := js.ValueOf(map[string]interface{}{
+		"offsetX": 4,
+		"offsetY": 8,
+	})
+	child := parent.fromMouse(event)
+	want := pixelPosition{
+		x: 4,
+		y: 8,
+	}
+	switch {
+	case child != want:
+		t.Errorf("child values incorrect: wanted %v, got %v", want, child)
+	case parent != want:
+		t.Errorf("parent should also be modified: wanted %v, got %v", want, parent)
+	}
+}
+
+func TestPixelPositionFromTouch(t *testing.T) {
+	parent := pixelPosition{
+		x: 9,
+		y: 8,
+	}
+	defaultPrevented := false
+	preventDefault := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		defaultPrevented = true
+		return nil
+	})
+	getBoundingClientRect := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		return map[string]interface{}{
+			"left": 100,
+			"top":  500,
+		}
+	})
+	event := js.ValueOf(map[string]interface{}{
+		"preventDefault": preventDefault,
+		"touches": []interface{}{
+			map[string]interface{}{
+				"clientX": 125,
+				"clientY": 672,
+			},
+		},
+		"target": map[string]interface{}{
+			"getBoundingClientRect": getBoundingClientRect,
+		},
+	})
+	child := parent.fromTouch(event)
+	getBoundingClientRect.Release()
+	preventDefault.Release()
+	want := pixelPosition{
+		x: 25,
+		y: 172,
+	}
+	switch {
+	case child != want:
+		t.Errorf("child values incorrect: wanted %v, got %v", want, child)
+	case parent != want:
+		t.Errorf("parent should also be modified: wanted %v, got %v", want, parent)
+	case !defaultPrevented:
+		t.Errorf("wanted preventDefault to be called on event")
+	}
+}
+
+func TestPixelPositionClear(t *testing.T) {
+	pp := pixelPosition{
+		x: 1,
+		y: 2,
+	}
+	pp.clear()
+	want := pixelPosition{
+		x: 0,
+		y: 0,
+	}
+	if pp != want {
+		t.Errorf("pixel position not cleared: wanted %v, got %v", want, pp)
+	}
+
 }
