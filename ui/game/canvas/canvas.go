@@ -18,6 +18,7 @@ import (
 type (
 	// Canvas is the object which draws the game.
 	Canvas struct {
+		Config
 		dom        DOM
 		log        Log
 		ctx        Context
@@ -28,15 +29,15 @@ type (
 		Socket     Socket
 		parentDiv  *js.Value
 		element    *js.Value
-		mainColor  string
-		tileColor  string
-		dragColor  string
-		errorColor string
 	}
 
 	// Config contains the parameters to create a Canvas.
 	Config struct {
 		TileLength int
+		MainColor  string
+		DragColor  string
+		TileColor  string
+		ErrorColor string
 	}
 
 	// Context handles the drawing of the canvas.
@@ -126,23 +127,12 @@ func (cfg Config) New(dom DOM, log Log, board *board.Board, canvasParentDivQuery
 	parentDiv := dom.QuerySelector(canvasParentDivQuery)
 	element := dom.QuerySelector(canvasQuery)
 	contextElement := element.Call("getContext", "2d")
-	divColor := func(query string) string {
-		absoluteQuery := "#canvas-colors>" + query
-		div := dom.QuerySelector(absoluteQuery)
-		color := dom.Color(div)
-		return color
-	}
-	mainColor := divColor(".mainColor")
-	dragColor := divColor(".dragColor")
-	tileColor := divColor(".tileColor")
-	errorColor := divColor(".errorColor")
-	ctx := jsContext{
-		ctx: &contextElement,
-	}
 	c := Canvas{
-		dom:   dom,
-		log:   log,
-		ctx:   &ctx,
+		dom: dom,
+		log: log,
+		ctx: &jsContext{
+			ctx: &contextElement,
+		},
 		board: board,
 		selection: selection{
 			dom:   dom,
@@ -153,10 +143,7 @@ func (cfg Config) New(dom DOM, log Log, board *board.Board, canvasParentDivQuery
 		draw: drawMetrics{
 			tileLength: cfg.TileLength,
 		},
-		mainColor:  mainColor,
-		dragColor:  dragColor,
-		tileColor:  tileColor,
-		errorColor: errorColor,
+		Config: cfg,
 	}
 	return &c
 }
@@ -261,8 +248,8 @@ func (Canvas) createEventJsFunc(fnName string, fn func(event js.Value)) js.Func 
 // Redraw draws the canvas
 func (c *Canvas) Redraw() {
 	c.ctx.ClearRect(0, 0, c.draw.width, c.draw.height)
-	c.ctx.SetStrokeColor(c.mainColor)
-	c.ctx.SetFillColor(c.mainColor)
+	c.ctx.SetStrokeColor(c.MainColor)
+	c.ctx.SetFillColor(c.MainColor)
 	c.ctx.FillText("Unused Tiles", 0, c.draw.unusedMin.y-c.draw.textOffset)
 	c.ctx.FillText("Game Area:", 0, c.draw.usedMin.y-c.draw.textOffset)
 	c.ctx.StrokeRect(c.draw.usedMin.x, c.draw.usedMin.y,
@@ -276,7 +263,7 @@ func (c *Canvas) Redraw() {
 	case c.selection.moveState == rect:
 		c.drawSelectionRectangle()
 	case len(c.selection.tiles) > 0:
-		c.ctx.SetStrokeColor(c.dragColor)
+		c.ctx.SetStrokeColor(c.DragColor)
 		c.drawUnusedTiles(true)
 		c.drawUsedTiles(true)
 	}
@@ -294,7 +281,7 @@ func (c *Canvas) SetGameStatus(s game.Status) {
 
 // drawErrorMEssage draws the specified message at the top of the canvas
 func (c *Canvas) drawErrorMessage(m string) {
-	c.ctx.SetFillColor(c.errorColor)
+	c.ctx.SetFillColor(c.ErrorColor)
 	c.ctx.FillText(m,
 		c.draw.usedMin.x+10*c.draw.tileLength,
 		c.draw.unusedMin.y-c.draw.textOffset)
@@ -324,14 +311,14 @@ func (c *Canvas) drawUsedTiles(fromSelection bool) {
 // drawTile paints the tile at the specified top-left coordinate.
 // The fromSelection flag specifies whether tiles from the selection or those not from the selection are being drawn.
 func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
-	lineColor := c.mainColor
+	lineColor := c.MainColor
 	switch {
 	case fromSelection:
 		// only draw selected tiles
 		if _, ok := c.selection.tiles[t.ID]; !ok {
 			return
 		}
-		lineColor = c.dragColor
+		lineColor = c.DragColor
 		// draw tile with change in location
 		x += c.selection.end.x - c.selection.start.x
 		y += c.selection.end.y - c.selection.start.y
@@ -341,7 +328,7 @@ func (c *Canvas) drawTile(x, y int, t tile.Tile, fromSelection bool) {
 			return
 		}
 	}
-	c.ctx.SetFillColor(c.tileColor)
+	c.ctx.SetFillColor(c.TileColor)
 	c.ctx.FillRect(x, y, c.draw.tileLength, c.draw.tileLength)
 	c.ctx.SetFillColor(lineColor)
 	c.ctx.StrokeRect(x, y, c.draw.tileLength, c.draw.tileLength)

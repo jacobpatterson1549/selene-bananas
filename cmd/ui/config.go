@@ -34,7 +34,7 @@ type (
 )
 
 // initDom creates, initializes, and links up dom components.
-func (f *flags) initDom(ctx context.Context, wg *sync.WaitGroup) {
+func (f flags) initDom(ctx context.Context, wg *sync.WaitGroup) {
 	domInitializers := f.createDomInitializers()
 	for _, di := range domInitializers {
 		di.InitDom(ctx, wg)
@@ -42,7 +42,7 @@ func (f *flags) initDom(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 // createDomInitializers creates the components that need to be initialized.
-func (f *flags) createDomInitializers() []domInitializer {
+func (f flags) createDomInitializers() []domInitializer {
 	timeFunc := func() int64 {
 		return time.Now().Unix()
 	}
@@ -52,6 +52,10 @@ func (f *flags) createDomInitializers() []domInitializer {
 	}
 	canvasCfg := canvas.Config{
 		TileLength: f.tileLength,
+		MainColor:  f.divColor(".mainColor"),
+		DragColor:  f.divColor(".dragColor"),
+		TileColor:  f.divColor(".tileColor"),
+		ErrorColor: f.divColor(".errorColor"),
 	}
 	canvasCreator := canvasCreator{
 		dom:       f.dom,
@@ -69,6 +73,14 @@ func (f *flags) createDomInitializers() []domInitializer {
 	game.Socket = socket   // [circular reference]
 	lobby.Socket = socket  // [circular reference]
 	return []domInitializer{log, user, canvas, game, lobby, socket}
+}
+
+// DivColor computes the style of an element.
+func (f flags) divColor(query string) string {
+	absoluteQuery := "#canvas-colors>" + query
+	div := f.dom.QuerySelector(absoluteQuery)
+	color := f.dom.Color(div)
+	return color
 }
 
 // canvasCreator creates canvases from the config

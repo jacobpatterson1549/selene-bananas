@@ -41,7 +41,9 @@ func TestSetGameStatus(t *testing.T) {
 func TestDrawErrorMessage(t *testing.T) {
 	fillColorSet, textFilled := false, false
 	c := Canvas{
-		errorColor: "deep_red",
+		Config: Config{
+			ErrorColor: "deep_red",
+		},
 		ctx: &mockContext{
 			SetFillColorFunc: func(name string) {
 				if want, got := "deep_red", name; want != got {
