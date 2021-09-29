@@ -11,13 +11,6 @@ import (
 )
 
 func TestRequest(t *testing.T) {
-	type requestResult struct {
-		errorLogged       bool
-		warningLogged     bool
-		credentialsStored bool
-		loggedIn          bool
-		loggedOut         bool
-	}
 	const (
 		// many urls are tested multiple times, so they are normalized here
 		exampleUserCreateURL         = "http://example.com/user_create"
@@ -27,107 +20,95 @@ func TestRequest(t *testing.T) {
 		examplePingURL               = "http://example.com/ping"
 	)
 	var requestTests = []struct {
-		eventURL        string
-		hasJWT          bool
-		confirmOk       bool
-		httpResponse    http.Response
-		httpResponseErr error
-		want            requestResult
+		eventURL              string
+		hasJWT                bool
+		confirmOk             bool
+		httpResponse          http.Response
+		httpResponseErr       error
+		wantErrorLogged       bool
+		wantWarningLogged     bool
+		wantCredentialsStored bool
+		wantLoggedIn          bool
+		wantLoggedOut         bool
 	}{
 		{
-			eventURL: ("bad_form_url"),
-			want: requestResult{
-				errorLogged: true,
-			},
+			eventURL:        ("bad_form_url"),
+			wantErrorLogged: true,
 		},
 		{
-			eventURL: ("http://unknown_action"),
-			want: requestResult{
-				errorLogged: true,
-			},
+			eventURL:        ("http://unknown_action"),
+			wantErrorLogged: true,
 		},
 		{
 			eventURL: (examplePingURL),
 			httpResponse: http.Response{
 				Code: 401,
 			},
-			want: requestResult{
-				warningLogged: true,
-			},
+			wantWarningLogged: true,
 		},
 		{
 			eventURL: (examplePingURL),
 			httpResponse: http.Response{
 				Code: 403,
 			},
-			want: requestResult{
-				errorLogged: true,
-				loggedOut:   true,
-			},
+			wantErrorLogged: true,
+			wantLoggedOut:   true,
 		},
 		{
 			eventURL:        examplePingURL,
 			httpResponseErr: errors.New("httpResponseErr"),
-			want: requestResult{
-				errorLogged: true,
-			},
+			wantErrorLogged: true,
 		},
 		// normal cases:
 		{
-			eventURL: exampleUserCreateURL,
-			want: requestResult{
-				credentialsStored: true,
-				loggedOut:         true,
-			},
+			eventURL:              exampleUserCreateURL,
+			wantCredentialsStored: true,
+			wantLoggedOut:         true,
 		},
 		{
-			eventURL: exampleUserUpdatePasswordURL,
-			want: requestResult{
-				credentialsStored: true,
-				loggedOut:         true,
-			},
+			eventURL:              exampleUserUpdatePasswordURL,
+			wantCredentialsStored: true,
+			wantLoggedOut:         true,
 		},
 		{
 			eventURL: exampleUserDeleteURL,
 		},
 		{
-			eventURL:  exampleUserDeleteURL,
-			confirmOk: true,
-			want: requestResult{
-				loggedOut: true,
-			},
+			eventURL:      exampleUserDeleteURL,
+			confirmOk:     true,
+			wantLoggedOut: true,
 		},
 		{
-			eventURL:  exampleUserDeleteURL,
-			hasJWT:    true,
-			confirmOk: true,
-			want: requestResult{
-				loggedOut: true,
-			},
+			eventURL:      exampleUserDeleteURL,
+			hasJWT:        true,
+			confirmOk:     true,
+			wantLoggedOut: true,
 		},
 		{
 			eventURL: exampleUserLoginURL,
 			httpResponse: http.Response{
 				Body: ".login_payload.",
 			},
-			want: requestResult{
-				credentialsStored: true,
-				loggedIn:          true,
-			},
+			wantCredentialsStored: true,
+			wantLoggedIn:          true,
 		},
 		{
 			eventURL: examplePingURL,
 		},
 	}
 	for i, test := range requestTests {
-		var result requestResult
+		gotErrorLogged := false
+		gotWarningLogged := false
+		gotCredentialsStored := false
+		gotLoggedIn := false
+		gotLoggedOut := false
 		u := User{
 			log: &mockLog{
 				ErrorFunc: func(text string) {
-					result.errorLogged = true
+					gotErrorLogged = true
 				},
 				WarningFunc: func(text string) {
-					result.warningLogged = true
+					gotWarningLogged = true
 				},
 			},
 			dom: &mockDOM{
@@ -148,7 +129,7 @@ func TestRequest(t *testing.T) {
 						if want, got := ".login_payload.", value; want != got {
 							t.Errorf("Test %v: values set not equal: wanted %v, got %v", i, want, got)
 						}
-						result.loggedIn = true
+						gotLoggedIn = true
 					}
 				},
 				CheckedFunc: func(query string) bool {
@@ -170,12 +151,12 @@ func TestRequest(t *testing.T) {
 					return []byte(`{}`)
 				},
 				StoreCredentialsFunc: func(form js.Value) {
-					result.credentialsStored = true
+					gotCredentialsStored = true
 				},
 			},
 			Socket: &mockSocket{
 				CloseFunc: func() {
-					result.loggedOut = true
+					gotLoggedOut = true
 				},
 			},
 			httpClient: &mockHTTPRequester{
@@ -197,8 +178,17 @@ func TestRequest(t *testing.T) {
 			},
 		})
 		u.request(event)
-		if want, got := test.want, result; want != got {
-			t.Errorf("Test %v: request results not equal:\nwanted %#v\ngot:   %#v", i, want, got)
+		switch {
+		case test.wantErrorLogged != gotErrorLogged:
+			t.Errorf("Test %v: ErrorLogged not equal: wanted %v, got %v", i, test.wantErrorLogged, gotErrorLogged)
+		case test.wantWarningLogged != gotWarningLogged:
+			t.Errorf("Test %v: WarningLogged not equal: wanted %v, got %v", i, test.wantWarningLogged, gotWarningLogged)
+		case test.wantCredentialsStored != gotCredentialsStored:
+			t.Errorf("Test %v: CredentialsStored not equal: wanted %v, got %v", i, test.wantCredentialsStored, gotCredentialsStored)
+		case test.wantLoggedIn != gotLoggedIn:
+			t.Errorf("Test %v: LoggedIn not equal: wanted %v, got %v", i, test.wantLoggedIn, gotLoggedIn)
+		case test.wantLoggedOut != gotLoggedOut:
+			t.Errorf("Test %v: LoggedOut not equal: wanted %v, got %v", i, test.wantLoggedOut, gotLoggedOut)
 		}
 	}
 }
