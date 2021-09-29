@@ -318,17 +318,17 @@ func TestDrawSelectionRectangle(t *testing.T) {
 		want  []int
 	}{
 		{
-			end: pixelPosition{x: 5, y: 10},
+			end:  pixelPosition{x: 5, y: 10},
 			want: []int{0, 0, 5, 10},
 		},
 		{
 			start: pixelPosition{x: 5, y: 10},
-			want: []int{0, 0, 5, 10},
+			want:  []int{0, 0, 5, 10},
 		},
 		{
 			start: pixelPosition{x: 9, y: 17},
-			end: pixelPosition{x: 6, y: 25},
-			want: []int{6, 17, 3, 8},
+			end:   pixelPosition{x: 6, y: 25},
+			want:  []int{6, 17, 3, 8},
 		},
 	}
 	for i, test := range tests {
@@ -336,11 +336,11 @@ func TestDrawSelectionRectangle(t *testing.T) {
 		c := Canvas{
 			selection: selection{
 				start: test.start,
-				end: test.end,
+				end:   test.end,
 			},
 			ctx: &mockContext{
 				StrokeRectFunc: func(x, y, width, height int) {
-					got := []int{ x, y, width, height}
+					got := []int{x, y, width, height}
 					if !reflect.DeepEqual(test.want, got) {
 						t.Errorf("Test %v wanted strokeRect [x,y,width,height]=%v, got %v", i, test.want, got)
 					}
@@ -423,6 +423,55 @@ func TestCanMove(t *testing.T) {
 		}
 	}
 
+}
+
+func TestStartSwap(t *testing.T) {
+	swapLogged := false
+	redrawTriggered := false
+	c := Canvas{
+		log: mockLog{
+			InfoFunc: func(text string) {
+				swapLogged = true
+			},
+		},
+		selection: selection{
+			dom: &mockDOM{
+				SetCheckedFunc: func(query string, checked bool) {
+					// NOOP
+				},
+			},
+			tiles: map[tile.ID]tileSelection{1: {}},
+		},
+		ctx: &mockContext{
+			ClearRectFunc: func(x, y, width, height int) {
+				redrawTriggered = true
+			},
+			SetStrokeColorFunc: func(name string) {
+				// NOOP
+			},
+			SetFillColorFunc: func(name string) {
+				// NOOP
+			},
+			FillTextFunc: func(text string, x, y int) {
+				// NOOP
+			},
+			StrokeRectFunc: func(x, y, width, height int) {
+				// NOOP
+			},
+		},
+		board: &board.Board{},
+	}
+	c.StartSwap()
+	switch {
+	case !swapLogged:
+		t.Errorf("wanted start of swap to be logged for the user")
+	case c.selection.moveState != swap:
+		t.Errorf("wanted movestate to be swap (%v) after swap started, got %v", swap, c.selection.moveState)
+	case len(c.selection.tiles) != 0:
+		t.Errorf("wanted selected tiles to be cleared when swap is started")
+	case !redrawTriggered:
+		t.Errorf("wanted redraw when swap started")
+	}
 }
 
 func TestSwap(t *testing.T) {
