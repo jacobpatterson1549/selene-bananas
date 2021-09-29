@@ -10,7 +10,7 @@ import (
 
 func TestContextSetFont(t *testing.T) {
 	ctx := js.ValueOf(map[string]interface{}{})
-	j := jsContext{&ctx}
+	j := jsContext{ctx}
 	want := "comic sans"
 	j.SetFont(want)
 	got := ctx.Get("font").String()
@@ -21,7 +21,7 @@ func TestContextSetFont(t *testing.T) {
 
 func TestContextSetLineWidth(t *testing.T) {
 	ctx := js.ValueOf(map[string]interface{}{})
-	j := jsContext{&ctx}
+	j := jsContext{ctx}
 	want := float64(16)
 	j.SetLineWidth(want)
 	got := ctx.Get("lineWidth").Float()
@@ -32,7 +32,7 @@ func TestContextSetLineWidth(t *testing.T) {
 
 func TestContextSetFillColor(t *testing.T) {
 	ctx := js.ValueOf(map[string]interface{}{})
-	j := jsContext{&ctx}
+	j := jsContext{ctx}
 	want := "gray"
 	j.SetFillColor(want)
 	got := ctx.Get("fillStyle").String()
@@ -43,7 +43,7 @@ func TestContextSetFillColor(t *testing.T) {
 
 func TestContextStrokeColor(t *testing.T) {
 	ctx := js.ValueOf(map[string]interface{}{})
-	j := jsContext{&ctx}
+	j := jsContext{ctx}
 	want := "yellow"
 	j.SetStrokeColor(want)
 	got := ctx.Get("strokeStyle").String()
@@ -69,7 +69,7 @@ func TestContextFillText(t *testing.T) {
 	ctx := js.ValueOf(map[string]interface{}{
 		"fillText": f,
 	})
-	j := jsContext{&ctx}
+	j := jsContext{ctx}
 	j.FillText("Hello, World!", 5, 10)
 	if !funcCalled {
 		t.Error("fillText not called")
@@ -95,7 +95,7 @@ func TestContextClearRect(t *testing.T) {
 	ctx := js.ValueOf(map[string]interface{}{
 		"clearRect": f,
 	})
-	j := jsContext{&ctx}
+	j := jsContext{ctx}
 	j.ClearRect(1, 2, 3, 4)
 	if !funcCalled {
 		t.Error("clearRect not called")
@@ -121,7 +121,7 @@ func TestContextFillRect(t *testing.T) {
 	ctx := js.ValueOf(map[string]interface{}{
 		"fillRect": f,
 	})
-	j := jsContext{&ctx}
+	j := jsContext{ctx}
 	j.FillRect(5, 6, 7, 8)
 	if !funcCalled {
 		t.Error("fillRect not called")
@@ -147,7 +147,7 @@ func TestContextStrokeRect(t *testing.T) {
 	ctx := js.ValueOf(map[string]interface{}{
 		"strokeRect": f,
 	})
-	j := jsContext{&ctx}
+	j := jsContext{ctx}
 	j.StrokeRect(9, 10, 11, 12)
 	if !funcCalled {
 		t.Error("strokeRect not called")

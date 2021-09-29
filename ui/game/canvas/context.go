@@ -6,7 +6,7 @@ import "syscall/js"
 
 // jsContext implements the canvas context interface for javascript values.
 type jsContext struct {
-	ctx *js.Value
+	ctx js.Value
 }
 
 func (c *jsContext) SetFont(name string) {

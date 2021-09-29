@@ -27,8 +27,8 @@ type (
 		selection  selection
 		gameStatus game.Status
 		Socket     Socket
-		parentDiv  *js.Value
-		element    *js.Value
+		parentDiv  js.Value
+		element    js.Value
 	}
 
 	// Config contains the parameters to create a Canvas.
@@ -131,15 +131,15 @@ func (cfg Config) New(dom DOM, log Log, board *board.Board, canvasParentDivQuery
 		dom: dom,
 		log: log,
 		ctx: &jsContext{
-			ctx: &contextElement,
+			ctx: contextElement,
 		},
 		board: board,
 		selection: selection{
 			dom:   dom,
 			tiles: make(map[tile.ID]tileSelection),
 		},
-		parentDiv: &parentDiv,
-		element:   &element,
+		parentDiv: parentDiv,
+		element:   element,
 		draw: drawMetrics{
 			tileLength: cfg.TileLength,
 		},
