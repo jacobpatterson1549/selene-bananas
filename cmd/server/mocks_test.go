@@ -37,8 +37,8 @@ type mockDriver struct {
 	OpenFunc func(name string) (driver.Conn, error)
 }
 
-func (d mockDriver) Open(name string) (driver.Conn, error) {
-	return d.OpenFunc(name)
+func (m mockDriver) Open(name string) (driver.Conn, error) {
+	return m.OpenFunc(name)
 }
 
 // mockConn implements the sql/driver.Conn interface.
