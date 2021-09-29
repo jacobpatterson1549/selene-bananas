@@ -30,12 +30,6 @@ type (
 		finalBoards map[string]board.Board
 	}
 
-	// Config contains the parameters to create a Game.
-	Config struct {
-		Board  *board.Board
-		Canvas Canvas
-	}
-
 	// Socket sends messages to the server.
 	Socket interface {
 		Send(m message.Message)
@@ -80,12 +74,12 @@ type (
 )
 
 // New creates a new game controller with references to the board and canvas.
-func (cfg Config) New(dom DOM, log Log) *Game {
+func New(dom DOM, log Log, board *board.Board, canvas Canvas) *Game {
 	g := Game{
 		dom:    dom,
 		log:    log,
-		board:  cfg.Board,
-		canvas: cfg.Canvas,
+		board:  board,
+		canvas: canvas,
 	}
 	return &g
 }

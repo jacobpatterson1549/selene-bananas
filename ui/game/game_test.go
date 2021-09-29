@@ -14,22 +14,20 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
-	"github.com/jacobpatterson1549/selene-bananas/ui/game/canvas"
 )
 
-func TestNewConfig(t *testing.T) {
+func TestNew(t *testing.T) {
 	dom := new(mockDOM)
 	log := new(mockLog)
 	board := new(board.Board)
-	canvas := new(canvas.Canvas)
-	cfg := Config{board, canvas}
+	canvas := new(mockCanvas)
 	want := &Game{
 		dom:    dom,
 		log:    log,
 		board:  board,
 		canvas: canvas,
 	}
-	got := cfg.New(dom, log)
+	got := New(dom, log, board, canvas)
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
 	}
@@ -768,7 +766,7 @@ func TestUpdateInfo(t *testing.T) {
 }
 
 func TestUpdateStatus(t *testing.T) {
-	tests := []struct{
+	tests := []struct {
 		s                        game.Status
 		gameTilesLeft            int
 		wantStatusText           string

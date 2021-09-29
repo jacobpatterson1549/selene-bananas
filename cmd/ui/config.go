@@ -82,11 +82,7 @@ func (f flags) canvas(log *log.Log, board *board.Board) *canvas.Canvas {
 
 // game creates and initializes the game component.
 func (f flags) game(log *log.Log, board *board.Board, canvas *canvas.Canvas) *game.Game {
-	cfg := game.Config{
-		Board:  board,
-		Canvas: canvas,
-	}
-	return cfg.New(f.dom, log)
+	return game.New(f.dom, log, board, canvas)
 }
 
 // lobby creates and initializes the game lobby component.
