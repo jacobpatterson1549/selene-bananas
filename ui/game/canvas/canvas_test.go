@@ -14,6 +14,70 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
 
+func TestNew(t *testing.T) {
+	contextElement := js.ValueOf(3)
+	getContext := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		if want, got := "2d", args[0].String(); want != got {
+			t.Errorf("wanted first arg to getContext to be %q, got %q", want, got)
+		}
+		return contextElement
+	})
+	parentDiv := js.ValueOf(1)
+	element := js.ValueOf(map[string]interface{}{
+		"getContext": getContext,
+		"value":      2,
+	})
+	dom := &mockDOM{
+		QuerySelectorFunc: func(query string) js.Value {
+			if strings.Contains(query, "subquery123") && strings.Contains(query, "canvas") {
+				return element
+			}
+			return parentDiv
+		},
+	}
+	log := new(mockLog)
+	board := new(board.Board)
+	cfg := Config{
+		TileLength: 34,
+		TileColor:  "hazel",
+	}
+	got := cfg.New(dom, log, board, "subquery123")
+	getContext.Release()
+	want := &Canvas{
+		dom: dom,
+		log: log,
+		ctx: &jsContext{
+			ctx: contextElement,
+		},
+		board: board,
+		selection: selection{
+			dom:   dom,
+			tiles: map[tile.ID]tileSelection{},
+		},
+		parentDiv: parentDiv,
+		element:   element,
+		draw: drawMetrics{
+			tileLength: 34,
+		},
+		Config: cfg,
+	}
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("canvases not equal:\nwanted: %v\ngot:    %v", want, got)
+	}
+}
+func TestParentOffsetWidth(t *testing.T) {
+	want := 468
+	c := Canvas{
+		parentDiv: js.ValueOf(map[string]interface{}{
+			"offsetWidth": want,
+		}),
+	}
+	got := c.ParentDivOffsetWidth()
+	if want != got {
+		t.Errorf("parentOffsetWidths not equal: wanted %v, got %v", want, got)
+	}
+}
+
 func TestSetGameStatus(t *testing.T) {
 	c := Canvas{
 		gameStatus: game.NotStarted,
