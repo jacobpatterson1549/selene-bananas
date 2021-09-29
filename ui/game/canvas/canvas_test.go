@@ -311,6 +311,50 @@ func TestDrawTile(t *testing.T) {
 	}
 }
 
+func TestDrawSelectionRectangle(t *testing.T) {
+	tests := []struct {
+		start pixelPosition
+		end   pixelPosition
+		want  []int
+	}{
+		{
+			end: pixelPosition{x: 5, y: 10},
+			want: []int{0, 0, 5, 10},
+		},
+		{
+			start: pixelPosition{x: 5, y: 10},
+			want: []int{0, 0, 5, 10},
+		},
+		{
+			start: pixelPosition{x: 9, y: 17},
+			end: pixelPosition{x: 6, y: 25},
+			want: []int{6, 17, 3, 8},
+		},
+	}
+	for i, test := range tests {
+		strokeRectCalled := false
+		c := Canvas{
+			selection: selection{
+				start: test.start,
+				end: test.end,
+			},
+			ctx: &mockContext{
+				StrokeRectFunc: func(x, y, width, height int) {
+					got := []int{ x, y, width, height}
+					if !reflect.DeepEqual(test.want, got) {
+						t.Errorf("Test %v wanted strokeRect [x,y,width,height]=%v, got %v", i, test.want, got)
+					}
+					strokeRectCalled = true
+				},
+			},
+		}
+		c.drawSelectionRectangle()
+		if !strokeRectCalled {
+			t.Errorf("Test %v: wanted stroke rect to be called", strokeRectCalled)
+		}
+	}
+}
+
 func TestCalculateSelectedUnusedTiles(t *testing.T) {
 	ta := tile.Tile{
 		ID: 11,
