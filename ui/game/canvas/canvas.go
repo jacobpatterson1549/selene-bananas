@@ -77,9 +77,8 @@ type (
 
 	// pixelPosition represents a location on the canvas.
 	pixelPosition struct {
-		log Log
-		x   int
-		y   int
+		x int
+		y int
 	}
 
 	// tileSelection represents a tile that the cursor/touch is on.
@@ -223,8 +222,8 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 
 // createEventFuncs creates the event listener functions for mouse/touch interaction.
 func (c *Canvas) createEventFuncs() map[string]func(event js.Value) {
-	mousePP := c.newPixelPosition()
-	touchPP := c.newPixelPosition()
+	mousePP := new(pixelPosition)
+	touchPP := new(pixelPosition)
 	funcs := map[string]func(event js.Value){
 		"mousedown": func(event js.Value) {
 			c.moveStart(mousePP.fromMouse(event))
@@ -702,12 +701,6 @@ func (s *selection) setMoveState(ms moveState) {
 	}
 }
 
-// newPixelPosition creates a new PixelPosition with the log of the canvas.
-func (c *Canvas) newPixelPosition() *pixelPosition {
-	pp := pixelPosition{}
-	return &pp
-}
-
 // fromMouse updates the pixelPosition for the mouse event and returns it
 func (pp *pixelPosition) fromMouse(event js.Value) pixelPosition {
 	pp.x = event.Get("offsetX").Int()
@@ -719,10 +712,6 @@ func (pp *pixelPosition) fromMouse(event js.Value) pixelPosition {
 func (pp *pixelPosition) fromTouch(event js.Value) pixelPosition {
 	event.Call("preventDefault")
 	touches := event.Get("touches")
-	if touches.Length() == 0 {
-		pp.log.Error("no touches for touch event, using previous touch location")
-		return *pp
-	}
 	touch := touches.Index(0)
 	canvasRect := event.Get("target").Call("getBoundingClientRect")
 	pp.x = touch.Get("clientX").Int() - canvasRect.Get("left").Int()
