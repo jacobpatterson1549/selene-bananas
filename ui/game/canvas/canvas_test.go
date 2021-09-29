@@ -4,6 +4,7 @@ package canvas
 
 import (
 	"reflect"
+	"strings"
 	"syscall/js"
 	"testing"
 
@@ -178,6 +179,41 @@ func TestSwap(t *testing.T) {
 	}
 }
 
+func TestSetMoveState(t *testing.T) {
+	tests := []struct {
+		ms   moveState
+		want string
+	}{
+		{none, "none"},
+		{swap, "swap"},
+		{rect, "rect"},
+		{drag, "drag"},
+		{grab, "grab"},
+	}
+	for i, test := range tests {
+		setCheckedCalled := false
+		c := Canvas{
+			selection: selection{
+				dom: &mockDOM{
+					SetCheckedFunc: func(query string, checked bool) {
+						if !strings.HasSuffix(query, test.want) {
+							t.Errorf("Test %v: wanted query to end with %v: %v", i, test.want, query)
+						}
+						if !checked {
+							t.Errorf("Test %v: wanted checked to be true for query: %v", i, query)
+						}
+						setCheckedCalled = true
+					},
+				},
+			},
+		}
+		c.selection.setMoveState(test.ms)
+		if !setCheckedCalled {
+			t.Errorf("Test %v: wanted dom.SetChecked to be called to set the move state", i)
+		}
+	}
+}
+
 func TestPixelPositionFromMouse(t *testing.T) {
 	parent := pixelPosition{
 		x: 1,
@@ -259,4 +295,50 @@ func TestPixelPositionClear(t *testing.T) {
 		t.Errorf("pixel position not cleared: wanted %v, got %v", want, pp)
 	}
 
+}
+
+func TestSort(t *testing.T) {
+	tests := []struct {
+		a     int
+		b     int
+		wantA int
+		wantB int
+	}{
+		{},
+		{7, 8, 7, 8},
+		{15, 13, 13, 15},
+		{9, 9, 9, 9},
+	}
+	for i, test := range tests {
+		gotA, gotB := sort(test.a, test.b)
+		if test.wantA != gotA || test.wantB != gotB {
+			t.Errorf("Test %v: sorts not equal: wanted %v, %v, got %v, %v", i, test.wantA, test.wantB, gotA, gotB)
+		}
+	}
+}
+
+func TestNumCols(t *testing.T) {
+	want := 17
+	c := Canvas{
+		draw: drawMetrics{
+			numCols: want,
+		},
+	}
+	got := c.NumCols()
+	if want != got {
+		t.Errorf("numCols not equal: wanted %v, got %v", want, got)
+	}
+}
+
+func TestNumCRows(t *testing.T) {
+	want := 12
+	c := Canvas{
+		draw: drawMetrics{
+			numRows: want,
+		},
+	}
+	got := c.NumRows()
+	if want != got {
+		t.Errorf("numRows not equal: wanted %v, got %v", want, got)
+	}
 }

@@ -2,7 +2,13 @@
 
 package canvas
 
-import "github.com/jacobpatterson1549/selene-bananas/game/message"
+import (
+	"context"
+	"sync"
+	"syscall/js"
+
+	"github.com/jacobpatterson1549/selene-bananas/game/message"
+)
 
 type mockContext struct {
 	SetFontFunc        func(name string)
@@ -54,4 +60,40 @@ type mockSocket struct {
 
 func (m mockSocket) Send(msg message.Message) {
 	m.SendFunc(msg)
+}
+
+type mockDOM struct {
+	QuerySelectorFunc        func(query string) js.Value
+	SetCheckedFunc           func(query string, checked bool)
+	ColorFunc                func(element js.Value) string
+	ReleaseJsFuncsOnDoneFunc func(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func)
+}
+
+func (m mockDOM) QuerySelector(query string) js.Value {
+	return m.QuerySelectorFunc(query)
+}
+
+func (m *mockDOM) SetChecked(query string, checked bool) {
+	m.SetCheckedFunc(query, checked)
+}
+
+func (m mockDOM) Color(element js.Value) string {
+	return m.ColorFunc(element)
+}
+
+func (m *mockDOM) ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func) {
+	m.ReleaseJsFuncsOnDoneFunc(ctx, wg, jsFuncs)
+}
+
+type mockLog struct {
+	ErrorFunc func(text string)
+	InfoFunc  func(text string)
+}
+
+func (m mockLog) Error(text string) {
+	m.ErrorFunc(text)
+}
+
+func (m mockLog) Info(text string) {
+	m.InfoFunc(text)
 }
