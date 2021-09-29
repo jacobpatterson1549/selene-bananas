@@ -101,7 +101,6 @@ type (
 	DOM interface {
 		QuerySelector(query string) js.Value
 		SetChecked(query string, checked bool)
-		Color(element js.Value) string
 		ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func)
 	}
 
