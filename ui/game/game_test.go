@@ -21,15 +21,17 @@ func TestNew(t *testing.T) {
 	log := new(mockLog)
 	board := new(board.Board)
 	canvas := new(mockCanvas)
+	canvasCreator := new(mockCanvasCreator)
 	want := &Game{
-		dom:    dom,
-		log:    log,
-		board:  board,
-		canvas: canvas,
+		dom:           dom,
+		log:           log,
+		board:         board,
+		canvas:        canvas,
+		canvasCreator: canvasCreator,
 	}
-	got := New(dom, log, board, canvas)
+	got := New(dom, log, board, canvas, canvasCreator)
 	if !reflect.DeepEqual(want, got) {
-		t.Errorf("not equal:\nwanted: %v\ngot:    %v", want, got)
+		t.Errorf("games not equal:\nwanted: %v\ngot:    %v", want, got)
 	}
 }
 
@@ -1374,21 +1376,11 @@ func TestViewFinalBoard(t *testing.T) {
 		strokestyle := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
 		fillText := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
 		strokeRect := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
-		getContext := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-			canvasRedrawn = true                      // sloppy, but redraw only happens when a canvas is created
-			return js.ValueOf(map[string]interface{}{ // canvas contextElement
-				"clearRect":   clearRect,
-				"strokestyle": strokestyle,
-				"fillText":    fillText,
-				"strokeRect":  strokeRect,
-			})
-		})
 		g := Game{
 			dom: &mockDOM{
 				QuerySelectorFunc: func(query string) js.Value {
 					return js.ValueOf(map[string]interface{}{
-						"innerHTML":  test.playerName, // player selector
-						"getContext": getContext,      // canvas
+						"innerHTML": test.playerName, // player selector
 					})
 				},
 				ColorFunc: func(element js.Value) string {
@@ -1396,11 +1388,23 @@ func TestViewFinalBoard(t *testing.T) {
 				},
 			},
 			canvas: &mockCanvas{
-				UpdateSizeFunc: func(width int) {
-					// NOOP
-				},
 				TileLengthFunc: func() int {
 					return 50
+				},
+			},
+			canvasCreator: mockCanvasCreator{
+				CreateFunc: func(board *board.Board, canvasParentDivQuery string) Canvas {
+					return &mockCanvas{
+						DesiredWidthFunc: func() int {
+							return 750
+						},
+						UpdateSizeFunc: func(width int) {
+							// NOOP
+						},
+						RedrawFunc: func() {
+							canvasRedrawn = true
+						},
+					}
 				},
 			},
 			log: &mockLog{
@@ -1419,12 +1423,10 @@ func TestViewFinalBoard(t *testing.T) {
 			},
 		}
 		g.viewFinalBoard()
-		getContext.Release()
 		clearRect.Release()
 		strokestyle.Release()
 		fillText.Release()
 		strokeRect.Release()
-		getContext.Release()
 		if want, got := test.wantErr, errorLogged; want != got {
 			t.Errorf("Test %v: errorLogged not equal: wanted %v, got %v", i, want, got)
 		}

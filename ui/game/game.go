@@ -15,19 +15,19 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 	"github.com/jacobpatterson1549/selene-bananas/ui"
-	"github.com/jacobpatterson1549/selene-bananas/ui/game/canvas"
 )
 
 type (
 	// Game handles managing the state of the board and drawing it on the canvas.
 	Game struct {
-		dom         DOM
-		id          game.ID
-		log         Log
-		board       *board.Board
-		canvas      Canvas
-		Socket      Socket
-		finalBoards map[string]board.Board
+		dom           DOM
+		id            game.ID
+		log           Log
+		board         *board.Board
+		canvas        Canvas
+		canvasCreator CanvasCreator
+		Socket        Socket
+		finalBoards   map[string]board.Board
 	}
 
 	// Socket sends messages to the server.
@@ -67,19 +67,26 @@ type (
 		TileLength() int
 		SetTileLength(tileLength int)
 		ParentDivOffsetWidth() int
+		DesiredWidth() int
 		UpdateSize(width int)
 		NumRows() int
 		NumCols() int
 	}
+
+	// CanvasCreator creates canvases to draw other player's final boards.
+	CanvasCreator interface {
+		Create(board *board.Board, canvasParentDivQuery string) Canvas
+	}
 )
 
 // New creates a new game controller with references to the board and canvas.
-func New(dom DOM, log Log, board *board.Board, canvas Canvas) *Game {
+func New(dom DOM, log Log, board *board.Board, canvas Canvas, createCanvas CanvasCreator) *Game {
 	g := Game{
-		dom:    dom,
-		log:    log,
-		board:  board,
-		canvas: canvas,
+		dom:           dom,
+		log:           log,
+		board:         board,
+		canvas:        canvas,
+		canvasCreator: createCanvas,
 	}
 	return &g
 }
@@ -475,12 +482,8 @@ func (g *Game) viewFinalBoard() {
 		g.log.Error("could not view final board for " + playerName)
 		return
 	}
-	tileLength := g.canvas.TileLength()
-	cfg := canvas.Config{
-		TileLength: tileLength,
-	}
-	canvas := cfg.New(g.dom, g.log, &b, ".final-boards .canvas")
-	width := cfg.DesiredWidth(b)
+	canvas := g.canvasCreator.Create(&b, ".final-boards .canvas")
+	width := canvas.DesiredWidth()
 	canvas.UpdateSize(width)
 	canvas.Redraw()
 }

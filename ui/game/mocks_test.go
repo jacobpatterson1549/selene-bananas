@@ -8,6 +8,7 @@ import (
 	"syscall/js"
 
 	"github.com/jacobpatterson1549/selene-bananas/game"
+	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 )
 
@@ -112,6 +113,7 @@ type mockCanvas struct {
 	TileLengthFunc           func() int
 	SetTileLengthFunc        func(tileLength int)
 	ParentDivOffsetWidthFunc func() int
+	DesiredWidthFunc         func() int
 	UpdateSizeFunc           func(width int)
 	NumRowsFunc              func() int
 	NumColsFunc              func() int
@@ -141,6 +143,10 @@ func (m mockCanvas) ParentDivOffsetWidth() int {
 	return m.ParentDivOffsetWidthFunc()
 }
 
+func (m mockCanvas) DesiredWidth() int {
+	return m.DesiredWidthFunc()
+}
+
 func (m *mockCanvas) UpdateSize(width int) {
 	m.UpdateSizeFunc(width)
 }
@@ -151,4 +157,12 @@ func (m mockCanvas) NumRows() int {
 
 func (m mockCanvas) NumCols() int {
 	return m.NumColsFunc()
+}
+
+type mockCanvasCreator struct {
+	CreateFunc func(board *board.Board, canvasParentDivQuery string) Canvas
+}
+
+func (m mockCanvasCreator) Create(board *board.Board, canvasParentDivQuery string) Canvas {
+	return m.CreateFunc(board, canvasParentDivQuery)
 }

@@ -186,8 +186,8 @@ func (c Canvas) ParentDivOffsetWidth() int {
 }
 
 // DesiredWidth is width the canvas needs to safely draw the board.  Uses the TileLength, numCols, and badding
-func (cfg Config) DesiredWidth(b board.Board) int {
-	width := cfg.TileLength * b.Config.NumCols
+func (c Canvas) DesiredWidth() int {
+	width := c.draw.tileLength * c.board.NumCols
 	width += 2 * padding
 	return width
 }

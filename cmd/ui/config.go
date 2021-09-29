@@ -41,17 +41,29 @@ func (f *flags) initDom(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
+// createDomInitializers creates the components that need to be initialized.
 func (f *flags) createDomInitializers() []domInitializer {
 	timeFunc := func() int64 {
 		return time.Now().Unix()
 	}
-	log := f.log(timeFunc)
-	user := f.user(log)
+	log := log.New(f.dom, timeFunc)
+	httpClient := http.Client{
+		Timeout: f.httpTimeout,
+	}
+	canvasCfg := canvas.Config{
+		TileLength: f.tileLength,
+	}
+	canvasCreator := canvasCreator{
+		dom:       f.dom,
+		log:       log,
+		canvasCfg: canvasCfg,
+	}
+	user := user.New(f.dom, log, httpClient)
 	board := new(board.Board)
-	canvas := f.canvas(log, board)
-	game := f.game(log, board, canvas)
-	lobby := f.lobby(log, game)
-	socket := f.socket(log, user, game, lobby)
+	canvas := canvasCfg.New(f.dom, log, board, ".game>.canvas")
+	game := game.New(f.dom, log, board, canvas, canvasCreator)
+	lobby := lobby.New(f.dom, log, game)
+	socket := socket.New(f.dom, log, user, game, lobby)
 	user.Socket = socket   // [circular reference]
 	canvas.Socket = socket // [circular reference]
 	game.Socket = socket   // [circular reference]
@@ -59,38 +71,14 @@ func (f *flags) createDomInitializers() []domInitializer {
 	return []domInitializer{log, user, canvas, game, lobby, socket}
 }
 
-// log creates and initializes the log component.
-func (f flags) log(timeFunc func() int64) *log.Log {
-	return log.New(f.dom, timeFunc)
+// canvasCreator creates canvases from the config
+type canvasCreator struct {
+	dom       *ui.DOM
+	log       *log.Log
+	canvasCfg canvas.Config
 }
 
-// user creates and initializes the user/form/http component.
-func (f flags) user(log *log.Log) *user.User {
-	httpClient := http.Client{
-		Timeout: f.httpTimeout,
-	}
-	return user.New(f.dom, log, httpClient)
-}
-
-// canvas creates and initializes the game drawing component with elements from the dom.
-func (f flags) canvas(log *log.Log, board *board.Board) *canvas.Canvas {
-	cfg := canvas.Config{
-		TileLength: f.tileLength,
-	}
-	return cfg.New(f.dom, log, board, ".game>.canvas")
-}
-
-// game creates and initializes the game component.
-func (f flags) game(log *log.Log, board *board.Board, canvas *canvas.Canvas) *game.Game {
-	return game.New(f.dom, log, board, canvas)
-}
-
-// lobby creates and initializes the game lobby component.
-func (f flags) lobby(log *log.Log, game *game.Game) *lobby.Lobby {
-	return lobby.New(f.dom, log, game)
-}
-
-// socket creates and initializes the player socket component for connection to the lobby.
-func (f flags) socket(log *log.Log, user *user.User, game *game.Game, lobby *lobby.Lobby) *socket.Socket {
-	return socket.New(f.dom, log, user, game, lobby)
+// Create uses the canvas config to create a new canvas
+func (cc canvasCreator) Create(board *board.Board, canvasParentDivQuery string) game.Canvas {
+	return cc.canvasCfg.New(cc.dom, cc.log, board, canvasParentDivQuery)
 }
