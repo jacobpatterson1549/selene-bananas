@@ -8,10 +8,60 @@ import (
 	"syscall/js"
 	"testing"
 
+	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
 	"github.com/jacobpatterson1549/selene-bananas/game/message"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
 )
+
+func TestSetGameStatus(t *testing.T) {
+	c := Canvas{
+		gameStatus: game.NotStarted,
+		selection: selection{
+			dom: &mockDOM{
+				SetCheckedFunc: func(query string, checked bool) {
+					// NOOP
+				},
+			},
+			tiles: map[tile.ID]tileSelection{1: {}},
+		},
+	}
+	want := game.InProgress
+	c.SetGameStatus(want)
+	switch {
+	case c.gameStatus != want:
+		t.Errorf("game status not set: wanted %v, got %v", want, c.gameStatus)
+	case c.selection.moveState != none:
+		t.Errorf("wanted moveState to be none (%v), got %v", none, c.selection.moveState)
+	case len(c.selection.tiles) != 0:
+		t.Errorf("wanted selection tiles to be cleared")
+	}
+}
+
+func TestDrawErrorMessage(t *testing.T) {
+	fillColorSet, textFilled := false, false
+	c := Canvas{
+		errorColor: "deep_red",
+		ctx: &mockContext{
+			SetFillColorFunc: func(name string) {
+				if want, got := "deep_red", name; want != got {
+					t.Errorf("wanted error color to be %v, got %v", want, got)
+				}
+				fillColorSet = true
+			},
+			FillTextFunc: func(text string, x, y int) {
+				textFilled = true
+			},
+		},
+	}
+	c.drawErrorMessage("any message")
+	switch {
+	case !fillColorSet:
+		t.Errorf("fill color not set")
+	case !textFilled:
+		t.Errorf("next not drawn")
+	}
+}
 
 func TestDrawTile(t *testing.T) {
 	drawTileID := tile.ID(1)
@@ -135,6 +185,25 @@ func TestCalculateSelectedUnusedTiles(t *testing.T) {
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("not equal\nwanted: %v\ngot:    %v", want, got)
 	}
+}
+
+func TestCanMove(t *testing.T) {
+	tests := map[game.Status]bool{
+		game.NotStarted: false,
+		game.InProgress: true,
+		game.Finished:   true,
+		game.Deleted:    false,
+	}
+	for s, want := range tests {
+		c := Canvas{
+			gameStatus: s,
+		}
+		got := c.canMove()
+		if want != got {
+			t.Errorf("wanted canvas.canMove() to be %v when game Status is %v", want, s)
+		}
+	}
+
 }
 
 func TestSwap(t *testing.T) {
