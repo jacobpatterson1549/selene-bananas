@@ -39,7 +39,10 @@ func TestNew(t *testing.T) {
 	board := new(board.Board)
 	cfg := Config{
 		TileLength: 34,
+		MainColor:  "brown",
+		DragColor:  "yellow",
 		TileColor:  "hazel",
+		ErrorColor: "green",
 	}
 	got := cfg.New(dom, log, board, "subquery123")
 	getContext.Release()
@@ -59,12 +62,71 @@ func TestNew(t *testing.T) {
 		draw: drawMetrics{
 			tileLength: 34,
 		},
-		Config: cfg,
+		MainColor:  "brown",
+		DragColor:  "yellow",
+		TileColor:  "hazel",
+		ErrorColor: "green",
 	}
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("canvases not equal:\nwanted: %v\ngot:    %v", want, got)
 	}
 }
+
+func TestUpdateSize(t *testing.T) {
+	setFontCalled := false
+	setLineWidthCalled := false
+	c := Canvas{
+		element:   js.ValueOf(map[string]interface{}{}),
+		parentDiv: js.ValueOf(map[string]interface{}{}),
+		draw: drawMetrics{
+			tileLength: 50,
+		},
+		ctx: &mockContext{
+			SetFontFunc: func(name string) {
+				if !strings.HasPrefix(name, "50px") {
+					t.Errorf("font not sent relative to tile length")
+				}
+				setFontCalled = true
+			},
+			SetLineWidthFunc: func(width float64) {
+				if width != 5.0 {
+					t.Errorf("unexpected line width: %v", width)
+				}
+				setLineWidthCalled = true
+			},
+		},
+	}
+	c.UpdateSize(1000)
+	wantDrawWidth := 1000
+	wantDrawHeight := 1500
+	wantDraw := drawMetrics{
+		tileLength: 50,
+		width:      1000,
+		height:     1500,
+		textOffset: 7,
+		unusedMin:  pixelPosition{5, 50},
+		usedMin:    pixelPosition{5, 200},
+		numRows:    26,
+		numCols:    19,
+	}
+	switch {
+	case c.draw != wantDraw:
+		t.Errorf("draw mentics not equal:\nwanted: %#v\ngot:    %#v", wantDraw, c.draw)
+	case c.element.Get("width").Int() != wantDrawWidth:
+		t.Errorf("element draw widths not equal")
+	case c.element.Get("height").Int() != wantDrawHeight:
+		t.Errorf("element draw heights not equal")
+	case c.parentDiv.Get("width").Int() != wantDrawWidth:
+		t.Errorf("parentDiv draw widths not equal")
+	case c.parentDiv.Get("height").Int() != wantDrawHeight:
+		t.Errorf("parentDiv draw heights not equal")
+	case !setFontCalled:
+		t.Errorf("set font not called")
+	case !setLineWidthCalled:
+		t.Errorf("set line width not called")
+	}
+}
+
 func TestParentOffsetWidth(t *testing.T) {
 	want := 468
 	c := Canvas{
@@ -75,6 +137,55 @@ func TestParentOffsetWidth(t *testing.T) {
 	got := c.ParentDivOffsetWidth()
 	if want != got {
 		t.Errorf("parentOffsetWidths not equal: wanted %v, got %v", want, got)
+	}
+}
+
+// TestDesiredWidth is simple, but it shows what is used in the calculation
+func TestDesiredWidth(t *testing.T) {
+	c := Canvas{
+		draw: drawMetrics{
+			tileLength: 50,
+		},
+		board: &board.Board{
+			Config: board.Config{
+				NumCols: 13,
+			},
+		},
+	}
+	want := 660
+	got := c.DesiredWidth()
+	if want != got {
+		t.Errorf("desired widths not equal: wanted %v, got %v", want, got)
+	}
+}
+
+func TestSetTileLength(t *testing.T) {
+	c := Canvas{
+		element: js.ValueOf(map[string]interface{}{}),
+		parentDiv: js.ValueOf(map[string]interface{}{
+			"offsetWidth": 500,
+		}),
+		board: &board.Board{
+			Config: board.Config{
+				NumCols: 13,
+			},
+		},
+		ctx: &mockContext{
+			SetFontFunc: func(name string) {
+				// NOOP
+			},
+			SetLineWidthFunc: func(width float64) {
+				// NOOP
+			},
+		},
+	}
+	want := 47
+	c.SetTileLength(want)
+	switch {
+	case c.draw.tileLength != want:
+		t.Errorf("tile length not set: wanted %v, got %v", want, c.draw.tileLength)
+	case c.draw.width == 0:
+		t.Errorf("draw width should be set in UpdateSize")
 	}
 }
 
@@ -105,9 +216,7 @@ func TestSetGameStatus(t *testing.T) {
 func TestDrawErrorMessage(t *testing.T) {
 	fillColorSet, textFilled := false, false
 	c := Canvas{
-		Config: Config{
-			ErrorColor: "deep_red",
-		},
+		ErrorColor: "deep_red",
 		ctx: &mockContext{
 			SetFillColorFunc: func(name string) {
 				if want, got := "deep_red", name; want != got {

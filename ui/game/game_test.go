@@ -1370,6 +1370,7 @@ func TestViewFinalBoard(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
+		tileLengthSet := false
 		errorLogged := false
 		canvasRedrawn := false
 		clearRect := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
@@ -1395,6 +1396,12 @@ func TestViewFinalBoard(t *testing.T) {
 			canvasCreator: mockCanvasCreator{
 				CreateFunc: func(board *board.Board, canvasParentDivQuery string) Canvas {
 					return &mockCanvas{
+						SetTileLengthFunc: func(tileLength int) {
+							if tileLength != 50 {
+								t.Errorf("Test %v: wanted tile length to be set to 50, got %v", i, tileLength)
+							}
+							tileLengthSet = true
+						},
 						DesiredWidthFunc: func() int {
 							return 750
 						},
@@ -1427,11 +1434,15 @@ func TestViewFinalBoard(t *testing.T) {
 		strokestyle.Release()
 		fillText.Release()
 		strokeRect.Release()
-		if want, got := test.wantErr, errorLogged; want != got {
-			t.Errorf("Test %v: errorLogged not equal: wanted %v, got %v", i, want, got)
-		}
-		if want, got := !test.wantErr, canvasRedrawn; want != got {
-			t.Errorf("Test %v: canvasRedrawn not equal: wanted %v, got %v", i, want, got)
+		switch {
+		case test.wantErr:
+			if want, got := test.wantErr, errorLogged; want != got {
+				t.Errorf("Test %v: errorLogged not equal: wanted %v, got %v", i, want, got)
+			}
+		case !tileLengthSet:
+			t.Errorf("Test %v: tile length not set from game canvas", i)
+		case !canvasRedrawn:
+			t.Errorf("Test %v: canvas not redrawn", i)
 		}
 	}
 }

@@ -18,7 +18,6 @@ import (
 type (
 	// Canvas is the object which draws the game.
 	Canvas struct {
-		Config
 		dom        DOM
 		log        Log
 		ctx        Context
@@ -29,6 +28,10 @@ type (
 		Socket     Socket
 		parentDiv  js.Value
 		element    js.Value
+		MainColor  string
+		DragColor  string
+		TileColor  string
+		ErrorColor string
 	}
 
 	// Config contains the parameters to create a Canvas.
@@ -142,7 +145,10 @@ func (cfg Config) New(dom DOM, log Log, board *board.Board, canvasParentDivQuery
 		draw: drawMetrics{
 			tileLength: cfg.TileLength,
 		},
-		Config: cfg,
+		MainColor:  cfg.MainColor,
+		DragColor:  cfg.DragColor,
+		TileColor:  cfg.TileColor,
+		ErrorColor: cfg.ErrorColor,
 	}
 	return &c
 }

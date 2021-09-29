@@ -483,6 +483,8 @@ func (g *Game) viewFinalBoard() {
 		return
 	}
 	canvas := g.canvasCreator.Create(&b, ".final-boards .canvas")
+	tileLength := g.canvas.TileLength()
+	canvas.SetTileLength(tileLength)
 	width := canvas.DesiredWidth()
 	canvas.UpdateSize(width)
 	canvas.Redraw()
