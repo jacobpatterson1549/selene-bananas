@@ -454,12 +454,9 @@ func (c *Canvas) StartSwap() {
 // swap trades a tile for some new ones.
 func (c *Canvas) swap() {
 	endTS := c.tileSelection(c.selection.end)
-	endTileWasSelected := func() bool {
-		_, ok := c.selection.tiles[endTS.tile.ID]
-		return ok
-	}
-	if endTS == nil || !endTileWasSelected() {
+	if endTS == nil {
 		c.log.Info("swap cancelled")
+		return
 	}
 	if err := c.board.RemoveTile(endTS.tile); err != nil {
 		c.log.Error("removing tile while swapping: " + err.Error())
