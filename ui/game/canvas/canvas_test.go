@@ -295,6 +295,131 @@ func TestCreateEventFuncs(t *testing.T) {
 	}
 }
 
+func TestRedraw(t *testing.T) {
+	// some constants used to identify what is being done in mocks
+	const (
+		dragColor               = "drag_color"
+		errorMessageColor       = "error_message_color"
+		drawSelectionRectangleX = -1
+	)
+	tests := []struct {
+		gameStatus                  game.Status
+		selection                   selection
+		wantErrorMessage            string
+		wantSelectionRectangleDrawn bool
+		wantSelectionDrawn          bool
+	}{
+		{},
+		{
+			gameStatus:       game.NotStarted,
+			wantErrorMessage: "Not Started",
+		},
+		{
+			gameStatus: game.NotStarted,
+			selection: selection{
+				moveState: rect, // should not be drawn because not started
+			},
+			wantErrorMessage: "Not Started",
+		},
+		{
+			gameStatus: game.InProgress,
+			selection: selection{
+				moveState: rect,
+				start:     pixelPosition{x: drawSelectionRectangleX},
+			},
+			wantSelectionRectangleDrawn: true,
+		},
+		{
+			gameStatus: game.InProgress,
+			selection: selection{
+				tiles: map[tile.ID]tileSelection{
+					1: {},
+				},
+			},
+			wantSelectionDrawn: true,
+		},
+		{
+			gameStatus:       game.Finished,
+			wantErrorMessage: "Game Finished",
+		},
+		{
+			gameStatus: game.Finished,
+			selection: selection{
+				moveState: rect,
+				start:     pixelPosition{x: drawSelectionRectangleX},
+			},
+			wantSelectionRectangleDrawn: true,
+			wantErrorMessage:            "Game Finished",
+		},
+		{
+			gameStatus: game.Finished,
+			selection: selection{
+				tiles: map[tile.ID]tileSelection{
+					1: {},
+				},
+			},
+			wantSelectionDrawn: true,
+			wantErrorMessage:   "Game Finished",
+		},
+	}
+	for i, test := range tests {
+		gotErrorMessage := ""
+		gotSelectionRectangleDrawn := false
+		gotSelectionDrawn := false
+		fillColor := ""
+		c := Canvas{
+			gameStatus: test.gameStatus,
+			selection:  test.selection,
+			board: &board.Board{
+				// drawUnusedTiles
+				UnusedTileIDs: []tile.ID{1},
+				UnusedTiles:   map[tile.ID]tile.Tile{1: {}},
+				// drawUsedTiles
+				UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{
+					5: {10: tile.Tile{}},
+				},
+			},
+			ctx: &mockContext{
+				ClearRectFunc: func(x, y, width, height int) {
+					// NOOP
+				},
+				SetStrokeColorFunc: func(name string) {
+					if name == dragColor {
+						gotSelectionDrawn = true
+					}
+				},
+				SetFillColorFunc: func(name string) {
+					fillColor = name
+				},
+				FillTextFunc: func(text string, x, y int) {
+					if fillColor == errorMessageColor {
+						gotErrorMessage = text
+					}
+				},
+				StrokeRectFunc: func(x, y, width, height int) {
+					if x == drawSelectionRectangleX {
+						gotSelectionRectangleDrawn = true
+					}
+				},
+				FillRectFunc: func(x, y, width, height int) {
+					// NOOP
+				},
+			},
+			DragColor:  dragColor,
+			ErrorColor: errorMessageColor,
+		}
+		c.Redraw()
+		switch {
+		case test.wantErrorMessage != gotErrorMessage:
+			t.Errorf("Test %v: wanted error message: %q, got: %q", i, test.wantErrorMessage, gotErrorMessage)
+		case test.wantSelectionRectangleDrawn != gotSelectionRectangleDrawn:
+			t.Errorf("Test %v: wanted selection rectangle drawn: %v, got %v", i, test.wantSelectionRectangleDrawn, gotSelectionRectangleDrawn)
+		case test.wantSelectionDrawn != gotSelectionDrawn:
+			t.Errorf("Test %v: wanted selection drawn: %v, got %v", i, test.wantSelectionDrawn, gotSelectionDrawn)
+		}
+	}
+}
+
 func TestSetGameStatus(t *testing.T) {
 	c := Canvas{
 		gameStatus: game.NotStarted,
