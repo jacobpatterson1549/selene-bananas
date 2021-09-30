@@ -229,6 +229,9 @@ func TestInitDom(t *testing.T) {
 				releaseJsFuncsOnDoneFuncCalled = true
 				wg.Done()
 			},
+			NewJsEventFuncFunc: func(fn func(event js.Value)) (jsF js.Func) {
+				return
+			},
 		},
 	}
 	ctx := context.Background()
@@ -241,22 +244,6 @@ func TestInitDom(t *testing.T) {
 	case !releaseJsFuncsOnDoneFuncCalled:
 		t.Errorf("dom.ReleaseJsFuncsOnDoneFunc not called")
 	}
-}
-
-func TestCreateEventJsFunc(t *testing.T) {
-	wantEvent := js.ValueOf(7)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	fn := func(event js.Value) {
-		if !wantEvent.Equal(event) {
-			t.Errorf("wanted fn to be called with %v, got %v", wantEvent, event)
-		}
-		wg.Done()
-	}
-	var c Canvas
-	got := c.createEventJsFunc(fn)
-	go got.Invoke(wantEvent)
-	wg.Wait()
 }
 
 func TestSetGameStatus(t *testing.T) {

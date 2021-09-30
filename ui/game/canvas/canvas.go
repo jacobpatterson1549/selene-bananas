@@ -104,6 +104,7 @@ type (
 	DOM interface {
 		QuerySelector(query string) js.Value
 		SetChecked(query string, checked bool)
+		NewJsEventFunc(fn func(event js.Value)) js.Func
 		ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func)
 	}
 
@@ -204,7 +205,7 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		"passive": false,
 	}
 	for fnName, fn := range funcs {
-		jsFunc := c.createEventJsFunc(fn)
+		jsFunc := c.dom.NewJsEventFunc(fn)
 		c.element.Call("addEventListener", fnName, jsFunc, options)
 		jsFuncs[fnName] = jsFunc
 	}
@@ -238,16 +239,6 @@ func (c *Canvas) createEventFuncs() map[string]func(event js.Value) {
 		},
 	}
 	return funcs
-}
-
-// createEventJsFunc creates a jsFunc from the function.
-// This is not inlined to prevent the runtime from overwriting all functions with the last one.
-func (Canvas) createEventJsFunc(fn func(event js.Value)) js.Func {
-	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		event := args[0]
-		fn(event)
-		return nil
-	})
 }
 
 // Redraw draws the canvas

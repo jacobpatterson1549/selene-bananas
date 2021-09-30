@@ -65,6 +65,7 @@ func (m mockSocket) Send(msg message.Message) {
 type mockDOM struct {
 	QuerySelectorFunc        func(query string) js.Value
 	SetCheckedFunc           func(query string, checked bool)
+	NewJsEventFuncFunc       func(fn func(event js.Value)) js.Func
 	ReleaseJsFuncsOnDoneFunc func(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func)
 }
 
@@ -74,6 +75,10 @@ func (m mockDOM) QuerySelector(query string) js.Value {
 
 func (m *mockDOM) SetChecked(query string, checked bool) {
 	m.SetCheckedFunc(query, checked)
+}
+
+func (m *mockDOM) NewJsEventFunc(fn func(event js.Value)) js.Func {
+	return m.NewJsEventFuncFunc(fn)
 }
 
 func (m *mockDOM) ReleaseJsFuncsOnDone(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func) {
