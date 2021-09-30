@@ -204,7 +204,7 @@ func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 		"passive": false,
 	}
 	for fnName, fn := range funcs {
-		jsFunc := c.createEventJsFunc(fnName, fn)
+		jsFunc := c.createEventJsFunc(fn)
 		c.element.Call("addEventListener", fnName, jsFunc, options)
 		jsFuncs[fnName] = jsFunc
 	}
@@ -242,7 +242,7 @@ func (c *Canvas) createEventFuncs() map[string]func(event js.Value) {
 
 // createEventJsFunc creates a jsFunc from the function.
 // This is not inlined to prevent the runtime from overwriting all functions with the last one.
-func (Canvas) createEventJsFunc(fnName string, fn func(event js.Value)) js.Func {
+func (Canvas) createEventJsFunc(fn func(event js.Value)) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		event := args[0]
 		fn(event)

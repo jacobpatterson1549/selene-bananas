@@ -244,7 +244,6 @@ func TestInitDom(t *testing.T) {
 }
 
 func TestCreateEventJsFunc(t *testing.T) {
-	wantName := "aJsName" // TODO: there is no need for this parameter
 	wantEvent := js.ValueOf(7)
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -255,7 +254,7 @@ func TestCreateEventJsFunc(t *testing.T) {
 		wg.Done()
 	}
 	var c Canvas
-	got := c.createEventJsFunc(wantName, fn)
+	got := c.createEventJsFunc(fn)
 	go got.Invoke(wantEvent)
 	wg.Wait()
 }
