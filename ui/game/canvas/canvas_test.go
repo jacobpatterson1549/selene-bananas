@@ -3,8 +3,10 @@
 package canvas
 
 import (
+	"context"
 	"reflect"
 	"strings"
+	"sync"
 	"syscall/js"
 	"testing"
 
@@ -159,6 +161,19 @@ func TestDesiredWidth(t *testing.T) {
 	}
 }
 
+func TestTileLength(t *testing.T) {
+	want := 62
+	c := Canvas{
+		draw: drawMetrics{
+			tileLength: want,
+		},
+	}
+	got := c.TileLength()
+	if want != got {
+		t.Errorf("tile lengths not equal: wanted %v, got %v", want, got)
+	}
+}
+
 func TestSetTileLength(t *testing.T) {
 	c := Canvas{
 		element: js.ValueOf(map[string]interface{}{}),
@@ -187,6 +202,62 @@ func TestSetTileLength(t *testing.T) {
 	case c.draw.width == 0:
 		t.Errorf("draw width should be set in UpdateSize")
 	}
+}
+
+func TestInitDom(t *testing.T) {
+	wantEventTypes := map[string]struct{}{
+		"mousedown":  {},
+		"mouseup":    {},
+		"mousemove":  {},
+		"touchstart": {},
+		"touchend":   {},
+		"touchmove":  {},
+	}
+	gotEventTypes := make(map[string]struct{}, len(wantEventTypes))
+	releaseJsFuncsOnDoneFuncCalled := false
+	addEventListener := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		eventType := args[0].String()
+		gotEventTypes[eventType] = struct{}{}
+		return nil
+	})
+	c := Canvas{
+		element: js.ValueOf(map[string]interface{}{
+			"addEventListener": addEventListener,
+		}),
+		dom: &mockDOM{
+			ReleaseJsFuncsOnDoneFunc: func(ctx context.Context, wg *sync.WaitGroup, jsFuncs map[string]js.Func) {
+				releaseJsFuncsOnDoneFuncCalled = true
+				wg.Done()
+			},
+		},
+	}
+	ctx := context.Background()
+	var wg sync.WaitGroup
+	c.InitDom(ctx, &wg)
+	wg.Wait()
+	switch {
+	case !reflect.DeepEqual(wantEventTypes, gotEventTypes):
+		t.Errorf("listeners added to canvas element not equal:\nwanted: %v\ngot:    %v", wantEventTypes, gotEventTypes)
+	case !releaseJsFuncsOnDoneFuncCalled:
+		t.Errorf("dom.ReleaseJsFuncsOnDoneFunc not called")
+	}
+}
+
+func TestCreateEventJsFunc(t *testing.T) {
+	wantName := "aJsName" // TODO: there is no need for this parameter
+	wantEvent := js.ValueOf(7)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	fn := func(event js.Value) {
+		if !wantEvent.Equal(event) {
+			t.Errorf("wanted fn to be called with %v, got %v", wantEvent, event)
+		}
+		wg.Done()
+	}
+	var c Canvas
+	got := c.createEventJsFunc(wantName, fn)
+	go got.Invoke(wantEvent)
+	wg.Wait()
 }
 
 func TestSetGameStatus(t *testing.T) {
