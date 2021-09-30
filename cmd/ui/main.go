@@ -12,9 +12,11 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/ui"
 )
 
+// global is a package variable for test to mock
+var global = js.Global()
+
 // main initializes the wasm code for the web dom and runs as long as the browser is open.
 func main() {
-	global := js.Global()
 	dom := ui.NewDOM(global)
 	defer dom.AlertOnPanic()
 	f := flags{
@@ -26,7 +28,7 @@ func main() {
 	ctx, cancelFunc := context.WithCancel(ctx)
 	var wg sync.WaitGroup
 	f.initDom(ctx, &wg)
-	enableInteraction(*dom)
+	enableInteraction(dom)
 	initBeforeUnloadFn(cancelFunc, &wg, global)
 	wg.Wait() // BLOCKING
 }
@@ -48,7 +50,7 @@ func initBeforeUnloadFn(cancelFunc context.CancelFunc, wg *sync.WaitGroup, globa
 }
 
 // enableInteraction removes the disabled attribute from all submit buttons, allowing users to sign in and send other forms.
-func enableInteraction(dom ui.DOM) {
+func enableInteraction(dom *ui.DOM) {
 	document := dom.QuerySelector("body")
 	submitButtons := dom.QuerySelectorAll(document, `input[type="submit"]`)
 	for _, submitButton := range submitButtons {
