@@ -406,6 +406,132 @@ func TestCalculateSelectedUnusedTiles(t *testing.T) {
 	}
 }
 
+func TestMoveCursor(t *testing.T) {
+	tests := []struct {
+		endPP         pixelPosition
+		gameStatus    game.Status
+		ms            moveState
+		draw          drawMetrics
+		wantSelection selection
+		wantRedraw    bool
+	}{
+		{ // cannot move
+			gameStatus: game.NotStarted,
+			ms:         drag,
+			wantSelection: selection{
+				moveState: drag,
+			},
+		},
+		{
+			endPP:      pixelPosition{1, 1},
+			gameStatus: game.InProgress,
+			ms:         drag,
+			wantSelection: selection{
+				moveState: drag,
+				end:       pixelPosition{1, 1},
+			},
+			wantRedraw: true,
+		},
+		{
+			endPP:      pixelPosition{2, 2},
+			gameStatus: game.InProgress,
+			ms:         rect,
+			wantSelection: selection{
+				moveState: rect,
+				end:       pixelPosition{2, 2},
+			},
+			wantRedraw: true,
+		},
+		{ // if grabbing, but cursor is not over tile, remove grab moveState
+			gameStatus: game.InProgress,
+			ms:         grab,
+			wantSelection: selection{
+				moveState: none,
+			},
+		},
+		{ // [preserve grab]
+			gameStatus: game.InProgress,
+			ms:         grab,
+			draw: drawMetrics{
+				tileLength: 1, // the unused tile takes up space
+			},
+			wantSelection: selection{
+				moveState: grab,
+			},
+		},
+		{ // if not grabbing, but cursor is over a tile, add grab moveState
+			gameStatus: game.InProgress,
+			ms:         none,
+			draw: drawMetrics{
+				tileLength: 1, // the unused tile takes up space
+			},
+			wantSelection: selection{
+				moveState: grab,
+			},
+		},
+		{ // [preserve normal 'none' cursor]
+			gameStatus: game.InProgress,
+			ms:         none,
+			wantSelection: selection{
+				moveState: none,
+			},
+		},
+	}
+	for i, test := range tests {
+		redrawTriggered := false
+		dom := &mockDOM{
+			SetCheckedFunc: func(query string, checked bool) {
+				// NOOP
+			},
+		}
+		test.wantSelection.dom = dom
+		c := &Canvas{
+			log: mockLog{
+				InfoFunc: func(text string) {
+					// NOOP
+				},
+			},
+			gameStatus: test.gameStatus,
+			selection: selection{
+				moveState: test.ms,
+				dom:       dom,
+			},
+			draw: test.draw,
+			board: &board.Board{
+				UnusedTileIDs: []tile.ID{1},
+				UnusedTiles:   map[tile.ID]tile.Tile{1: {}},
+			},
+			ctx: &mockContext{
+				ClearRectFunc: func(x, y, width, height int) {
+					redrawTriggered = true
+				},
+				SetStrokeColorFunc: func(name string) {
+					// NOOP
+				},
+				SetFillColorFunc: func(name string) {
+					// NOOP
+				},
+				FillTextFunc: func(text string, x, y int) {
+					// NOOP
+				},
+				StrokeRectFunc: func(x, y, width, height int) {
+					// NOOP
+				},
+				FillRectFunc: func(x, y, width, height int) {
+					// NOOP (draw unused tile)
+				},
+			},
+		}
+		c.moveCursor(test.endPP)
+		switch {
+		case !reflect.DeepEqual(c.selection, test.wantSelection):
+			t.Errorf("Test %v: selections not equal:\nwanted: %#v\ngot:    %#v", i, test.wantSelection, c.selection)
+		case redrawTriggered != test.wantRedraw:
+			t.Errorf("Test :%v: wanted redraw = %v, got %v", i, test.wantRedraw, redrawTriggered)
+		}
+	}
+}
+
 func TestMoveEnd(t *testing.T) {
 	tests := []struct {
 		endPP         pixelPosition
@@ -497,7 +623,7 @@ func TestMoveEnd(t *testing.T) {
 		c.moveEnd(test.endPP)
 		switch {
 		case !reflect.DeepEqual(c.selection, test.wantSelection):
-			t.Errorf("Test %v: selections not equal:\nwanted: %#v\ngot:    :%#v", i, test.wantSelection, c.selection)
+			t.Errorf("Test %v: selections not equal:\nwanted: %#v\ngot:    %#v", i, test.wantSelection, c.selection)
 		case redrawTriggered != test.wantRedraw:
 			t.Errorf("Test :%v: wanted redraw = %v, got %v", i, test.wantRedraw, redrawTriggered)
 		}
