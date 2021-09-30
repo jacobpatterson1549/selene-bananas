@@ -301,6 +301,8 @@ func TestRedraw(t *testing.T) {
 		dragColor               = "drag_color"
 		errorMessageColor       = "error_message_color"
 		drawSelectionRectangleX = -1
+		notStarted              = "Not Started"
+		gameFinished            = "Game Finished"
 	)
 	tests := []struct {
 		gameStatus                  game.Status
@@ -312,14 +314,14 @@ func TestRedraw(t *testing.T) {
 		{},
 		{
 			gameStatus:       game.NotStarted,
-			wantErrorMessage: "Not Started",
+			wantErrorMessage: notStarted,
 		},
 		{
 			gameStatus: game.NotStarted,
 			selection: selection{
 				moveState: rect, // should not be drawn because not started
 			},
-			wantErrorMessage: "Not Started",
+			wantErrorMessage: notStarted,
 		},
 		{
 			gameStatus: game.InProgress,
@@ -340,7 +342,7 @@ func TestRedraw(t *testing.T) {
 		},
 		{
 			gameStatus:       game.Finished,
-			wantErrorMessage: "Game Finished",
+			wantErrorMessage: gameFinished,
 		},
 		{
 			gameStatus: game.Finished,
@@ -349,7 +351,7 @@ func TestRedraw(t *testing.T) {
 				start:     pixelPosition{x: drawSelectionRectangleX},
 			},
 			wantSelectionRectangleDrawn: true,
-			wantErrorMessage:            "Game Finished",
+			wantErrorMessage:            gameFinished,
 		},
 		{
 			gameStatus: game.Finished,
@@ -359,7 +361,7 @@ func TestRedraw(t *testing.T) {
 				},
 			},
 			wantSelectionDrawn: true,
-			wantErrorMessage:   "Game Finished",
+			wantErrorMessage:   gameFinished,
 		},
 	}
 	for i, test := range tests {
