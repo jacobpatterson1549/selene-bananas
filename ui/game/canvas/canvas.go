@@ -612,6 +612,9 @@ func (c *Canvas) moveSelectedTiles() {
 
 // selectionTilePositions calculates the new positions of the selected tiles.
 func (c Canvas) selectionTilePositions() []tile.Position {
+	if c.draw.tileLength == 0 {
+		return nil
+	}
 	startTS := c.tileSelection(c.selection.start)
 	endC := (c.selection.end.x - c.draw.usedMin.x) / c.draw.tileLength
 	endR := (c.selection.end.y - c.draw.usedMin.y) / c.draw.tileLength

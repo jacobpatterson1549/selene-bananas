@@ -406,6 +406,104 @@ func TestCalculateSelectedUnusedTiles(t *testing.T) {
 	}
 }
 
+func TestMoveEnd(t *testing.T) {
+	tests := []struct {
+		endPP         pixelPosition
+		gameStatus    game.Status
+		selection     selection
+		wantSelection selection
+		wantRedraw    bool
+	}{
+		{ // cannot move
+			gameStatus: game.NotStarted,
+			endPP:      pixelPosition{1, 1},
+		},
+		{
+			gameStatus: game.InProgress,
+			selection: selection{
+				moveState: swap,
+			},
+			wantSelection: selection{
+				moveState: none,
+			},
+		},
+		{
+			gameStatus: game.InProgress,
+			endPP:      pixelPosition{2, 2},
+			selection: selection{
+				moveState: rect,
+				start:     pixelPosition{1, 1},
+			},
+			wantSelection: selection{
+				moveState: none,
+				start:     pixelPosition{0, 0},
+				end:       pixelPosition{0, 0},
+				tiles:     make(map[tile.ID]tileSelection),
+			},
+			wantRedraw: true,
+		},
+		{
+			gameStatus: game.InProgress,
+			endPP:      pixelPosition{2, 2},
+			selection: selection{
+				moveState: drag,
+				start:     pixelPosition{1, 1},
+			},
+			wantSelection: selection{
+				moveState: none,
+				start:     pixelPosition{1, 1},
+				end:       pixelPosition{2, 2},
+				tiles:     make(map[tile.ID]tileSelection),
+			},
+			wantRedraw: true,
+		},
+	}
+	for i, test := range tests {
+		redrawTriggered := false
+		dom := &mockDOM{
+			SetCheckedFunc: func(query string, checked bool) {
+				// NOOP
+			},
+		}
+		test.selection.dom = dom
+		test.wantSelection.dom = dom
+		c := &Canvas{
+			log: mockLog{
+				InfoFunc: func(text string) {
+					// NOOP
+				},
+			},
+			board:      &board.Board{},
+			gameStatus: test.gameStatus,
+			selection:  test.selection,
+			ctx: &mockContext{
+				ClearRectFunc: func(x, y, width, height int) {
+					redrawTriggered = true
+				},
+				SetStrokeColorFunc: func(name string) {
+					// NOOP
+				},
+				SetFillColorFunc: func(name string) {
+					// NOOP
+				},
+				FillTextFunc: func(text string, x, y int) {
+					// NOOP
+				},
+				StrokeRectFunc: func(x, y, width, height int) {
+					// NOOP
+				},
+			},
+		}
+		c.moveEnd(test.endPP)
+		switch {
+		case !reflect.DeepEqual(c.selection, test.wantSelection):
+			t.Errorf("Test %v: selections not equal:\nwanted: %#v\ngot:    :%#v", i, test.wantSelection, c.selection)
+		case redrawTriggered != test.wantRedraw:
+			t.Errorf("Test :%v: wanted redraw = %v, got %v", i, test.wantRedraw, redrawTriggered)
+		}
+	}
+}
+
 func TestCanMove(t *testing.T) {
 	tests := map[game.Status]bool{
 		game.NotStarted: false,
