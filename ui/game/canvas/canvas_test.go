@@ -246,6 +246,55 @@ func TestInitDom(t *testing.T) {
 	}
 }
 
+func TestCreateEventFuncs(t *testing.T) {
+	mouseEvent := js.ValueOf(map[string]interface{}{
+		"offsetX": 0,
+		"offsetY": 0,
+	})
+	preventDefault := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		return nil
+	})
+	defer preventDefault.Release()
+	getBoundingClientRect := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		return map[string]interface{}{
+			"left": 0,
+			"top":  0,
+		}
+	})
+	defer getBoundingClientRect.Release()
+	touchEvent := js.ValueOf(map[string]interface{}{
+		"preventDefault": preventDefault,
+		"touches": []interface{}{
+			map[string]interface{}{
+				"clientX": 0,
+				"clientY": 0,
+			},
+		},
+		"target": map[string]interface{}{
+			"getBoundingClientRect": getBoundingClientRect,
+		},
+	})
+	wantEventTypes := map[string]js.Value{
+		"mousedown":  mouseEvent,
+		"mouseup":    mouseEvent,
+		"mousemove":  mouseEvent,
+		"touchstart": touchEvent,
+		"touchend":   touchEvent,
+		"touchmove":  touchEvent,
+	}
+	var c Canvas
+	got := c.createEventFuncs()
+	for fnName, fn := range got {
+		event, ok := wantEventTypes[fnName]
+		switch {
+		case !ok:
+			t.Errorf("no event func registered for event %v", fnName)
+		default:
+			fn(event)
+		}
+	}
+}
+
 func TestSetGameStatus(t *testing.T) {
 	c := Canvas{
 		gameStatus: game.NotStarted,
