@@ -991,6 +991,109 @@ func TestSwapCancelled(t *testing.T) {
 	})
 }
 
+func TestTileSelection(t *testing.T) {
+	tests := []struct {
+		pp    pixelPosition
+		draw  drawMetrics
+		board board.Board
+		want  *tileSelection
+	}{
+		{ // unused tile ok
+			pp: pixelPosition{x: 780, y: 945},
+			draw: drawMetrics{
+				tileLength: 4,
+				unusedMin:  pixelPosition{x: 770, y: 944},
+			},
+			board: board.Board{
+				UnusedTileIDs: []tile.ID{
+					2: 6,
+				},
+				UnusedTiles: map[tile.ID]tile.Tile{
+					6: {ID: 6, Ch: 'E'},
+				},
+			},
+			want: &tileSelection{
+				used:  false,
+				index: 2,
+				tile:  tile.Tile{ID: 6, Ch: 'E'},
+			},
+		},
+		{ // tile should exist, but does not
+			pp: pixelPosition{x: 3, y: 6},
+			draw: drawMetrics{
+				tileLength: 2,
+				unusedMin:  pixelPosition{x: 2, y: 0},
+			},
+			board: board.Board{
+				UnusedTileIDs: []tile.ID{
+					18: 6, // there are 19 tiles, but the first 18 have ids of 0
+				},
+				UnusedTiles: map[tile.ID]tile.Tile{
+					6: {ID: 6, Ch: 'E'},
+				},
+			},
+		},
+		{ // used tile ok
+			pp: pixelPosition{x: 47, y: 74},
+			draw: drawMetrics{
+				tileLength: 5,
+				usedMin:    pixelPosition{x: 20, y: 30},
+				numRows:    10,
+				numCols:    12,
+			},
+			board: board.Board{
+				UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{
+					5: {8: tile.Tile{ID: 7, Ch: 'R'}},
+				},
+			},
+			want: &tileSelection{
+				used: true,
+				tile: tile.Tile{ID: 7, Ch: 'R'},
+				x:    5,
+				y:    8,
+			},
+		},
+		{ // used tile no y
+			pp: pixelPosition{x: 47, y: 74},
+			draw: drawMetrics{
+				tileLength: 5,
+				usedMin:    pixelPosition{x: 20, y: 30},
+				numRows:    10,
+				numCols:    12,
+			},
+			board: board.Board{
+				UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{
+					5: {4: tile.Tile{ID: 7, Ch: 'R'}},
+				},
+			},
+		},
+		{ // used tile no x
+			pp: pixelPosition{x: 47, y: 74},
+			draw: drawMetrics{
+				tileLength: 5,
+				usedMin:    pixelPosition{x: 20, y: 30},
+				numRows:    10,
+				numCols:    12,
+			},
+			board: board.Board{
+				UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{
+					1: {8: tile.Tile{ID: 7, Ch: 'R'}},
+				},
+			},
+		},
+	}
+	for i, test := range tests {
+		c := Canvas{
+			draw:  test.draw,
+			board: &test.board,
+		}
+		got := c.tileSelection(test.pp)
+		if !reflect.DeepEqual(test.want, got) {
+			t.Errorf("Test %v: tile selection is not equal:\nwanted: %v\ngot:    %v\n", i, test.want, got)
+		}
+	}
+}
+
 func TestSetMoveState(t *testing.T) {
 	tests := []struct {
 		ms   moveState
