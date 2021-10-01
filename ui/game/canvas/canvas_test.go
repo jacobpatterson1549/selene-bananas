@@ -974,21 +974,19 @@ func TestSwap(t *testing.T) {
 }
 
 func TestSwapCancelled(t *testing.T) {
-	t.Run("cancelled", func(t *testing.T) {
-		infoLogged := false
-		c := Canvas{
-			board: &board.Board{},
-			log: &mockLog{
-				InfoFunc: func(text string) {
-					infoLogged = true
-				},
+	infoLogged := false
+	c := Canvas{
+		board: &board.Board{},
+		log: &mockLog{
+			InfoFunc: func(text string) {
+				infoLogged = true
 			},
-		}
-		c.swap()
-		if !infoLogged {
-			t.Errorf("wanted log message when the user cancels a swap by ending a click in a non-tile area")
-		}
-	})
+		},
+	}
+	c.swap()
+	if !infoLogged {
+		t.Errorf("wanted log message when the user cancels a swap by ending a click in a non-tile area")
+	}
 }
 
 func TestTileSelection(t *testing.T) {
