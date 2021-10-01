@@ -989,6 +989,52 @@ func TestSwapCancelled(t *testing.T) {
 	}
 }
 
+func TestSwapCannotRemove(t *testing.T) {
+	errorLogged := false
+	messageSent := false
+	c := Canvas{
+		draw: drawMetrics{
+			tileLength: 2,
+			numRows:    1,
+			numCols:    1,
+		},
+		selection: selection{
+			end: pixelPosition{x: 1, y: 1},
+		},
+		board: &board.Board{
+			UsedTileLocs: map[tile.X]map[tile.Y]tile.Tile{
+				0: {0: tile.Tile{ID: 66}}, // the tile has a location, but the id of it is not registered, so it cannot be removed
+			},
+		},
+		log: &mockLog{
+			ErrorFunc: func(text string) {
+				errorLogged = true
+			},
+		},
+		Socket: mockSocket{
+			SendFunc: func(m message.Message) {
+				want := message.Message{
+					Type: message.SwapGameTile,
+					Game: &game.Info{
+						Board: board.New([]tile.Tile{{ID: 66}}, nil),
+					},
+				}
+				if got := m; !reflect.DeepEqual(want, got) {
+					t.Errorf("swap cannot remove messages not equal:\nwanted: %v\ngot:    %v", want, got)
+				}
+				messageSent = true
+			},
+		},
+	}
+	c.swap()
+	switch {
+	case !errorLogged:
+		t.Errorf("wanted error to be logged because tile could not be removed")
+	case !messageSent:
+		t.Errorf("wanted message to still be sent to the server to possibly fix the board on the ui")
+	}
+}
+
 func TestTileSelection(t *testing.T) {
 	tests := []struct {
 		pp    pixelPosition
