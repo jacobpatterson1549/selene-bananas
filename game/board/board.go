@@ -133,10 +133,16 @@ func (b *Board) removeUnusedTile(t tile.Tile) {
 	delete(b.UnusedTiles, t.ID)
 	for i, id2 := range b.UnusedTileIDs {
 		if t.ID == id2 {
-			b.UnusedTileIDs = append(b.UnusedTileIDs[:i], b.UnusedTileIDs[i+1:]...)
+			b.UnusedTileIDs = deleteTileID(b.UnusedTileIDs, i)
 			return
 		}
 	}
+}
+
+// deleteTileID removes the tile ID at the index from the slice.
+// Derived from https://github.com/golang/go/wiki/SliceTricks#delete
+func deleteTileID(a []tile.ID, i int) []tile.ID {
+	return a[:i+copy(a[i:], a[i+1:])]
 }
 
 // removeUsedTile removes a tile from the used tiles.
@@ -240,7 +246,14 @@ func (b *Board) hasSingleUsedGroup() bool {
 func (b Board) UsedTileWords() []string {
 	horizontalWords := b.usedTileWordsX()
 	verticalWords := b.usedTileWordsY()
-	return append(horizontalWords, verticalWords...)
+	return concat(horizontalWords, verticalWords)
+}
+
+// concat joins the slices, returning a new slice.
+func concat(a, b []string) []string {
+	c := make([]string, len(a)+len(b))
+	copy(c[copy(c, a):], b)
+	return c
 }
 
 // usedTileWordsY computes all the vertical words formed by used tiles.
