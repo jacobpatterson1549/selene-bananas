@@ -3,13 +3,13 @@
 # nodejs to run client wasm tests
 # aspell and aspell-en for game word list
 # download go dependencies for source code
-FROM golang:1.17-alpine3.13 AS BUILDER
+FROM golang:1.18-alpine3.15 AS BUILDER
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN apk add --no-cache \
         make=~4.3 \
         bash=~5.1 \
-        nodejs=~14 \
+        nodejs=~16 \
         aspell=~0.60 \
         aspell-en=2020.12.07-r0 \
     && go mod download
