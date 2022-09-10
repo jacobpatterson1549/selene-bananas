@@ -22,13 +22,12 @@ func userCreateHandler(userDao UserDao, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		password := r.FormValue("password_confirm")
-		u, err := user.New(username, password)
-		if err != nil {
-			writeInternalError(err, log, w)
-			return
+		u := user.User{
+			Username: username,
+			Password: password,
 		}
 		ctx := r.Context()
-		if err := userDao.Create(ctx, *u); err != nil {
+		if err := userDao.Create(ctx, u); err != nil {
 			writeInternalError(err, log, w)
 			return
 		}
@@ -40,13 +39,12 @@ func userLoginHandler(userDao UserDao, tokenizer Tokenizer, log log.Logger) http
 	return func(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		password := r.FormValue("password")
-		u, err := user.New(username, password)
-		if err != nil {
-			writeInternalError(err, log, w)
-			return
+		u := user.User{
+			Username: username,
+			Password: password,
 		}
 		ctx := r.Context()
-		u2, err := userDao.Login(ctx, *u)
+		u2, err := userDao.Login(ctx, u)
 		if err != nil {
 			handleUserDaoError(w, err, "login", log)
 			return
@@ -84,13 +82,12 @@ func userUpdatePasswordHandler(userDao UserDao, lobby Lobby, log log.Logger) htt
 		username := r.FormValue("username")
 		password := r.FormValue("password")
 		newPassword := r.FormValue("password_confirm")
-		u, err := user.New(username, password)
-		if err != nil {
-			writeInternalError(err, log, w)
-			return
+		u := user.User{
+			Username: username,
+			Password: password,
 		}
 		ctx := r.Context()
-		if err := userDao.UpdatePassword(ctx, *u, newPassword); err != nil {
+		if err := userDao.UpdatePassword(ctx, u, newPassword); err != nil {
 			handleUserDaoError(w, err, "update password", log)
 			return
 		}
@@ -103,13 +100,12 @@ func userDeleteHandler(userDao UserDao, lobby Lobby, log log.Logger) http.Handle
 	return func(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		password := r.FormValue("password")
-		u, err := user.New(username, password)
-		if err != nil {
-			writeInternalError(err, log, w)
-			return
+		u := user.User{
+			Username: username,
+			Password: password,
 		}
 		ctx := r.Context()
-		if err := userDao.Delete(ctx, *u); err != nil {
+		if err := userDao.Delete(ctx, u); err != nil {
 			handleUserDaoError(w, err, "delete", log)
 			return
 		}

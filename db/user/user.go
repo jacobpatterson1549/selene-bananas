@@ -13,19 +13,15 @@ type User struct {
 	Points   int
 }
 
-// New creates a new user with the specified name and password.
-func New(u, p string) (*User, error) {
-	if err := validateUsername(u); err != nil {
-		return nil, err
+// Validate checks if the username and password are valid.
+func (u User) Validate() error {
+	if err := validateUsername(u.Username); err != nil {
+		return err
 	}
-	if err := validatePassword(p); err != nil {
-		return nil, err
+	if err := validatePassword(u.Password); err != nil {
+		return err
 	}
-	user := User{
-		Username: u,
-		Password: p,
-	}
-	return &user, nil
+	return nil
 }
 
 // validateUsername returns an error if the username is not valid.

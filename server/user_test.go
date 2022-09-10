@@ -21,13 +21,9 @@ func TestUserCreateHandler(t *testing.T) {
 		wantCode        int
 	}{
 		{
-			wantHandleError: true,
-			wantCode:        500,
-		},
-		{
 			username: "selene",
 			password: "password123",
-			daoErr:   fmt.Errorf("problem creating user"),
+			daoErr:   fmt.Errorf("problem creating user (duplicate username or invalid username/password)"),
 			wantCode: 500,
 		},
 		{
@@ -75,10 +71,6 @@ func TestUserLoginHandler(t *testing.T) {
 		wantCode     int
 		wantLog      bool
 	}{
-		{
-			wantCode: 500,
-			wantLog:  true,
-		},
 		{
 			username: "selene",
 			password: "password123",
@@ -226,10 +218,6 @@ func TestUserUpdatePasswordHandler(t *testing.T) {
 		wantLobbyRemove bool
 	}{
 		{
-			username: "INVALID username!",
-			wantCode: 500,
-		},
-		{
 			username:     "selene",
 			password:     "TOP_s3cret!1",
 			newPassword:  "MoR&_sCr3T1",
@@ -303,10 +291,6 @@ func TestUserDeleteHandler(t *testing.T) {
 		wantCode        int
 		wantLobbyRemove bool
 	}{
-		{
-			username: "INVALID username!",
-			wantCode: 500,
-		},
 		{
 			username:     "selene",
 			password:     "TOP_s3cret!i",

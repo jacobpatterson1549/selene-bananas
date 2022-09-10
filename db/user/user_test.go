@@ -44,7 +44,7 @@ func TestValidatePassword(t *testing.T) {
 	}
 }
 
-func TestNewUser(t *testing.T) {
+func TestUserValidate(t *testing.T) {
 	newUserTests := []struct {
 		username string
 		password string
@@ -64,14 +64,16 @@ func TestNewUser(t *testing.T) {
 		},
 	}
 	for i, test := range newUserTests {
-		u, err := New(test.username, test.password)
+		u := User{
+			Username: test.username,
+			Password: test.password,
+		}
+		err := u.Validate()
 		switch {
 		case err != nil:
 			switch {
 			case test.wantOk:
 				t.Errorf("Test %v: unwanted error: %v", i, err)
-			case u != nil:
-				t.Errorf("Test %v: wanted nil user when error returned", i)
 			}
 		case !test.wantOk:
 			t.Errorf("Test %v: wanted error", i)

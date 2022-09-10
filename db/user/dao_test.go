@@ -35,22 +35,46 @@ func TestNewDao(t *testing.T) {
 
 func TestDaoCreate(t *testing.T) {
 	createTests := []struct {
+		User
 		userHashPasswordErr error
 		dbExecErr           error
 		wantOk              bool
 	}{
 		{
+			User: User{
+				Username: "JOHN",
+				Password: "Doe12345",
+			},
+		},
+		{
+			User: User{
+				Username: "john",
+				Password: "short",
+			},
+		},
+		{
+			User: User{
+				Username: "john",
+				Password: "Doe12345",
+			},
 			userHashPasswordErr: fmt.Errorf("problem hashing password"),
 		},
 		{
+			User: User{
+				Username: "john",
+				Password: "Doe12345",
+			},
 			dbExecErr: fmt.Errorf("problem executing user create"),
 		},
 		{
+			User: User{
+				Username: "john",
+				Password: "Doe12345",
+			},
 			wantOk: true,
 		},
 	}
 	for i, test := range createTests {
-		var u User
 		ph := mockPasswordHandler{
 			hashFunc: func(password string) ([]byte, error) {
 				return []byte(password), test.userHashPasswordErr
@@ -66,7 +90,7 @@ func TestDaoCreate(t *testing.T) {
 			passwordHandler: ph,
 		}
 		ctx := context.Background()
-		err := d.Create(ctx, u)
+		err := d.Create(ctx, test.User)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -189,6 +213,7 @@ func TestDaoUpdatePassword(t *testing.T) {
 	}
 	for i, test := range updatePasswordTests {
 		u := User{
+			Username: "bart",
 			Password: test.oldP,
 		}
 		ph := mockPasswordHandler{

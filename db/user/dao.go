@@ -61,7 +61,9 @@ func validate(b Backend) error {
 
 // Create adds a user.
 func (d Dao) Create(ctx context.Context, u User) error {
-	// TODO: validate username, password here (similar to Dao.updatePassword)
+	if err := u.Validate(); err != nil {
+		return err
+	}
 	hashedPassword, err := d.passwordHandler.Hash(u.Password)
 	if err != nil {
 		return fmt.Errorf("hashing password: %w", err)
@@ -98,7 +100,8 @@ func (d Dao) UpdatePassword(ctx context.Context, u User, newPassword string) err
 	if _, err := d.Login(ctx, u); err != nil {
 		return err
 	}
-	if err := validatePassword(newPassword); err != nil {
+	u.Password = newPassword
+	if err := u.Validate(); err != nil {
 		return err
 	}
 	hashedPassword, err := d.passwordHandler.Hash(newPassword)

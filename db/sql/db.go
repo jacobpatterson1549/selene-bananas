@@ -45,7 +45,7 @@ func (db Database) Query(ctx context.Context, q Query, dest ...interface{}) erro
 	defer cancelFunc()
 	row := db.DB.QueryRowContext(ctx, q.Cmd(), q.Args()...)
 	if err := row.Scan(dest...); err != nil {
-		if err == sql.ErrNoRows {
+		if err == ErrNoRows {
 			return err
 		}
 		return fmt.Errorf("querying into destination arguments: %w", err)
