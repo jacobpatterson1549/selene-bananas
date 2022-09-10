@@ -210,6 +210,60 @@ func TestDatabaseQuery(t *testing.T) {
 	}
 }
 
+func TestQueryNoRows(t *testing.T) {
+	sqlDB, err := sql.Open(testDriverName, testDatabaseURL)
+	if err != nil {
+		t.Fatalf("unwanted error opening database for query: %v", err)
+	}
+	want := 6
+	rows := MockRows{
+		ColumnsFunc: func() []string {
+			return []string{"?column?"}
+		},
+		CloseFunc: func() error {
+			return nil
+		},
+		NextFunc: func(dest []driver.Value) error {
+			return io.EOF
+		},
+	}
+	stmt := MockStmt{
+		CloseFunc: func() error {
+			return nil
+		},
+		NumInputFunc: func() int {
+			return 1
+		},
+		QueryFunc: func(args []driver.Value) (driver.Rows, error) {
+			return rows, nil
+		},
+	}
+	conn := MockConn{
+		PrepareFunc: func(query string) (driver.Stmt, error) {
+			return stmt, nil
+		},
+	}
+	testDriver.OpenFunc = func(name string) (driver.Conn, error) {
+		return conn, nil
+	}
+	q := QueryFunction{
+		name:      "SELECT ?;",
+		cols:      []string{"?column?"},
+		arguments: []interface{}{want},
+	}
+	db := Database{
+		DB: sqlDB,
+		Config: db.Config{
+			QueryPeriod: 1 * time.Hour,
+		},
+	}
+	ctx := context.Background()
+	var got int
+	if err := db.Query(ctx, q, &got); err != sql.ErrNoRows {
+		t.Error()
+	}
+}
+
 func TestDatabaseExec(t *testing.T) {
 	sqlDB, err := sql.Open(testDriverName, testDatabaseURL)
 	if err != nil {
