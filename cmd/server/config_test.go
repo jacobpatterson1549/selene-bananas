@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
 	"github.com/jacobpatterson1549/selene-bananas/server/log/logtest"
@@ -15,9 +16,31 @@ func init() {
 	sql.Register("TestCreateDatabaseDriver", TestNoopDriver)
 }
 
-// TestCreateDatabase only checks the happy path, making sure defaults defined in config.go are valid.
-func TestCreateDatabase(t *testing.T) {
+// TestCreateUserBackend checks for database validity
+func TestCreateUserBackend(t *testing.T) {
+	databaseURLs := []string{
+		"",
+		"postgres", // need more than this
+		"ftp://",
+	}
+	for i, u := range databaseURLs {
+		f := Flags{
+			DatabaseURL: u,
+		}
+		var e EmbeddedData
+		ctx := context.Background()
+		if _, err := f.CreateUserBackend(ctx, e); err == nil {
+			t.Errorf("Test %v: wanted err for %q database url", i, u)
+		}
+	}
+}
+
+// TestCreateSQLDatabase only checks the happy path, making sure defaults defined in config.go are valid.
+func TestCreateSQLDatabase(t *testing.T) {
 	var f Flags
+	cfg := db.Config{
+		QueryPeriod: 15 * time.Millisecond, // should take nearly no time
+	}
 	e := EmbeddedData{
 		SQLFS: fstest.MapFS{
 			"user_create.sql":                  &fstest.MapFile{Data: []byte("2")},
@@ -29,7 +52,7 @@ func TestCreateDatabase(t *testing.T) {
 		},
 	}
 	ctx := context.Background()
-	got, err := f.CreateDatabase(ctx, "TestCreateDatabaseDriver", e)
+	got, err := f.CreateSQLDatabase(ctx, cfg, "TestCreateDatabaseDriver", e)
 	switch {
 	case err != nil:
 		t.Errorf("unwanted error: %v", err)
@@ -45,7 +68,7 @@ func TestCreateServer(t *testing.T) {
 	}
 	ctx := context.Background()
 	log := logtest.DiscardLogger
-	db := new(db.Database)
+	var ub mockUserBackend
 	wantVersion := "9d2ffad8e5e5383569d37ec381147f2d"
 	staticFS := new(fstest.MapFS)
 	dummyFile := new(fstest.MapFile)
@@ -55,7 +78,7 @@ func TestCreateServer(t *testing.T) {
 		StaticFS:   staticFS,
 		TemplateFS: fstest.MapFS{"file": dummyFile},
 	}
-	s, err := f.CreateServer(ctx, log, db, e)
+	s, err := f.CreateServer(ctx, log, ub, e)
 	switch {
 	case err != nil:
 		t.Errorf("unwanted error: %v", err)

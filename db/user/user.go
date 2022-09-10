@@ -4,24 +4,14 @@ package user
 import (
 	"fmt"
 	"unicode"
-
-	"github.com/jacobpatterson1549/selene-bananas/db/user/bcrypt"
 )
 
-type (
-	// User contains information for each player.
-	User struct {
-		Username string
-		password string
-		Points   int
-		ph       passwordHandler
-	}
-
-	passwordHandler interface {
-		Hash(password string) ([]byte, error)
-		IsCorrect(hashedPassword []byte, password string) (bool, error)
-	}
-)
+// User contains information for each player.
+type User struct {
+	Username string
+	Password string
+	Points   int
+}
 
 // New creates a new user with the specified name and password.
 func New(u, p string) (*User, error) {
@@ -31,11 +21,9 @@ func New(u, p string) (*User, error) {
 	if err := validatePassword(p); err != nil {
 		return nil, err
 	}
-	bph := bcrypt.NewPasswordHandler()
 	user := User{
 		Username: u,
-		password: p,
-		ph:       bph,
+		Password: p,
 	}
 	return &user, nil
 }
@@ -64,23 +52,4 @@ func validatePassword(p string) error {
 		return fmt.Errorf("password must be at least 8 characters long")
 	}
 	return nil
-}
-
-// hashPassword creates a byte hash of the password that should be secure.
-func (u User) hashPassword() ([]byte, error) {
-	hashedPassword, err := u.ph.Hash(u.password)
-	if err != nil {
-		return nil, fmt.Errorf("hashing password: %w", err)
-	}
-	return hashedPassword, nil
-}
-
-// isCorrectPassword returns whether or not the hashed form of the password is correct,
-// returning an error if a problem occurs while checking it.
-func (u User) isCorrectPassword(hashedPassword []byte) (bool, error) {
-	ok, err := u.ph.IsCorrect(hashedPassword, u.password)
-	if err != nil {
-		return false, fmt.Errorf("checking to see if password is correct: %w", err)
-	}
-	return ok, nil
 }

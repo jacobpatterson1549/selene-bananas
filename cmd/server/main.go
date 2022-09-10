@@ -30,11 +30,11 @@ func runServer(ctx context.Context, log *log.Logger) error {
 		return fmt.Errorf("reading embedded files: %v", err)
 	}
 	f := newFlags(os.Args, os.LookupEnv)
-	db, err := f.CreateDatabase(ctx, "postgres", *e)
+	ub, err := f.CreateUserBackend(ctx, *e)
 	if err != nil {
 		return fmt.Errorf("creating database: %v", err)
 	}
-	server, err := f.CreateServer(ctx, log, db, *e)
+	server, err := f.CreateServer(ctx, log, ub, *e)
 	if err != nil {
 		return fmt.Errorf("creating server: %v", err)
 	}

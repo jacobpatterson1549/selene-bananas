@@ -1,4 +1,4 @@
-package db
+package sql
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 	"testing"
 	"testing/iotest"
 	"time"
+
+	"github.com/jacobpatterson1549/selene-bananas/db"
 )
 
 var testDriver *MockDriver
@@ -22,47 +24,6 @@ const (
 func init() {
 	testDriver = new(MockDriver)
 	sql.Register(testDriverName, testDriver)
-}
-func TestNewDatabase(t *testing.T) {
-	newSQLDatabaseTests := []struct {
-		*sql.DB
-		Config
-		wantOk bool
-	}{
-		{},
-		{
-			DB: new(sql.DB),
-		},
-		{
-			DB:     new(sql.DB),
-			wantOk: true,
-			Config: Config{
-				QueryPeriod: 1 * time.Hour,
-			},
-		},
-	}
-	testDriver.OpenFunc = func(name string) (driver.Conn, error) {
-		if testDriverName != name {
-			return nil, fmt.Errorf("driver names not equal: wanted %v, got %v", testDriverName, name)
-		}
-		return new(MockConn), nil
-	}
-	for i, test := range newSQLDatabaseTests {
-		cfg := Config{
-			QueryPeriod: test.QueryPeriod,
-		}
-		sqlDB, err := cfg.NewDatabase(test.DB)
-		switch {
-		case !test.wantOk:
-			if err == nil {
-				t.Errorf("Test %v: wanted error creating new database", i)
-			}
-		case err != nil:
-			t.Errorf("Test %v: unwanted error creating new database: %v", i, err)
-		case sqlDB == nil:
-			t.Errorf("Test %v: wanted database to be set", i)
-		}
-	}
 }
 
 func TestDatabaseSetup(t *testing.T) {
@@ -142,7 +103,7 @@ func TestDatabaseSetup(t *testing.T) {
 		}
 		db := Database{
 			DB: sqlDB,
-			Config: Config{
+			Config: db.Config{
 				QueryPeriod: 1 * time.Hour,
 			},
 		}
@@ -224,7 +185,7 @@ func TestDatabaseQuery(t *testing.T) {
 		}
 		db := Database{
 			DB: sqlDB,
-			Config: Config{
+			Config: db.Config{
 				QueryPeriod: 1 * time.Hour,
 			},
 		}
@@ -238,10 +199,10 @@ func TestDatabaseQuery(t *testing.T) {
 		switch {
 		case !test.wantOk:
 			if err == nil {
-				t.Errorf("Test %v: wanted error quering database", i)
+				t.Errorf("Test %v: wanted error querying database", i)
 			}
 		case err != nil:
-			t.Errorf("Test %v: unwanted error quering database: %v", i, err)
+			t.Errorf("Test %v: unwanted error querying database: %v", i, err)
 		case want != got:
 			t.Errorf("Test %v: value not set correctly, wanted %v, got %v", i, want, got)
 		}
@@ -351,7 +312,7 @@ func TestDatabaseExec(t *testing.T) {
 		}
 		db := Database{
 			DB: sqlDB,
-			Config: Config{
+			Config: db.Config{
 				QueryPeriod: 1 * time.Hour,
 			},
 		}

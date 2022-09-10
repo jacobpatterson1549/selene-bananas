@@ -2,124 +2,120 @@ package user
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
 
-	"github.com/jacobpatterson1549/selene-bananas/db"
+	"github.com/jacobpatterson1549/selene-bananas/db/user/bcrypt"
 )
 
 type (
 	// Dao contains CRUD operations for user-related information.
 	Dao struct {
-		db Database
+		backend         Backend
+		passwordHandler passwordHandler
 	}
 
-	// Database contains methods to create, read, update, and delete data.
-	Database interface {
-		// Setup initializes the database by reading the files.
-		Setup(ctx context.Context, files []io.Reader) error
-		// Query reads from the database without updating it.
-		Query(ctx context.Context, q db.Query, dest ...interface{}) error
-		// Exec makes a change to existing data, creating/modifying/removing it.
-		Exec(ctx context.Context, queries ...db.Query) error
+	// Backend contains the operations to manage users
+	Backend interface {
+		// Create adds the username/password pair.
+		Create(ctx context.Context, u User) error
+		// Get validates the username/password pair and gets the points.
+		Read(ctx context.Context, u User) (*User, error)
+		// UpdatePassword updates the password for user identified by the username.
+		UpdatePassword(ctx context.Context, u User) error
+		// UpdatePointsIncrement increments the points for all of the usernames.
+		UpdatePointsIncrement(ctx context.Context, usernamePoints map[string]int) error
+		// Delete removes the user.
+		Delete(ctx context.Context, u User) error
+	}
+
+	passwordHandler interface {
+		Hash(password string) ([]byte, error)
+		IsCorrect(hashedPassword []byte, password string) (bool, error)
 	}
 )
 
 // ErrIncorrectLogin should be returned if a login attempt fails because the credentials are invalid.
 var ErrIncorrectLogin error = fmt.Errorf("incorrect username/password")
+var bph = bcrypt.NewPasswordHandler()
 
-// NewDao creates a Dao on the specified database.
-func NewDao(db Database) (*Dao, error) {
-	if err := validate(db); err != nil {
+// NewDao creates a Dao using the specified backend.
+func NewDao(b Backend) (*Dao, error) {
+	if err := validate(b); err != nil {
 		return nil, fmt.Errorf("creating user dao: validation: %w", err)
 	}
 	d := Dao{
-		db: db,
+		backend:         b,
+		passwordHandler: bph,
 	}
 	return &d, nil
 }
 
 // validate checks fields to set up the dao.
-func validate(db Database) error {
+func validate(b Backend) error {
 	switch {
-	case db == nil:
-		return fmt.Errorf("database required")
+	case b == nil:
+		return fmt.Errorf("backend required")
 	}
 	return nil
 }
 
 // Create adds a user.
 func (d Dao) Create(ctx context.Context, u User) error {
-	hashedPassword, err := u.hashPassword()
+	// TODO: validate username, password here (similar to Dao.updatePassword)
+	hashedPassword, err := d.passwordHandler.Hash(u.Password)
 	if err != nil {
-		return err
+		return fmt.Errorf("hashing password: %w", err)
 	}
-	q := db.NewExecFunction("user_create", u.Username, hashedPassword)
-	if err := d.db.Exec(ctx, q); err != nil {
-		return fmt.Errorf("creating user: %w", err)
+	u.Password = string(hashedPassword)
+	if err := d.backend.Create(ctx, u); err != nil {
+		return formatBackendError("creating user", err)
 	}
 	return nil
 }
 
 // Login gets ensures the username/password combination is valid and returns all information about the user.
 func (d Dao) Login(ctx context.Context, u User) (*User, error) {
-	cols := []string{
-		"username",
-		"password",
-		"points",
-	}
-	q := db.NewQueryFunction("user_read", cols, u.Username)
-	var u2 User
-	err := d.db.Query(ctx, q, &u2.Username, &u2.password, &u2.Points)
+	u2, err := d.backend.Read(ctx, u)
 	if err != nil {
-		if errors.Is(err, db.ErrNoRows) {
-			return nil, ErrIncorrectLogin
+		if err != ErrIncorrectLogin {
+			return nil, formatBackendError("reading user", err)
 		}
-		return nil, fmt.Errorf("reading user: %w", err)
+		return nil, err
 	}
-	hashedPassword := []byte(u2.password)
-	isCorrect, err := u.isCorrectPassword(hashedPassword)
+	hashedPassword := []byte(u2.Password)
+	isCorrect, err := d.passwordHandler.IsCorrect(hashedPassword, u.Password)
 	switch {
 	case err != nil:
-		return nil, fmt.Errorf("reading user: %w", err)
+		return nil, fmt.Errorf("checking password correctness: %w", err)
 	case !isCorrect:
 		return nil, ErrIncorrectLogin
 	}
-	return &u2, nil
+	return u2, nil
 }
 
 // UpdatePassword sets the password of a user.
-func (d Dao) UpdatePassword(ctx context.Context, u User, newP string) error {
+func (d Dao) UpdatePassword(ctx context.Context, u User, newPassword string) error {
 	if _, err := d.Login(ctx, u); err != nil {
-		if errors.Is(err, ErrIncorrectLogin) {
-			return ErrIncorrectLogin
-		}
-		return fmt.Errorf("checking password: %w", err)
-	}
-	if err := validatePassword(newP); err != nil {
 		return err
 	}
-	u.password = newP
-	hashedPassword, err := u.hashPassword()
+	if err := validatePassword(newPassword); err != nil {
+		return err
+	}
+	hashedPassword, err := d.passwordHandler.Hash(newPassword)
 	if err != nil {
-		return err
+		return fmt.Errorf("hashing password: %w", err)
 	}
-	q := db.NewExecFunction("user_update_password", u.Username, hashedPassword)
-	if err := d.db.Exec(ctx, q); err != nil {
-		return fmt.Errorf("updating user password: %w", err)
+	u.Password = string(hashedPassword)
+	if err := d.backend.UpdatePassword(ctx, u); err != nil {
+		return formatBackendError("updating user password", err)
 	}
 	return nil
 }
 
 // UpdatePointsIncrement increments the points for multiple users by the amount defined in the map.
-func (d Dao) UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error {
-	queries := make([]db.Query, 0, len(userPoints))
-	for username, points := range userPoints {
-		queries = append(queries, db.NewExecFunction("user_update_points_increment", username, points))
-	}
-	if err := d.db.Exec(ctx, queries...); err != nil {
-		return fmt.Errorf("incrementing user points: %w", err)
+func (d Dao) UpdatePointsIncrement(ctx context.Context, usernamePoints map[string]int) error {
+	if err := d.backend.UpdatePointsIncrement(ctx, usernamePoints); err != nil {
+		return formatBackendError("incrementing user points", err)
 	}
 	return nil
 }
@@ -127,14 +123,15 @@ func (d Dao) UpdatePointsIncrement(ctx context.Context, userPoints map[string]in
 // Delete removes a user.
 func (d Dao) Delete(ctx context.Context, u User) error {
 	if _, err := d.Login(ctx, u); err != nil {
-		if errors.Is(err, ErrIncorrectLogin) {
-			return ErrIncorrectLogin
-		}
-		return fmt.Errorf("checking password: %w", err)
+		return err
 	}
-	q := db.NewExecFunction("user_delete", u.Username)
-	if err := d.db.Exec(ctx, q); err != nil {
-		return fmt.Errorf("deleting user: %w", err)
+	if err := d.backend.Delete(ctx, u); err != nil {
+		return formatBackendError("deleting user", err)
 	}
 	return nil
+}
+
+// formatBackendError includes the name of the backend in the error message.
+func formatBackendError(reason string, err error) error {
+	return fmt.Errorf("%v (%T): %w", reason, err, err)
 }

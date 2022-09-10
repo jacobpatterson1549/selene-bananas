@@ -5,12 +5,15 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"errors"
 	"io"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	main "github.com/jacobpatterson1549/selene-bananas/cmd/server"
 	"github.com/jacobpatterson1549/selene-bananas/db"
+	"github.com/jacobpatterson1549/selene-bananas/db/user"
 	"github.com/jacobpatterson1549/selene-bananas/game/word"
 	"github.com/jacobpatterson1549/selene-bananas/server/log/logtest"
 )
@@ -49,12 +52,12 @@ func TestNewWordValidator(t *testing.T) {
 func TestServerGetFiles(t *testing.T) {
 	ctx := context.Background()
 	log := logtest.DiscardLogger
-	db := new(db.Database)
+	var ub mockUserBackend
 	e := embeddedData(t)
 	f := main.Flags{
 		HTTPSPort: 8000, // not actually used, overridden by httptest
 	}
-	s, err := f.CreateServer(ctx, log, db, e)
+	s, err := f.CreateServer(ctx, log, ub, e)
 	if err != nil {
 		t.Fatalf("unwanted create server error: %v", err)
 	}
@@ -89,9 +92,35 @@ func init() {
 
 func TestDatabaseFilesExist(t *testing.T) {
 	var f main.Flags
+	cfg := db.Config{
+		QueryPeriod: 15 * time.Millisecond, // should take nearly no time
+	}
 	ctx := context.Background()
 	e := embeddedData(t)
-	if _, err := f.CreateDatabase(ctx, "TestDatabaseFilesExistDriver", e); err != nil {
+	if _, err := f.CreateSQLDatabase(ctx, cfg, "TestDatabaseFilesExistDriver", e); err != nil {
 		t.Errorf("unwanted create database error: %v", err)
 	}
+}
+
+type mockUserBackend struct{}
+
+func (m mockUserBackend) Create(ctx context.Context, u user.User) error {
+	return errors.New("not implemented")
+}
+
+func (m mockUserBackend) Read(ctx context.Context, u user.User) (*user.User, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m mockUserBackend) UpdatePassword(ctx context.Context, u user.User) error {
+	return errors.New("not implemented")
+
+}
+
+func (m mockUserBackend) UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error {
+	return errors.New("not implemented")
+}
+
+func (m mockUserBackend) Delete(ctx context.Context, u user.User) error {
+	return errors.New("not implemented")
 }

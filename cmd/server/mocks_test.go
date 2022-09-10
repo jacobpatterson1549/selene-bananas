@@ -1,8 +1,35 @@
 package main
 
 import (
+	"context"
 	"database/sql/driver"
+	"errors"
+
+	"github.com/jacobpatterson1549/selene-bananas/db/user"
 )
+
+type mockUserBackend struct{}
+
+func (m mockUserBackend) Create(ctx context.Context, u user.User) error {
+	return errors.New("not implemented")
+}
+
+func (m mockUserBackend) Read(ctx context.Context, u user.User) (*user.User, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m mockUserBackend) UpdatePassword(ctx context.Context, u user.User) error {
+	return errors.New("not implemented")
+
+}
+
+func (m mockUserBackend) UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error {
+	return errors.New("not implemented")
+}
+
+func (m mockUserBackend) Delete(ctx context.Context, u user.User) error {
+	return errors.New("not implemented")
+}
 
 // TestNoopDriver creates connections that have noop statements and transactions.
 var TestNoopDriver driver.Driver = &mockDriver{

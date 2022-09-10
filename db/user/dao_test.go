@@ -5,23 +5,21 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
-
-	"github.com/jacobpatterson1549/selene-bananas/db"
 )
 
 func TestNewDao(t *testing.T) {
 	newDaoTests := []struct {
-		db     Database
-		wantOk bool
+		backend Backend
+		wantOk  bool
 	}{
 		{},
 		{
-			db:     new(mockDatabase),
-			wantOk: true,
+			backend: new(mockBackend),
+			wantOk:  true,
 		},
 	}
 	for i, test := range newDaoTests {
-		d, err := NewDao(test.db)
+		d, err := NewDao(test.backend)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -29,7 +27,7 @@ func TestNewDao(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error creating new dao: %v", i, err)
-		case d.db == nil:
+		case d.backend == nil:
 			t.Errorf("Test %v: db not set", i)
 		}
 	}
@@ -45,7 +43,6 @@ func TestDaoCreate(t *testing.T) {
 			userHashPasswordErr: fmt.Errorf("problem hashing password"),
 		},
 		{
-
 			dbExecErr: fmt.Errorf("problem executing user create"),
 		},
 		{
@@ -53,19 +50,20 @@ func TestDaoCreate(t *testing.T) {
 		},
 	}
 	for i, test := range createTests {
-		u := User{
-			ph: mockPasswordHandler{
-				hashFunc: func(password string) ([]byte, error) {
-					return []byte(password), test.userHashPasswordErr
-				},
+		var u User
+		ph := mockPasswordHandler{
+			hashFunc: func(password string) ([]byte, error) {
+				return []byte(password), test.userHashPasswordErr
+			},
+		}
+		b := &mockBackend{
+			createFunc: func(ctx context.Context, u User) error {
+				return test.dbExecErr
 			},
 		}
 		d := Dao{
-			db: mockDatabase{
-				execFunc: func(ctx context.Context, queries ...db.Query) error {
-					return test.dbExecErr
-				},
-			},
+			backend:         b,
+			passwordHandler: ph,
 		}
 		ctx := context.Background()
 		err := d.Create(ctx, u)
@@ -82,7 +80,7 @@ func TestDaoCreate(t *testing.T) {
 
 func TestDaoLogin(t *testing.T) {
 	loginTests := []struct {
-		rowScanErr           error
+		readErr              error
 		incorrectPassword    bool
 		isCorrectPasswordErr error
 		want                 User
@@ -90,15 +88,7 @@ func TestDaoLogin(t *testing.T) {
 		wantIncorrectLogin   bool
 	}{
 		{
-			rowScanErr: fmt.Errorf("problem reading user row"),
-		},
-		{
-			rowScanErr:         db.ErrNoRows,
-			wantIncorrectLogin: true,
-		},
-		{
-			rowScanErr:         fmt.Errorf("wrapped db.ErrNoRows: %w", db.ErrNoRows),
-			wantIncorrectLogin: true,
+			readErr: fmt.Errorf("problem reading user row"),
 		},
 		{
 			isCorrectPasswordErr: fmt.Errorf("problem checking password"),
@@ -112,19 +102,20 @@ func TestDaoLogin(t *testing.T) {
 		},
 	}
 	for i, test := range loginTests {
-		u := User{
-			ph: mockPasswordHandler{
-				isCorrectFunc: func(hashedPassword []byte, password string) (bool, error) {
-					return !test.incorrectPassword, test.isCorrectPasswordErr
-				},
+		var u User
+		ph := mockPasswordHandler{
+			isCorrectFunc: func(hashedPassword []byte, password string) (bool, error) {
+				return !test.incorrectPassword, test.isCorrectPasswordErr
+			},
+		}
+		b := mockBackend{
+			readFunc: func(ctx context.Context, u User) (*User, error) {
+				return &test.want, test.readErr
 			},
 		}
 		d := Dao{
-			db: mockDatabase{
-				queryFunc: func(ctx context.Context, q db.Query, dest ...interface{}) error {
-					return test.rowScanErr
-				},
-			},
+			backend:         b,
+			passwordHandler: ph,
 		}
 		ctx := context.Background()
 		got, err := d.Login(ctx, u)
@@ -198,30 +189,33 @@ func TestDaoUpdatePassword(t *testing.T) {
 	}
 	for i, test := range updatePasswordTests {
 		u := User{
-			password: test.oldP,
-			ph: mockPasswordHandler{
-				hashFunc: func(password string) ([]byte, error) {
-					if password != test.newP {
-						t.Errorf("Test %v: wanted to hash new password %v, got %v", i, test.newP, password)
-					}
-					return []byte(password), test.hashPasswordErr
-				},
-				isCorrectFunc: func(hashedPassword []byte, password string) (bool, error) {
-					return reflect.DeepEqual(hashedPassword, []byte(password)), nil
-				},
+			Password: test.oldP,
+		}
+		ph := mockPasswordHandler{
+			hashFunc: func(password string) ([]byte, error) {
+				if password != test.newP {
+					t.Errorf("Test %v: wanted to hash new password %v, got %v", i, test.newP, password)
+				}
+				return []byte(password), test.hashPasswordErr
+			},
+			isCorrectFunc: func(hashedPassword []byte, password string) (bool, error) {
+				return reflect.DeepEqual(hashedPassword, []byte(password)), nil
 			},
 		}
-		db := mockDatabase{
-			queryFunc: func(ctx context.Context, q db.Query, dest ...interface{}) error {
-				*dest[1].(*string) = test.dbP
-				return test.dbQueryErr
+		b := mockBackend{
+			readFunc: func(ctx context.Context, u User) (*User, error) {
+				u2 := User{
+					Password: test.dbP,
+				}
+				return &u2, test.dbQueryErr
 			},
-			execFunc: func(ctx context.Context, queries ...db.Query) error {
+			updatePasswordFunc: func(ctx context.Context, u User) error {
 				return test.dbExecErr
 			},
 		}
 		d := Dao{
-			db: db,
+			backend:         b,
+			passwordHandler: ph,
 		}
 		ctx := context.Background()
 		err := d.UpdatePassword(ctx, u, test.newP)
@@ -258,25 +252,16 @@ func TestDaoUpdatePointsIncrement(t *testing.T) {
 		},
 	}
 	for i, test := range updatePointsIncrementTests {
-		db := mockDatabase{
-			execFunc: func(ctx context.Context, queries ...db.Query) error {
-				if test.dbExecErr != nil {
-					return test.dbExecErr
+		b := mockBackend{
+			updatePointsIncrementFunc: func(ctx context.Context, usernamePoints map[string]int) error {
+				if want, got := test.usernamePoints, usernamePoints; !reflect.DeepEqual(want, got) {
+					t.Errorf("usernamePoints not passed through exactly")
 				}
-				updatedUsernamePoints := make(map[string]int, len(queries))
-				for _, q := range queries {
-					u := q.Args()[0].(string)
-					p := q.Args()[1].(int)
-					updatedUsernamePoints[u] = p
-				}
-				if !reflect.DeepEqual(test.usernamePoints, updatedUsernamePoints) {
-					return fmt.Errorf("Test %v: update usernamePoints not equal:\nwanted: %v\ngot:    %v", i, test.usernamePoints, updatedUsernamePoints)
-				}
-				return nil
+				return test.dbExecErr
 			},
 		}
 		d := Dao{
-			db: db,
+			backend: b,
 		}
 		ctx := context.Background()
 		err := d.UpdatePointsIncrement(ctx, test.usernamePoints)
@@ -311,22 +296,26 @@ func TestDaoDelete(t *testing.T) {
 		},
 	}
 	for i, test := range deleteTests {
-		u := User{
-			ph: mockPasswordHandler{
-				isCorrectFunc: func(hashedPassword []byte, password string) (bool, error) {
-					return true, nil
-				},
+		var u User
+		ph := mockPasswordHandler{
+			isCorrectFunc: func(hashedPassword []byte, password string) (bool, error) {
+				return true, nil
+			},
+		}
+		b := mockBackend{
+			readFunc: func(ctx context.Context, u User) (*User, error) {
+				u2 := User{
+					Password: u.Password,
+				}
+				return &u2, test.dbQueryErr
+			},
+			deleteFunc: func(ctx context.Context, u User) error {
+				return test.dbExecErr
 			},
 		}
 		d := Dao{
-			db: mockDatabase{
-				queryFunc: func(ctx context.Context, q db.Query, dest ...interface{}) error {
-					return test.dbQueryErr
-				},
-				execFunc: func(ctx context.Context, queries ...db.Query) error {
-					return test.dbExecErr
-				},
-			},
+			backend:         b,
+			passwordHandler: ph,
 		}
 		ctx := context.Background()
 		err := d.Delete(ctx, u)

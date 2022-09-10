@@ -2,10 +2,6 @@ package user
 
 import (
 	"context"
-	"fmt"
-	"io"
-
-	"github.com/jacobpatterson1549/selene-bananas/db"
 )
 
 type mockPasswordHandler struct {
@@ -21,19 +17,30 @@ func (m mockPasswordHandler) IsCorrect(hashedPassword []byte, password string) (
 	return m.isCorrectFunc(hashedPassword, password)
 }
 
-type mockDatabase struct {
-	queryFunc func(ctx context.Context, q db.Query, dest ...interface{}) error
-	execFunc  func(ctx context.Context, queries ...db.Query) error
+type mockBackend struct {
+	createFunc                func(ctx context.Context, u User) error
+	readFunc                  func(ctx context.Context, u User) (*User, error)
+	updatePasswordFunc        func(ctx context.Context, u User) error
+	updatePointsIncrementFunc func(ctx context.Context, userPoints map[string]int) error
+	deleteFunc                func(ctx context.Context, u User) error
 }
 
-func (m mockDatabase) Setup(ctx context.Context, files []io.Reader) error {
-	return fmt.Errorf("Setup should not be called by the server")
+func (m mockBackend) Create(ctx context.Context, u User) error {
+	return m.createFunc(ctx, u)
 }
 
-func (m mockDatabase) Query(ctx context.Context, q db.Query, dest ...interface{}) error {
-	return m.queryFunc(ctx, q, dest...)
+func (m mockBackend) Read(ctx context.Context, u User) (*User, error) {
+	return m.readFunc(ctx, u)
 }
 
-func (m mockDatabase) Exec(ctx context.Context, queries ...db.Query) error {
-	return m.execFunc(ctx, queries...)
+func (m mockBackend) UpdatePassword(ctx context.Context, u User) error {
+	return m.updatePasswordFunc(ctx, u)
+}
+
+func (m mockBackend) UpdatePointsIncrement(ctx context.Context, userPoints map[string]int) error {
+	return m.updatePointsIncrementFunc(ctx, userPoints)
+}
+
+func (m mockBackend) Delete(ctx context.Context, u User) error {
+	return m.deleteFunc(ctx, u)
 }

@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"context"
 	crypto_rand "crypto/rand"
-	"database/sql"
+	database_sql "database/sql"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
+	"github.com/jacobpatterson1549/selene-bananas/db/sql"
+	"github.com/jacobpatterson1549/selene-bananas/db/sql/postgres"
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 	"github.com/jacobpatterson1549/selene-bananas/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/game/tile"
@@ -24,29 +27,49 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/server/log"
 )
 
-// CreateDatabase creates and sets up the database.
-func (f Flags) CreateDatabase(ctx context.Context, driverName string, e EmbeddedData) (*db.Database, error) {
+// CreateUserBackend creates and sets up the database to back the user DAO.
+func (f Flags) CreateUserBackend(ctx context.Context, e EmbeddedData) (user.Backend, error) {
 	cfg := f.sqlDatabaseConfig()
-	sqlDB, err := sql.Open(driverName, f.DatabaseURL)
+	u, err := url.Parse(f.DatabaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("parsing database url: %w", err)
+	}
+	driverName := u.Scheme
+	switch driverName {
+	case "postgres":
+		database, err := f.CreateSQLDatabase(ctx, cfg, driverName, e)
+		if err != nil {
+			return nil, fmt.Errorf("creating SQL database: %w", err)
+		}
+		ub := postgres.UserBackend{
+			Database: database,
+		}
+		return &ub, nil
+	}
+	return nil, fmt.Errorf("unsupported DATABASE_URL: %q", f.DatabaseURL)
+}
+
+func (f Flags) CreateSQLDatabase(ctx context.Context, cfg db.Config, driverName string, e EmbeddedData) (*sql.Database, error) {
+	sqlDB, err := database_sql.Open(driverName, f.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("opening database %w", err)
 	}
-	db, err := cfg.NewDatabase(sqlDB)
-	if err != nil {
-		return nil, fmt.Errorf("creating SQL database: %w", err)
+	database := sql.Database{
+		DB:     sqlDB,
+		Config: cfg,
 	}
 	setupSQL, err := e.sqlFiles()
 	if err != nil {
 		return nil, err
 	}
-	if err := db.Setup(ctx, setupSQL); err != nil {
+	if err := database.Setup(ctx, setupSQL); err != nil {
 		return nil, fmt.Errorf("setting up SQL database: %w", err)
 	}
-	return db, nil
+	return &database, nil
 }
 
 // CreateServer creates the server.
-func (f Flags) CreateServer(ctx context.Context, log log.Logger, db *db.Database, e EmbeddedData) (*server.Server, error) {
+func (f Flags) CreateServer(ctx context.Context, log log.Logger, ub user.Backend, e EmbeddedData) (*server.Server, error) {
 	timeFunc := func() int64 {
 		return time.Now().Unix()
 	}
@@ -59,7 +82,7 @@ func (f Flags) CreateServer(ctx context.Context, log log.Logger, db *db.Database
 	if err != nil {
 		return nil, fmt.Errorf("creating authentication tokenizer: %w", err)
 	}
-	userDao, err := user.NewDao(db)
+	userDao, err := user.NewDao(ub)
 	if err != nil {
 		return nil, fmt.Errorf("creating user dao: %w", err)
 	}
