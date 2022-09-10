@@ -37,16 +37,21 @@ func (f Flags) CreateUserBackend(ctx context.Context, e EmbeddedData) (user.Back
 	driverName := u.Scheme
 	switch driverName {
 	case "postgres":
-		database, err := f.CreateSQLDatabase(ctx, cfg, driverName, e)
-		if err != nil {
-			return nil, fmt.Errorf("creating SQL database: %w", err)
-		}
-		ub := postgres.UserBackend{
-			Database: database,
-		}
-		return &ub, nil
+		return f.createPostgresUserBackend(ctx, cfg, e)
 	}
 	return nil, fmt.Errorf("unsupported DATABASE_URL: %q", f.DatabaseURL)
+}
+
+// createPostgresUserBackend creates a postgres SQL database and UserBackend.
+func (f Flags) createPostgresUserBackend(ctx context.Context, cfg db.Config, e EmbeddedData) (user.Backend, error) {
+	database, err := f.CreateSQLDatabase(ctx, cfg, "postgres", e)
+	if err != nil {
+		return nil, fmt.Errorf("creating SQL database: %w", err)
+	}
+	ub := postgres.UserBackend{
+		Database: database,
+	}
+	return &ub, nil
 }
 
 func (f Flags) CreateSQLDatabase(ctx context.Context, cfg db.Config, driverName string, e EmbeddedData) (*sql.Database, error) {

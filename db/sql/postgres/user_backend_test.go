@@ -42,10 +42,9 @@ func TestUserBackendRead(t *testing.T) {
 				case !reflect.DeepEqual(wantArgs, q.Args()):
 					t.Errorf("Test %v: query commands not equal: \n wanted: %q \n got:    %q", i, wantArgs, q.Args())
 				}
-				dest[0] = want.Username
-				dest[1] = want.Password
-				dest[2] = want.Points
-				// reflect.ValueOf(dest).Index(1).Set(reflect.ValueOf(want.Password))
+				*dest[0].(*string) = want.Username
+				*dest[1].(*string) = want.Password
+				*dest[2].(*int) = want.Points
 				return test.QueryErr
 			},
 		}
@@ -61,8 +60,7 @@ func TestUserBackendRead(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
-		case want != got:
-			t.Skip("TODO: get setting of dest array working (see how sql.DB does it)")
+		case !reflect.DeepEqual(want, got):
 			t.Errorf("Test %v: users not equal: \n wanted: %v \n got:    %v", i, want, got)
 		}
 	}
