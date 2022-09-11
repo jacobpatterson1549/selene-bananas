@@ -13,13 +13,16 @@ With WebSockets, users can play a word game together over a network.
 
 Uses WebAssembly to manage browser logic.
 
+A small database is used to store user account names, encrypted passwords, and points.  Users get ten points for each game won and one point when they are beaten by someone else.  Users must use either a Postgres on Mongo database.
+
 ## Screenshot
 ![selene-bananas screenshot](screenshot.png)
 
 ## Dependencies
 
 New dependencies are automatically added to [go.mod](go.mod) when the project is built.
-* [pq](https://github.com/lib/pq) provides the Postgres driver for storing user passwords and points
+* [pq](https://github.com/lib/pq) provides the Postgres database driver for storing user passwords and points
+* [mongo-driver](https://github.com/mongodb/mongo-go-driver) provides the Mongodb database driver for storing user passwords and points
 * [Gorilla WebSocket](https://github.com/gorilla/websocket) are used for bidirectional communication between users and the server
 * [jwt](https://github.com/golang-jwt/jwt) is used for stateless web sessions
 * [crypto](https://github.com/golang/crypto) is used to  encrypt passwords with bcrypt
@@ -71,8 +74,14 @@ Launching the application with [Docker](https://www.docker.com) requires minimal
     POSTGRES_PASSWORD=selene123
     POSTGRES_PORT=54320
     ```
-1. Run `docker-compose up --build` to launch the application, rebuilding parts of it that are stale.
+1. Run `docker-compose up postgres-db` to launch a Postgres database in docker.  To run a mongo database, run `docker-compose up mongo-db` after changing the `DATABASE_URL` to `mongodb://selene-bananas-db-mongo:27017/` in `docker-compose.yml` file.
+1. Run `docker-compose up --build web` to launch the application, rebuilding parts of it that are stale.
 1. Access application by opening <http://127.0.0.1:8000>.  TLS certificates will be copied to Docker.  Environment variables are used from the `.env` file.
+1. Run `docker-compose down` after running the application to ensure the web database servers shut down.
+
+To run a Mongo database instead of Postgres, make the following changes:
+* In `docker-compose.yml`: change the line after `depends-on:` from `postgres-db:` to `mongo-db:`
+* In `.env`: set `DATABASE_URL` to `mongodb://127.0.0.1:27017/`
 
 ### Environment Configuration
 
@@ -89,9 +98,18 @@ For development, set `CACHE_SECONDS` to `0` to not cache static and template res
 
 #### Database
 
-The app stores user information in a Postgresql database.  When the app starts, files in the [resources/sql](resources/sql) folder are run to ensure database objects functions are fresh.
+The app stores user information in either a a Postgresql or Mongodb database.  When the app starts, the database is initialized.  For SQL databases, files in the [resources/sql](resources/sql) folder are run to ensure database objects functions are fresh.
 
 ##### localhost
+
+# Mongodb
+
+A Mongo database is very easy to set up when using the docker image.
+* Run `docker-compose up --build mongo-db` to start the database in a terminal.
+* Run the following command to query the database in a terminal: `docker exec -it selene-bananas-db-mongo mongo`
+* Set the `DATABASE_URL` environment variable to `mongodb://127.0.0.1:27017/` before starting the web server to connect to the local mongo server.
+
+# Postgres
 
 A Postgresql database can be created with the command below.  Change the `PGUSER` and `PGPASSWORD` variables.  The command requires administrator access.
 ```bash

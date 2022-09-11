@@ -1,8 +1,8 @@
 version: "2.3"
 services:
-  db:
+  postgres-db:
     image: postgres:11.5-alpine
-    container_name: "selene-bananas-db"
+    container_name: "selene-bananas-db-postgres"
     env_file: ./.env
     ports:
       - "${POSTGRES_PORT}:5432"
@@ -11,12 +11,11 @@ services:
       - PGPASSWORD=${POSTGRES_PASSWORD}
       - PGPORT=${POSTGRES_PORT}
       - PGDATABASE=${POSTGRES_DB}
-    healthcheck:
-      test: ["CMD", "pg_isready"]
-      timeout: 1s
-      interval: 1s
-      retries: 3
-      start_period: 5s
+  mongo-db:
+    image: mongo:5.0.12
+    container_name: "selene-bananas-db-mongo"
+    ports:
+      - "27017:27017"
   web:
     build: .
     container_name: "selene-bananas-web"
@@ -27,7 +26,5 @@ services:
     environment:
       - HTTPS_PORT=${HTTPS_PORT}
       - HTTP_PORT=${HTTP_PORT}
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
-    depends_on:
-      db:
-        condition: service_healthy
+      # - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable
+      - DATABASE_URL=mongodb://selene-bananas-db-mongo:27017/

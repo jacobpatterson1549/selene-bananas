@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
+	"github.com/jacobpatterson1549/selene-bananas/db/mongo"
 	"github.com/jacobpatterson1549/selene-bananas/db/sql"
 	"github.com/jacobpatterson1549/selene-bananas/db/sql/postgres"
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
@@ -38,6 +39,8 @@ func (f Flags) CreateUserBackend(ctx context.Context, e EmbeddedData) (user.Back
 	switch driverName {
 	case "postgres":
 		return f.createPostgresUserBackend(ctx, cfg, e)
+	case "mongodb", "mongodb+srv":
+		return f.createMongoUserBackend(ctx, cfg, e)
 	}
 	return nil, fmt.Errorf("unsupported DATABASE_URL: %q", f.DatabaseURL)
 }
@@ -54,6 +57,19 @@ func (f Flags) createPostgresUserBackend(ctx context.Context, cfg db.Config, e E
 	return &ub, nil
 }
 
+// CreateMongoUserBackend creates and sets up a user backend for mongodb.
+func (f Flags) createMongoUserBackend(ctx context.Context, cfg db.Config, e EmbeddedData) (user.Backend, error) {
+	ub, err := mongo.NewUserBackend(ctx, f.DatabaseURL, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("creating mongo database: %w", err)
+	}
+	if err := ub.Setup(ctx); err != nil {
+		return nil, fmt.Errorf("setting up mongo database: %w", err)
+	}
+	return ub, nil
+}
+
+// CreateSQLDatabase creates and sets up a SQL database.
 func (f Flags) CreateSQLDatabase(ctx context.Context, cfg db.Config, driverName string, e EmbeddedData) (*sql.Database, error) {
 	sqlDB, err := database_sql.Open(driverName, f.DatabaseURL)
 	if err != nil {
