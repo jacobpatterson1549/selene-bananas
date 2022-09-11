@@ -70,7 +70,7 @@ func (d Dao) Create(ctx context.Context, u User) error {
 	}
 	u.Password = string(hashedPassword)
 	if err := d.backend.Create(ctx, u); err != nil {
-		return formatBackendError("creating user", err)
+		return d.formatBackendError("creating user", err)
 	}
 	return nil
 }
@@ -80,7 +80,7 @@ func (d Dao) Login(ctx context.Context, u User) (*User, error) {
 	u2, err := d.backend.Read(ctx, u)
 	if err != nil {
 		if err != ErrIncorrectLogin {
-			return nil, formatBackendError("reading user", err)
+			return nil, d.formatBackendError("reading user", err)
 		}
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (d Dao) UpdatePassword(ctx context.Context, u User, newPassword string) err
 	}
 	u.Password = string(hashedPassword)
 	if err := d.backend.UpdatePassword(ctx, u); err != nil {
-		return formatBackendError("updating user password", err)
+		return d.formatBackendError("updating user password", err)
 	}
 	return nil
 }
@@ -118,7 +118,7 @@ func (d Dao) UpdatePassword(ctx context.Context, u User, newPassword string) err
 // UpdatePointsIncrement increments the points for multiple users by the amount defined in the map.
 func (d Dao) UpdatePointsIncrement(ctx context.Context, usernamePoints map[string]int) error {
 	if err := d.backend.UpdatePointsIncrement(ctx, usernamePoints); err != nil {
-		return formatBackendError("incrementing user points", err)
+		return d.formatBackendError("incrementing user points", err)
 	}
 	return nil
 }
@@ -129,12 +129,12 @@ func (d Dao) Delete(ctx context.Context, u User) error {
 		return err
 	}
 	if err := d.backend.Delete(ctx, u); err != nil {
-		return formatBackendError("deleting user", err)
+		return d.formatBackendError("deleting user", err)
 	}
 	return nil
 }
 
 // formatBackendError includes the name of the backend in the error message.
-func formatBackendError(reason string, err error) error {
-	return fmt.Errorf("%v (%T): %w", reason, err, err)
+func (d Dao) formatBackendError(reason string, err error) error {
+	return fmt.Errorf("%v (%T): %w", reason, d.backend, err)
 }
