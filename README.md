@@ -13,7 +13,7 @@ With WebSockets, users can play a word game together over a network.
 
 Uses WebAssembly to manage browser logic.
 
-A small database is used to store user account names, encrypted passwords, and points.  Users get ten points for each game won and one point when they are beaten by someone else.  Users must use either a Postgres on Mongo database.
+A small database can be used to store user account names, encrypted passwords, and points.  Users get ten points for each game won and one point when they are beaten by someone else.  Users must use either a Postgres on Mongo database.
 
 ## Screenshot
 ![selene-bananas screenshot](screenshot.png)
@@ -74,7 +74,10 @@ Launching the application with [Docker](https://www.docker.com) requires minimal
     POSTGRES_PASSWORD=selene123
     POSTGRES_PORT=54320
     ```
+
+Optionally, start database first:
 1. Run `docker-compose up postgres-db` to launch a Postgres database in docker.  To run a mongo database, run `docker-compose up mongo-db` after changing the `DATABASE_URL` to `mongodb://selene-bananas-db-mongo:27017/` in `docker-compose.yml` file.
+
 1. Run `docker-compose up --build web` to launch the application, rebuilding parts of it that are stale.
 1. Access application by opening <http://127.0.0.1:8000>.  TLS certificates will be copied to Docker.  Environment variables are used from the `.env` file.
 1. Run `docker-compose down` after running the application to ensure the web database servers shut down.
@@ -89,7 +92,6 @@ Environment variables in the `.env` file are needed to customize the server.
 
 Minimal config:
 ```
-DATABASE_URL=postgres://selene:selene123@127.0.0.1:54320/selene_bananas_db?sslmode=disable
 PORT=8000
 NO_TLS_REDIRECT=true
 ```
@@ -98,7 +100,7 @@ For development, set `CACHE_SECONDS` to `0` to not cache static and template res
 
 #### Database
 
-The app stores user information in either a a Postgresql or Mongodb database.  When the app starts, the database is initialized.  For SQL databases, files in the [resources/sql](resources/sql) folder are run to ensure database objects functions are fresh.
+Optionally, the app stores user information in either a a Postgresql or Mongodb database.  The database to use is specified by the `DATABASE_URL` environment argument.  When the app starts, the database is initialized.  For SQL databases, files in the [resources/sql](resources/sql) folder are run to ensure database objects functions are fresh.
 
 ##### localhost
 

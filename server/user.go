@@ -15,6 +15,7 @@ type UserDao interface {
 	Login(ctx context.Context, u user.User) (*user.User, error)
 	UpdatePassword(ctx context.Context, u user.User, newP string) error
 	Delete(ctx context.Context, u user.User) error
+	Backend() user.Backend
 }
 
 // userCreateHandler creates a user, adding it to the database.

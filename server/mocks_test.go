@@ -27,6 +27,7 @@ type mockUserDao struct {
 	loginFunc          func(ctx context.Context, u user.User) (*user.User, error)
 	updatePasswordFunc func(ctx context.Context, u user.User, newP string) error
 	deleteFunc         func(ctx context.Context, u user.User) error
+	backendFunc        func() user.Backend
 }
 
 func (m mockUserDao) Create(ctx context.Context, u user.User) error {
@@ -43,6 +44,10 @@ func (m mockUserDao) UpdatePassword(ctx context.Context, u user.User, newP strin
 
 func (m mockUserDao) Delete(ctx context.Context, u user.User) error {
 	return m.deleteFunc(ctx, u)
+}
+
+func (m mockUserDao) Backend() user.Backend {
+	return m.backendFunc()
 }
 
 type mockLobby struct {

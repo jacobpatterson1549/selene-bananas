@@ -1,4 +1,4 @@
 <label>
     <div>Points:</div>
-    <input type="number" class="points" readonly="readonly">
+    <input type="number" class="points" readonly="readonly" disabled="{{ not .HasUserDB }}">
 </label>

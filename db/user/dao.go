@@ -76,7 +76,11 @@ func (d Dao) Create(ctx context.Context, u User) error {
 }
 
 // Login gets ensures the username/password combination is valid and returns all information about the user.
+// The user is returned if the backend is a NoDatabaseBackend.
 func (d Dao) Login(ctx context.Context, u User) (*User, error) {
+	if _, ok := d.backend.(NoDatabaseBackend); ok {
+		return &u, nil
+	}
 	u2, err := d.backend.Read(ctx, u)
 	if err != nil {
 		if err != ErrIncorrectLogin {
@@ -132,6 +136,11 @@ func (d Dao) Delete(ctx context.Context, u User) error {
 		return d.formatBackendError("deleting user", err)
 	}
 	return nil
+}
+
+// Backend returns the user backend
+func (d Dao) Backend() Backend {
+	return d.backend
 }
 
 // formatBackendError includes the name of the backend in the error message.

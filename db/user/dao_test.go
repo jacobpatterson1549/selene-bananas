@@ -157,6 +157,25 @@ func TestDaoLogin(t *testing.T) {
 			t.Errorf("Test %v: users not equal:\nwanted: %v\ngot:    : %v", i, test.want, got)
 		}
 	}
+	t.Run("NoDatabaseBackend", func(t *testing.T) {
+		var b NoDatabaseBackend
+		var ph passwordHandler
+		d := Dao{
+			backend:         b,
+			passwordHandler: ph,
+		}
+		ctx := context.Background()
+		u := User{
+			Username: "selene",
+		}
+		got, err := d.Login(ctx, u)
+		if err != nil {
+			t.Errorf("unwanted error: %v", err)
+		}
+		if want := &u; !reflect.DeepEqual(want, got) {
+			t.Errorf("wanted %v, got %v", want, got)
+		}
+	})
 }
 
 func TestDaoUpdatePassword(t *testing.T) {
@@ -355,5 +374,15 @@ func TestDaoDelete(t *testing.T) {
 		case err != nil:
 			t.Errorf("Test %v: unwanted error deleting user: %v", i, err)
 		}
+	}
+}
+
+func TestDaoBackend(t *testing.T) {
+	var b NoDatabaseBackend
+	d := Dao{
+		backend: b,
+	}
+	if want, got := b, d.Backend(); !reflect.DeepEqual(want, got) {
+		t.Errorf("backends not equal: \n wanted: %v \n got:    %v", want, got)
 	}
 }

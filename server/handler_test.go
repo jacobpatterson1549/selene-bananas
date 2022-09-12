@@ -24,7 +24,11 @@ const indexHTML = "index.html"
 func TestNewServer(t *testing.T) {
 	testLog := logtest.DiscardLogger
 	var tokenizer mockTokenizer
-	var userDao mockUserDao
+	userDao := mockUserDao{
+		backendFunc: func() user.Backend {
+			return nil
+		},
+	}
 	var lobby mockLobby
 	templateFS := fstest.MapFS{ // tests parseTemplate
 		"any-file": new(fstest.MapFile),
@@ -429,6 +433,11 @@ func TestHTTPSHandler(t *testing.T) {
 	}
 	for i, test := range httpsHandlerTests {
 		w := httptest.NewRecorder()
+		test.Parameters.UserDao = mockUserDao{
+			backendFunc: func() user.Backend {
+				return nil
+			},
+		}
 		h := test.Config.httpsHandler(test.httpHandler, test.httpsRedirectHandler, test.Parameters, test.Template, monitor)
 		h.ServeHTTP(w, test.Request)
 		gotCode := w.Code
@@ -725,6 +734,11 @@ func TestGetHandler(t *testing.T) {
 	monitor := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// NOOP
 	})
+	ud := mockUserDao{
+		backendFunc: func() user.Backend {
+			return nil
+		},
+	}
 	checkCode := func(t *testing.T, path string, p Parameters, cfg Config, template *template.Template, wantCode int) {
 		t.Helper()
 		r := httptest.NewRequest("", path, nil)
@@ -739,7 +753,9 @@ func TestGetHandler(t *testing.T) {
 		invalidPaths := []string{"/invalid/get/path", "/ping"}
 		for _, path := range invalidPaths {
 			var cfg Config
-			var p Parameters
+			p := Parameters{
+				UserDao: ud,
+			}
 			checkCode(t, path, p, cfg, nil, 404)
 		}
 	})
@@ -754,7 +770,9 @@ func TestGetHandler(t *testing.T) {
 		for _, path := range templates {
 			fileName := path[1:]
 			template := template.Must(template.New(fileName).Parse(""))
-			var p Parameters
+			p := Parameters{
+				UserDao: ud,
+			}
 			var cfg Config
 			checkCode(t, path, p, cfg, template, 200)
 		}
@@ -775,6 +793,7 @@ func TestGetHandler(t *testing.T) {
 				StaticFS: fstest.MapFS{
 					fileName: new(fstest.MapFile),
 				},
+				UserDao: ud,
 			}
 			checkCode(t, path, p, cfg, nil, 200)
 		}
@@ -792,18 +811,23 @@ func TestGetHandler(t *testing.T) {
 					return nil
 				},
 			},
+			UserDao: ud,
 		}
 		checkCode(t, "/lobby", p, cfg, nil, 200)
 	})
 	t.Run("monitor", func(t *testing.T) {
 		var cfg Config
-		var p Parameters
+		p := Parameters{
+			UserDao: ud,
+		}
 		// empty monitor used in checkCode
 		checkCode(t, "/monitor", p, cfg, nil, 200)
 	})
 	t.Run("rootHandler", func(t *testing.T) {
 		template := template.Must(template.New(indexHTML).Parse(""))
-		var p Parameters
+		p := Parameters{
+			UserDao: ud,
+		}
 		var cfg Config
 		checkCode(t, "/", p, cfg, template, 200)
 	})

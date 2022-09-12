@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
+	"github.com/jacobpatterson1549/selene-bananas/db/user"
 	"github.com/jacobpatterson1549/selene-bananas/server/log/logtest"
 )
 
@@ -18,8 +19,19 @@ func init() {
 
 // TestCreateUserBackend checks for database validity
 func TestCreateUserBackend(t *testing.T) {
+	t.Run("no database url", func(t *testing.T) {
+		var f Flags
+		var e EmbeddedData
+		ctx := context.Background()
+		ub, err := f.CreateUserBackend(ctx, e)
+		if err != nil {
+			t.Errorf("unwanted error creating backend without url: %v", err)
+		}
+		if _, ok := ub.(user.NoDatabaseBackend); !ok {
+			t.Errorf("wanted user.NoDatabaseBackend, got %T", ub)
+		}
+	})
 	databaseURLs := []string{
-		"",
 		"postgres", // need more than this
 		"ftp://",
 	}

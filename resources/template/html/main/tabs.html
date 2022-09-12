@@ -8,6 +8,7 @@
             {{ template "user_login.html" . }}
         </div>
     </div>
+    {{ if .HasUserDB }}
     <div class="tab logout-required">
         <input id="tab-create-user" type="radio" name="tab-group">
         <label class="button" for="tab-create-user">Create User</label>
@@ -15,6 +16,7 @@
             {{ template "user_create.html" . }}
         </div>
     </div>
+    {{ end }}
     <div class="tab login-required">
         <input id="tab-modify-user" type="radio" name="tab-group">
         <label class="button" for="tab-modify-user">User</label>

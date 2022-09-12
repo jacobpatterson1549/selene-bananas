@@ -9,6 +9,7 @@
         <input class="button" type="submit" disabled>
     </fieldset>
 </form>
+{{ if .HasUserDB }}
 <form method="post" action="/user_update_password" onsubmit="user.request(event)">
     <fieldset>
         <legend>Update User Password</legend>
@@ -29,3 +30,6 @@
         <input class="button" type="submit" disabled>
     </fieldset>
 </form>
+{{ else }}
+<div>[No database to save user or points]</div>
+{{ end }}

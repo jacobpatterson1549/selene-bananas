@@ -29,7 +29,12 @@ import (
 )
 
 // CreateUserBackend creates and sets up the database to back the user DAO.
+// User.NoDatabaseBackend and no error are returned if the DatabaseURL is empty
 func (f Flags) CreateUserBackend(ctx context.Context, e EmbeddedData) (user.Backend, error) {
+	if len(f.DatabaseURL) == 0 {
+		var ub user.NoDatabaseBackend
+		return ub, nil
+	}
 	cfg := f.sqlDatabaseConfig()
 	u, err := url.Parse(f.DatabaseURL)
 	if err != nil {

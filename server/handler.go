@@ -14,6 +14,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/jacobpatterson1549/selene-bananas/db/user"
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/server/log"
 )
@@ -166,7 +167,7 @@ func (cfg Config) validate(p Parameters) error {
 }
 
 // date is a structure of variables to insert into templates.
-func (cfg Config) data() interface{} {
+func (cfg Config) data(hasUserDB bool) interface{} {
 	var defaultGameCfg game.Config
 	rules := defaultGameCfg.Rules()
 	data := struct {
@@ -176,6 +177,7 @@ func (cfg Config) data() interface{} {
 		Version     string
 		Colors      ColorConfig
 		Rules       []string
+		HasUserDB   bool
 	}{
 		Name:        "selene-bananas",
 		ShortName:   "bananas",
@@ -183,6 +185,7 @@ func (cfg Config) data() interface{} {
 		Version:     cfg.Version,
 		Colors:      cfg.ColorConfig,
 		Rules:       rules,
+		HasUserDB:   hasUserDB,
 	}
 	return data
 }
@@ -253,7 +256,8 @@ func (cfg Config) httpsHandler(httpHandler, httpsRedirectHandler http.Handler, p
 
 // getHandler forwards calls to various endpoints.
 func (p Parameters) getHandler(cfg Config, template *template.Template, monitor http.Handler) http.Handler {
-	data := cfg.data()
+	_, noUserDB := p.UserDao.Backend().(user.NoDatabaseBackend)
+	data := cfg.data(!noUserDB)
 	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
 	templateFileHandler := templateHandler(template, data, p.Logger)
 	staticFileHandler := http.FileServer(http.FS(p.StaticFS))
