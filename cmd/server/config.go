@@ -35,7 +35,7 @@ func (f Flags) CreateUserBackend(ctx context.Context, e EmbeddedData) (user.Back
 		var ub user.NoDatabaseBackend
 		return ub, nil
 	}
-	cfg := f.sqlDatabaseConfig()
+	cfg := f.databaseConfig()
 	u, err := url.Parse(f.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parsing database url: %w", err)
@@ -189,9 +189,9 @@ func (Flags) tokenizerConfig(timeFunc func() int64) auth.TokenizerConfig {
 }
 
 // sqlDatabase creates the configuration for a SQL database to persist user information.
-func (f Flags) sqlDatabaseConfig() db.Config {
+func (f Flags) databaseConfig() db.Config {
 	cfg := db.Config{
-		QueryPeriod: 5 * time.Second,
+		QueryPeriod: time.Duration(f.DBTimeoutSec) * time.Second,
 	}
 	return cfg
 }

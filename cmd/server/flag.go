@@ -17,6 +17,7 @@ const (
 	environmentVariableCacheSec       = "CACHE_SECONDS"
 	environmentVariableChallengeToken = "ACME_CHALLENGE_TOKEN"
 	environmentVariableChallengeKey   = "ACME_CHALLENGE_KEY"
+	environmentVariableDBTimeoutSec   = "DB_TIMEOUT_SEC"
 )
 
 // Flags are the configuration options which can be easily configured at run startup for different environments.
@@ -29,10 +30,12 @@ type Flags struct {
 	DebugGame      bool
 	NoTLSRedirect  bool
 	CacheSec       int
+	DBTimeoutSec   int
 }
 
 const (
-	defaultCacheSec int = 60 * 60 * 24 // 1 day
+	defaultCacheSec     = 60 * 60 * 24 // 1 day
+	defaultDBTimeoutSec = 5
 )
 
 // usage prints how to run the server to the flagset's output.
@@ -46,6 +49,7 @@ func usage(fs *flag.FlagSet) {
 		environmentVariableCacheSec,
 		environmentVariableChallengeToken,
 		environmentVariableChallengeKey,
+		environmentVariableDBTimeoutSec,
 	}
 	fmt.Fprintf(fs.Output(), "Runs the server\n")
 	fmt.Fprintf(fs.Output(), "Reads environment variables when possible: [%s]\n", strings.Join(envVars, ","))
@@ -87,6 +91,7 @@ func (f *Flags) newFlagSet(osLookupEnvFunc func(string) (string, bool), portOver
 	fs.BoolVar(&f.DebugGame, "debug-game", envPresent(environmentVariableDebugGame), "Logs message types in the console when messages are passed between components.")
 	fs.BoolVar(&f.NoTLSRedirect, "no-tls-redirect", envPresent(environmentVariableNoTLSRedirect), "Disables HTTPS redirection from http if present.")
 	fs.IntVar(&f.CacheSec, "cache-sec", envValueInt(environmentVariableCacheSec, defaultCacheSec), "The number of seconds static assets are cached, such as javascript files.")
+	fs.IntVar(&f.DBTimeoutSec, "db-timeout-sec", envValueInt(environmentVariableDBTimeoutSec, defaultDBTimeoutSec), "The number of seconds each database operation can take before timing out.")
 	return fs
 }
 

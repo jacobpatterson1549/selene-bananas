@@ -115,3 +115,16 @@ func TestGameConfig(t *testing.T) {
 		}
 	})
 }
+
+func TestDatabaseConfig(t *testing.T) {
+	f := Flags{
+		DBTimeoutSec: 8,
+	}
+	want := db.Config{
+		QueryPeriod: 8 * time.Second,
+	}
+	got := f.databaseConfig()
+	if want != got {
+		t.Errorf("not equal:\nwanted: '%v'\ngot:    '%v'", want, got)
+	}
+}

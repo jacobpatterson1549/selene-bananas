@@ -16,7 +16,8 @@ func TestNewFlags(t *testing.T) {
 	}{
 		{ // defaults
 			want: &Flags{
-				CacheSec: defaultCacheSec,
+				CacheSec:     defaultCacheSec,
+				DBTimeoutSec: defaultDBTimeoutSec,
 			},
 		},
 		{ // all command line
@@ -30,6 +31,7 @@ func TestNewFlags(t *testing.T) {
 				"-acme-challenge-token=7",
 				"-acme-challenge-key=8",
 				"-no-tls-redirect",
+				"-db-timeout-sec=30",
 			},
 			want: &Flags{
 				HTTPPort:       1,
@@ -40,6 +42,7 @@ func TestNewFlags(t *testing.T) {
 				ChallengeToken: "7",
 				ChallengeKey:   "8",
 				NoTLSRedirect:  true,
+				DBTimeoutSec:   30,
 			},
 		},
 		{ // all environment variables
@@ -52,6 +55,7 @@ func TestNewFlags(t *testing.T) {
 				"ACME_CHALLENGE_TOKEN": "7",
 				"ACME_CHALLENGE_KEY":   "8",
 				"NO_TLS_REDIRECT":      "",
+				"DB_TIMEOUT_SEC":       "9",
 			},
 			want: &Flags{
 				HTTPPort:       1,
@@ -62,6 +66,7 @@ func TestNewFlags(t *testing.T) {
 				ChallengeToken: "7",
 				ChallengeKey:   "8",
 				NoTLSRedirect:  true,
+				DBTimeoutSec:   9,
 			},
 		},
 	}
@@ -79,10 +84,11 @@ func TestNewFlags(t *testing.T) {
 
 func TestNewFlagsPortOverride(t *testing.T) {
 	envVars := map[string]string{
-		"HTTP_PORT":     "1",
-		"HTTPS_PORT":    "2",
-		"PORT":          "3",
-		"CACHE_SECONDS": "0", // override default value
+		"HTTP_PORT":      "1",
+		"HTTPS_PORT":     "2",
+		"PORT":           "3",
+		"CACHE_SECONDS":  "0", // override default value
+		"DB_TIMEOUT_SEC": "0", // override default value
 	}
 	osLookupEnvFunc := func(key string) (string, bool) {
 		v, ok := envVars[key]
