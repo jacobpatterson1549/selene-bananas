@@ -27,7 +27,7 @@ type UserBackend struct {
 }
 
 // NewUserBackend creates a backend manager for the users collection.
-func NewUserBackend(ctx context.Context, databaseURL string, cfg db.Config) (*UserBackend, error) {
+func NewUserBackend(ctx context.Context, cfg db.Config, databaseURL string) (*UserBackend, error) {
 	clientOptions := options.Client()
 	clientOptions.ApplyURI(databaseURL)
 	ctx, cancelFunc := context.WithTimeout(ctx, cfg.QueryPeriod)

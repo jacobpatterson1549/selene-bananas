@@ -45,7 +45,7 @@ func (f Flags) CreateUserBackend(ctx context.Context, e EmbeddedData) (user.Back
 	case "postgres":
 		return f.createPostgresUserBackend(ctx, cfg, e)
 	case "mongodb", "mongodb+srv":
-		return f.createMongoUserBackend(ctx, cfg, e)
+		return f.createMongoUserBackend(ctx, cfg)
 	}
 	return nil, fmt.Errorf("unsupported DATABASE_URL: %q", f.DatabaseURL)
 }
@@ -63,8 +63,8 @@ func (f Flags) createPostgresUserBackend(ctx context.Context, cfg db.Config, e E
 }
 
 // CreateMongoUserBackend creates and sets up a user backend for mongodb.
-func (f Flags) createMongoUserBackend(ctx context.Context, cfg db.Config, e EmbeddedData) (user.Backend, error) {
-	ub, err := mongo.NewUserBackend(ctx, f.DatabaseURL, cfg)
+func (f Flags) createMongoUserBackend(ctx context.Context, cfg db.Config) (user.Backend, error) {
+	ub, err := mongo.NewUserBackend(ctx, cfg, f.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("creating mongo database: %w", err)
 	}
