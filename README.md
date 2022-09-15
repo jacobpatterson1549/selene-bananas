@@ -98,20 +98,25 @@ NO_TLS_REDIRECT=true
 
 For development, set `CACHE_SECONDS` to `0` to not cache static and template resources.
 
-#### Database
+### Database
 
-Optionally, the app stores user information in either a a Postgresql or Mongodb database.  The database to use is specified by the `DATABASE_URL` environment argument.  When the app starts, the database is initialized.  For SQL databases, files in the [resources/sql](resources/sql) folder are run to ensure database objects functions are fresh.
+Optionally, the app stores user information in either a a Postgresql, Mongodb, or Firestore database.  The database to use is specified by the `DATABASE_URL` environment argument.  When the app starts, the database is initialized.  For SQL databases, files in the [resources/sql](resources/sql) folder are run to ensure database objects functions are fresh.
+ * A Firestore correction is used when `DATABASE_URL` is similar to `firestore://<project_id>`.
 
-##### localhost
+#### localhost
 
-# Mongodb
+##### Firestore
+
+* The computer must be authenticated for the projectID by running the command  `gcloud auth application-default login`
+
+##### Mongodb
 
 A Mongo database is very easy to set up when using the docker image.
 * Run `docker-compose up --build mongo-db` to start the database in a terminal.
 * Run the following command to query the database in a terminal: `docker exec -it selene-bananas-db-mongo mongo`
 * Set the `DATABASE_URL` environment variable to `mongodb://127.0.0.1:27017/` before starting the web server to connect to the local mongo server.
 
-# Postgres
+##### Postgres
 
 A Postgresql database can be created with the command below.  Change the `PGUSER` and `PGPASSWORD` variables.  The command requires administrator access.
 ```bash

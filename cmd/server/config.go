@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/jacobpatterson1549/selene-bananas/db"
+	"github.com/jacobpatterson1549/selene-bananas/db/firestore"
 	"github.com/jacobpatterson1549/selene-bananas/db/mongo"
 	"github.com/jacobpatterson1549/selene-bananas/db/sql"
 	"github.com/jacobpatterson1549/selene-bananas/db/sql/postgres"
@@ -46,6 +47,10 @@ func (f Flags) CreateUserBackend(ctx context.Context, e EmbeddedData) (user.Back
 		return f.createPostgresUserBackend(ctx, cfg, e)
 	case "mongodb", "mongodb+srv":
 		return f.createMongoUserBackend(ctx, cfg)
+	case "firestore":
+		// TODO: Test this with Google Cloud Firestore Emulator to show that u.Host is the projectID.
+		projectID := u.Host
+		return f.createFirestoreUserBackend(ctx, cfg, projectID)
 	}
 	return nil, fmt.Errorf("unsupported DATABASE_URL: %q", f.DatabaseURL)
 }
@@ -70,6 +75,15 @@ func (f Flags) createMongoUserBackend(ctx context.Context, cfg db.Config) (user.
 	}
 	if err := ub.Setup(ctx); err != nil {
 		return nil, fmt.Errorf("setting up mongo database: %w", err)
+	}
+	return ub, nil
+}
+
+// CreateFirestoreUserBackend creates and sets up a user backend for firestore.
+func (f Flags) createFirestoreUserBackend(ctx context.Context, cfg db.Config, projectID string) (user.Backend, error) {
+	ub, err := firestore.NewUserBackend(ctx, cfg, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("creating firestore database: %w", err)
 	}
 	return ub, nil
 }
