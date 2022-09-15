@@ -23,5 +23,6 @@ RUN make build/selene-bananas \
 # copy the server to a minimal build image
 FROM scratch
 WORKDIR /app
+COPY --from=BUILDER /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=BUILDER app/build/selene-bananas ./
 ENTRYPOINT [ "/app/selene-bananas" ]
