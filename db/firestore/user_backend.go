@@ -24,7 +24,7 @@ type UserBackend struct {
 }
 
 func (ub *UserBackend) usersCollection() *firestore.CollectionRef {
-	return ub.client.Collection("databases").Doc("selene-bananas-db").Collection("users")
+	return ub.client.Collection("services").Doc("selene-bananas").Collection("users")
 }
 
 // NewUserBackend creates a backend manager for users.
