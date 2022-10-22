@@ -13,7 +13,7 @@ With WebSockets, users can play a word game together over a network.
 
 Uses WebAssembly to manage browser logic.
 
-A small database can be used to store user account names, encrypted passwords, and points.  Users get ten points for each game won and one point when they are beaten by someone else.  Users must use either a Postgres on Mongo database.
+A small database can be used to store user account names, encrypted passwords, and points.  Users get ten points for each game won and one point when they are beaten by someone else.  Users must use either a Postgres, Mongo, or Firestore database.
 
 ## Screenshot
 ![selene-bananas screenshot](screenshot.png)
@@ -23,6 +23,7 @@ A small database can be used to store user account names, encrypted passwords, a
 New dependencies are automatically added to [go.mod](go.mod) when the project is built.
 * [pq](https://github.com/lib/pq) provides the Postgres database driver for storing user passwords and points
 * [mongo-driver](https://github.com/mongodb/mongo-go-driver) provides the Mongodb database driver for storing user passwords and points
+* [firestore](cloud.google.com/go/firestore) provides the firestore database driver for storing user passwords and points
 * [Gorilla WebSocket](https://github.com/gorilla/websocket) are used for bidirectional communication between users and the server
 * [jwt](https://github.com/golang-jwt/jwt) is used for stateless web sessions
 * [crypto](https://github.com/golang/crypto) is used to  encrypt passwords with bcrypt
@@ -86,6 +87,8 @@ To run a Mongo database instead of Postgres, make the following changes:
 * In `docker-compose.yml`: change the line after `depends-on:` from `postgres-db:` to `mongo-db:`
 * In `.env`: set `DATABASE_URL` to `mongodb://127.0.0.1:27017/`
 
+To run using a cloud firestore database, remove the `depends-on:` section and change the `DATABASE_URL` environment variable as described above to be like `firestore://PROJECT_ID`
+
 ### Environment Configuration
 
 Environment variables in the `.env` file are needed to customize the server.
@@ -101,13 +104,13 @@ For development, set `CACHE_SECONDS` to `0` to not cache static and template res
 ### Database
 
 Optionally, the app stores user information in either a a Postgresql, Mongodb, or Firestore database.  The database to use is specified by the `DATABASE_URL` environment argument.  When the app starts, the database is initialized.  For SQL databases, files in the [resources/sql](resources/sql) folder are run to ensure database objects functions are fresh.
- * A Firestore correction is used when `DATABASE_URL` is similar to `firestore://<project_id>`.
 
 #### localhost
 
 ##### Firestore
 
 * The computer must be authenticated for the projectID by running the command  `gcloud auth application-default login`
+* A Firestore connection is made when `DATABASE_URL` is similar to `firestore://PROJECT_ID`.
 
 ##### Mongodb
 
