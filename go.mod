@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	cloud.google.com/go/firestore v1.9.0
-	github.com/golang-jwt/jwt/v4 v4.3.0
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/gorilla/websocket v1.5.0
 	github.com/lib/pq v1.10.4
 	go.mongodb.org/mongo-driver v1.10.2
