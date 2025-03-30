@@ -3,7 +3,7 @@
 # nodejs to run client wasm tests
 # aspell and aspell-en for game word list
 # download go dependencies for source code
-FROM golang:1.18-alpine3.15 AS BUILDER
+FROM golang:1.18-alpine3.15 AS builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN apk add --no-cache \
@@ -23,6 +23,6 @@ RUN make build/selene-bananas \
 # copy the server to a minimal build image
 FROM scratch
 WORKDIR /app
-COPY --from=BUILDER /etc/ssl/cert.pem /etc/ssl/cert.pem
-COPY --from=BUILDER app/build/selene-bananas ./
+COPY --from=builder /etc/ssl/cert.pem /etc/ssl/cert.pem
+COPY --from=builder app/build/selene-bananas ./
 ENTRYPOINT [ "/app/selene-bananas" ]
