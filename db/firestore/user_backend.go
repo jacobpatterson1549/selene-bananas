@@ -111,7 +111,7 @@ func (ub *UserBackend) UpdatePassword(ctx context.Context, u user.User) error {
 func (ub *UserBackend) UpdatePointsIncrement(ctx context.Context, usernamePoints map[string]int) error {
 	if err := ub.withTimeoutContext(ctx, func(ctx context.Context) error {
 		users := ub.usersCollection()
-		b := ub.client.Batch()
+		bw := ub.client.BulkWriter(ctx)
 		for username, points := range usernamePoints {
 			d := users.Doc(username)
 			u := []firestore.Update{
@@ -120,10 +120,11 @@ func (ub *UserBackend) UpdatePointsIncrement(ctx context.Context, usernamePoints
 					Value: firestore.FieldTransformIncrement(points),
 				},
 			}
-			b.Update(d, u)
+			if _, err := bw.Update(d, u); err != nil {
+				return err
+			}
 		}
-		_, err := b.Commit(ctx)
-		return err
+		return nil
 	}); err != nil {
 		return fmt.Errorf("incrementing user points: %w", err)
 	}
