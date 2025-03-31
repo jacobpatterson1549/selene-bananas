@@ -318,17 +318,19 @@ func TestHTTPHandler(t *testing.T) {
 				Token: "abc",
 				Key:   "def",
 			},
-			httpURI:  acmeHeader + "abc",
-			wantCode: 200,
-			wantBody: "abc.def",
+			httpURI:              acmeHeader + "abc",
+			wantCode:             200,
+			wantBody:             "abc.def",
+			httpsRedirectHandler: func(w http.ResponseWriter, r *http.Request) {},
 		},
 		{
 			Challenge: Challenge{
 				Token: "fred",
 			},
-			httpURI:  acmeHeader + "barney",
-			wantCode: 404,
-			wantBody: "404 page not found\n", // flaky check, but ensures actual token.key is not written to body
+			httpURI:              acmeHeader + "barney",
+			wantCode:             404,
+			wantBody:             "404 page not found\n", // flaky check, but ensures actual token.key is not written to body
+			httpsRedirectHandler: func(w http.ResponseWriter, r *http.Request) {},
 		},
 		{
 			httpURI:   "http://example.com/",

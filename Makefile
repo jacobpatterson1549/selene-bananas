@@ -24,7 +24,7 @@ GO_BUILD     := $(GO) build
 GO_ARGS      :=
 GO_TEST_ARGS := # -v # -test.short # -race # -run TestFuncName 
 GO_WASM_ARGS := GOOS=js GOARCH=wasm
-GO_WASM_PATH := $(shell $(GO) env GOROOT)/misc/wasm
+GO_WASM_PATH := $(shell $(GO) env GOROOT)/lib/wasm
 WASM_EXEC_JS := wasm_exec.js
 NODE_EXEC    := node $(GO_WASM_PATH)/wasm_exec_node.js
 SERVER_OBJ  := selene-bananas

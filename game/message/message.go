@@ -30,7 +30,6 @@ type (
 	Addr string
 )
 
-//go:generate go run golang.org/x/tools/cmd/stringer -type=Type
 const (
 	_ Type = iota
 	// CreateGame is a MessageType that users send to open a new game.

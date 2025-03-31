@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"testing"
 	"testing/iotest"
 	"time"
@@ -14,23 +15,39 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/db"
 )
 
-var testDriver *MockDriver
+var (
+	testDriverRegistrations = map[string]*MockDriver{}
+	driverMutex             sync.Mutex
+)
 
 const (
 	testDriverName  = "mockDB"
 	testDatabaseURL = "postgres://username:password@host:port/db_name"
 )
 
-func init() {
-	testDriver = new(MockDriver)
+func newTestDB(t *testing.T) (*MockDriver, *sql.DB) {
+	testDriverName := testDriverName + t.Name()
+	testDriver, ok := testDriverRegistrations[testDriverName]
+	if !ok {
+		testDriver = createTestDriver(testDriverName)
+	}
+	sqlDB, err := sql.Open(testDriverName, testDatabaseURL)
+	if err != nil {
+		t.Fatalf("unwanted error opening database for query: %v", err)
+	}
+	return testDriver, sqlDB
+}
+
+func createTestDriver(testDriverName string) *MockDriver {
+	driverMutex.Lock()
+	defer driverMutex.Unlock()
+	testDriver := new(MockDriver)
 	sql.Register(testDriverName, testDriver)
+	testDriverRegistrations[testDriverName] = testDriver
+	return testDriver
 }
 
 func TestDatabaseSetup(t *testing.T) {
-	sqlDB, err := sql.Open(testDriverName, testDatabaseURL)
-	if err != nil {
-		t.Fatalf("unwanted error opening db to setup: %v", err)
-	}
 	setupTests := []struct {
 		cancelled bool
 		files     []io.Reader
@@ -66,70 +83,69 @@ func TestDatabaseSetup(t *testing.T) {
 		},
 	}
 	for i, test := range setupTests {
-		result := MockResult{
-			RowsAffectedFunc: func() (int64, error) {
-				return 0, nil
-			},
-		}
-		stmt := MockStmt{
-			CloseFunc: func() error {
-				return nil
-			},
-			NumInputFunc: func() int {
-				return 0
-			},
-			ExecFunc: func(args []driver.Value) (driver.Result, error) {
-				return result, test.execErr
-			},
-		}
-		tx := MockTx{
-			CommitFunc: func() error {
-				return nil
-			},
-			RollbackFunc: func() error {
-				return nil
-			},
-		}
-		conn := MockConn{
-			PrepareFunc: func(query string) (driver.Stmt, error) {
-				return stmt, nil
-			},
-			BeginFunc: func() (driver.Tx, error) {
-				return tx, nil
-			},
-		}
-		testDriver.OpenFunc = func(name string) (driver.Conn, error) {
-			return conn, nil
-		}
-		db := Database{
-			DB: sqlDB,
-			Config: db.Config{
-				QueryPeriod: 1 * time.Hour,
-			},
-		}
-		ctx := context.Background()
-		ctx, cancelFunc := context.WithCancel(ctx)
-		if test.cancelled {
-			cancelFunc()
-		}
-		err = db.Setup(ctx, test.files)
-		switch {
-		case !test.wantOk:
-			if err == nil {
-				t.Errorf("Test %v: wanted error setting up database", i)
+		t.Run(fmt.Sprintf("test %v", i), func(t *testing.T) {
+			testDriver, sqlDB := newTestDB(t)
+			result := MockResult{
+				RowsAffectedFunc: func() (int64, error) {
+					return 0, nil
+				},
 			}
-		case err != nil:
-			t.Errorf("Test %v: unwanted error setting up database: %v", i, err)
-		}
-		cancelFunc()
+			stmt := MockStmt{
+				CloseFunc: func() error {
+					return nil
+				},
+				NumInputFunc: func() int {
+					return 0
+				},
+				ExecFunc: func(args []driver.Value) (driver.Result, error) {
+					return result, test.execErr
+				},
+			}
+			tx := MockTx{
+				CommitFunc: func() error {
+					return nil
+				},
+				RollbackFunc: func() error {
+					return nil
+				},
+			}
+			conn := MockConn{
+				PrepareFunc: func(query string) (driver.Stmt, error) {
+					return stmt, nil
+				},
+				BeginFunc: func() (driver.Tx, error) {
+					return tx, nil
+				},
+			}
+			testDriver.OpenFunc = func(name string) (driver.Conn, error) {
+				return conn, nil
+			}
+			db := Database{
+				DB: sqlDB,
+				Config: db.Config{
+					QueryPeriod: 1 * time.Hour,
+				},
+			}
+			ctx := context.Background()
+			ctx, cancelFunc := context.WithCancel(ctx)
+			if test.cancelled {
+				cancelFunc()
+			}
+			err := db.Setup(ctx, test.files)
+			switch {
+			case !test.wantOk:
+				if err == nil {
+					t.Errorf("Test %v: wanted error setting up database", i)
+				}
+			case err != nil:
+				t.Errorf("Test %v: unwanted error setting up database: %v", i, err)
+			}
+			cancelFunc()
+		})
 	}
 }
 
 func TestDatabaseQuery(t *testing.T) {
-	sqlDB, err := sql.Open(testDriverName, testDatabaseURL)
-	if err != nil {
-		t.Fatalf("unwanted error opening database for query: %v", err)
-	}
 	queryTests := []struct {
 		cancelled bool
 		scanErr   error
@@ -146,75 +162,75 @@ func TestDatabaseQuery(t *testing.T) {
 		},
 	}
 	for i, test := range queryTests {
-		want := 6
-		rows := MockRows{
-			ColumnsFunc: func() []string {
-				return []string{"?column?"}
-			},
-			CloseFunc: func() error {
-				return nil
-			},
-			NextFunc: func(dest []driver.Value) error {
-				dest[0] = want
-				return nil
-			},
-		}
-		stmt := MockStmt{
-			CloseFunc: func() error {
-				return nil
-			},
-			NumInputFunc: func() int {
-				return 1
-			},
-			QueryFunc: func(args []driver.Value) (driver.Rows, error) {
-				return rows, test.scanErr
-			},
-		}
-		conn := MockConn{
-			PrepareFunc: func(query string) (driver.Stmt, error) {
-				return stmt, nil
-			},
-		}
-		testDriver.OpenFunc = func(name string) (driver.Conn, error) {
-			return conn, nil
-		}
-		q := QueryFunction{
-			name:      "SELECT ?;",
-			cols:      []string{"?column?"},
-			arguments: []interface{}{want},
-		}
-		db := Database{
-			DB: sqlDB,
-			Config: db.Config{
-				QueryPeriod: 1 * time.Hour,
-			},
-		}
-		ctx := context.Background()
-		ctx, cancelFunc := context.WithCancel(ctx)
-		if test.cancelled {
-			cancelFunc()
-		}
-		var got int
-		err := db.Query(ctx, q, &got)
-		switch {
-		case !test.wantOk:
-			if err == nil {
-				t.Errorf("Test %v: wanted error querying database", i)
+		t.Run(fmt.Sprintf("test %v", i), func(t *testing.T) {
+			testDriver, sqlDB := newTestDB(t)
+			want := 6
+			rows := MockRows{
+				ColumnsFunc: func() []string {
+					return []string{"?column?"}
+				},
+				CloseFunc: func() error {
+					return nil
+				},
+				NextFunc: func(dest []driver.Value) error {
+					dest[0] = want
+					return nil
+				},
 			}
-		case err != nil:
-			t.Errorf("Test %v: unwanted error querying database: %v", i, err)
-		case want != got:
-			t.Errorf("Test %v: value not set correctly, wanted %v, got %v", i, want, got)
-		}
-		cancelFunc()
+			stmt := MockStmt{
+				CloseFunc: func() error {
+					return nil
+				},
+				NumInputFunc: func() int {
+					return 1
+				},
+				QueryFunc: func(args []driver.Value) (driver.Rows, error) {
+					return rows, test.scanErr
+				},
+			}
+			conn := MockConn{
+				PrepareFunc: func(query string) (driver.Stmt, error) {
+					return stmt, nil
+				},
+			}
+			testDriver.OpenFunc = func(name string) (driver.Conn, error) {
+				return conn, nil
+			}
+			q := QueryFunction{
+				name:      "SELECT ?;",
+				cols:      []string{"?column?"},
+				arguments: []interface{}{want},
+			}
+			db := Database{
+				DB: sqlDB,
+				Config: db.Config{
+					QueryPeriod: 1 * time.Hour,
+				},
+			}
+			ctx := context.Background()
+			ctx, cancelFunc := context.WithCancel(ctx)
+			if test.cancelled {
+				cancelFunc()
+			}
+			var got int
+			err := db.Query(ctx, q, &got)
+			switch {
+			case !test.wantOk:
+				if err == nil {
+					t.Errorf("Test %v: wanted error querying database", i)
+				}
+			case err != nil:
+				t.Errorf("Test %v: unwanted error querying database: %v", i, err)
+			case want != got:
+				t.Errorf("Test %v: value not set correctly, wanted %v, got %v", i, want, got)
+			}
+			cancelFunc()
+		})
 	}
 }
 
 func TestQueryNoRows(t *testing.T) {
-	sqlDB, err := sql.Open(testDriverName, testDatabaseURL)
-	if err != nil {
-		t.Fatalf("unwanted error opening database for query: %v", err)
-	}
+	testDriver, sqlDB := newTestDB(t)
 	want := 6
 	rows := MockRows{
 		ColumnsFunc: func() []string {
@@ -265,10 +281,6 @@ func TestQueryNoRows(t *testing.T) {
 }
 
 func TestDatabaseExec(t *testing.T) {
-	sqlDB, err := sql.Open(testDriverName, testDatabaseURL)
-	if err != nil {
-		t.Fatalf("unwanted error opening database for exec: %v", err)
-	}
 	execTests := []struct {
 		cancelled       bool
 		beginErr        error
@@ -313,77 +325,80 @@ func TestDatabaseExec(t *testing.T) {
 		},
 	}
 	for i, test := range execTests {
-		result := MockResult{
-			RowsAffectedFunc: func() (int64, error) {
-				return test.rowsAffected, test.rowsAffectedErr
-			},
-		}
-		stmt := MockStmt{
-			CloseFunc: func() error {
-				return nil
-			},
-			NumInputFunc: func() int {
-				if test.rawQuery {
-					return 0
-				}
-				return 2
-			},
-			ExecFunc: func(args []driver.Value) (driver.Result, error) {
-				return result, test.execErr
-			},
-		}
-		tx := MockTx{
-			CommitFunc: func() error {
-				return test.commitErr
-			},
-			RollbackFunc: func() error {
-				return test.rollbackErr
-			},
-		}
-		conn := MockConn{
-			PrepareFunc: func(query string) (driver.Stmt, error) {
-				return stmt, nil
-			},
-			BeginFunc: func() (driver.Tx, error) {
-				return tx, test.beginErr
-			},
-		}
-		testDriver.OpenFunc = func(name string) (driver.Conn, error) {
-			return conn, nil
-		}
-		var q Query
-		switch {
-		case test.rawQuery:
-			q = RawQuery("CREATE TABLE hobbits ( full_name VARCHAR(64) );")
-		default:
-			q = ExecFunction{
-				name: "UPDATE hobbits SET age = ? WHERE first_name = ?;",
-				arguments: []interface{}{
-					111,
-					"Bilbo",
+		t.Run(fmt.Sprintf("test %v", i), func(t *testing.T) {
+			testDriver, sqlDB := newTestDB(t)
+			result := MockResult{
+				RowsAffectedFunc: func() (int64, error) {
+					return test.rowsAffected, test.rowsAffectedErr
 				},
 			}
-		}
-		db := Database{
-			DB: sqlDB,
-			Config: db.Config{
-				QueryPeriod: 1 * time.Hour,
-			},
-		}
-		ctx := context.Background()
-		ctx, cancelFunc := context.WithCancel(ctx)
-		if test.cancelled {
-			cancelFunc()
-		}
-		err = db.Exec(ctx, q)
-		switch {
-		case !test.wantOk:
-			if err == nil {
-				t.Errorf("Test %v: unwanted error executing query: %v", i, err)
+			stmt := MockStmt{
+				CloseFunc: func() error {
+					return nil
+				},
+				NumInputFunc: func() int {
+					if test.rawQuery {
+						return 0
+					}
+					return 2
+				},
+				ExecFunc: func(args []driver.Value) (driver.Result, error) {
+					return result, test.execErr
+				},
 			}
-		case err != nil:
-			t.Errorf("Test %v: wanted error executing query", i)
-		}
-		cancelFunc()
+			tx := MockTx{
+				CommitFunc: func() error {
+					return test.commitErr
+				},
+				RollbackFunc: func() error {
+					return test.rollbackErr
+				},
+			}
+			conn := MockConn{
+				PrepareFunc: func(query string) (driver.Stmt, error) {
+					return stmt, nil
+				},
+				BeginFunc: func() (driver.Tx, error) {
+					return tx, test.beginErr
+				},
+			}
+			testDriver.OpenFunc = func(name string) (driver.Conn, error) {
+				return conn, nil
+			}
+			var q Query
+			switch {
+			case test.rawQuery:
+				q = RawQuery("CREATE TABLE hobbits ( full_name VARCHAR(64) );")
+			default:
+				q = ExecFunction{
+					name: "UPDATE hobbits SET age = ? WHERE first_name = ?;",
+					arguments: []interface{}{
+						111,
+						"Bilbo",
+					},
+				}
+			}
+			db := Database{
+				DB: sqlDB,
+				Config: db.Config{
+					QueryPeriod: 1 * time.Hour,
+				},
+			}
+			ctx := context.Background()
+			ctx, cancelFunc := context.WithCancel(ctx)
+			if test.cancelled {
+				cancelFunc()
+			}
+			err := db.Exec(ctx, q)
+			switch {
+			case !test.wantOk:
+				if err == nil {
+					t.Errorf("Test %v: unwanted error executing query: %v", i, err)
+				}
+			case err != nil:
+				t.Errorf("Test %v: wanted error executing query", i)
+			}
+			cancelFunc()
+		})
 	}
 }
