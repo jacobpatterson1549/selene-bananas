@@ -17,7 +17,8 @@ func TestCreate(t *testing.T) {
 			ValidSec: 365 * 24 * 60 * 60,
 		},
 	}
-	want := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwb2ludHMiOjE4LCJleHAiOjMxNTM2MDAwLCJzdWIiOiJzZWxlbmUifQ.X95h7cYKsUvmIT3yuhnxB0QjUNIgFKUNz-lD-d5GYhg"
+	// flaky:
+	want := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwb2ludHMiOjE4LCJzdWIiOiJzZWxlbmUiLCJleHAiOjMxNTM2MDAwLCJuYmYiOjB9.YaaT1wnna5l41f5vhQI4Gxbezku75hyQ4_v3F2z0-6A"
 	got, err := tokenizer.Create("selene", 18)
 	switch {
 	case err != nil:
@@ -58,12 +59,14 @@ func TestReadUsername(t *testing.T) {
 	jwt.TimeFunc = func() time.Time { return time.Unix(0, 0) }
 	epochSecondsSupplier := func() int64 { return 0 }
 	for i, test := range readTests {
+		cfg := TokenizerConfig{
+			TimeFunc: epochSecondsSupplier,
+			ValidSec: 1,
+		}
 		creationTokenizer := JwtTokenizer{
-			method: test.creationSigningMethod,
-			key:    []byte("secret"),
-			TokenizerConfig: TokenizerConfig{
-				TimeFunc: epochSecondsSupplier,
-			},
+			method:          test.creationSigningMethod,
+			key:             []byte("secret"),
+			TokenizerConfig: cfg,
 		}
 		tokenString, err := creationTokenizer.Create(test.username, 0)
 		if err != nil {
@@ -71,11 +74,9 @@ func TestReadUsername(t *testing.T) {
 			continue
 		}
 		var readTokenizer = JwtTokenizer{
-			method: test.readSigningMethod,
-			key:    []byte("secret"),
-			TokenizerConfig: TokenizerConfig{
-				TimeFunc: epochSecondsSupplier,
-			},
+			method:          test.readSigningMethod,
+			key:             []byte("secret"),
+			TokenizerConfig: cfg,
 		}
 		got, err := readTokenizer.ReadUsername(tokenString)
 		switch {
@@ -117,11 +118,10 @@ func TestCreateReadWithTime(t *testing.T) {
 			readTime:     99 + validSecs,
 			wantOk:       true,
 		},
-		// not working: https://github.com/dgrijalva/jwt-go/issues/340
-		// {
-		// 	creationTime: 100,
-		// 	readTime:     100 + validSecs,
-		// },
+		{
+			creationTime: 100,
+			readTime:     100 + validSecs,
+		},
 		{
 			creationTime: 100,
 			readTime:     101 + validSecs,

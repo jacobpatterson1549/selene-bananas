@@ -3,6 +3,7 @@ package auth
 
 import (
 	"fmt"
+	"time"
 
 	jwt "github.com/golang-jwt/jwt/v4"
 )
@@ -26,8 +27,8 @@ type (
 
 	// jwtUserClaims appends user points to the standard jwt claims.
 	jwtUserClaims struct {
-		Points             int `json:"points"`
-		jwt.StandardClaims     // username stored in Subject ("sub") field
+		Points               int `json:"points"`
+		jwt.RegisteredClaims     // username stored in Subject ("sub") field
 	}
 )
 
@@ -60,15 +61,17 @@ func (cfg TokenizerConfig) validate(key interface{}) error {
 // Create converts a user to a token string.
 func (j *JwtTokenizer) Create(username string, points int) (string, error) {
 	now := j.TimeFunc()
-	expiresAt := now + j.ValidSec
-	stdClaims := jwt.StandardClaims{
+	nowT := time.Unix(now, 0)
+	expireD := time.Duration(j.ValidSec) * time.Second
+	expiresAtT := nowT.Add(expireD)
+	stdClaims := jwt.RegisteredClaims{
 		Subject:   username,
-		NotBefore: now,
-		ExpiresAt: expiresAt,
+		NotBefore: jwt.NewNumericDate(nowT),
+		ExpiresAt: jwt.NewNumericDate(expiresAtT),
 	}
 	claims := jwtUserClaims{
-		Points:         points,
-		StandardClaims: stdClaims,
+		Points:           points,
+		RegisteredClaims: stdClaims,
 	}
 	token := jwt.NewWithClaims(j.method, claims)
 	return token.SignedString(j.key)
