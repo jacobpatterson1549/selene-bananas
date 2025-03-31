@@ -37,7 +37,7 @@ func (ub *UserBackend) Create(ctx context.Context, u user.User) error {
 	return nil
 }
 
-// Get queries the database for the user by username
+// Read queries the database for the user by username
 func (ub *UserBackend) Read(ctx context.Context, u user.User) (*user.User, error) {
 	cols := []string{
 		"username",
@@ -64,7 +64,7 @@ func (ub *UserBackend) UpdatePassword(ctx context.Context, u user.User) error {
 	return nil
 }
 
-// UpdatePointsIncrement increments the points for all of the usernames.
+// UpdatePointsIncrement changes the points for all of the usernames.
 func (ub *UserBackend) UpdatePointsIncrement(ctx context.Context, usernamePoints map[string]int) error {
 	queries := make([]sql.Query, 0, len(usernamePoints))
 	for username, points := range usernamePoints {
@@ -80,9 +80,9 @@ func (ub *UserBackend) UpdatePointsIncrement(ctx context.Context, usernamePoints
 }
 
 // Delete removes the user.
-func (p *UserBackend) Delete(ctx context.Context, u user.User) error {
+func (ub *UserBackend) Delete(ctx context.Context, u user.User) error {
 	q := sql.NewExecFunction("user_delete", u.Username)
-	if err := p.Database.Exec(ctx, q); err != nil {
+	if err := ub.Database.Exec(ctx, q); err != nil {
 		return fmt.Errorf("deleting user: %w", err)
 	}
 	return nil

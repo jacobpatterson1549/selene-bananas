@@ -102,18 +102,21 @@ func TestCreateServer(t *testing.T) {
 }
 
 func TestGameConfig(t *testing.T) {
-	t.Run("timeFunc seeds shufflers", func(t *testing.T) {
-		timeFuncCalled := false
+	tests := []bool{
+		true,
+		false,
+	}
+	for _, debugGame := range tests {
 		timeFunc := func() int64 {
-			timeFuncCalled = true
 			return 42
 		}
 		var f Flags
-		f.gameConfig(timeFunc)
-		if !timeFuncCalled {
-			t.Error("wanted timeFunc to be called to seed game shuffle funcs")
+		f.DebugGame = debugGame
+		cfg := f.gameConfig(timeFunc)
+		if want, got := debugGame, cfg.Debug; want != got {
+			t.Errorf("debug game flag not preserved when initially %v", want)
 		}
-	})
+	}
 }
 
 func TestDatabaseConfig(t *testing.T) {

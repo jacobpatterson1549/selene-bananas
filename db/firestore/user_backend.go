@@ -63,7 +63,7 @@ func (ub *UserBackend) Create(ctx context.Context, u user.User) error {
 	return nil
 }
 
-// Get validates the username/password pair and gets the points.
+// Read validates the username/password pair and gets the points.
 func (ub *UserBackend) Read(ctx context.Context, u user.User) (*user.User, error) {
 	if err := ub.withTimeoutContext(ctx, func(ctx context.Context) error {
 		users := ub.usersCollection()
@@ -75,7 +75,7 @@ func (ub *UserBackend) Read(ctx context.Context, u user.User) (*user.User, error
 			}
 			return err
 		}
-		if err := snapshot.DataTo(&u); err != nil {
+		if err = snapshot.DataTo(&u); err != nil {
 			return err
 		}
 		return err
@@ -107,7 +107,7 @@ func (ub *UserBackend) UpdatePassword(ctx context.Context, u user.User) error {
 	return nil
 }
 
-// UpdatePointsIncrement increments the points for all of the usernames.
+// UpdatePointsIncrement changes the points for all of the usernames.
 func (ub *UserBackend) UpdatePointsIncrement(ctx context.Context, usernamePoints map[string]int) error {
 	if err := ub.withTimeoutContext(ctx, func(ctx context.Context) error {
 		users := ub.usersCollection()
