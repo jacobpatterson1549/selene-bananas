@@ -9,6 +9,7 @@ import (
 
 // EmbeddedFS is the embedded "embed" subdirectory in this package with files for the server.
 // !!! Run `make` to generate this directory. !!!
+//
 //go:embed embed
 var EmbeddedFS embed.FS
 
