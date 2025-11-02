@@ -5,6 +5,7 @@ import (
 	"context"
 	crypto_rand "crypto/rand"
 	database_sql "database/sql"
+	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -27,6 +28,7 @@ import (
 	playerController "github.com/jacobpatterson1549/selene-bananas/server/game/player"
 	"github.com/jacobpatterson1549/selene-bananas/server/game/socket"
 	"github.com/jacobpatterson1549/selene-bananas/server/log"
+	"github.com/jacobpatterson1549/selene-bananas/server/oauth2"
 )
 
 // CreateUserBackend creates and sets up the database to back the user DAO.
@@ -117,6 +119,10 @@ func (f Flags) CreateServer(ctx context.Context, log log.Logger, ub user.Backend
 	if _, err := crypto_rand.Reader.Read(key); err != nil {
 		return nil, fmt.Errorf("generating Tokenizer key: %w", err)
 	}
+	oauth2CSRFToken := make([]byte, 64)
+	if _, err := crypto_rand.Reader.Read(oauth2CSRFToken); err != nil {
+		return nil, fmt.Errorf("generating oauth2 csrf token: %w", err)
+	}
 	tokenizerCfg := f.tokenizerConfig(timeFunc)
 	tokenizer, err := tokenizerCfg.NewTokenizer(key)
 	if err != nil {
@@ -146,6 +152,10 @@ func (f Flags) CreateServer(ctx context.Context, log log.Logger, ub user.Backend
 	if err != nil {
 		return nil, fmt.Errorf("creating lobby: %w", err)
 	}
+	googleOauth2Endpoint, err := f.googleOauth2Endpoint(oauth2CSRFToken)
+	if err != nil {
+		return nil, fmt.Errorf("creating oauth2 endpoint")
+	}
 	challenge := server.Challenge{
 		Token: f.ChallengeToken,
 		Key:   f.ChallengeKey,
@@ -164,12 +174,13 @@ func (f Flags) CreateServer(ctx context.Context, log log.Logger, ub user.Backend
 		NoTLSRedirect: f.NoTLSRedirect,
 	}
 	p := server.Parameters{
-		Logger:     log,
-		Tokenizer:  tokenizer,
-		UserDao:    userDao,
-		Lobby:      lobby,
-		StaticFS:   e.StaticFS,
-		TemplateFS: e.TemplateFS,
+		Logger:         log,
+		Tokenizer:      tokenizer,
+		UserDao:        userDao,
+		Lobby:          lobby,
+		StaticFS:       e.StaticFS,
+		TemplateFS:     e.TemplateFS,
+		GoogleEndpoint: googleOauth2Endpoint,
 	}
 	return cfg.NewServer(p)
 }
@@ -275,4 +286,23 @@ func (f Flags) socketRunnerConfig(timeFunc func() int64) socket.RunnerConfig {
 		SocketConfig:     socketCfg,
 	}
 	return cfg
+}
+
+// oauth2Config creates the configuration to sign in using Oauth2 SSO
+func (f Flags) googleOauth2Endpoint(csrfNoise []byte) (*oauth2.Endpoint, error) {
+	csrfToken := encodeHex(csrfNoise)
+	cfg := oauth2.GoogleConfig{
+		ClientID:     f.GCCliID,
+		ClientSecret: f.GCCliSecret,
+		CSRFToken:    csrfToken,
+		RedirectURL:  f.Oauth2RedirectURL,
+	}
+	return cfg.NewEndpoint()
+}
+
+// encodeHex turns the bytes into a /^[0-9a-f]*$/ string.
+func encodeHex(src []byte) string {
+	dst := make([]byte, hex.EncodedLen(len(src)))
+	hex.Encode(dst, src)
+	return string(dst)
 }

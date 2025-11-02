@@ -129,8 +129,10 @@ func (d Dao) UpdatePointsIncrement(ctx context.Context, usernamePoints map[strin
 
 // Delete removes a user.
 func (d Dao) Delete(ctx context.Context, u User) error {
-	if _, err := d.Login(ctx, u); err != nil {
-		return err
+	if !u.IsOauth2 {
+		if _, err := d.Login(ctx, u); err != nil {
+			return err
+		}
 	}
 	if err := d.backend.Delete(ctx, u); err != nil {
 		return d.formatBackendError("deleting user", err)

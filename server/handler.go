@@ -18,6 +18,7 @@ import (
 	"github.com/jacobpatterson1549/selene-bananas/db/user"
 	"github.com/jacobpatterson1549/selene-bananas/game"
 	"github.com/jacobpatterson1549/selene-bananas/server/log"
+	"github.com/jacobpatterson1549/selene-bananas/server/oauth2"
 )
 
 type (
@@ -51,8 +52,9 @@ type (
 		Tokenizer
 		UserDao
 		Lobby
-		StaticFS   fs.FS
-		TemplateFS fs.FS
+		StaticFS       fs.FS
+		TemplateFS     fs.FS
+		GoogleEndpoint *oauth2.Endpoint
 	}
 
 	// Challenge token and key used to get a TLS certificate using the ACME HTTP-01.
@@ -88,6 +90,20 @@ type (
 	}
 
 	contextKey int
+
+	templateData struct {
+		Name           string
+		ShortName      string
+		Description    string
+		Version        string
+		Colors         ColorConfig
+		Rules          []string
+		HasUserDB      bool
+		CanGoogleLogin bool
+		JWT            string
+		AccessToken    string
+		JWTUser        user.User
+	}
 )
 
 const (
@@ -111,6 +127,7 @@ const (
 
 const (
 	usernameContextKey contextKey = iota + 1
+	isOauth2ContextKey
 )
 
 // NewServer creates a Server from the Config
@@ -173,28 +190,19 @@ func (cfg Config) validate(p Parameters) error {
 	return nil
 }
 
-// date is a structure of variables to insert into templates.
-func (cfg Config) data(hasUserDB bool) interface{} {
+// init configures the structure of variables to insert into templates.
+func (cfg Config) newTemplateData() *templateData {
 	var defaultGameCfg game.Config
 	rules := defaultGameCfg.Rules()
-	data := struct {
-		Name        string
-		ShortName   string
-		Description string
-		Version     string
-		Colors      ColorConfig
-		Rules       []string
-		HasUserDB   bool
-	}{
+	data := templateData{
 		Name:        "selene-bananas",
 		ShortName:   "bananas",
 		Description: "a tile-based word-forming game",
 		Version:     cfg.Version,
 		Colors:      cfg.ColorConfig,
 		Rules:       rules,
-		HasUserDB:   hasUserDB,
 	}
-	return data
+	return &data
 }
 
 // validHTTPAddr determines if the HTTP address is valid.
@@ -263,10 +271,14 @@ func (cfg Config) httpsHandler(httpHandler, httpsRedirectHandler http.Handler, p
 
 // getHandler forwards calls to various endpoints.
 func (p Parameters) getHandler(cfg Config, template *template.Template, monitor http.Handler) http.Handler {
-	_, noUserDB := p.UserDao.Backend().(user.NoDatabaseBackend)
-	data := cfg.data(!noUserDB)
 	cacheMaxAge := fmt.Sprintf("max-age=%d", cfg.CacheSec)
-	templateFileHandler := templateHandler(template, data, p.Logger)
+
+	data := cfg.newTemplateData()
+	_, noUserDB := p.UserDao.Backend().(user.NoDatabaseBackend)
+	data.HasUserDB = !noUserDB
+	data.CanGoogleLogin = p.GoogleEndpoint != nil
+
+	templateFileHandler := templateHandler(template, *data, p.Logger)
 	staticFileHandler := http.FileServer(http.FS(p.StaticFS))
 	templateHandler := fileHandler(http.HandlerFunc(templateFileHandler), cacheMaxAge)
 	staticHandler := fileHandler(staticFileHandler, cacheMaxAge)
@@ -282,6 +294,11 @@ func (p Parameters) getHandler(cfg Config, template *template.Template, monitor 
 	}
 	getMux.Handle("/lobby", http.HandlerFunc(userLobbyConnectHandler(p.Lobby, p.Tokenizer, p.Logger)))
 	getMux.Handle("/monitor", monitor)
+	if p.GoogleEndpoint != nil {
+		jwtHandler := oauth2JWTTemplateHandler(template, *data, p.Logger)
+		getMux.Handle(oauth2.GoogleLoginURL, p.GoogleEndpoint.HandleLogin())
+		getMux.Handle(oauth2.GoogleCallbackURL, p.GoogleEndpoint.HandleCallback(p.UserDao, p.Tokenizer, jwtHandler))
+	}
 	return rootHandler(getMux)
 }
 
@@ -291,7 +308,7 @@ func (p Parameters) postHandler() http.Handler {
 	postMux.Handle("/user_create", http.HandlerFunc(userCreateHandler(p.UserDao, p.Logger)))
 	postMux.Handle("/user_login", http.HandlerFunc(userLoginHandler(p.UserDao, p.Tokenizer, p.Logger)))
 	postMux.Handle("/user_update_password", http.HandlerFunc(userUpdatePasswordHandler(p.UserDao, p.Lobby, p.Logger)))
-	postMux.Handle("/user_delete", http.HandlerFunc(userDeleteHandler(p.UserDao, p.Lobby, p.Logger)))
+	postMux.Handle("/user_delete", http.HandlerFunc(userDeleteHandler(p.UserDao, p.GoogleEndpoint, p.Lobby, p.Logger)))
 	postMux.Handle("/ping", http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		// NOOP
 	}))
@@ -324,7 +341,7 @@ func authHandler(h http.Handler, tokenizer Tokenizer, log log.Logger) http.Handl
 
 // setAuthorization loads the token from the authorization header into the request context.
 func withAuthorization(w http.ResponseWriter, r *http.Request, authorization string, tokenizer Tokenizer, log log.Logger) *http.Request {
-	username, err := getTokenUsername(authorization, tokenizer)
+	username, isOauth2, err := getToken(authorization, tokenizer)
 	if err != nil {
 		log.Printf(err.Error())
 		httpError(w, http.StatusForbidden)
@@ -332,6 +349,7 @@ func withAuthorization(w http.ResponseWriter, r *http.Request, authorization str
 	}
 	ctx := r.Context()
 	ctx = context.WithValue(ctx, usernameContextKey, username)
+	ctx = context.WithValue(ctx, isOauth2ContextKey, isOauth2)
 	return r.WithContext(ctx)
 }
 
@@ -377,7 +395,7 @@ func fileHandler(h http.Handler, cacheMaxAge string) http.HandlerFunc {
 
 // templateHandler servers the file from the data-driven template.  The name is assumed to have a leading slash that is ignored.
 // Templates are written a buffer to ensure they execute correctly before they are written to the response
-func templateHandler(template *template.Template, data interface{}, log log.Logger) http.HandlerFunc {
+func templateHandler(template *template.Template, data templateData, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		name := r.URL.Path[1:] // ignore leading slash
 		var buf bytes.Buffer
@@ -386,6 +404,20 @@ func templateHandler(template *template.Template, data interface{}, log log.Logg
 			writeInternalError(err, log, w)
 		}
 		w.Write(buf.Bytes())
+	}
+}
+
+// oauth2JWTTemplateHandler adds the jwt token to the template data before handling
+func oauth2JWTTemplateHandler(template *template.Template, data templateData, log log.Logger) func(jwt, accessToken string, u user.User) http.HandlerFunc {
+	return func(jwt, accessToken string, u user.User) http.HandlerFunc {
+		data.JWT = jwt
+		data.AccessToken = accessToken
+		data.JWTUser = u
+		h := templateHandler(template, data, log)
+		return func(w http.ResponseWriter, r *http.Request) {
+			r.URL.Path = rootTemplatePath
+			h.ServeHTTP(w, r)
+		}
 	}
 }
 
@@ -406,17 +438,19 @@ func httpsRedirectHandler(httpsPort int) http.HandlerFunc {
 	}
 }
 
-// getTokenUsername ensures the username in the authorization header is set, returning it.
-func getTokenUsername(authorization string, tokenizer Tokenizer) (string, error) {
+// getToken retrieves the username and isOauth2 in the authorization header.
+func getToken(authorization string, tokenizer Tokenizer) (username string, isOauth2 bool, err error) {
 	if len(authorization) < 7 || authorization[:7] != "Bearer " {
-		return "", fmt.Errorf("invalid authorization header: %v", authorization)
+		err = fmt.Errorf("invalid authorization header: %v", authorization)
+		return
 	}
 	tokenString := authorization[7:]
-	tokenUsername, err := tokenizer.ReadUsername(tokenString)
+	username, isOauth2, err = tokenizer.Read(tokenString)
 	if err != nil {
-		return "", fmt.Errorf("reading token username: %w", err)
+		err = fmt.Errorf("reading token info: %w", err)
+		return
 	}
-	return tokenUsername, nil
+	return
 }
 
 // writeInternalError logs and writes the error as an internal server error (500).

@@ -116,7 +116,7 @@ func TestUserLoginHandler(t *testing.T) {
 			},
 		}
 		tokenizer := mockTokenizer{
-			CreateFunc: func(username string, points int) (string, error) {
+			CreateFunc: func(username string, isOauth2 bool, points int) (string, error) {
 				switch {
 				case test.username != username:
 					t.Errorf("Test %v wanted username to create token for to be %v, got %v", i, test.username, username)
@@ -171,17 +171,18 @@ func TestUserLobbyConnectHandler(t *testing.T) {
 			},
 		}
 		tokenizer := mockTokenizer{
-			ReadUsernameFunc: func(tokenString string) (username string, err error) {
+			ReadFunc: func(tokenString string) (username string, isOauth2 bool, err error) {
 				if tokenString != "hot" {
 					t.Errorf("unwanted token: %q", tokenString)
 				}
-				return wantUsername, nil
+				return wantUsername, false, nil
 			},
 		}
 		log := logtest.DiscardLogger
 		r := httptest.NewRequest("", "/?access_token=hot", nil)
 		r.Form = make(url.Values)
 		r = r.WithContext(context.WithValue(r.Context(), usernameContextKey, wantUsername))
+		r = r.WithContext(context.WithValue(r.Context(), isOauth2ContextKey, false))
 		w := httptest.NewRecorder()
 		h := userLobbyConnectHandler(lobby, tokenizer, log)
 		h.ServeHTTP(w, r)
@@ -253,6 +254,7 @@ func TestUserUpdatePasswordHandler(t *testing.T) {
 		r := httptest.NewRequest("", "/", nil)
 		r.Form = make(url.Values)
 		r = r.WithContext(context.WithValue(r.Context(), usernameContextKey, test.username))
+		r = r.WithContext(context.WithValue(r.Context(), isOauth2ContextKey, false))
 		r.Form.Add("password", test.password)
 		r.Form.Add("password_confirm", test.newPassword)
 		w := httptest.NewRecorder()
@@ -275,8 +277,10 @@ func TestUserUpdatePasswordHandler(t *testing.T) {
 func TestUserDeleteHandler(t *testing.T) {
 	userDeleteHandlerTests := []struct {
 		username        string
+		isOauth2        bool
 		password        string
 		daoDeleteErr    error
+		oauth2RevokeErr error
 		wantCode        int
 		wantLobbyRemove bool
 	}{
@@ -294,7 +298,15 @@ func TestUserDeleteHandler(t *testing.T) {
 		},
 		{
 			username:        "selene",
+			isOauth2:        true,
+			oauth2RevokeErr: fmt.Errorf("error revoking oauth2 user"),
+			wantCode:        500,
+			wantLobbyRemove: true,
+		},
+		{
+			username:        "selene",
 			password:        "TOP_s3cret!iii",
+			oauth2RevokeErr: fmt.Errorf("oauth2 revoke should not be called"),
 			wantCode:        200,
 			wantLobbyRemove: true,
 		},
@@ -306,6 +318,11 @@ func TestUserDeleteHandler(t *testing.T) {
 					t.Errorf("Test %v: wanted user %v to be deleted, got %v", i, test.username, u.Username)
 				}
 				return test.daoDeleteErr
+			},
+		}
+		oauth2Endpoint := mockOauth2Endpoint{
+			revokeAccessFunc: func(accessToken string) error {
+				return test.oauth2RevokeErr
 			},
 		}
 		gotLobbyRemove := false
@@ -321,9 +338,10 @@ func TestUserDeleteHandler(t *testing.T) {
 		r := httptest.NewRequest("", "/", nil)
 		r.Form = make(url.Values)
 		r = r.WithContext(context.WithValue(r.Context(), usernameContextKey, test.username))
+		r = r.WithContext(context.WithValue(r.Context(), isOauth2ContextKey, test.isOauth2))
 		r.Form.Add("password", test.password)
 		w := httptest.NewRecorder()
-		h := userDeleteHandler(userDao, lobby, log)
+		h := userDeleteHandler(userDao, oauth2Endpoint, lobby, log)
 		h.ServeHTTP(w, r)
 		gotCode := w.Code
 		switch {

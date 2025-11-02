@@ -10,6 +10,7 @@
     </fieldset>
 </form>
 {{ if .HasUserDB }}
+{{- if not .JWTUser.IsOauth2}}
 <form method="post" action="/user_update_password" onsubmit="user.request(event)">
     <fieldset>
         <legend>Update User Password</legend>
@@ -21,10 +22,16 @@
         <input class="button" type="submit" disabled>
     </fieldset>
 </form>
+{{- end}}
 <form method="post" action="/user_delete" onsubmit="user.request(event)">
     <fieldset>
         <legend>Delete User</legend>
+        {{- if .JWTUser.IsOauth2}}
+        <span>(User linked to external site)</span>
+        <input name="access_token" value="{{.AccessToken}}" hidden>
+        {{- else }}
         {{ template "password.html" . }}
+        {{- end}}
         <input class="button" type="submit" disabled>
     </fieldset>
 </form>

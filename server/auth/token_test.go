@@ -19,7 +19,7 @@ func TestCreate(t *testing.T) {
 	}
 	// flaky:
 	want := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwb2ludHMiOjE4LCJzdWIiOiJzZWxlbmUiLCJleHAiOjMxNTM2MDAwLCJuYmYiOjB9.YaaT1wnna5l41f5vhQI4Gxbezku75hyQ4_v3F2z0-6A"
-	got, err := tokenizer.Create("selene", 18)
+	got, err := tokenizer.Create("selene", false, 18)
 	switch {
 	case err != nil:
 		t.Errorf("unwanted error: %v", err)
@@ -33,21 +33,23 @@ func TestReadUsername(t *testing.T) {
 		username              string
 		creationSigningMethod jwt.SigningMethod
 		readSigningMethod     jwt.SigningMethod
-		want                  string
+		wantUsername          string
+		wantIsOauth2          bool
 		wantOk                bool
 	}{
 		{
 			username:              "selene",
 			creationSigningMethod: jwt.SigningMethodHS256,
 			readSigningMethod:     jwt.SigningMethodHS256,
-			want:                  "selene",
+			wantUsername:          "selene",
 			wantOk:                true,
 		},
 		{
 			username:              "jacob",
 			creationSigningMethod: jwt.SigningMethodHS512,
 			readSigningMethod:     jwt.SigningMethodHS512,
-			want:                  "jacob",
+			wantUsername:          "jacob",
+			wantIsOauth2:          true,
 			wantOk:                true,
 		},
 		{
@@ -68,7 +70,7 @@ func TestReadUsername(t *testing.T) {
 			key:             []byte("secret"),
 			TokenizerConfig: cfg,
 		}
-		tokenString, err := creationTokenizer.Create(test.username, 0)
+		tokenString, err := creationTokenizer.Create(test.username, test.wantIsOauth2, 0)
 		if err != nil {
 			t.Errorf("Test %v: unwanted error creating tokenizer to read username: %v", i, err)
 			continue
@@ -78,7 +80,7 @@ func TestReadUsername(t *testing.T) {
 			key:             []byte("secret"),
 			TokenizerConfig: cfg,
 		}
-		got, err := readTokenizer.ReadUsername(tokenString)
+		gotUsername, gotIsOauth2, err := readTokenizer.Read(tokenString)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -86,8 +88,10 @@ func TestReadUsername(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error reading username: %v", i, err)
-		case test.want != got:
-			t.Errorf("Test %v: read usernames not equal: wanted %v, got %v", i, test.want, got)
+		case test.wantUsername != gotUsername:
+			t.Errorf("Test %v: read usernames not equal: wanted %v, got %v", i, test.wantUsername, gotUsername)
+		case test.wantIsOauth2 != gotIsOauth2:
+			t.Errorf("Test %v: read isOauth2 not equal: wanted %v, got %v", i, test.wantIsOauth2, gotIsOauth2)
 		}
 	}
 }
@@ -98,6 +102,7 @@ func TestCreateReadWithTime(t *testing.T) {
 		creationTime int64 // not before
 		readTime     int64 // not equal or after
 		wantOk       bool
+		wantIsOauth2 bool
 	}{
 		{
 			creationTime: 1,
@@ -107,6 +112,12 @@ func TestCreateReadWithTime(t *testing.T) {
 			creationTime: 2,
 			readTime:     2,
 			wantOk:       true,
+		},
+		{
+			creationTime: 2,
+			readTime:     2,
+			wantOk:       true,
+			wantIsOauth2: true,
 		},
 		{
 			creationTime: 3,
@@ -152,12 +163,12 @@ func TestCreateReadWithTime(t *testing.T) {
 			now := epochSecondsSupplier()
 			return time.Unix(now, 0)
 		}
-		want := "selene"
-		tokenString, err := tokenizer.Create(want, 32)
+		wantUsername := "selene"
+		tokenString, err := tokenizer.Create(wantUsername, test.wantIsOauth2, 32)
 		if err != nil {
 			t.Errorf("unwanted error creating tokenizer for creating with read time limit: %v", err)
 		}
-		got, err := tokenizer.ReadUsername(tokenString)
+		gotUsername, gotIsOauth2, err := tokenizer.Read(tokenString)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -165,8 +176,10 @@ func TestCreateReadWithTime(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error creating with read time limit: %v", i, err)
-		case want != got:
-			t.Errorf("Test %v: read usernames not equal: wanted %v, got %v", i, want, got)
+		case wantUsername != gotUsername:
+			t.Errorf("Test %v: read usernames not equal: wanted %v, got %v", i, wantUsername, gotUsername)
+		case test.wantIsOauth2 != gotIsOauth2:
+			t.Errorf("Test %v: read isOauth2 not equal: wanted %v, got %v", i, test.wantIsOauth2, gotIsOauth2)
 		}
 	}
 }

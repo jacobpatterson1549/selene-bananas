@@ -6,3 +6,6 @@
         <input class="button" type="submit" disabled>
     </fieldset>
 </form>
+{{- if .CanGoogleLogin}}
+<a href="/oauth2_google_login">Login with Google</a>
+{{- end}}

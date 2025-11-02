@@ -27,8 +27,9 @@ type (
 
 	// jwtUserClaims appends user points to the standard jwt claims.
 	jwtUserClaims struct {
-		Points               int `json:"points"`
-		jwt.RegisteredClaims     // username stored in Subject ("sub") field
+		Points               int  `json:"points"`
+		IsOauth2             bool `json:"isOauth2,omitempty"`
+		jwt.RegisteredClaims      // username stored in Subject ("sub") field
 	}
 )
 
@@ -59,7 +60,7 @@ func (cfg TokenizerConfig) validate(key interface{}) error {
 }
 
 // Create converts a user to a token string.
-func (j *JwtTokenizer) Create(username string, points int) (string, error) {
+func (j *JwtTokenizer) Create(username string, isOauth2 bool, points int) (string, error) {
 	now := j.TimeFunc()
 	nowT := time.Unix(now, 0)
 	expireD := time.Duration(j.ValidSec) * time.Second
@@ -70,6 +71,7 @@ func (j *JwtTokenizer) Create(username string, points int) (string, error) {
 		ExpiresAt: jwt.NewNumericDate(expiresAtT),
 	}
 	claims := jwtUserClaims{
+		IsOauth2:         isOauth2,
 		Points:           points,
 		RegisteredClaims: stdClaims,
 	}
@@ -77,13 +79,15 @@ func (j *JwtTokenizer) Create(username string, points int) (string, error) {
 	return token.SignedString(j.key)
 }
 
-// ReadUsername extracts the username from the token string.
-func (j *JwtTokenizer) ReadUsername(tokenString string) (string, error) {
+// ReadUsername extracts the username and points from the token string.
+func (j *JwtTokenizer) Read(tokenString string) (username string, isOauth2 bool, err error) {
 	var claims jwtUserClaims
-	if _, err := jwt.ParseWithClaims(tokenString, &claims, j.keyFunc); err != nil {
-		return "", err
+	if _, err = jwt.ParseWithClaims(tokenString, &claims, j.keyFunc); err != nil {
+		return
 	}
-	return claims.Subject, nil
+	username = claims.Subject
+	isOauth2 = claims.IsOauth2
+	return
 }
 
 // keyFunc ensures the key type (method) of the token is correct before returning the key.

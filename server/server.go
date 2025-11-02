@@ -24,8 +24,8 @@ type (
 
 	// Tokenizer creates and reads tokens from http traffic.
 	Tokenizer interface {
-		Create(username string, points int) (string, error)
-		ReadUsername(tokenString string) (string, error)
+		Create(username string, isOauth2 bool, points int) (string, error)
+		Read(tokenString string) (username string, isOauth2 bool, err error)
 	}
 
 	// Lobby is the place users can create, join, and participate in games.
@@ -33,6 +33,10 @@ type (
 		Run(ctx context.Context, wg *sync.WaitGroup)
 		AddUser(username string, w http.ResponseWriter, r *http.Request) error
 		RemoveUser(username string)
+	}
+
+	Oauth2Endpoint interface {
+		RevokeAccess(accessToken string) error
 	}
 )
 

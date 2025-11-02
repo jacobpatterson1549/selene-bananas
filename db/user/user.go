@@ -11,28 +11,29 @@ type User struct {
 	Username string
 	Password string
 	Points   int
+	IsOauth2 bool
 }
 
 // Validate checks if the username and password are valid.
 func (u User) Validate() error {
-	if err := validateUsername(u.Username); err != nil {
+	if err := u.validateUsername(); err != nil {
 		return err
 	}
-	if err := validatePassword(u.Password); err != nil {
+	if err := u.validatePassword(); err != nil {
 		return err
 	}
 	return nil
 }
 
 // validateUsername returns an error if the username is not valid.
-func validateUsername(u string) error {
+func (u User) validateUsername() error {
 	switch {
-	case len(u) < 1:
+	case len(u.Username) < 1:
 		return fmt.Errorf("username required")
-	case len(u) > 32:
+	case len(u.Username) > 32:
 		return fmt.Errorf("username must be less than 32 characters long")
-	default:
-		for _, r := range u {
+	case !u.IsOauth2:
+		for _, r := range u.Username {
 			if !unicode.IsLower(r) {
 				return fmt.Errorf("username must be made of only lowercase letters")
 			}
@@ -42,9 +43,9 @@ func validateUsername(u string) error {
 }
 
 // validatePassword returns an error if the password is not valid.
-func validatePassword(p string) error {
+func (u User) validatePassword() error {
 	switch {
-	case len(p) < 8:
+	case !u.IsOauth2 && len(u.Password) < 8:
 		return fmt.Errorf("password must be at least 8 characters long")
 	}
 	return nil
