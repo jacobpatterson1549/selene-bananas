@@ -131,3 +131,25 @@ func TestDatabaseConfig(t *testing.T) {
 		t.Errorf("not equal:\nwanted: '%v'\ngot:    '%v'", want, got)
 	}
 }
+
+func TestGoogleOauth2Endpoint(t *testing.T) {
+	f := Flags{
+		GCCliID:           "abc",
+		GCCliSecret:       "def",
+		Oauth2RedirectURL: "hix",
+	}
+	var csrfNoise []byte
+	got, err := f.googleOauth2Endpoint(csrfNoise)
+	if err != nil {
+		t.Errorf("unwanted error: %v", err)
+	}
+	if got == nil {
+		t.Error("wanted google config")
+	}
+}
+
+func TestEncodeHex(t *testing.T) {
+	if want, got := "48656c6c6f20476f7068657221", encodeHex([]byte("Hello Gopher!")); want != got {
+		t.Errorf("not equal:\nwanted: '%v'\ngot:    '%v'", want, got)
+	}
+}

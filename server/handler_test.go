@@ -421,8 +421,8 @@ func TestHTTPSHandler(t *testing.T) {
 			Request: withTLS(withAuthorization(httptest.NewRequest("POST", "/unknown3", nil))),
 			Parameters: Parameters{
 				Tokenizer: mockTokenizer{
-					ReadUsernameFunc: func(tokenString string) (string, error) {
-						return username, nil
+					ReadFunc: func(tokenString string) (username string, isOauth2 bool, err error) {
+						return username, false, nil
 					},
 				},
 			},
@@ -454,8 +454,10 @@ func TestCheckTokenUsername(t *testing.T) {
 	checkTokenUsernameTests := []struct {
 		authorizationHeader  string
 		tokenUsername        string
+		tokenIsOauth2        bool
 		readTokenUsernameErr error
 		wantUsername         string
+		wantIsOauth2         bool
 		wantOk               bool
 	}{
 		{},
@@ -468,17 +470,24 @@ func TestCheckTokenUsername(t *testing.T) {
 			tokenUsername:       want,
 			wantOk:              true,
 		},
+		{
+			authorizationHeader: "Bearer GOOD4",
+			tokenUsername:       want,
+			tokenIsOauth2:       true,
+			wantIsOauth2:        true,
+			wantOk:              true,
+		},
 	}
 	for i, test := range checkTokenUsernameTests {
 		tokenizer := mockTokenizer{
-			ReadUsernameFunc: func(tokenString string) (string, error) {
+			ReadFunc: func(tokenString string) (username string, isOauth2 bool, err error) {
 				if test.readTokenUsernameErr != nil {
-					return "", test.readTokenUsernameErr
+					return "", false, test.readTokenUsernameErr
 				}
-				return want, nil
+				return want, test.tokenIsOauth2, nil
 			},
 		}
-		gotUsername, err := getTokenUsername(test.authorizationHeader, tokenizer)
+		gotUsername, gotIsOauth2, err := getToken(test.authorizationHeader, tokenizer)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -488,6 +497,8 @@ func TestCheckTokenUsername(t *testing.T) {
 			t.Errorf("Test %v: unwanted error: %v", i, err)
 		case test.tokenUsername != gotUsername:
 			t.Errorf("Test %v: wanted username %q from token, got %q", i, test.tokenUsername, gotUsername)
+		case test.wantIsOauth2 != gotIsOauth2:
+			t.Errorf("Test %v: wanted isOauth2 %v from token, got %v", i, test.wantIsOauth2, gotIsOauth2)
 		}
 	}
 }
@@ -569,7 +580,7 @@ func TestTemplateHandler(t *testing.T) {
 		templateName string
 		templateText string
 		path         string
-		data         interface{}
+		data         templateData
 		wantCode     int
 		wantBody     string
 	}{
@@ -586,18 +597,10 @@ func TestTemplateHandler(t *testing.T) {
 			wantCode:     200,
 		},
 		{
-			templateName: "name1.html",
-			templateText: "template for {{ . }}",
-			path:         "/name1.html",
-			data:         "selene",
-			wantBody:     "template for selene",
-			wantCode:     200,
-		},
-		{
 			templateName: "name2.html",
 			templateText: "template for {{ .Name }}",
 			path:         "/name2.html",
-			data:         struct{ Name string }{Name: "selene"},
+			data:         templateData{Name: "selene"},
 			wantBody:     "template for selene",
 			wantCode:     200,
 		},
@@ -605,7 +608,7 @@ func TestTemplateHandler(t *testing.T) {
 			templateName: "name3.html",
 			templateText: "template for {{ .NameINVALID }}",
 			path:         "/name3.html",
-			data:         struct{ Name string }{Name: "selene"},
+			data:         templateData{Name: "selene"},
 			wantCode:     500,
 		},
 	}
@@ -733,6 +736,7 @@ func TestGetHandler(t *testing.T) {
 		t.Helper()
 		r := httptest.NewRequest("", path, nil)
 		r = r.WithContext(context.WithValue(r.Context(), usernameContextKey, "username"))
+		r = r.WithContext(context.WithValue(r.Context(), isOauth2ContextKey, false))
 		w := httptest.NewRecorder()
 		h := p.getHandler(cfg, template, monitor)
 		h.ServeHTTP(w, r)
@@ -793,11 +797,8 @@ func TestGetHandler(t *testing.T) {
 		var cfg Config
 		p := Parameters{
 			Tokenizer: mockTokenizer{
-				ReadUsernameFunc: func(tokenString string) (string, error) {
-					if tokenString != "xyz" {
-						t.Errorf("unwanted token string: %q", tokenString)
-					}
-					return "", nil
+				ReadFunc: func(tokenString string) (username string, isOauth2 bool, err error) {
+					return "", false, nil
 				},
 			},
 			Lobby: mockLobby{
@@ -859,11 +860,11 @@ func TestPostHandler(t *testing.T) {
 		"password_confirm": {"s3cr3t_new"},
 	}
 	tokenizer := mockTokenizer{
-		CreateFunc: func(username string, points int) (string, error) {
+		CreateFunc: func(username string, isOauth2 bool, points int) (string, error) {
 			return "", nil
 		},
-		ReadUsernameFunc: func(tokenString string) (string, error) {
-			return u, nil
+		ReadFunc: func(tokenString string) (username string, isOauth2 bool, err error) {
+			return u, false, nil
 		},
 	}
 	lobby := mockLobby{

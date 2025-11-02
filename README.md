@@ -167,3 +167,8 @@ The server can verify its identity over HTTP to pass a Automatic Certificate Man
 ACME_CHALLENGE_TOKEN=token123
 ACME_CHALLENGE_KEY=s3cr3t_key
 ```
+
+#### Oauth2
+
+Oauth2 logins do not save passwords.  Supported Oauth2 sources are:
+* Google

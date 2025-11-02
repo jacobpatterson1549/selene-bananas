@@ -1,6 +1,6 @@
 <div class=tabs>
-    <input type="text" class="jwt" hidden>
-    <input type="checkbox" id="has-login" hidden>
+    <input type="text" class="jwt" hidden{{- with  .JWT}} value="{{.}}"{{end}}>
+    <input type="checkbox" id="has-login" hidden{{- if .JWT}} checked{{end}}>
     <div class="tab logout-required">
         <input id="tab-login-user" type="radio" name="tab-group" checked>
         <label class="button" for="tab-login-user">Sign In</label>
@@ -25,7 +25,7 @@
         </div>
     </div>
     <div class="tab login-required">
-        <input id="tab-lobby" type="radio" name="tab-group">
+        <input id="tab-lobby" type="radio" name="tab-group"{{- if .JWT}} checked{{end}}>
         <label class="button" for="tab-lobby">Lobby</label>
         <div class="content">
             {{ template "lobby.html" . }}

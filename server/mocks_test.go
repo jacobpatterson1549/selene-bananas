@@ -10,16 +10,16 @@ import (
 )
 
 type mockTokenizer struct {
-	CreateFunc       func(username string, points int) (string, error)
-	ReadUsernameFunc func(tokenString string) (string, error)
+	CreateFunc func(username string, isOauth2 bool, points int) (string, error)
+	ReadFunc   func(tokenString string) (username string, isOauth2 bool, err error)
 }
 
-func (m mockTokenizer) Create(username string, points int) (string, error) {
-	return m.CreateFunc(username, points)
+func (m mockTokenizer) Create(username string, isOauth2 bool, points int) (string, error) {
+	return m.CreateFunc(username, isOauth2, points)
 }
 
-func (m mockTokenizer) ReadUsername(tokenString string) (string, error) {
-	return m.ReadUsernameFunc(tokenString)
+func (m mockTokenizer) Read(tokenString string) (username string, isOauth2 bool, err error) {
+	return m.ReadFunc(tokenString)
 }
 
 type mockUserDao struct {
@@ -48,6 +48,14 @@ func (m mockUserDao) Delete(ctx context.Context, u user.User) error {
 
 func (m mockUserDao) Backend() user.Backend {
 	return m.backendFunc()
+}
+
+type mockOauth2Endpoint struct {
+	revokeAccessFunc func(accessToken string) error
+}
+
+func (m mockOauth2Endpoint) RevokeAccess(accessToken string) error {
+	return m.revokeAccessFunc(accessToken)
 }
 
 type mockLobby struct {

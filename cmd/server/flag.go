@@ -8,29 +8,35 @@ import (
 )
 
 const (
-	environmentVariableHTTPPort       = "HTTP_PORT"
-	environmentVariableHTTPSPort      = "HTTPS_PORT"
-	environmentVariablePort           = "PORT"
-	environmentVariableDatabaseURL    = "DATABASE_URL"
-	environmentVariableDebugGame      = "DEBUG_MESSAGES"
-	environmentVariableNoTLSRedirect  = "NO_TLS_REDIRECT"
-	environmentVariableCacheSec       = "CACHE_SECONDS"
-	environmentVariableChallengeToken = "ACME_CHALLENGE_TOKEN"
-	environmentVariableChallengeKey   = "ACME_CHALLENGE_KEY"
-	environmentVariableDBTimeoutSec   = "DB_TIMEOUT_SEC"
+	environmentVariableHTTPPort          = "HTTP_PORT"
+	environmentVariableHTTPSPort         = "HTTPS_PORT"
+	environmentVariablePort              = "PORT"
+	environmentVariableDatabaseURL       = "DATABASE_URL"
+	environmentVariableDebugGame         = "DEBUG_MESSAGES"
+	environmentVariableNoTLSRedirect     = "NO_TLS_REDIRECT"
+	environmentVariableCacheSec          = "CACHE_SECONDS"
+	environmentVariableChallengeToken    = "ACME_CHALLENGE_TOKEN"
+	environmentVariableChallengeKey      = "ACME_CHALLENGE_KEY"
+	environmentVariableDBTimeoutSec      = "DB_TIMEOUT_SEC"
+	environmentVariableGCCliID           = "GOOGLE_CLIENT_ID"
+	environmentVariableGCCliSecret       = "GOOGLE_CLIENT_SECRET"
+	environmentVariableOauth2RedirectURL = "OAUTH2_REDIRECT_URL"
 )
 
 // Flags are the configuration options which can be easily configured at run startup for different environments.
 type Flags struct {
-	HTTPPort       int
-	HTTPSPort      int
-	DatabaseURL    string
-	ChallengeToken string
-	ChallengeKey   string
-	DebugGame      bool
-	NoTLSRedirect  bool
-	CacheSec       int
-	DBTimeoutSec   int
+	HTTPPort          int
+	HTTPSPort         int
+	DatabaseURL       string
+	ChallengeToken    string
+	ChallengeKey      string
+	DebugGame         bool
+	NoTLSRedirect     bool
+	CacheSec          int
+	DBTimeoutSec      int
+	GCCliID           string
+	GCCliSecret       string
+	Oauth2RedirectURL string
 }
 
 const (
@@ -50,6 +56,9 @@ func usage(fs *flag.FlagSet) {
 		environmentVariableChallengeToken,
 		environmentVariableChallengeKey,
 		environmentVariableDBTimeoutSec,
+		environmentVariableGCCliID,
+		environmentVariableGCCliSecret,
+		environmentVariableOauth2RedirectURL,
 	}
 	fmt.Fprintf(fs.Output(), "Runs the server\n")
 	fmt.Fprintf(fs.Output(), "Reads environment variables when possible: [%s]\n", strings.Join(envVars, ","))
@@ -92,6 +101,9 @@ func (f *Flags) newFlagSet(osLookupEnvFunc func(string) (string, bool), portOver
 	fs.BoolVar(&f.NoTLSRedirect, "no-tls-redirect", envPresent(environmentVariableNoTLSRedirect), "Disables HTTPS redirection from http if present.")
 	fs.IntVar(&f.CacheSec, "cache-sec", envValueInt(environmentVariableCacheSec, defaultCacheSec), "The number of seconds static assets are cached, such as javascript files.")
 	fs.IntVar(&f.DBTimeoutSec, "db-timeout-sec", envValueInt(environmentVariableDBTimeoutSec, defaultDBTimeoutSec), "The number of seconds each database operation can take before timing out.")
+	fs.StringVar(&f.GCCliID, "google-client-id", envValue(environmentVariableGCCliID), "The ClientID for Google Oath2 user logins.")
+	fs.StringVar(&f.GCCliSecret, "google-client-secret", envValue(environmentVariableGCCliSecret), "The password for the Google Oath2 user logins.")
+	fs.StringVar(&f.Oauth2RedirectURL, "oauth2-redirect-url", envValue(environmentVariableOauth2RedirectURL), "The Scheme and host to redirect Oauth2 requests back to locally.  Should have a scheme and host")
 	return fs
 }
 

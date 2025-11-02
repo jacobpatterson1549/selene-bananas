@@ -50,7 +50,7 @@ func userLoginHandler(userDao UserDao, tokenizer Tokenizer, log log.Logger) http
 			handleUserDaoError(w, err, "login", log)
 			return
 		}
-		token, err := tokenizer.Create(u2.Username, u2.Points)
+		token, err := tokenizer.Create(u2.Username, false, u2.Points)
 		if err != nil {
 			writeInternalError(err, log, w)
 			return
@@ -66,12 +66,12 @@ func userLobbyConnectHandler(lobby Lobby, tokenizer Tokenizer, log log.Logger) h
 		authorization := "Bearer " + query.Get("access_token")
 		r = withAuthorization(w, r, authorization, tokenizer, log)
 
-		username, err := getUsername(r)
+		u, err := getUser(r)
 		if err != nil {
 			writeInternalError(err, log, w)
 			return
 		}
-		if err := lobby.AddUser(username, w, r); err != nil {
+		if err := lobby.AddUser(u.Username, w, r); err != nil {
 			err = fmt.Errorf("websocket error: %w", err)
 			writeInternalError(err, log, w)
 			return
@@ -82,45 +82,45 @@ func userLobbyConnectHandler(lobby Lobby, tokenizer Tokenizer, log log.Logger) h
 // userUpdatePasswordHandler updates the user's password.
 func userUpdatePasswordHandler(userDao UserDao, lobby Lobby, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		username, err := getUsername(r)
+		u, err := getUser(r)
 		if err != nil {
 			writeInternalError(err, log, w)
 			return
 		}
-		password := r.FormValue("password")
+		u.Password = r.FormValue("password")
 		newPassword := r.FormValue("password_confirm")
-		u := user.User{
-			Username: username,
-			Password: password,
-		}
 		ctx := r.Context()
-		if err := userDao.UpdatePassword(ctx, u, newPassword); err != nil {
+		if err := userDao.UpdatePassword(ctx, *u, newPassword); err != nil {
 			handleUserDaoError(w, err, "update password", log)
 			return
 		}
-		lobby.RemoveUser(username)
+		lobby.RemoveUser(u.Username)
 	}
 }
 
 // userDeleteHandler deletes the user from the database.
-func userDeleteHandler(userDao UserDao, lobby Lobby, log log.Logger) http.HandlerFunc {
+func userDeleteHandler(userDao UserDao, e Oauth2Endpoint, lobby Lobby, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		username, err := getUsername(r)
+		u, err := getUser(r)
 		if err != nil {
 			writeInternalError(err, log, w)
 			return
 		}
-		password := r.FormValue("password")
-		u := user.User{
-			Username: username,
-			Password: password,
-		}
+		u.Password = r.FormValue("password")
 		ctx := r.Context()
-		if err := userDao.Delete(ctx, u); err != nil {
+		if err := userDao.Delete(ctx, *u); err != nil {
 			handleUserDaoError(w, err, "delete", log)
 			return
 		}
-		lobby.RemoveUser(username)
+		lobby.RemoveUser(u.Username)
+
+		if u.IsOauth2 {
+			accessToken := r.FormValue("access_token")
+			if err := e.RevokeAccess(accessToken); err != nil {
+				writeInternalError(err, log, w)
+				return
+			}
+		}
 	}
 }
 
@@ -135,11 +135,19 @@ func handleUserDaoError(w http.ResponseWriter, err error, action string, log log
 	}
 }
 
-func getUsername(r *http.Request) (string, error) {
+func getUser(r *http.Request) (*user.User, error) {
 	ctx := r.Context()
 	username, ok := ctx.Value(usernameContextKey).(string)
 	if !ok {
-		return "", fmt.Errorf("could not get username")
+		return nil, fmt.Errorf("could not get username")
 	}
-	return username, nil
+	isOauth2, ok := ctx.Value(isOauth2ContextKey).(bool)
+	if !ok {
+		return nil, fmt.Errorf("could not get isOauth2")
+	}
+	u := user.User{
+		Username: username,
+		IsOauth2: isOauth2,
+	}
+	return &u, nil
 }
