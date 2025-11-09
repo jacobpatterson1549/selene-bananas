@@ -60,13 +60,15 @@ func userLoginHandler(userDao UserDao, tokenizer Tokenizer, log log.Logger) http
 }
 
 // userLobbyConnectHandler adds the user to the lobby.
-func userLobbyConnectHandler(tokenizer Tokenizer, lobby Lobby, log log.Logger) http.HandlerFunc {
+func userLobbyConnectHandler(lobby Lobby, tokenizer Tokenizer, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tokenString := r.FormValue("access_token")
-		username, err := tokenizer.ReadUsername(tokenString)
+		query := r.URL.Query()
+		authorization := "Bearer " + query.Get("access_token")
+		r = withAuthorization(w, r, authorization, tokenizer, log)
+
+		username, err := getUsername(r)
 		if err != nil {
-			log.Printf("reading username from token: %v", err)
-			http.Error(w, "unauthorized to join lobby, try logging out and in", http.StatusUnauthorized)
+			writeInternalError(err, log, w)
 			return
 		}
 		if err := lobby.AddUser(username, w, r); err != nil {
@@ -80,7 +82,11 @@ func userLobbyConnectHandler(tokenizer Tokenizer, lobby Lobby, log log.Logger) h
 // userUpdatePasswordHandler updates the user's password.
 func userUpdatePasswordHandler(userDao UserDao, lobby Lobby, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		username := r.FormValue("username")
+		username, err := getUsername(r)
+		if err != nil {
+			writeInternalError(err, log, w)
+			return
+		}
 		password := r.FormValue("password")
 		newPassword := r.FormValue("password_confirm")
 		u := user.User{
@@ -99,7 +105,11 @@ func userUpdatePasswordHandler(userDao UserDao, lobby Lobby, log log.Logger) htt
 // userDeleteHandler deletes the user from the database.
 func userDeleteHandler(userDao UserDao, lobby Lobby, log log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		username := r.FormValue("username")
+		username, err := getUsername(r)
+		if err != nil {
+			writeInternalError(err, log, w)
+			return
+		}
 		password := r.FormValue("password")
 		u := user.User{
 			Username: username,
@@ -123,4 +133,13 @@ func handleUserDaoError(w http.ResponseWriter, err error, action string, log log
 		log.Printf("%user v failure: %v", action, err)
 		writeInternalError(err, log, w)
 	}
+}
+
+func getUsername(r *http.Request) (string, error) {
+	ctx := r.Context()
+	username, ok := ctx.Value(usernameContextKey).(string)
+	if !ok {
+		return "", fmt.Errorf("could not get username")
+	}
+	return username, nil
 }
