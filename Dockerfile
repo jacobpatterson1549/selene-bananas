@@ -9,7 +9,7 @@ COPY go.mod go.sum ./
 RUN apk add --no-cache \
         make=~4.4.1-r2 \
         bash=~5.2.37-r0 \
-        nodejs=~22.13.1-r0 \
+        nodejs=~22.15.1-r0 \
         aspell=~0.60.8.1-r0 \
         aspell-en=2020.12.07-r0 \
     && go mod download
