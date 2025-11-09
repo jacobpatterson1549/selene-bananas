@@ -13,7 +13,6 @@
 <form method="post" action="/user_update_password" onsubmit="user.request(event)">
     <fieldset>
         <legend>Update User Password</legend>
-        {{ template "username.html" . }}
         {{ template "password.html" . }}
         <fieldset>
             <legend>New Password</legend>
@@ -25,7 +24,6 @@
 <form method="post" action="/user_delete" onsubmit="user.request(event)">
     <fieldset>
         <legend>Delete User</legend>
-        {{ template "username.html" . }}
         {{ template "password.html" . }}
         <input class="button" type="submit" disabled>
     </fieldset>

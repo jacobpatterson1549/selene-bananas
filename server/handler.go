@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"fmt"
 	"html/template"
 	"io"
@@ -85,6 +86,8 @@ type (
 		// The color when a button is active (actually a tab).
 		ButtonActive string
 	}
+
+	contextKey int
 )
 
 const (
@@ -104,6 +107,10 @@ const (
 	rootTemplatePath = "/index.html"
 	// acmeHeader is the path of the endpoint to serve the challenge at.
 	acmeHeader = "/.well-known/acme-challenge/"
+)
+
+const (
+	usernameContextKey contextKey = iota + 1
 )
 
 // NewServer creates a Server from the Config
@@ -273,7 +280,7 @@ func (p Parameters) getHandler(cfg Config, template *template.Template, monitor 
 	for _, p := range staticPatterns {
 		getMux.Handle(p, staticHandler)
 	}
-	getMux.Handle("/lobby", http.HandlerFunc(userLobbyConnectHandler(p.Tokenizer, p.Lobby, p.Logger)))
+	getMux.Handle("/lobby", http.HandlerFunc(userLobbyConnectHandler(p.Lobby, p.Tokenizer, p.Logger)))
 	getMux.Handle("/monitor", monitor)
 	return rootHandler(getMux)
 }
@@ -308,14 +315,24 @@ func authHandler(h http.Handler, tokenizer Tokenizer, log log.Logger) http.Handl
 		case "/user_create", "/user_login":
 			// [unauthenticated]
 		default:
-			if err := checkTokenUsername(r, tokenizer); err != nil {
-				log.Printf(err.Error())
-				httpError(w, http.StatusForbidden)
-				return
-			}
+			authorization := r.Header.Get("Authorization")
+			r = withAuthorization(w, r, authorization, tokenizer, log)
 		}
 		h.ServeHTTP(w, r)
 	}
+}
+
+// setAuthorization loads the token from the authorization header into the request context.
+func withAuthorization(w http.ResponseWriter, r *http.Request, authorization string, tokenizer Tokenizer, log log.Logger) *http.Request {
+	username, err := getTokenUsername(authorization, tokenizer)
+	if err != nil {
+		log.Printf(err.Error())
+		httpError(w, http.StatusForbidden)
+		return r
+	}
+	ctx := r.Context()
+	ctx = context.WithValue(ctx, usernameContextKey, username)
+	return r.WithContext(ctx)
 }
 
 // acmeChallengeHandler writes the challenge to the response.
@@ -389,22 +406,17 @@ func httpsRedirectHandler(httpsPort int) http.HandlerFunc {
 	}
 }
 
-// checkTokenUsername ensures the username in the authorization header matches that in the username form value.
-func checkTokenUsername(r *http.Request, tokenizer Tokenizer) error {
-	authorization := r.Header.Get("Authorization")
+// getTokenUsername ensures the username in the authorization header is set, returning it.
+func getTokenUsername(authorization string, tokenizer Tokenizer) (string, error) {
 	if len(authorization) < 7 || authorization[:7] != "Bearer " {
-		return fmt.Errorf("invalid authorization header: %v", authorization)
+		return "", fmt.Errorf("invalid authorization header: %v", authorization)
 	}
 	tokenString := authorization[7:]
 	tokenUsername, err := tokenizer.ReadUsername(tokenString)
 	if err != nil {
-		return err
+		return "", fmt.Errorf("reading token username: %w", err)
 	}
-	formUsername := r.FormValue("username")
-	if tokenUsername != formUsername {
-		return fmt.Errorf("username not same as token username")
-	}
-	return nil
+	return tokenUsername, nil
 }
 
 // writeInternalError logs and writes the error as an internal server error (500).

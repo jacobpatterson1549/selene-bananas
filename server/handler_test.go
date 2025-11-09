@@ -455,27 +455,17 @@ func TestCheckTokenUsername(t *testing.T) {
 		authorizationHeader  string
 		tokenUsername        string
 		readTokenUsernameErr error
-		formUsername         string
+		wantUsername         string
 		wantOk               bool
 	}{
 		{},
-		{
-			authorizationHeader: "bad bearer token",
-		},
-		{
-			authorizationHeader: "Bearer EVIL",
-		},
 		{
 			authorizationHeader:  "Bearer GOOD2",
 			readTokenUsernameErr: fmt.Errorf("tokenizer error"),
 		},
 		{
 			authorizationHeader: "Bearer GOOD3",
-			formUsername:        "alice",
-		},
-		{
-			authorizationHeader: "Bearer GOOD4",
-			formUsername:        want,
+			tokenUsername:       want,
 			wantOk:              true,
 		},
 	}
@@ -488,11 +478,7 @@ func TestCheckTokenUsername(t *testing.T) {
 				return want, nil
 			},
 		}
-		r := httptest.NewRequest("", "/", nil)
-		r.Header.Add("Authorization", test.authorizationHeader)
-		r.Form = make(url.Values)
-		r.Form.Add("username", test.formUsername)
-		err := checkTokenUsername(r, tokenizer)
+		gotUsername, err := getTokenUsername(test.authorizationHeader, tokenizer)
 		switch {
 		case !test.wantOk:
 			if err == nil {
@@ -500,6 +486,8 @@ func TestCheckTokenUsername(t *testing.T) {
 			}
 		case err != nil:
 			t.Errorf("Test %v: unwanted error: %v", i, err)
+		case test.tokenUsername != gotUsername:
+			t.Errorf("Test %v: wanted username %q from token, got %q", i, test.tokenUsername, gotUsername)
 		}
 	}
 }
@@ -744,6 +732,7 @@ func TestGetHandler(t *testing.T) {
 	checkCode := func(t *testing.T, path string, p Parameters, cfg Config, template *template.Template, wantCode int) {
 		t.Helper()
 		r := httptest.NewRequest("", path, nil)
+		r = r.WithContext(context.WithValue(r.Context(), usernameContextKey, "username"))
 		w := httptest.NewRecorder()
 		h := p.getHandler(cfg, template, monitor)
 		h.ServeHTTP(w, r)
@@ -805,6 +794,9 @@ func TestGetHandler(t *testing.T) {
 		p := Parameters{
 			Tokenizer: mockTokenizer{
 				ReadUsernameFunc: func(tokenString string) (string, error) {
+					if tokenString != "xyz" {
+						t.Errorf("unwanted token string: %q", tokenString)
+					}
 					return "", nil
 				},
 			},
@@ -813,9 +805,10 @@ func TestGetHandler(t *testing.T) {
 					return nil
 				},
 			},
+			Logger:  logtest.DiscardLogger,
 			UserDao: ud,
 		}
-		checkCode(t, "/lobby", p, cfg, nil, 200)
+		checkCode(t, "/lobby?access_token=xyz", p, cfg, nil, 200)
 	})
 	t.Run("monitor", func(t *testing.T) {
 		var cfg Config

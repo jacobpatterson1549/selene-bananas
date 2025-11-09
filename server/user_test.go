@@ -148,39 +148,20 @@ func TestUserLoginHandler(t *testing.T) {
 }
 
 func TestUserLobbyConnectHandler(t *testing.T) {
-	wantAccessToken := "selene_access_token"
 	wantUsername := "selene"
 	userLobbyConnectHandlerTests := []struct {
-		accessToken string
-		addUserErr  error
-		wantCode    int
+		addUserErr error
+		wantCode   int
 	}{
 		{
-			accessToken: "alice",
-			wantCode:    401,
+			addUserErr: fmt.Errorf("problem adding user"),
+			wantCode:   500,
 		},
 		{
-			accessToken: wantAccessToken,
-			addUserErr:  fmt.Errorf("problem adding user"),
-			wantCode:    500,
-		},
-		{
-			accessToken: wantAccessToken,
-			wantCode:    200,
+			wantCode: 200,
 		},
 	}
 	for i, test := range userLobbyConnectHandlerTests {
-		tokenizer := mockTokenizer{
-			ReadUsernameFunc: func(tokenString string) (string, error) {
-				if test.accessToken != tokenString {
-					t.Errorf("Test %v wanted tokenString to be %v, got %v", i, test.accessToken, tokenString)
-				}
-				if wantAccessToken != tokenString {
-					return "", fmt.Errorf("problem reading access token")
-				}
-				return wantUsername, nil
-			},
-		}
 		lobby := mockLobby{
 			addUserFunc: func(username string, w http.ResponseWriter, r *http.Request) error {
 				if username != wantUsername {
@@ -189,12 +170,20 @@ func TestUserLobbyConnectHandler(t *testing.T) {
 				return test.addUserErr
 			},
 		}
+		tokenizer := mockTokenizer{
+			ReadUsernameFunc: func(tokenString string) (username string, err error) {
+				if tokenString != "hot" {
+					t.Errorf("unwanted token: %q", tokenString)
+				}
+				return wantUsername, nil
+			},
+		}
 		log := logtest.DiscardLogger
-		r := httptest.NewRequest("", "/", nil)
+		r := httptest.NewRequest("", "/?access_token=hot", nil)
 		r.Form = make(url.Values)
-		r.Form.Add("access_token", test.accessToken)
+		r = r.WithContext(context.WithValue(r.Context(), usernameContextKey, wantUsername))
 		w := httptest.NewRecorder()
-		h := userLobbyConnectHandler(tokenizer, lobby, log)
+		h := userLobbyConnectHandler(lobby, tokenizer, log)
 		h.ServeHTTP(w, r)
 		gotCode := w.Code
 		switch {
@@ -263,7 +252,7 @@ func TestUserUpdatePasswordHandler(t *testing.T) {
 		log := logtest.DiscardLogger
 		r := httptest.NewRequest("", "/", nil)
 		r.Form = make(url.Values)
-		r.Form.Add("username", test.username)
+		r = r.WithContext(context.WithValue(r.Context(), usernameContextKey, test.username))
 		r.Form.Add("password", test.password)
 		r.Form.Add("password_confirm", test.newPassword)
 		w := httptest.NewRecorder()
@@ -331,7 +320,7 @@ func TestUserDeleteHandler(t *testing.T) {
 		log := logtest.DiscardLogger
 		r := httptest.NewRequest("", "/", nil)
 		r.Form = make(url.Values)
-		r.Form.Add("username", test.username)
+		r = r.WithContext(context.WithValue(r.Context(), usernameContextKey, test.username))
 		r.Form.Add("password", test.password)
 		w := httptest.NewRecorder()
 		h := userDeleteHandler(userDao, lobby, log)
