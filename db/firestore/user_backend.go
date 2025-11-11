@@ -139,7 +139,7 @@ func (ub *UserBackend) Delete(ctx context.Context, u user.User) error {
 		_, err := docRef.Delete(ctx, firestore.Exists)
 		return err
 	}); err != nil {
-		return fmt.Errorf("updating user password: %w", err)
+		return fmt.Errorf("deleting user: %w", err)
 	}
 	return nil
 }
