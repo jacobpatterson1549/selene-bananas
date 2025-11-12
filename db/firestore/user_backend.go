@@ -124,6 +124,7 @@ func (ub *UserBackend) UpdatePointsIncrement(ctx context.Context, usernamePoints
 				return err
 			}
 		}
+		bw.Flush()
 		return nil
 	}); err != nil {
 		return fmt.Errorf("incrementing user points: %w", err)
