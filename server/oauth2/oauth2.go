@@ -25,8 +25,7 @@ type (
 		csrfToken string
 	}
 	tokenResponse struct {
-		Sub  string
-		Name string
+		Sub string
 	}
 	auth struct {
 		ID          string

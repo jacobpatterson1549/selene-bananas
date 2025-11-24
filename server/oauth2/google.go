@@ -45,7 +45,8 @@ func (cfg GoogleConfig) NewEndpoint() (*Endpoint, error) {
 	scopes := []string{
 		// See https://developers.google.com/identity/protocols/oauth2/scopes
 		// "https://www.googleapis.com/auth/userinfo.email", // { "sub", "picture", "email", "email_verified" }
-		"https://www.googleapis.com/auth/userinfo.profile", // { "sub", "picture", "name", "given_name", "family_name" }
+		// "https://www.googleapis.com/auth/userinfo.profile", // { "sub", "picture", "name", "given_name", "family_name" }
+		"openid", // { "sub", "picture" }
 	}
 	conf := oauth2.Config{
 		ClientID:     cfg.ClientID,
@@ -95,7 +96,6 @@ func (e *Endpoint) authenticate(r *http.Request) (*auth, error) {
 
 	a := auth{
 		ID:          rj.Sub,
-		Name:        rj.Name,
 		AccessToken: token.AccessToken,
 	}
 	return &a, nil
