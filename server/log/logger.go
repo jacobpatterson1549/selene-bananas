@@ -5,5 +5,5 @@ package log
 type Logger interface {
 	// Printf calls writes the formatted string with values to the logger.
 	// Arguments are handled in the manner of fmt.Printf.
-	Printf(format string, v ...interface{})
+	Printf(format string, v ...any)
 }

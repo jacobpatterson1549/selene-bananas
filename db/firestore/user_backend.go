@@ -52,7 +52,7 @@ func (ub *UserBackend) Create(ctx context.Context, u user.User) error {
 	if err := ub.withTimeoutContext(ctx, func(ctx context.Context) error {
 		users := ub.usersCollection()
 		docRef := users.Doc(u.Username)
-		m := map[string]interface{}{
+		m := map[string]any{
 			passwordField: u.Password,
 		}
 		_, err := docRef.Create(ctx, m) // returns an error if user already exists

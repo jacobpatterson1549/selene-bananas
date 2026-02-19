@@ -40,7 +40,7 @@ func (db Database) Setup(ctx context.Context, files []io.Reader) error {
 }
 
 // Query queries a single row, scanning into the destination array.
-func (db Database) Query(ctx context.Context, q Query, dest ...interface{}) error {
+func (db Database) Query(ctx context.Context, q Query, dest ...any) error {
 	ctx, cancelFunc := context.WithTimeout(ctx, db.QueryPeriod)
 	defer cancelFunc()
 	row := db.DB.QueryRowContext(ctx, q.Cmd(), q.Args()...)

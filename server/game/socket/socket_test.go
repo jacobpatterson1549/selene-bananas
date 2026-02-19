@@ -654,7 +654,7 @@ func TestWriteMessagesSkipSend(t *testing.T) {
 	wg.Add(1)
 	go s.writeMessagesSync(ctx, &wg, in, pingTicker, httpPingTicker)
 	var m message.Message
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		in <- m
 	}
 	cancelFunc()

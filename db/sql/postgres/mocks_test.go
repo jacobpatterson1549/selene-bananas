@@ -9,14 +9,14 @@ import (
 
 type mockDatabase struct {
 	SetupFunc func(ctx context.Context, files []io.Reader) error
-	QueryFunc func(ctx context.Context, q sql.Query, dest ...interface{}) error
+	QueryFunc func(ctx context.Context, q sql.Query, dest ...any) error
 	ExecFunc  func(ctx context.Context, queries ...sql.Query) error
 }
 
 func (m mockDatabase) Setup(ctx context.Context, files []io.Reader) error {
 	return m.SetupFunc(ctx, files)
 }
-func (m mockDatabase) Query(ctx context.Context, q sql.Query, dest ...interface{}) error {
+func (m mockDatabase) Query(ctx context.Context, q sql.Query, dest ...any) error {
 	return m.QueryFunc(ctx, q, dest...)
 }
 func (m mockDatabase) Exec(ctx context.Context, queries ...sql.Query) error {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -917,12 +918,7 @@ func TestHandleAddPlayer(t *testing.T) {
 		return b
 	}
 	hasPlayer := func(players []string, player string) bool {
-		for _, p := range players {
-			if p == player {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(players, player)
 	}
 	handleAddPlayerTests := []struct {
 		message.Message

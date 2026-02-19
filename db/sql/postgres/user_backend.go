@@ -22,7 +22,7 @@ type (
 		// Setup initializes the database by reading the files.
 		Setup(ctx context.Context, files []io.Reader) error
 		// Query reads from the database without updating it.
-		Query(ctx context.Context, q sql.Query, dest ...interface{}) error
+		Query(ctx context.Context, q sql.Query, dest ...any) error
 		// Exec makes a change to existing data, creating/modifying/removing it.
 		Exec(ctx context.Context, queries ...sql.Query) error
 	}

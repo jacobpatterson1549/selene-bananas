@@ -12,7 +12,7 @@ func TestNewQueryFunction(t *testing.T) {
 			"first_name",
 			"last_name",
 		},
-		arguments: []interface{}{
+		arguments: []any{
 			"baggins",
 			"gamgee",
 			"brandybuck",
@@ -31,7 +31,7 @@ func TestNewQueryFunction(t *testing.T) {
 func TestNewExecFunction(t *testing.T) {
 	want := ExecFunction{
 		name: "delete_rings",
-		arguments: []interface{}{
+		arguments: []any{
 			"elf",
 			"dwarf",
 			"man",
@@ -54,7 +54,7 @@ func TestQueryFunctionCmd(t *testing.T) {
 			"whole_name",
 			"age",
 		},
-		arguments: []interface{}{
+		arguments: []any{
 			33,
 			111,
 		},
@@ -69,7 +69,7 @@ func TestQueryFunctionCmd(t *testing.T) {
 func TestExecFunctionCmd(t *testing.T) {
 	e := ExecFunction{
 		name: "kill_orcs",
-		arguments: []interface{}{
+		arguments: []any{
 			"barad-dur",
 			"minas tirith",
 			"minas morgul",
@@ -93,12 +93,12 @@ func TestRawQueryCmd(t *testing.T) {
 
 func TestQueryFunctionArgs(t *testing.T) {
 	q := QueryFunction{
-		arguments: []interface{}{
+		arguments: []any{
 			111,
 			"hobbit",
 		},
 	}
-	want := []interface{}{
+	want := []any{
 		111,
 		"hobbit",
 	}
@@ -110,13 +110,13 @@ func TestQueryFunctionArgs(t *testing.T) {
 
 func TestExecFunctionArgs(t *testing.T) {
 	e := ExecFunction{
-		arguments: []interface{}{
+		arguments: []any{
 			false,
 			"hobbit",
 			33,
 		},
 	}
-	want := []interface{}{
+	want := []any{
 		false,
 		"hobbit",
 		33,

@@ -145,6 +145,6 @@ func d(e ...bson.E) bson.D {
 }
 
 // e is a helper function to create bson.E elements.
-func e(key string, value interface{}) bson.E {
+func e(key string, value any) bson.E {
 	return bson.E{Key: key, Value: value}
 }

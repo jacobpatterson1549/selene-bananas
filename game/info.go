@@ -1,6 +1,7 @@
 package game
 
 import (
+	"slices"
 	"strconv"
 
 	"github.com/jacobpatterson1549/selene-bananas/game/board"
@@ -37,12 +38,7 @@ func (i Info) CanJoin(playerName string) bool {
 
 // isInGame determines if a player with the specified game is in the players slice.
 func (i Info) isInGame(playerName string) bool {
-	for _, n := range i.Players {
-		if n == playerName {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(i.Players, playerName)
 }
 
 // CapacityRatio computes the capacity ratio of the game as a string.

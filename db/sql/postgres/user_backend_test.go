@@ -33,9 +33,9 @@ func TestUserBackendRead(t *testing.T) {
 			Points:   1955,
 		}
 		d := mockDatabase{
-			QueryFunc: func(ctx context.Context, q sql.Query, dest ...interface{}) error {
+			QueryFunc: func(ctx context.Context, q sql.Query, dest ...any) error {
 				wantCmd := "SELECT username, password, points FROM user_read($1)"
-				wantArgs := []interface{}{u.Username}
+				wantArgs := []any{u.Username}
 				switch {
 				case !reflect.DeepEqual(wantCmd, q.Cmd()):
 					t.Errorf("Test %v: query commands not equal: \n wanted: %q \n got:    %q", i, wantCmd, q.Cmd())
@@ -80,7 +80,7 @@ func TestUserBackendExecUser(t *testing.T) {
 	}
 	type wantQuery struct {
 		cmd  string
-		args []interface{}
+		args []any
 	}
 	funcs := []struct {
 		name        string
@@ -97,7 +97,7 @@ func TestUserBackendExecUser(t *testing.T) {
 				return ub.Create(ctx, u)
 			},
 			wantQueries: []wantQuery{
-				{"SELECT user_create($1, $2)", []interface{}{"billy", "B0b"}},
+				{"SELECT user_create($1, $2)", []any{"billy", "B0b"}},
 			},
 		},
 		{
@@ -110,7 +110,7 @@ func TestUserBackendExecUser(t *testing.T) {
 				return ub.UpdatePassword(ctx, u)
 			},
 			wantQueries: []wantQuery{
-				{"SELECT user_update_password($1, $2)", []interface{}{"billy", "B0b"}},
+				{"SELECT user_update_password($1, $2)", []any{"billy", "B0b"}},
 			},
 		},
 		{
@@ -124,9 +124,9 @@ func TestUserBackendExecUser(t *testing.T) {
 				return ub.UpdatePointsIncrement(ctx, usernamePoints)
 			},
 			wantQueries: []wantQuery{
-				{"SELECT user_update_points_increment($1, $2)", []interface{}{"alice", 3}},
-				{"SELECT user_update_points_increment($1, $2)", []interface{}{"billy", 1}},
-				{"SELECT user_update_points_increment($1, $2)", []interface{}{"charlie", 7}},
+				{"SELECT user_update_points_increment($1, $2)", []any{"alice", 3}},
+				{"SELECT user_update_points_increment($1, $2)", []any{"billy", 1}},
+				{"SELECT user_update_points_increment($1, $2)", []any{"charlie", 7}},
 			},
 		},
 		{
@@ -139,7 +139,7 @@ func TestUserBackendExecUser(t *testing.T) {
 				return ub.Delete(ctx, u)
 			},
 			wantQueries: []wantQuery{
-				{"SELECT user_delete($1)", []interface{}{"billy"}},
+				{"SELECT user_delete($1)", []any{"billy"}},
 			},
 		},
 	}

@@ -21,7 +21,7 @@ type (
 	// JwtTokenizer creates java web tokens.
 	JwtTokenizer struct {
 		method jwt.SigningMethod
-		key    interface{}
+		key    any
 		TokenizerConfig
 	}
 
@@ -34,7 +34,7 @@ type (
 )
 
 // NewTokenizer creates a Tokenizer that users the random number generator to generate tokens.
-func (cfg TokenizerConfig) NewTokenizer(key interface{}) (*JwtTokenizer, error) {
+func (cfg TokenizerConfig) NewTokenizer(key any) (*JwtTokenizer, error) {
 	if err := cfg.validate(key); err != nil {
 		return nil, fmt.Errorf("creating tokenizer: validation: %w", err)
 	}
@@ -47,7 +47,7 @@ func (cfg TokenizerConfig) NewTokenizer(key interface{}) (*JwtTokenizer, error) 
 }
 
 // validate ensures the configuration has no errors.
-func (cfg TokenizerConfig) validate(key interface{}) error {
+func (cfg TokenizerConfig) validate(key any) error {
 	switch {
 	case key == nil:
 		return fmt.Errorf("log required")
@@ -91,7 +91,7 @@ func (j *JwtTokenizer) Read(tokenString string) (username string, isOauth2 bool,
 }
 
 // keyFunc ensures the key type (method) of the token is correct before returning the key.
-func (j *JwtTokenizer) keyFunc(t *jwt.Token) (interface{}, error) {
+func (j *JwtTokenizer) keyFunc(t *jwt.Token) (any, error) {
 	if t.Method != j.method {
 		return nil, fmt.Errorf("incorrect authorization signing method")
 	}

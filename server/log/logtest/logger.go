@@ -20,7 +20,7 @@ type discardLogger struct{}
 var _ log.Logger = DiscardLogger
 
 // Printf implements the log.Logger interface
-func (discardLogger) Printf(format string, v ...interface{}) {
+func (discardLogger) Printf(format string, v ...any) {
 	// NOOP
 }
 
@@ -34,7 +34,7 @@ type Logger struct {
 var _ log.Logger = new(Logger)
 
 // Printf implements the log.Logger interface
-func (l *Logger) Printf(format string, v ...interface{}) {
+func (l *Logger) Printf(format string, v ...any) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	fmt.Fprintf(&l.buf, format, v...)
