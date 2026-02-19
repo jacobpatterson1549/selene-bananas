@@ -10,7 +10,7 @@ import (
 func MockQuerySelector(t *testing.T, wantQuery string, wantValue js.Value, dom *DOM) js.Func {
 	t.Helper()
 	querySelector := MockQuery(t, wantQuery, wantValue)
-	document := js.ValueOf(map[string]interface{}{
+	document := js.ValueOf(map[string]any{
 		"querySelector": querySelector,
 	})
 	dom.global.Set("document", document)
@@ -18,7 +18,7 @@ func MockQuerySelector(t *testing.T, wantQuery string, wantValue js.Value, dom *
 }
 
 func MockQuery(t *testing.T, wantQuery string, wantValue js.Value) js.Func {
-	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		gotQuery := args[0].String()
 		if wantQuery != gotQuery {
 			t.Errorf("wanted query to be %v, got %v", wantQuery, gotQuery)

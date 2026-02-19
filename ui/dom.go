@@ -33,7 +33,7 @@ func (dom DOM) QuerySelector(query string) js.Value {
 func (dom DOM) QuerySelectorAll(document js.Value, query string) []js.Value {
 	value := document.Call("querySelectorAll", query)
 	values := make([]js.Value, value.Length())
-	for i := 0; i < len(values); i++ {
+	for i := range values {
 		values[i] = value.Index(i)
 	}
 	return values

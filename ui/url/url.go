@@ -50,13 +50,14 @@ func Parse(text string) (*URL, error) {
 		pathEndIndex = len(text)
 	}
 	path := text[pathStartIndex:pathEndIndex]
-	queryStartIndex := pathEndIndex + 1 // ignore ?
-	if queryStartIndex > len(text) {    // no query
-		queryStartIndex = len(text)
-	}
+	queryStartIndex := min(
+		// ignore ?
+		pathEndIndex+1,
+		// no query
+		len(text))
 	rawQuery := text[queryStartIndex:]
-	fragmentIndex := strings.Index(rawQuery, "#")
-	if fragmentIndex >= 0 {
+	found := strings.Contains(rawQuery, "#")
+	if found {
 		return nil, errors.New("url fragment not allowed: " + text)
 	}
 	u := URL{

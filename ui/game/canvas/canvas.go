@@ -201,7 +201,7 @@ func (c *Canvas) SetTileLength(tileLength int) {
 func (c *Canvas) InitDom(ctx context.Context, wg *sync.WaitGroup) {
 	funcs := c.createEventFuncs()
 	jsFuncs := make(map[string]js.Func, len(funcs))
-	options := map[string]interface{}{
+	options := map[string]any{
 		"passive": false,
 	}
 	for fnName, fn := range funcs {
@@ -521,10 +521,7 @@ func (c Canvas) calculateSelectedUnusedTiles(minX, maxX, minY, maxY int) map[til
 		c.draw.unusedMin.y+c.draw.tileLength <= minY:
 		return make(map[tile.ID]tileSelection)
 	}
-	minI := (minX - c.draw.unusedMin.x) / c.draw.tileLength
-	if minI < 0 {
-		minI = 0
-	}
+	minI := max((minX-c.draw.unusedMin.x)/c.draw.tileLength, 0)
 	maxI := (maxX - c.draw.unusedMin.x) / c.draw.tileLength
 	if maxI >= len(c.board.UnusedTileIDs) {
 		maxI = len(c.board.UnusedTileIDs) - 1

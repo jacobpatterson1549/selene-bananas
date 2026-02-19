@@ -9,7 +9,7 @@ import (
 )
 
 func TestContextSetFont(t *testing.T) {
-	ctx := js.ValueOf(map[string]interface{}{})
+	ctx := js.ValueOf(map[string]any{})
 	j := jsContext{ctx}
 	want := "comic sans"
 	j.SetFont(want)
@@ -20,7 +20,7 @@ func TestContextSetFont(t *testing.T) {
 }
 
 func TestContextSetLineWidth(t *testing.T) {
-	ctx := js.ValueOf(map[string]interface{}{})
+	ctx := js.ValueOf(map[string]any{})
 	j := jsContext{ctx}
 	want := float64(16)
 	j.SetLineWidth(want)
@@ -31,7 +31,7 @@ func TestContextSetLineWidth(t *testing.T) {
 }
 
 func TestContextSetFillColor(t *testing.T) {
-	ctx := js.ValueOf(map[string]interface{}{})
+	ctx := js.ValueOf(map[string]any{})
 	j := jsContext{ctx}
 	want := "gray"
 	j.SetFillColor(want)
@@ -42,7 +42,7 @@ func TestContextSetFillColor(t *testing.T) {
 }
 
 func TestContextStrokeColor(t *testing.T) {
-	ctx := js.ValueOf(map[string]interface{}{})
+	ctx := js.ValueOf(map[string]any{})
 	j := jsContext{ctx}
 	want := "yellow"
 	j.SetStrokeColor(want)
@@ -59,14 +59,14 @@ func TestContextFillText(t *testing.T) {
 		js.ValueOf(5),
 		js.ValueOf(10),
 	}
-	f := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	f := js.FuncOf(func(this js.Value, args []js.Value) any {
 		if got := args; !reflect.DeepEqual(want, got) {
 			t.Errorf("unexpected fill text args: wanted %v, got %v", want, got)
 		}
 		funcCalled = true
 		return nil
 	})
-	ctx := js.ValueOf(map[string]interface{}{
+	ctx := js.ValueOf(map[string]any{
 		"fillText": f,
 	})
 	j := jsContext{ctx}
@@ -85,14 +85,14 @@ func TestContextClearRect(t *testing.T) {
 		js.ValueOf(3),
 		js.ValueOf(4),
 	}
-	f := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	f := js.FuncOf(func(this js.Value, args []js.Value) any {
 		if got := args; !reflect.DeepEqual(want, got) {
 			t.Errorf("unexpected clear rect args: wanted %v, got %v", want, got)
 		}
 		funcCalled = true
 		return nil
 	})
-	ctx := js.ValueOf(map[string]interface{}{
+	ctx := js.ValueOf(map[string]any{
 		"clearRect": f,
 	})
 	j := jsContext{ctx}
@@ -111,14 +111,14 @@ func TestContextFillRect(t *testing.T) {
 		js.ValueOf(7),
 		js.ValueOf(8),
 	}
-	f := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	f := js.FuncOf(func(this js.Value, args []js.Value) any {
 		if got := args; !reflect.DeepEqual(want, got) {
 			t.Errorf("unexpected fill rect args: wanted %v, got %v", want, got)
 		}
 		funcCalled = true
 		return nil
 	})
-	ctx := js.ValueOf(map[string]interface{}{
+	ctx := js.ValueOf(map[string]any{
 		"fillRect": f,
 	})
 	j := jsContext{ctx}
@@ -137,14 +137,14 @@ func TestContextStrokeRect(t *testing.T) {
 		js.ValueOf(11),
 		js.ValueOf(12),
 	}
-	f := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	f := js.FuncOf(func(this js.Value, args []js.Value) any {
 		if got := args; !reflect.DeepEqual(want, got) {
 			t.Errorf("unexpected stroke rect args: wanted %v, got %v", want, got)
 		}
 		funcCalled = true
 		return nil
 	})
-	ctx := js.ValueOf(map[string]interface{}{
+	ctx := js.ValueOf(map[string]any{
 		"strokeRect": f,
 	})
 	j := jsContext{ctx}

@@ -19,14 +19,14 @@ func TestRegisterFuncs(t *testing.T) {
 		{
 			parentName: "testregisterfuncs",
 			jsFuncs: map[string]js.Func{
-				"funcA": js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil }),
+				"funcA": js.FuncOf(func(this js.Value, args []js.Value) any { return nil }),
 			},
 		},
 		{
 			parentName: "testregisterfuncs", // same name
 			jsFuncs: map[string]js.Func{
-				"funcB": js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil }),
-				"funcC": js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil }),
+				"funcB": js.FuncOf(func(this js.Value, args []js.Value) any { return nil }),
+				"funcC": js.FuncOf(func(this js.Value, args []js.Value) any { return nil }),
 			},
 		},
 	}
@@ -35,7 +35,7 @@ func TestRegisterFuncs(t *testing.T) {
 		ctx, cancelFunc := context.WithCancel(ctx)
 		var wg sync.WaitGroup
 		go cancelFunc()
-		global := js.ValueOf(map[string]interface{}{})
+		global := js.ValueOf(map[string]any{})
 		dom := DOM{global}
 		dom.RegisterFuncs(ctx, &wg, test.parentName, test.jsFuncs)
 		parent := global.Get(test.parentName)
@@ -65,11 +65,11 @@ func TestNewJsFunc(t *testing.T) {
 
 func TestNewJsEventFunc(t *testing.T) {
 	defaultPrevented, invoked := false, false
-	preventDefault := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	preventDefault := js.FuncOf(func(this js.Value, args []js.Value) any {
 		defaultPrevented = true
 		return nil
 	})
-	event := js.ValueOf(map[string]interface{}{
+	event := js.ValueOf(map[string]any{
 		"preventDefault": preventDefault,
 	})
 	fn := func(event js.Value) {
@@ -89,11 +89,11 @@ func TestNewJsEventFunc(t *testing.T) {
 
 func TestNewJsEventFuncAsync(t *testing.T) {
 	defaultPrevented, invoked := false, false
-	preventDefault := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	preventDefault := js.FuncOf(func(this js.Value, args []js.Value) any {
 		defaultPrevented = true
 		return nil
 	})
-	event := js.ValueOf(map[string]interface{}{
+	event := js.ValueOf(map[string]any{
 		"preventDefault": preventDefault,
 	})
 	fn := func(event js.Value) {
@@ -149,12 +149,12 @@ func TestAlertOnPanic(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			panicked, alerted := false, false
-			alertFn := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			alertFn := js.FuncOf(func(this js.Value, args []js.Value) any {
 				alerted = true
 				return nil
 			})
 			defer alertFn.Release()
-			dom := DOM{js.ValueOf(map[string]interface{}{"alert": alertFn})}
+			dom := DOM{js.ValueOf(map[string]any{"alert": alertFn})}
 			t.Cleanup(func() {
 				if want, got := test.wantPanic, panicked; want != got {
 					t.Errorf("panic states not equal: wanted %v, got %v", want, got)
@@ -176,7 +176,7 @@ func TestAlertOnPanic(t *testing.T) {
 
 func TestRecoverError(t *testing.T) {
 	tests := []struct {
-		r         interface{}
+		r         any
 		want      error
 		wantPanic bool
 	}{

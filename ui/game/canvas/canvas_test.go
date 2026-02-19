@@ -18,14 +18,14 @@ import (
 
 func TestNew(t *testing.T) {
 	contextElement := js.ValueOf(3)
-	getContext := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	getContext := js.FuncOf(func(this js.Value, args []js.Value) any {
 		if want, got := "2d", args[0].String(); want != got {
 			t.Errorf("wanted first arg to getContext to be %q, got %q", want, got)
 		}
 		return contextElement
 	})
 	parentDiv := js.ValueOf(1)
-	element := js.ValueOf(map[string]interface{}{
+	element := js.ValueOf(map[string]any{
 		"getContext": getContext,
 		"value":      2,
 	})
@@ -78,8 +78,8 @@ func TestUpdateSize(t *testing.T) {
 	setFontCalled := false
 	setLineWidthCalled := false
 	c := Canvas{
-		element:   js.ValueOf(map[string]interface{}{}),
-		parentDiv: js.ValueOf(map[string]interface{}{}),
+		element:   js.ValueOf(map[string]any{}),
+		parentDiv: js.ValueOf(map[string]any{}),
 		draw: drawMetrics{
 			tileLength: 50,
 		},
@@ -132,7 +132,7 @@ func TestUpdateSize(t *testing.T) {
 func TestParentOffsetWidth(t *testing.T) {
 	want := 468
 	c := Canvas{
-		parentDiv: js.ValueOf(map[string]interface{}{
+		parentDiv: js.ValueOf(map[string]any{
 			"offsetWidth": want,
 		}),
 	}
@@ -176,8 +176,8 @@ func TestTileLength(t *testing.T) {
 
 func TestSetTileLength(t *testing.T) {
 	c := Canvas{
-		element: js.ValueOf(map[string]interface{}{}),
-		parentDiv: js.ValueOf(map[string]interface{}{
+		element: js.ValueOf(map[string]any{}),
+		parentDiv: js.ValueOf(map[string]any{
 			"offsetWidth": 500,
 		}),
 		board: &board.Board{
@@ -215,13 +215,13 @@ func TestInitDom(t *testing.T) {
 	}
 	gotEventTypes := make(map[string]struct{}, len(wantEventTypes))
 	releaseJsFuncsOnDoneFuncCalled := false
-	addEventListener := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	addEventListener := js.FuncOf(func(this js.Value, args []js.Value) any {
 		eventType := args[0].String()
 		gotEventTypes[eventType] = struct{}{}
 		return nil
 	})
 	c := Canvas{
-		element: js.ValueOf(map[string]interface{}{
+		element: js.ValueOf(map[string]any{
 			"addEventListener": addEventListener,
 		}),
 		dom: &mockDOM{
@@ -247,30 +247,30 @@ func TestInitDom(t *testing.T) {
 }
 
 func TestCreateEventFuncs(t *testing.T) {
-	mouseEvent := js.ValueOf(map[string]interface{}{
+	mouseEvent := js.ValueOf(map[string]any{
 		"offsetX": 0,
 		"offsetY": 0,
 	})
-	preventDefault := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	preventDefault := js.FuncOf(func(this js.Value, args []js.Value) any {
 		return nil
 	})
 	defer preventDefault.Release()
-	getBoundingClientRect := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		return map[string]interface{}{
+	getBoundingClientRect := js.FuncOf(func(this js.Value, args []js.Value) any {
+		return map[string]any{
 			"left": 0,
 			"top":  0,
 		}
 	})
 	defer getBoundingClientRect.Release()
-	touchEvent := js.ValueOf(map[string]interface{}{
+	touchEvent := js.ValueOf(map[string]any{
 		"preventDefault": preventDefault,
-		"touches": []interface{}{
-			map[string]interface{}{
+		"touches": []any{
+			map[string]any{
 				"clientX": 0,
 				"clientY": 0,
 			},
 		},
-		"target": map[string]interface{}{
+		"target": map[string]any{
 			"getBoundingClientRect": getBoundingClientRect,
 		},
 	})
@@ -1178,7 +1178,7 @@ func TestPixelPositionFromMouse(t *testing.T) {
 		x: 1,
 		y: 2,
 	}
-	event := js.ValueOf(map[string]interface{}{
+	event := js.ValueOf(map[string]any{
 		"offsetX": 4,
 		"offsetY": 8,
 	})
@@ -1201,25 +1201,25 @@ func TestPixelPositionFromTouch(t *testing.T) {
 		y: 8,
 	}
 	defaultPrevented := false
-	preventDefault := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	preventDefault := js.FuncOf(func(this js.Value, args []js.Value) any {
 		defaultPrevented = true
 		return nil
 	})
-	getBoundingClientRect := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		return map[string]interface{}{
+	getBoundingClientRect := js.FuncOf(func(this js.Value, args []js.Value) any {
+		return map[string]any{
 			"left": 100,
 			"top":  500,
 		}
 	})
-	event := js.ValueOf(map[string]interface{}{
+	event := js.ValueOf(map[string]any{
 		"preventDefault": preventDefault,
-		"touches": []interface{}{
-			map[string]interface{}{
+		"touches": []any{
+			map[string]any{
 				"clientX": 125,
 				"clientY": 672,
 			},
 		},
-		"target": map[string]interface{}{
+		"target": map[string]any{
 			"getBoundingClientRect": getBoundingClientRect,
 		},
 	})

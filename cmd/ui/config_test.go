@@ -12,12 +12,12 @@ import (
 )
 
 func TestInitDom(t *testing.T) {
-	global := js.ValueOf(map[string]interface{}{}) // a mock global value that points to inself
+	global := js.ValueOf(map[string]any{}) // a mock global value that points to inself
 	jsFuncs := map[string]js.Func{
-		"querySelector":    js.FuncOf(func(this js.Value, args []js.Value) interface{} { return global }),
-		"getContext":       js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil }),
-		"getComputedStyle": js.FuncOf(func(this js.Value, args []js.Value) interface{} { return global }),
-		"addEventListener": js.FuncOf(func(this js.Value, args []js.Value) interface{} { return global }),
+		"querySelector":    js.FuncOf(func(this js.Value, args []js.Value) any { return global }),
+		"getContext":       js.FuncOf(func(this js.Value, args []js.Value) any { return nil }),
+		"getComputedStyle": js.FuncOf(func(this js.Value, args []js.Value) any { return global }),
+		"addEventListener": js.FuncOf(func(this js.Value, args []js.Value) any { return global }),
 	}
 	global.Set("document", global)
 	f := flags{

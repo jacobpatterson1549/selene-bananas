@@ -13,8 +13,8 @@ import (
 
 func TestNewForm(t *testing.T) {
 	t.Run("no querier", func(t *testing.T) {
-		event := js.ValueOf(map[string]interface{}{
-			"target": map[string]interface{}{
+		event := js.ValueOf(map[string]any{
+			"target": map[string]any{
 				"method": "POST",
 				"action": "http://example.com",
 			},
@@ -28,8 +28,8 @@ func TestNewForm(t *testing.T) {
 		querier := func(form js.Value, query string) (noValues []js.Value) {
 			return noValues
 		}
-		event := js.ValueOf(map[string]interface{}{
-			"target": map[string]interface{}{
+		event := js.ValueOf(map[string]any{
+			"target": map[string]any{
 				"method": "POST",
 				"action": "bad_url",
 			},
@@ -40,11 +40,11 @@ func TestNewForm(t *testing.T) {
 		}
 	})
 	t.Run("happy path", func(t *testing.T) {
-		Param1 := js.ValueOf(map[string]interface{}{
+		Param1 := js.ValueOf(map[string]any{
 			"name":  "A",
 			"value": "first param",
 		})
-		param2 := js.ValueOf(map[string]interface{}{
+		param2 := js.ValueOf(map[string]any{
 			"name":  "B",
 			"value": "2",
 		})
@@ -58,12 +58,12 @@ func TestNewForm(t *testing.T) {
 			}
 			return all
 		}
-		formValue := js.ValueOf(map[string]interface{}{ // form
+		formValue := js.ValueOf(map[string]any{ // form
 			"method": "POST",
 			"action": "https://example.com/hello?wasm=true",
 			"id":     "form_value",
 		})
-		event := js.ValueOf(map[string]interface{}{
+		event := js.ValueOf(map[string]any{
 			"target": formValue,
 		})
 		want := Form{
@@ -99,9 +99,9 @@ func TestNewForm(t *testing.T) {
 }
 
 func TestResetForm(t *testing.T) {
-	one := js.ValueOf(map[string]interface{}{"value": "first value"})
-	two := js.ValueOf(map[string]interface{}{"value": 2})
-	three := js.ValueOf(map[string]interface{}{"value": true})
+	one := js.ValueOf(map[string]any{"value": "first value"})
+	two := js.ValueOf(map[string]any{"value": 2})
+	three := js.ValueOf(map[string]any{"value": true})
 	all := []js.Value{one, two, three}
 	querier := func(form js.Value, query string) []js.Value {
 		if want, got := "form_element", form.Get("id").String(); want != got {
@@ -112,7 +112,7 @@ func TestResetForm(t *testing.T) {
 		}
 		return all
 	}
-	element := js.ValueOf(map[string]interface{}{
+	element := js.ValueOf(map[string]any{
 		"id": "form_element",
 	})
 	f := Form{

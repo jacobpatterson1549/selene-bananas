@@ -71,10 +71,10 @@ func TestInitDom(t *testing.T) {
 				functionsRegistered = true
 			},
 			NewJsFuncFunc: func(fn func()) js.Func {
-				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+				return js.FuncOf(func(this js.Value, args []js.Value) any { return nil })
 			},
 			NewJsEventFuncFunc: func(fn func(event js.Value)) js.Func {
-				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+				return js.FuncOf(func(this js.Value, args []js.Value) any { return nil })
 			},
 		},
 	}
@@ -127,7 +127,7 @@ func TestCreateWithConfig(t *testing.T) {
 		g := Game{
 			dom: &mockDOM{
 				QuerySelectorFunc: func(query string) js.Value {
-					return js.ValueOf(map[string]interface{}{})
+					return js.ValueOf(map[string]any{})
 				},
 				CheckedFunc: func(query string) bool {
 					return true
@@ -226,9 +226,9 @@ func TestJoin(t *testing.T) {
 				},
 			},
 		}
-		event := js.ValueOf(map[string]interface{}{
-			"srcElement": map[string]interface{}{ // joinGameButton
-				"previousElementSibling": map[string]interface{}{ // gameIDInput
+		event := js.ValueOf(map[string]any{
+			"srcElement": map[string]any{ // joinGameButton
+				"previousElementSibling": map[string]any{ // gameIDInput
 					"value": test.gameID,
 				},
 			},
@@ -283,7 +283,7 @@ func TestSendLeave(t *testing.T) {
 	g := Game{
 		dom: &mockDOM{
 			QuerySelectorFunc: func(query string) js.Value {
-				return js.ValueOf(map[string]interface{}{})
+				return js.ValueOf(map[string]any{})
 			},
 			SetCheckedFunc: func(query string, checked bool) {
 				if want, got := true, checked; want != got {
@@ -312,7 +312,7 @@ func TestLeave(t *testing.T) {
 		id: 1,
 		dom: &mockDOM{
 			QuerySelectorFunc: func(query string) js.Value {
-				return js.ValueOf(map[string]interface{}{})
+				return js.ValueOf(map[string]any{})
 			},
 			SetCheckedFunc: func(query string, checked bool) {
 				if want, got := true, checked; want != got {
@@ -444,11 +444,11 @@ func TestSendChat(t *testing.T) {
 		want    message.Message
 	}{
 		{
-			form:    js.ValueOf(map[string]interface{}{}), // bad form
+			form:    js.ValueOf(map[string]any{}), // bad form
 			wantErr: true,
 		},
 		{
-			form: js.ValueOf(map[string]interface{}{ // form
+			form: js.ValueOf(map[string]any{ // form
 				"method": "get",
 				"action": "https://example.com/chat_url",
 			}),
@@ -473,7 +473,7 @@ func TestSendChat(t *testing.T) {
 						t.Errorf("Test %v: forms not equal: wanted: %v, got %v", i, want, got)
 					}
 					return []js.Value{
-						js.ValueOf(map[string]interface{}{
+						js.ValueOf(map[string]any{
 							"name":  "chat",
 							"value": "the_message",
 						}),
@@ -489,7 +489,7 @@ func TestSendChat(t *testing.T) {
 				},
 			},
 		}
-		event := js.ValueOf(map[string]interface{}{
+		event := js.ValueOf(map[string]any{
 			"target": test.form,
 		})
 		g.sendChat(event)
@@ -712,7 +712,7 @@ func TestUpdateInfo(t *testing.T) {
 	}
 	for i, test := range tests {
 		canvasRedrawn := false
-		appendChild := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+		appendChild := js.FuncOf(func(this js.Value, args []js.Value) any { return nil })
 		g := Game{
 			board: &board.Board{},
 			id:    6,
@@ -727,15 +727,15 @@ func TestUpdateInfo(t *testing.T) {
 					// NOOP
 				},
 				QuerySelectorFunc: func(query string) js.Value {
-					return js.ValueOf(map[string]interface{}{
+					return js.ValueOf(map[string]any{
 						// setFinalBoards' playersList
 						"appendChild": appendChild, // rulesList
 					})
 				},
 				CloneElementFunc: func(query string) js.Value {
-					return js.ValueOf(map[string]interface{}{
-						"children": []interface{}{ // game rules
-							map[string]interface{}{},
+					return js.ValueOf(map[string]any{
+						"children": []any{ // game rules
+							map[string]any{},
 						},
 					})
 				},
@@ -820,7 +820,7 @@ func TestUpdateStatus(t *testing.T) {
 		g := Game{
 			dom: &mockDOM{
 				QuerySelectorFunc: func(query string) js.Value {
-					return js.ValueOf(map[string]interface{}{})
+					return js.ValueOf(map[string]any{})
 				},
 				SetCheckedFunc: func(query string, checked bool) {
 					// NOOP
@@ -1115,7 +1115,7 @@ func TestSetTabActive(t *testing.T) {
 			},
 			dom: &mockDOM{
 				QuerySelectorFunc: func(query string) js.Value {
-					return js.ValueOf(map[string]interface{}{})
+					return js.ValueOf(map[string]any{})
 				},
 				SetCheckedFunc: func(query string, checked bool) {
 					// NOOP
@@ -1257,10 +1257,10 @@ func TestSetBoardSize(t *testing.T) {
 func TestSetRules(t *testing.T) {
 	rules := []string{"here", "are", "some", "rules"}
 	var gotRules []string
-	rulesList := js.ValueOf(map[string]interface{}{
+	rulesList := js.ValueOf(map[string]any{
 		"innerHTML": "should be replaced",
 	})
-	appendChild := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	appendChild := js.FuncOf(func(this js.Value, args []js.Value) any {
 		if want, got := rulesList, this; !want.Equal(this) {
 			t.Errorf("wanted to append to rules list, got %v", got)
 		}
@@ -1275,9 +1275,9 @@ func TestSetRules(t *testing.T) {
 				return rulesList
 			},
 			CloneElementFunc: func(query string) js.Value {
-				return js.ValueOf(map[string]interface{}{ // clone
-					"children": []interface{}{ // cloneChildren
-						map[string]interface{}{}, // li
+				return js.ValueOf(map[string]any{ // clone
+					"children": []any{ // cloneChildren
+						map[string]any{}, // li
 					},
 				})
 			},
@@ -1292,24 +1292,24 @@ func TestSetRules(t *testing.T) {
 
 func TestSetFinalBoards(t *testing.T) {
 	appendCount := 0
-	appendChild := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	appendChild := js.FuncOf(func(this js.Value, args []js.Value) any {
 		appendCount++
 		return nil
 	})
 	g := Game{
 		dom: &mockDOM{
 			QuerySelectorFunc: func(query string) js.Value {
-				return js.ValueOf(map[string]interface{}{
+				return js.ValueOf(map[string]any{
 					"appendChild": appendChild,
 				})
 			},
 			CloneElementFunc: func(query string) js.Value {
-				return js.ValueOf(map[string]interface{}{
-					"children": []interface{}{
-						map[string]interface{}{
-							"children": []interface{}{
-								map[string]interface{}{}, // radio
-								map[string]interface{}{}, // label
+				return js.ValueOf(map[string]any{
+					"children": []any{
+						map[string]any{
+							"children": []any{
+								map[string]any{}, // radio
+								map[string]any{}, // label
 							},
 						},
 					},
@@ -1336,12 +1336,12 @@ func TestNewFinalBoardDiv(t *testing.T) {
 	g := Game{
 		dom: &mockDOM{
 			CloneElementFunc: func(query string) js.Value {
-				return js.ValueOf(map[string]interface{}{ // clone
-					"children": []interface{}{ // cloneChildren
-						map[string]interface{}{ // div
-							"children": []interface{}{ // divChildren
-								map[string]interface{}{}, // radio
-								map[string]interface{}{}, // label
+				return js.ValueOf(map[string]any{ // clone
+					"children": []any{ // cloneChildren
+						map[string]any{ // div
+							"children": []any{ // divChildren
+								map[string]any{}, // radio
+								map[string]any{}, // label
 							},
 						},
 					},
@@ -1373,14 +1373,14 @@ func TestViewFinalBoard(t *testing.T) {
 		tileLengthSet := false
 		errorLogged := false
 		canvasRedrawn := false
-		clearRect := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
-		strokestyle := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
-		fillText := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
-		strokeRect := js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+		clearRect := js.FuncOf(func(this js.Value, args []js.Value) any { return nil })
+		strokestyle := js.FuncOf(func(this js.Value, args []js.Value) any { return nil })
+		fillText := js.FuncOf(func(this js.Value, args []js.Value) any { return nil })
+		strokeRect := js.FuncOf(func(this js.Value, args []js.Value) any { return nil })
 		g := Game{
 			dom: &mockDOM{
 				QuerySelectorFunc: func(query string) js.Value {
-					return js.ValueOf(map[string]interface{}{
+					return js.ValueOf(map[string]any{
 						"innerHTML": test.playerName, // player selector
 					})
 				},

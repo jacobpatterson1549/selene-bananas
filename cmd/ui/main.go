@@ -38,7 +38,7 @@ func main() {
 func initBeforeUnloadFn(cancelFunc context.CancelFunc, wg *sync.WaitGroup, global js.Value) {
 	wg.Add(1)
 	var fn js.Func
-	fn = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	fn = js.FuncOf(func(this js.Value, args []js.Value) any {
 		// args[0].Call("preventDefault") // debug in other browsers
 		// args[0].Set("returnValue", "") // debug in chromium
 		cancelFunc()

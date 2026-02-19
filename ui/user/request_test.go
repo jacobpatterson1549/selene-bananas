@@ -171,8 +171,8 @@ func TestRequest(t *testing.T) {
 				},
 			},
 		}
-		event := js.ValueOf(map[string]interface{}{
-			"target": map[string]interface{}{
+		event := js.ValueOf(map[string]any{
+			"target": map[string]any{
 				"method": "post",
 				"action": test.eventURL,
 			},

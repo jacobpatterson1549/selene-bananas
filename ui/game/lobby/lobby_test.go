@@ -55,10 +55,10 @@ func TestInitDom(t *testing.T) {
 				functionsRegistered = true
 			},
 			NewJsFuncFunc: func(fn func()) js.Func {
-				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+				return js.FuncOf(func(this js.Value, args []js.Value) any { return nil })
 			},
 			NewJsEventFuncAsyncFunc: func(fn func(event js.Value), async bool) js.Func {
-				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+				return js.FuncOf(func(this js.Value, args []js.Value) any { return nil })
 			},
 		},
 	}
@@ -115,7 +115,7 @@ func TestConnect(t *testing.T) {
 func TestLeave(t *testing.T) {
 	socketClosed := false
 	gameLeft := false
-	gameInfosTbodyElement := js.ValueOf(map[string]interface{}{
+	gameInfosTbodyElement := js.ValueOf(map[string]any{
 		"innerHTML": "existing game infos 1",
 	})
 	socket := mockSocket{
@@ -153,7 +153,7 @@ func TestSetGameInfos(t *testing.T) {
 	t.Run("noGameInfo", func(t *testing.T) {
 		emptyGameInfoElement := js.ValueOf(1337)
 		gameInfoElementAppended := false
-		appendChild := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		appendChild := js.FuncOf(func(this js.Value, args []js.Value) any {
 			element := args[0]
 			gameInfoElementAppended = true
 			if want, got := emptyGameInfoElement, element; !want.Equal(got) {
@@ -161,7 +161,7 @@ func TestSetGameInfos(t *testing.T) {
 			}
 			return nil
 		})
-		gameInfosTbodyElement := js.ValueOf(map[string]interface{}{
+		gameInfosTbodyElement := js.ValueOf(map[string]any{
 			"innerHTML":   "existing game infos 2",
 			"appendChild": appendChild,
 		})
@@ -189,18 +189,18 @@ func TestSetGameInfos(t *testing.T) {
 	t.Run("happy path", func(t *testing.T) {
 		numAppended := 0
 		newGameInfoRow := func(createdAt, players, capacityRatio, status string, id int, canJoin bool) js.Value {
-			return js.ValueOf(map[string]interface{}{ // gameInfoElement
-				"children": []interface{}{
-					map[string]interface{}{ //rowElement
-						"children": []interface{}{
-							map[string]interface{}{"innerHTML": createdAt},
-							map[string]interface{}{"innerHTML": players},
-							map[string]interface{}{"innerHTML": capacityRatio},
-							map[string]interface{}{"innerHTML": status},
-							map[string]interface{}{ // join column
-								"children": []interface{}{
-									map[string]interface{}{"value": id},
-									map[string]interface{}{"disabled": !canJoin},
+			return js.ValueOf(map[string]any{ // gameInfoElement
+				"children": []any{
+					map[string]any{ //rowElement
+						"children": []any{
+							map[string]any{"innerHTML": createdAt},
+							map[string]any{"innerHTML": players},
+							map[string]any{"innerHTML": capacityRatio},
+							map[string]any{"innerHTML": status},
+							map[string]any{ // join column
+								"children": []any{
+									map[string]any{"value": id},
+									map[string]any{"disabled": !canJoin},
 								},
 							},
 						},
@@ -215,7 +215,7 @@ func TestSetGameInfos(t *testing.T) {
 		jsonString := func(v js.Value) string { // hack to get around js.Value.Equal using === (refs are different)
 			return js.Global().Get("JSON").Call("stringify", v).String()
 		}
-		appendChild := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		appendChild := js.FuncOf(func(this js.Value, args []js.Value) any {
 			element := args[0]
 			if want, got := jsonString(wantAppends[numAppended]), jsonString(element); want != got {
 				t.Errorf("append %v not equal:\nwanted: %v\ngot:    %v", numAppended+1, want, got)
@@ -223,7 +223,7 @@ func TestSetGameInfos(t *testing.T) {
 			numAppended++
 			return nil
 		})
-		gameInfosTbodyElement := js.ValueOf(map[string]interface{}{
+		gameInfosTbodyElement := js.ValueOf(map[string]any{
 			"innerHTML":   "existing game infos 3",
 			"appendChild": appendChild,
 		})
