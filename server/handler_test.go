@@ -223,7 +223,7 @@ func TestNewServer(t *testing.T) {
 			test.want.Config != got.Config:
 			t.Errorf("Test %v: server not copied from from arguments properly: %v", i, got)
 		default:
-			nilChecks := []interface{}{
+			nilChecks := []any{
 				got.log,
 				got.lobby,
 				got.HTTPServer,

@@ -199,7 +199,7 @@ func TestDatabaseQuery(t *testing.T) {
 			q := QueryFunction{
 				name:      "SELECT ?;",
 				cols:      []string{"?column?"},
-				arguments: []interface{}{want},
+				arguments: []any{want},
 			}
 			db := Database{
 				DB: sqlDB,
@@ -265,7 +265,7 @@ func TestQueryNoRows(t *testing.T) {
 	q := QueryFunction{
 		name:      "SELECT ?;",
 		cols:      []string{"?column?"},
-		arguments: []interface{}{want},
+		arguments: []any{want},
 	}
 	db := Database{
 		DB: sqlDB,
@@ -372,7 +372,7 @@ func TestDatabaseExec(t *testing.T) {
 			default:
 				q = ExecFunction{
 					name: "UPDATE hobbits SET age = ? WHERE first_name = ?;",
-					arguments: []interface{}{
+					arguments: []any{
 						111,
 						"Bilbo",
 					},

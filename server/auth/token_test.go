@@ -189,7 +189,7 @@ func TestNewTokenizer(t *testing.T) {
 	timeFunc := func() int64 { return 20 }
 	newTokenizerTests := []struct {
 		TokenizerConfig
-		key    interface{}
+		key    any
 		wantOk bool
 		want   *JwtTokenizer
 	}{

@@ -10,18 +10,18 @@ func TestLoggerPrintf(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		printfTests := []struct {
 			format string
-			v      []interface{}
+			v      []any
 			want   string
 		}{
 			{},
 			{
 				format: "Hello, %s",
-				v:      []interface{}{"Selene"},
+				v:      []any{"Selene"},
 				want:   "Hello, Selene",
 			},
 			{
 				format: "%s, do you have $%d to lend me?  I want to buy a %s.",
-				v:      []interface{}{"Dad", 500, "car"},
+				v:      []any{"Dad", 500, "car"},
 				want:   "Dad, do you have $500 to lend me?  I want to buy a car.",
 			},
 			{
@@ -51,7 +51,7 @@ func TestLoggerPrintf(t *testing.T) {
 			l.Printf("a")
 			wg.Done()
 		}
-		for i := 0; i < n; i++ {
+		for range n {
 			go logA()
 		}
 		wg.Wait()

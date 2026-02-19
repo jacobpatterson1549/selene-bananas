@@ -11,20 +11,20 @@ type (
 		// cmd is the injection-safe message to send to the database.
 		Cmd() string
 		// args are the user-provided properties of the messages which should be escaped.
-		Args() []interface{}
+		Args() []any
 	}
 
 	// QueryFunction is a db Query that reads data.
 	QueryFunction struct {
 		name      string
 		cols      []string
-		arguments []interface{}
+		arguments []any
 	}
 
 	// ExecFunction is a db Query that changes data.
 	ExecFunction struct {
 		name      string
-		arguments []interface{}
+		arguments []any
 	}
 
 	// RawQuery is a db Query that changes data and has no arguments..
@@ -32,7 +32,7 @@ type (
 )
 
 // NewQueryFunction creates a Query to call a query function.
-func NewQueryFunction(name string, cols []string, args ...interface{}) QueryFunction {
+func NewQueryFunction(name string, cols []string, args ...any) QueryFunction {
 	q := QueryFunction{
 		name:      name,
 		cols:      cols,
@@ -42,7 +42,7 @@ func NewQueryFunction(name string, cols []string, args ...interface{}) QueryFunc
 }
 
 // NewExecFunction creates a Query to call an exec function.
-func NewExecFunction(name string, args ...interface{}) ExecFunction {
+func NewExecFunction(name string, args ...any) ExecFunction {
 	e := ExecFunction{
 		name:      name,
 		arguments: args,
@@ -74,16 +74,16 @@ func (r RawQuery) Cmd() string {
 }
 
 // Args returns the arguments for the query function.
-func (q QueryFunction) Args() []interface{} {
+func (q QueryFunction) Args() []any {
 	return q.arguments
 }
 
 // Args returns the arguments for the exec function.
-func (e ExecFunction) Args() []interface{} {
+func (e ExecFunction) Args() []any {
 	return e.arguments
 }
 
 // Args returns nil for the raw SQL query.
-func (RawQuery) Args() []interface{} {
+func (RawQuery) Args() []any {
 	return nil
 }
