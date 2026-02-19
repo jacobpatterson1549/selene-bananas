@@ -45,7 +45,7 @@ func TestInitDom(t *testing.T) {
 				functionsRegistered = true
 			},
 			NewJsFuncFunc: func(fn func()) js.Func {
-				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+				return js.FuncOf(func(this js.Value, args []js.Value) any { return nil })
 			},
 		},
 	}
@@ -59,7 +59,7 @@ func TestInitDom(t *testing.T) {
 
 func TestClear(t *testing.T) {
 	hideLogChecked := false
-	logScroll := js.ValueOf(map[string]interface{}{
+	logScroll := js.ValueOf(map[string]any{
 		"innerHTML": "stuff",
 	})
 	dom := mockDOM{
@@ -105,20 +105,20 @@ func TestLogClass(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		appendChild := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		appendChild := js.FuncOf(func(this js.Value, args []js.Value) any {
 			logItemElement := args[0]
 			this.Set("TEST::APPENDED_LOG_ITEM", logItemElement)
 			return nil
 		})
-		logScroll := js.ValueOf(map[string]interface{}{
+		logScroll := js.ValueOf(map[string]any{
 			"appendChild":  appendChild,
 			"scrollHeight": 487,
 			"clientHeight": 251,
 			"innerHTML":    "SHOULD BE DELETED BY Clear()",
 		})
-		logItemElement := js.ValueOf(map[string]interface{}{})
-		logTemplate := js.ValueOf(map[string]interface{}{
-			"children": []interface{}{
+		logItemElement := js.ValueOf(map[string]any{})
+		logTemplate := js.ValueOf(map[string]any{
+			"children": []any{
 				logItemElement,
 			},
 		})

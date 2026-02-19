@@ -41,10 +41,10 @@ func TestInitDom(t *testing.T) {
 				functionsRegistered = true
 			},
 			NewJsEventFuncFunc: func(fn func(event js.Value)) js.Func {
-				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+				return js.FuncOf(func(this js.Value, args []js.Value) any { return nil })
 			},
 			NewJsEventFuncAsyncFunc: func(fn func(event js.Value), async bool) js.Func {
-				return js.FuncOf(func(this js.Value, args []js.Value) interface{} { return nil })
+				return js.FuncOf(func(this js.Value, args []js.Value) any { return nil })
 			},
 		},
 	}
@@ -338,12 +338,12 @@ func TestUsername(t *testing.T) {
 }
 
 func TestUpdateConfirmPassword(t *testing.T) {
-	event := js.ValueOf(map[string]interface{}{
-		"target": map[string]interface{}{
+	event := js.ValueOf(map[string]any{
+		"target": map[string]any{
 			"value": "hex", // the password
-			"parentElement": map[string]interface{}{
-				"nextElementSibling": map[string]interface{}{
-					"lastElementChild": map[string]interface{}{
+			"parentElement": map[string]any{
+				"nextElementSibling": map[string]any{
+					"lastElementChild": map[string]any{
 						"pattern": "should be replaced xxx",
 					},
 				},
@@ -369,7 +369,7 @@ func TestUpdateConfirmPassword(t *testing.T) {
 func TestSetUsernamesReadOnly(t *testing.T) {
 	// using setAttribute and removeAttribute because the underlying elements need to be changed, not their js copies
 	var removeAttributeCalls, setAttributeCalls [][]string
-	removeAttribute := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	removeAttribute := js.FuncOf(func(this js.Value, args []js.Value) any {
 		calls := make([]string, len(args))
 		for i, a := range args {
 			calls[i] = a.String()
@@ -378,7 +378,7 @@ func TestSetUsernamesReadOnly(t *testing.T) {
 		return nil
 	})
 	defer removeAttribute.Release()
-	setAttribute := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	setAttribute := js.FuncOf(func(this js.Value, args []js.Value) any {
 		calls := make([]string, len(args))
 		for i, a := range args {
 			calls[i] = a.String()
@@ -388,12 +388,12 @@ func TestSetUsernamesReadOnly(t *testing.T) {
 	})
 	defer setAttribute.Release()
 	usernameInputs := []js.Value{
-		js.ValueOf(map[string]interface{}{
+		js.ValueOf(map[string]any{
 			"value":           "jermaine",
 			"removeAttribute": removeAttribute,
 			"setAttribute":    setAttribute,
 		}),
-		js.ValueOf(map[string]interface{}{
+		js.ValueOf(map[string]any{
 			"value":           "murray",
 			"readonly":        "readonly",
 			"removeAttribute": removeAttribute,

@@ -81,32 +81,32 @@ func TestDoRequest(t *testing.T) {
 		dom := mockDOM{
 			NewXHRFunc: func() js.Value {
 				eventListeners := make(map[string]js.Value, 4)
-				open := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				open := js.FuncOf(func(this js.Value, args []js.Value) any {
 					gotOpenMethod = args[0].String()
 					gotOpenURL = args[1].String()
 					return nil
 				})
-				setRequestHeader := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				setRequestHeader := js.FuncOf(func(this js.Value, args []js.Value) any {
 					k, v := args[0].String(), args[1].String()
 					gotRequestHeaders[k] = v
 					return nil
 				})
-				addEventListener := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				addEventListener := js.FuncOf(func(this js.Value, args []js.Value) any {
 					eventType, handler := args[0].String(), args[1]
 					eventListeners[eventType] = handler
 					return nil
 				})
-				send := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				send := js.FuncOf(func(this js.Value, args []js.Value) any {
 					gotBody = args[0].String()
 					handler := eventListeners[test.eventType]
-					event := js.ValueOf(map[string]interface{}{
+					event := js.ValueOf(map[string]any{
 						"type": test.eventType,
 					})
 					handler.Invoke(event)
 					return nil
 				})
 				jsFuncs = append(jsFuncs, open, setRequestHeader, addEventListener, send)
-				return js.ValueOf(map[string]interface{}{
+				return js.ValueOf(map[string]any{
 					"open":             open,
 					"setRequestHeader": setRequestHeader,
 					"addEventListener": addEventListener,
@@ -116,7 +116,7 @@ func TestDoRequest(t *testing.T) {
 				})
 			},
 			NewJsEventFuncFunc: func(fn func(event js.Value)) js.Func {
-				f := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				f := js.FuncOf(func(this js.Value, args []js.Value) any {
 					event := args[0]
 					fn(event)
 					return nil

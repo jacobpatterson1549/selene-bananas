@@ -192,7 +192,7 @@ func TestSend(t *testing.T) {
 	// t.Run("bad message json", func(t *testing.T) { }) // not tested
 	t.Run("happy path", func(t *testing.T) {
 		sendCalled := false
-		sendJsFunc := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		sendJsFunc := js.FuncOf(func(this js.Value, args []js.Value) any {
 			want := `{"type":` + strconv.Itoa(int(message.GameChat)) + `,"info":"selene : hi","game":{"id":21}}`
 			got := args[0].String()
 			if want != got {
@@ -207,7 +207,7 @@ func TestSend(t *testing.T) {
 			Info: "selene : hi",
 		}
 		s := Socket{
-			webSocket: js.ValueOf(map[string]interface{}{
+			webSocket: js.ValueOf(map[string]any{
 				"readyState": 1,
 				"send":       sendJsFunc,
 			}),
@@ -226,7 +226,7 @@ func TestSend(t *testing.T) {
 
 func TestOnMessageWithSetGameInfos(t *testing.T) {
 	mt := strconv.Itoa(int(message.GameInfos))
-	eventM := map[string]interface{}{
+	eventM := map[string]any{
 		"data": `{"type":` + mt + `,"games":[{"id":8}]}`,
 	}
 	event := js.ValueOf(eventM)
@@ -255,7 +255,7 @@ func TestOnMessageWithSetGameInfos(t *testing.T) {
 	}
 }
 func TestOnMessageWithBadJSON(t *testing.T) {
-	event := js.ValueOf(map[string]interface{}{
+	event := js.ValueOf(map[string]any{
 		"data": `{bad json}`,
 	})
 	errorLogged := false
@@ -294,7 +294,7 @@ func TestOnMessageWithLogging(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		event := js.ValueOf(map[string]interface{}{
+		event := js.ValueOf(map[string]any{
 			"data": `{"type":` + strconv.Itoa(int(test.messageType)) + `}`,
 		})
 		got := 0
@@ -350,18 +350,18 @@ func TestOnMessageWithHandlers(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		event := js.ValueOf(map[string]interface{}{
+		event := js.ValueOf(map[string]any{
 			"data": `{"info":"any","type":` + strconv.Itoa(int(test.messageType)) + `}`,
 		})
 		infoLogged := false
 		socketClosed := false
 		gotAction := 0
-		closeWebSocket := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		closeWebSocket := js.FuncOf(func(this js.Value, args []js.Value) any {
 			socketClosed = true
 			return nil
 		})
 		s := Socket{
-			webSocket: js.ValueOf(map[string]interface{}{
+			webSocket: js.ValueOf(map[string]any{
 				"readyState": 1,
 				"close":      closeWebSocket,
 			}),
@@ -399,18 +399,18 @@ func TestOnMessageWithHandlers(t *testing.T) {
 		}
 	}
 	t.Run("httpPing", func(t *testing.T) {
-		event := js.ValueOf(map[string]interface{}{
+		event := js.ValueOf(map[string]any{
 			"data": `{"type":` + strconv.Itoa(int(message.SocketHTTPPing)) + `}`,
 		})
 		pingHandled := false
-		requestSubmit := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		requestSubmit := js.FuncOf(func(this js.Value, args []js.Value) any {
 			pingHandled = true
 			return nil
 		})
 		s := Socket{
 			dom: &mockDOM{
 				QuerySelectorFunc: func(query string) js.Value {
-					return js.ValueOf(map[string]interface{}{
+					return js.ValueOf(map[string]any{
 						"requestSubmit": requestSubmit,
 					})
 				},
@@ -450,17 +450,17 @@ func TestConnect(t *testing.T) {
 		wantOk    bool
 	}{
 		{ // already open
-			webSocket: js.ValueOf(map[string]interface{}{
+			webSocket: js.ValueOf(map[string]any{
 				"readyState": 1,
 			}),
 			wantOk: true,
 		},
 		{ // bad form
-			webSocket: js.ValueOf(map[string]interface{}{
+			webSocket: js.ValueOf(map[string]any{
 				"readyState": 0,
 			}),
-			event: js.ValueOf(map[string]interface{}{
-				"target": map[string]interface{}{
+			event: js.ValueOf(map[string]any{
+				"target": map[string]any{
 					"method": "get",
 					"action": "bad_url",
 				},
@@ -515,13 +515,13 @@ func TestOnClose(t *testing.T) {
 		wantWarning bool
 	}{
 		{
-			event: js.ValueOf(map[string]interface{}{}),
+			event: js.ValueOf(map[string]any{}),
 		},
 		{
-			event: js.ValueOf(map[string]interface{}{"reason": ""}),
+			event: js.ValueOf(map[string]any{"reason": ""}),
 		},
 		{
-			event:       js.ValueOf(map[string]interface{}{"reason": "any"}),
+			event:       js.ValueOf(map[string]any{"reason": "any"}),
 			wantWarning: true,
 		},
 	}
@@ -529,7 +529,7 @@ func TestOnClose(t *testing.T) {
 		warningLogged := false
 		setCheckedCalled := false
 		s := Socket{
-			webSocket: js.ValueOf(map[string]interface{}{}),
+			webSocket: js.ValueOf(map[string]any{}),
 			log: &mockLog{
 				WarningFunc: func(text string) {
 					warningLogged = true
@@ -573,7 +573,7 @@ func TestOnError(t *testing.T) {
 
 func TestCloseWebSocket(t *testing.T) {
 	funcNames := []string{"onopen", "onclose", "onerror", "onmessage"}
-	webSocket := js.ValueOf(map[string]interface{}{
+	webSocket := js.ValueOf(map[string]any{
 		"onopen":    true,
 		"onclose":   true,
 		"onerror":   true,
@@ -598,7 +598,7 @@ func TestCloseWebSocket(t *testing.T) {
 // TestClose checks the closing behavior for different isOpen states
 func TestClose(t *testing.T) {
 	var closeCalled bool
-	close := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	close := js.FuncOf(func(this js.Value, args []js.Value) any {
 		closeCalled = true
 		return nil
 	})
@@ -608,7 +608,7 @@ func TestClose(t *testing.T) {
 	}{
 		{},
 		{
-			webSocket: js.ValueOf(map[string]interface{}{
+			webSocket: js.ValueOf(map[string]any{
 				"readyState": 1,
 				"close":      close,
 			}),
@@ -709,7 +709,7 @@ func TestHandle(t *testing.T) {
 
 func TestHttpPing(t *testing.T) {
 	triggered := false
-	requestSubmit := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	requestSubmit := js.FuncOf(func(this js.Value, args []js.Value) any {
 		triggered = true
 		return nil
 	})
@@ -719,7 +719,7 @@ func TestHttpPing(t *testing.T) {
 				if want, got := "ping", query; !strings.Contains(got, want) {
 					t.Errorf("queried ping form element did not contain %q: %q", want, got)
 				}
-				return js.ValueOf(map[string]interface{}{
+				return js.ValueOf(map[string]any{
 					"requestSubmit": requestSubmit,
 				})
 			},

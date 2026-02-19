@@ -15,7 +15,7 @@ import (
 func (dom *DOM) RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentName string, jsFuncs map[string]js.Func) {
 	parent := dom.global.Get(parentName)
 	if parent.IsUndefined() {
-		parent = js.ValueOf(make(map[string]interface{}))
+		parent = js.ValueOf(make(map[string]any))
 		dom.global.Set(parentName, parent)
 	}
 	for fnName, fn := range jsFuncs {
@@ -27,7 +27,7 @@ func (dom *DOM) RegisterFuncs(ctx context.Context, wg *sync.WaitGroup, parentNam
 
 // NewJsFunc creates a new javascript function from the provided function.
 func (dom *DOM) NewJsFunc(fn func()) js.Func {
-	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		defer dom.AlertOnPanic()
 		fn()
 		return nil
@@ -42,7 +42,7 @@ func (dom *DOM) NewJsEventFunc(fn func(event js.Value)) js.Func {
 
 // NewJsEventFuncAsync performs similarly to NewJsEventFunc, but calls the event-handling function asynchronously if async is true.
 func (dom *DOM) NewJsEventFuncAsync(fn func(event js.Value), async bool) js.Func {
-	return js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		event := args[0]
 		event.Call("preventDefault")
 		runFn := func() {
@@ -88,13 +88,13 @@ func (dom *DOM) AlertOnPanic() {
 
 // RecoverError converts the recovery interface into a useful error.
 // Panics if the interface is not an error or a string.
-func (dom *DOM) recoverError(r interface{}) error {
+func (dom *DOM) recoverError(r any) error {
 	switch v := r.(type) {
 	case error:
 		return v
 	case string:
 		return errors.New(v)
 	default:
-		panic([]interface{}{"unknown panic type", v, r})
+		panic([]any{"unknown panic type", v, r})
 	}
 }
